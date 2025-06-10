@@ -7,6 +7,14 @@ use TrueAsync\AsyncEventLoop;
 use TrueAsync\Interfaces\PromiseInterface;
 
 /**
+ * Check if code is running inside a Fiber
+ */
+function in_fiber(): bool
+{
+    return \Fiber::getCurrent() !== null;
+}
+
+/**
  * Creates an async function that returns a Promise
  */
 function async(callable $asyncFunction): callable
