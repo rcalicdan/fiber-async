@@ -190,3 +190,97 @@ function tryAsync(callable $asyncFunction): callable
         }
     });
 }
+
+/**
+ * Make any synchronous function asynchronous
+ */
+function asyncify(callable $syncFunction): callable
+{
+    return function (...$args) use ($syncFunction) {
+        return new AsyncPromise(function ($resolve, $reject) use ($syncFunction, $args) {
+            $fiber = new \Fiber(function () use ($syncFunction, $args, $resolve, $reject) {
+                try {
+                    $result = $syncFunction(...$args);
+                    $resolve($result);
+                } catch (\Throwable $e) {
+                    $reject($e);
+                }
+            });
+            
+            AsyncEventLoop::getInstance()->addFiber($fiber);
+        });
+    };
+}
+
+/**
+ * Guzzle HTTP client bridge
+ */
+function guzzle(string $method, string $url, array $options = []): PromiseInterface
+{
+    return HttpClientBridge::getInstance()->guzzle($method, $url, $options);
+}
+
+/**
+ * Laravel HTTP client bridge
+ */
+function http()
+{
+    return HttpClientBridge::getInstance()->laravel();
+}
+
+/**
+ * Wrap synchronous operations
+ */
+function wrapSync(callable $syncCall): PromiseInterface
+{
+    return HttpClientBridge::getInstance()->wrap($syncCall);
+}
+
+/**
+ * Run multiple async operations concurrently with concurrency limit
+ */
+function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
+{
+    return new AsyncPromise(function ($resolve, $reject) use ($tasks, $concurrency) {
+        if (empty($tasks)) {
+            $resolve([]);
+            return;
+        }
+
+        $results = [];
+        $running = 0;
+        $completed = 0;
+        $total = count($tasks);
+        $taskIndex = 0;
+
+        $processNext = function () use (&$processNext, &$tasks, &$running, &$completed, &$results, &$total, &$taskIndex, $concurrency, $resolve, $reject) {
+            while ($running < $concurrency && $taskIndex < $total) {
+                $currentIndex = $taskIndex++;
+                $task = $tasks[$currentIndex];
+                $running++;
+
+                $promise = is_callable($task) ? $task() : $task;
+                
+                $promise
+                    ->then(function ($result) use ($currentIndex, &$results, &$running, &$completed, $total, $resolve, $processNext) {
+                        $results[$currentIndex] = $result;
+                        $running--;
+                        $completed++;
+                        
+                        if ($completed === $total) {
+                            ksort($results);
+                            $resolve(array_values($results));
+                        } else {
+                            $processNext();
+                        }
+                    })
+                    ->catch(function ($error) use (&$running, $reject) {
+                        $running--;
+                        $reject($error);
+                    });
+            }
+        };
+
+        $processNext();
+    });
+}

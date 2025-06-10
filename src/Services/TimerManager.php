@@ -16,20 +16,45 @@ class TimerManager
         return $timer->getId();
     }
 
-    public function processTimers(): void
+    public function processTimers(): bool
     {
+        if (empty($this->timers)) {
+            return false;
+        }
+
         $currentTime = microtime(true);
+        $processed = false;
         
         foreach ($this->timers as $id => $timer) {
             if ($timer->isReady($currentTime)) {
                 $timer->execute();
                 unset($this->timers[$id]);
+                $processed = true;
             }
         }
+
+        return $processed;
     }
 
     public function hasTimers(): bool
     {
         return !empty($this->timers);
+    }
+
+    public function getNextTimerDelay(): ?float
+    {
+        if (empty($this->timers)) {
+            return null;
+        }
+
+        $currentTime = microtime(true);
+        $nextExecuteTime = PHP_FLOAT_MAX;
+
+        foreach ($this->timers as $timer) {
+            $nextExecuteTime = min($nextExecuteTime, $timer->getExecuteAt());
+        }
+
+        $delay = $nextExecuteTime - $currentTime;
+        return $delay > 0 ? $delay : 0;
     }
 }
