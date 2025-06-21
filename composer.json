@@ -38,6 +38,7 @@
         }
     },
     "scripts": {
+        "test": "./vendor/bin/pest",
         "format": "./vendor/bin/pint",
         "format-test": "./vendor/bin/pint --test"
     }
