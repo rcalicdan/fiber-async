@@ -1,7 +1,7 @@
 <?php
 
-use Rcalicdan\FiberAsync\AsyncPromise;
 use Rcalicdan\FiberAsync\AsyncEventLoop;
+use Rcalicdan\FiberAsync\AsyncPromise;
 use Rcalicdan\FiberAsync\Bridges\HttpClientBridge;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 
@@ -10,7 +10,7 @@ use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
  */
 function in_fiber(): bool
 {
-    return \Fiber::getCurrent() !== null;
+    return Fiber::getCurrent() !== null;
 }
 
 /**
@@ -20,15 +20,15 @@ function async(callable $asyncFunction): callable
 {
     return function (...$args) use ($asyncFunction) {
         return new AsyncPromise(function ($resolve, $reject) use ($asyncFunction, $args) {
-            $fiber = new \Fiber(function () use ($asyncFunction, $args, $resolve, $reject) {
+            $fiber = new Fiber(function () use ($asyncFunction, $args, $resolve, $reject) {
                 try {
                     $result = $asyncFunction(...$args);
                     $resolve($result);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     $reject($e);
                 }
             });
-            
+
             AsyncEventLoop::getInstance()->addFiber($fiber);
         });
     };
@@ -39,8 +39,8 @@ function async(callable $asyncFunction): callable
  */
 function await(PromiseInterface $promise): mixed
 {
-    if (!in_fiber()) {
-        throw new \RuntimeException('await() can only be used inside a Fiber context');
+    if (! in_fiber()) {
+        throw new RuntimeException('await() can only be used inside a Fiber context');
     }
 
     $result = null;
@@ -55,15 +55,16 @@ function await(PromiseInterface $promise): mixed
         ->catch(function ($reason) use (&$error, &$completed) {
             $error = $reason;
             $completed = true;
-        });
+        })
+    ;
 
     // Suspend the fiber until the promise completes
-    while (!$completed) {
-        \Fiber::suspend();
+    while (! $completed) {
+        Fiber::suspend();
     }
 
     if ($error !== null) {
-        throw $error instanceof \Throwable ? $error : new \Exception((string)$error);
+        throw $error instanceof Throwable ? $error : new Exception((string) $error);
     }
 
     return $result;
@@ -89,12 +90,12 @@ function fetch(string $url, array $options = []): PromiseInterface
     return new AsyncPromise(function ($resolve, $reject) use ($url, $options) {
         AsyncEventLoop::getInstance()->addHttpRequest($url, $options, function ($error, $response, $httpCode) use ($resolve, $reject) {
             if ($error) {
-                $reject(new \Exception("HTTP Request failed: " . $error));
+                $reject(new Exception('HTTP Request failed: '.$error));
             } else {
                 $resolve([
                     'body' => $response,
                     'status' => $httpCode,
-                    'ok' => $httpCode >= 200 && $httpCode < 300
+                    'ok' => $httpCode >= 200 && $httpCode < 300,
                 ]);
             }
         });
@@ -109,6 +110,7 @@ function all(array $promises): PromiseInterface
     return new AsyncPromise(function ($resolve, $reject) use ($promises) {
         if (empty($promises)) {
             $resolve([]);
+
             return;
         }
 
@@ -128,7 +130,8 @@ function all(array $promises): PromiseInterface
                 })
                 ->catch(function ($reason) use ($reject) {
                     $reject($reason);
-                });
+                })
+            ;
         }
     });
 }
@@ -140,7 +143,8 @@ function race(array $promises): PromiseInterface
 {
     return new AsyncPromise(function ($resolve, $reject) use ($promises) {
         if (empty($promises)) {
-            $reject(new \Exception('No promises provided'));
+            $reject(new Exception('No promises provided'));
+
             return;
         }
 
@@ -149,17 +153,18 @@ function race(array $promises): PromiseInterface
         foreach ($promises as $promise) {
             $promise
                 ->then(function ($value) use (&$settled, $resolve) {
-                    if (!$settled) {
+                    if (! $settled) {
                         $settled = true;
                         $resolve($value);
                     }
                 })
                 ->catch(function ($reason) use (&$settled, $reject) {
-                    if (!$settled) {
+                    if (! $settled) {
                         $settled = true;
                         $reject($reason);
                     }
-                });
+                })
+            ;
         }
     });
 }
@@ -169,8 +174,9 @@ function race(array $promises): PromiseInterface
  */
 function resolve(mixed $value): PromiseInterface
 {
-    $promise = new AsyncPromise();
+    $promise = new AsyncPromise;
     $promise->resolve($value);
+
     return $promise;
 }
 
@@ -179,8 +185,9 @@ function resolve(mixed $value): PromiseInterface
  */
 function reject(mixed $reason): PromiseInterface
 {
-    $promise = new AsyncPromise();
+    $promise = new AsyncPromise;
     $promise->reject($reason);
+
     return $promise;
 }
 
@@ -192,7 +199,7 @@ function tryAsync(callable $asyncFunction): callable
     return async(function (...$args) use ($asyncFunction) {
         try {
             return await($asyncFunction(...$args));
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             throw $e; // Re-throw to be caught by calling code
         }
     });
@@ -205,15 +212,15 @@ function asyncify(callable $syncFunction): callable
 {
     return function (...$args) use ($syncFunction) {
         return new AsyncPromise(function ($resolve, $reject) use ($syncFunction, $args) {
-            $fiber = new \Fiber(function () use ($syncFunction, $args, $resolve, $reject) {
+            $fiber = new Fiber(function () use ($syncFunction, $args, $resolve, $reject) {
                 try {
                     $result = $syncFunction(...$args);
                     $resolve($result);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     $reject($e);
                 }
             });
-            
+
             AsyncEventLoop::getInstance()->addFiber($fiber);
         });
     };
@@ -251,6 +258,7 @@ function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     return new AsyncPromise(function ($resolve, $reject) use ($tasks, $concurrency) {
         if (empty($tasks)) {
             $resolve([]);
+
             return;
         }
 
@@ -267,13 +275,13 @@ function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
                 $running++;
 
                 $promise = is_callable($task) ? $task() : $task;
-                
+
                 $promise
                     ->then(function ($result) use ($currentIndex, &$results, &$running, &$completed, $total, $resolve, $processNext) {
                         $results[$currentIndex] = $result;
                         $running--;
                         $completed++;
-                        
+
                         if ($completed === $total) {
                             ksort($results);
                             $resolve(array_values($results));
@@ -284,7 +292,8 @@ function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
                     ->catch(function ($error) use (&$running, $reject) {
                         $running--;
                         $reject($error);
-                    });
+                    })
+                ;
             }
         };
 

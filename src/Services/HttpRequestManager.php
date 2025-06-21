@@ -1,4 +1,5 @@
 <?php
+
 // src/Services/HttpRequestManager.php
 
 namespace Rcalicdan\FiberAsync\Services;
@@ -41,12 +42,13 @@ class HttpRequestManager
     private function addPendingRequests(): bool
     {
         $added = false;
-        while (!empty($this->pendingRequests)) {
+        while (! empty($this->pendingRequests)) {
             $request = array_shift($this->pendingRequests);
             curl_multi_add_handle($this->multiHandle, $request->getHandle());
-            $this->activeRequests[(int)$request->getHandle()] = $request;
+            $this->activeRequests[(int) $request->getHandle()] = $request;
             $added = true;
         }
+
         return $added;
     }
 
@@ -62,7 +64,7 @@ class HttpRequestManager
 
         while ($info = curl_multi_info_read($this->multiHandle)) {
             $handle = $info['handle'];
-            $handleId = (int)$handle;
+            $handleId = (int) $handle;
 
             if (isset($this->activeRequests[$handleId])) {
                 $request = $this->activeRequests[$handleId];
@@ -88,7 +90,7 @@ class HttpRequestManager
 
     public function hasRequests(): bool
     {
-        return !empty($this->pendingRequests) || !empty($this->activeRequests);
+        return ! empty($this->pendingRequests) || ! empty($this->activeRequests);
     }
 
     public function __destruct()

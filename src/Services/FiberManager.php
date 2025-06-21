@@ -33,7 +33,7 @@ class FiberManager
             }
 
             try {
-                if (!$fiber->isStarted()) {
+                if (! $fiber->isStarted()) {
                     $fiber->start();
                     $processed = true;
                 }
@@ -41,7 +41,7 @@ class FiberManager
                     $this->suspendedFibers[] = $fiber;
                 }
             } catch (\Throwable $e) {
-                error_log("Fiber error: " . $e->getMessage());
+                error_log('Fiber error: '.$e->getMessage());
             }
         }
 
@@ -59,7 +59,7 @@ class FiberManager
                         $this->suspendedFibers[] = $fiber;
                     }
                 } catch (\Throwable $e) {
-                    error_log("Fiber resume error: " . $e->getMessage());
+                    error_log('Fiber resume error: '.$e->getMessage());
                 }
             }
         }
@@ -69,16 +69,17 @@ class FiberManager
 
     public function hasFibers(): bool
     {
-        return !empty($this->fibers) || !empty($this->suspendedFibers);
+        return ! empty($this->fibers) || ! empty($this->suspendedFibers);
     }
 
     public function hasActiveFibers(): bool
     {
         foreach ($this->suspendedFibers as $fiber) {
-            if (!$fiber->isTerminated()) {
+            if (! $fiber->isTerminated()) {
                 return true;
             }
         }
-        return !empty($this->fibers);
+
+        return ! empty($this->fibers);
     }
 }

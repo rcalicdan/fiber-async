@@ -14,6 +14,7 @@ test('handles many concurrent timers efficiently', function () {
         for ($i = 0; $i < 100; $i++) {
             $promises[] = delay(0.01)->then(function () use (&$completed) {
                 $completed++;
+
                 return $completed;
             });
         }
@@ -37,7 +38,7 @@ test('memory usage stays reasonable with many operations', function () {
 
         for ($i = 0; $i < 50; $i++) {
             $promises[] = async(function () use ($i) {
-                return await(delay(0.001)->then(fn() => $i * 2));
+                return await(delay(0.001)->then(fn () => $i * 2));
             })();
         }
 

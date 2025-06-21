@@ -2,13 +2,12 @@
 
 namespace Rcalicdan\FiberAsync\Bridges;
 
-use Rcalicdan\FiberAsync\AsyncPromise;
-use Rcalicdan\FiberAsync\AsyncEventLoop;
-use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Promise\PromiseInterface as GuzzlePromiseInterface;
 use Illuminate\Http\Client\Factory as LaravelHttpFactory;
-use Illuminate\Http\Client\Response as LaravelResponse;
+use Rcalicdan\FiberAsync\AsyncEventLoop;
+use Rcalicdan\FiberAsync\AsyncPromise;
+use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 
 class HttpClientBridge
 {
@@ -19,8 +18,9 @@ class HttpClientBridge
     public static function getInstance(): HttpClientBridge
     {
         if (self::$instance === null) {
-            self::$instance = new self();
+            self::$instance = new self;
         }
+
         return self::$instance;
     }
 
@@ -30,7 +30,7 @@ class HttpClientBridge
     public function guzzle(string $method, string $url, array $options = []): PromiseInterface
     {
         if ($this->guzzleClient === null) {
-            $this->guzzleClient = new GuzzleClient();
+            $this->guzzleClient = new GuzzleClient;
         }
 
         return new AsyncPromise(function ($resolve, $reject) use ($method, $url, $options) {
@@ -38,7 +38,7 @@ class HttpClientBridge
                 try {
                     // Use Guzzle's async capabilities
                     $guzzlePromise = $this->guzzleClient->requestAsync($method, $url, $options);
-                    
+
                     // Convert Guzzle promise to our promise
                     $this->bridgeGuzzlePromise($guzzlePromise, $resolve, $reject);
                 } catch (\Throwable $e) {
@@ -56,7 +56,7 @@ class HttpClientBridge
     public function laravel(): LaravelHttpBridge
     {
         if ($this->laravelHttp === null) {
-            $this->laravelHttp = new LaravelHttpFactory();
+            $this->laravelHttp = new LaravelHttpFactory;
         }
 
         return new LaravelHttpBridge($this->laravelHttp);
@@ -85,10 +85,10 @@ class HttpClientBridge
     {
         $guzzlePromise->then(
             function ($response) use ($resolve) {
-                AsyncEventLoop::getInstance()->nextTick(fn() => $resolve($response));
+                AsyncEventLoop::getInstance()->nextTick(fn () => $resolve($response));
             },
             function ($reason) use ($reject) {
-                AsyncEventLoop::getInstance()->nextTick(fn() => $reject($reason));
+                AsyncEventLoop::getInstance()->nextTick(fn () => $reject($reason));
             }
         );
     }

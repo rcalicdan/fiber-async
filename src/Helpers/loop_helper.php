@@ -1,4 +1,5 @@
 <?php
+
 // src/Helpers/loop_helper.php
 
 use Rcalicdan\FiberAsync\AsyncEventLoop;
@@ -26,17 +27,20 @@ function run(callable|PromiseInterface $asyncOperation): mixed
         ->catch(function ($reason) use (&$error, &$completed) {
             $error = $reason;
             $completed = true;
-        });
+        })
+    ;
 
-    while (!$completed && !$loop->isIdle()) {
+    while (! $completed && ! $loop->isIdle()) {
         $loop->run();
-        if ($completed) break;
+        if ($completed) {
+            break;
+        }
 
         usleep(1000); // 1ms
     }
 
     if ($error !== null) {
-        throw $error instanceof \Throwable ? $error : new \Exception((string)$error);
+        throw $error instanceof Throwable ? $error : new Exception((string) $error);
     }
 
     return $result;
@@ -77,7 +81,7 @@ function runConcurrent(array $asyncOperations, int $concurrency = 10): array
  */
 function task(callable $asyncFunction): mixed
 {
-  return run(async($asyncFunction)()); 
+    return run(async($asyncFunction)());
 }
 
 /**
@@ -110,7 +114,8 @@ function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeou
 
         $timeoutPromise = async(function () use ($timeout) {
             await(delay($timeout));
-            throw new \Exception("Operation timed out after {$timeout} seconds");
+
+            throw new Exception("Operation timed out after {$timeout} seconds");
         })();
 
         return await(race([$promise, $timeoutPromise]));
@@ -129,6 +134,6 @@ function benchmark(callable|PromiseInterface $asyncOperation): array
     return [
         'result' => $result,
         'duration' => $duration,
-        'duration_ms' => round($duration * 1000, 2)
+        'duration_ms' => round($duration * 1000, 2),
     ];
 }

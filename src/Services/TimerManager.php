@@ -13,6 +13,7 @@ class TimerManager
     {
         $timer = new Timer($delay, $callback);
         $this->timers[$timer->getId()] = $timer;
+
         return $timer->getId();
     }
 
@@ -24,7 +25,7 @@ class TimerManager
 
         $currentTime = microtime(true);
         $processed = false;
-        
+
         foreach ($this->timers as $id => $timer) {
             if ($timer->isReady($currentTime)) {
                 $timer->execute();
@@ -38,7 +39,7 @@ class TimerManager
 
     public function hasTimers(): bool
     {
-        return !empty($this->timers);
+        return ! empty($this->timers);
     }
 
     public function getNextTimerDelay(): ?float
@@ -55,6 +56,7 @@ class TimerManager
         }
 
         $delay = $nextExecuteTime - $currentTime;
+
         return $delay > 0 ? $delay : 0;
     }
 }

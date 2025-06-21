@@ -21,7 +21,7 @@ class StreamManager
         }
 
         $read = $write = $except = [];
-        
+
         foreach ($this->watchers as $watcher) {
             $read[] = $watcher->getStream();
         }
@@ -32,6 +32,7 @@ class StreamManager
                     if ($watcher->getStream() === $stream) {
                         $watcher->execute();
                         unset($this->watchers[$key]);
+
                         break;
                     }
                 }
@@ -41,6 +42,6 @@ class StreamManager
 
     public function hasWatchers(): bool
     {
-        return !empty($this->watchers);
+        return ! empty($this->watchers);
     }
 }

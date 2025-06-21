@@ -1,10 +1,9 @@
 <?php
+
 // tests/Unit/LoopHelperTest.php
 
-require_once __DIR__ . '/../../src/Helpers/async_helper.php';
-require_once __DIR__ . '/../../src/Helpers/loop_helper.php';
-
-use Rcalicdan\FiberAsync\AsyncEventLoop;
+require_once __DIR__.'/../../src/Helpers/async_helper.php';
+require_once __DIR__.'/../../src/Helpers/loop_helper.php';
 
 beforeEach(function () {
     resetEventLoop();
@@ -40,11 +39,11 @@ test('runAll executes multiple operations concurrently', function () {
 
     $results = runAll([
         'op1' => function () {
-            return await(delay(0.05)->then(fn() => 'result1'));
+            return await(delay(0.05)->then(fn () => 'result1'));
         },
         'op2' => function () {
-            return await(delay(0.05)->then(fn() => 'result2'));
-        }
+            return await(delay(0.05)->then(fn () => 'result2'));
+        },
     ]);
 
     $duration = microtime(true) - $start;
@@ -65,6 +64,7 @@ test('runWithTimeout throws exception on timeout', function () {
 test('benchmark returns result and timing information', function () {
     $benchmark = benchmark(function () {
         asyncSleep(0.05);
+
         return 'benchmark result';
     });
 

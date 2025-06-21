@@ -1,14 +1,14 @@
 <?php
 
-use Rcalicdan\FiberAsync\AsyncPromise;
 use Rcalicdan\FiberAsync\AsyncEventLoop;
+use Rcalicdan\FiberAsync\AsyncPromise;
 
 beforeEach(function () {
     resetEventLoop();
 });
 
 test('promise can be resolved', function () {
-    $promise = new AsyncPromise();
+    $promise = new AsyncPromise;
     $resolved = false;
     $value = null;
 
@@ -22,9 +22,11 @@ test('promise can be resolved', function () {
     // Process the event loop to handle callbacks
     $loop = AsyncEventLoop::getInstance();
     $start = microtime(true);
-    while (!$resolved && (microtime(true) - $start) < 1) {
+    while (! $resolved && (microtime(true) - $start) < 1) {
         $loop->run();
-        if ($resolved) break;
+        if ($resolved) {
+            break;
+        }
         usleep(1000);
     }
 
@@ -35,7 +37,7 @@ test('promise can be resolved', function () {
 });
 
 test('promise can be rejected', function () {
-    $promise = new AsyncPromise();
+    $promise = new AsyncPromise;
     $rejected = false;
     $reason = null;
 
@@ -49,9 +51,11 @@ test('promise can be rejected', function () {
     // Process the event loop to handle callbacks
     $loop = AsyncEventLoop::getInstance();
     $start = microtime(true);
-    while (!$rejected && (microtime(true) - $start) < 1) {
+    while (! $rejected && (microtime(true) - $start) < 1) {
         $loop->run();
-        if ($rejected) break;
+        if ($rejected) {
+            break;
+        }
         usleep(1000);
     }
 
@@ -77,9 +81,11 @@ test('promise with executor function works', function () {
     // Process the event loop to handle callbacks
     $loop = AsyncEventLoop::getInstance();
     $start = microtime(true);
-    while (!$resolved && (microtime(true) - $start) < 1) {
+    while (! $resolved && (microtime(true) - $start) < 1) {
         $loop->run();
-        if ($resolved) break;
+        if ($resolved) {
+            break;
+        }
         usleep(1000);
     }
 
@@ -100,14 +106,17 @@ test('promise chaining works', function () {
         })
         ->then(function ($value) use (&$finalValue) {
             $finalValue = $value;
-        });
+        })
+    ;
 
     // Process the event loop to handle callbacks
     $loop = AsyncEventLoop::getInstance();
     $start = microtime(true);
     while ($finalValue === null && (microtime(true) - $start) < 1) {
         $loop->run();
-        if ($finalValue !== null) break;
+        if ($finalValue !== null) {
+            break;
+        }
         usleep(1000);
     }
 
@@ -128,9 +137,11 @@ test('promise finally callback executes', function () {
     // Process the event loop to handle callbacks
     $loop = AsyncEventLoop::getInstance();
     $start = microtime(true);
-    while (!$finallyExecuted && (microtime(true) - $start) < 1) {
+    while (! $finallyExecuted && (microtime(true) - $start) < 1) {
         $loop->run();
-        if ($finallyExecuted) break;
+        if ($finallyExecuted) {
+            break;
+        }
         usleep(1000);
     }
 

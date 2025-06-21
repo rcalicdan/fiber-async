@@ -1,10 +1,9 @@
 <?php
 
-require_once __DIR__ . '/../../src/Helpers/async_helper.php';
-require_once __DIR__ . '/../../src/Helpers/loop_helper.php';
+require_once __DIR__.'/../../src/Helpers/async_helper.php';
+require_once __DIR__.'/../../src/Helpers/loop_helper.php';
 
 use Rcalicdan\FiberAsync\AsyncEventLoop;
-use Rcalicdan\FiberAsync\AsyncPromise;
 
 beforeEach(function () {
     resetEventLoop();
@@ -24,7 +23,9 @@ test('async function wrapper works', function () {
     $start = microtime(true);
     while ($result === null && (microtime(true) - $start) < 1) {
         $loop->run();
-        if ($result !== null) break;
+        if ($result !== null) {
+            break;
+        }
         usleep(1000);
     }
 
@@ -40,9 +41,11 @@ test('delay function works', function () {
     });
 
     $loop = AsyncEventLoop::getInstance();
-    while (!$completed && (microtime(true) - $start) < 1) {
+    while (! $completed && (microtime(true) - $start) < 1) {
         $loop->run();
-        if ($completed) break;
+        if ($completed) {
+            break;
+        }
         usleep(1000);
     }
 
@@ -63,9 +66,11 @@ test('resolve helper creates resolved promise', function () {
 
     $loop = AsyncEventLoop::getInstance();
     $start = microtime(true);
-    while (!$resolved && (microtime(true) - $start) < 1) {
+    while (! $resolved && (microtime(true) - $start) < 1) {
         $loop->run();
-        if ($resolved) break;
+        if ($resolved) {
+            break;
+        }
         usleep(1000);
     }
 
@@ -84,9 +89,11 @@ test('reject helper creates rejected promise', function () {
 
     $loop = AsyncEventLoop::getInstance();
     $start = microtime(true);
-    while (!$rejected && (microtime(true) - $start) < 1) {
+    while (! $rejected && (microtime(true) - $start) < 1) {
         $loop->run();
-        if ($rejected) break;
+        if ($rejected) {
+            break;
+        }
         usleep(1000);
     }
 
@@ -100,7 +107,7 @@ test('all helper waits for all promises', function () {
     $promises = [
         resolve(1),
         resolve(2),
-        resolve(3)
+        resolve(3),
     ];
 
     all($promises)->then(function ($values) use (&$result) {
@@ -111,7 +118,9 @@ test('all helper waits for all promises', function () {
     $start = microtime(true);
     while ($result === null && (microtime(true) - $start) < 1) {
         $loop->run();
-        if ($result !== null) break;
+        if ($result !== null) {
+            break;
+        }
         usleep(1000);
     }
 
@@ -122,8 +131,8 @@ test('race helper resolves with first promise', function () {
     $result = null;
 
     $promises = [
-        delay(0.1)->then(fn() => 'slow'),
-        resolve('fast')
+        delay(0.1)->then(fn () => 'slow'),
+        resolve('fast'),
     ];
 
     race($promises)->then(function ($value) use (&$result) {
@@ -134,7 +143,9 @@ test('race helper resolves with first promise', function () {
     $start = microtime(true);
     while ($result === null && (microtime(true) - $start) < 1) {
         $loop->run();
-        if ($result !== null) break;
+        if ($result !== null) {
+            break;
+        }
         usleep(1000);
     }
 
