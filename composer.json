@@ -23,8 +23,8 @@
         "illuminate/http": "^11.0"
     },
     "require-dev": {
-        "pestphp/pest": "^1.20",
-        "laravel/pint": "^1.10"
+        "laravel/pint": "^1.10",
+        "pestphp/pest": "4.x-dev"
     },
     "config": {
         "allow-plugins": {
