@@ -4,6 +4,7 @@ namespace FiberAsync\Helpers;
 
 use FiberAsync\AsyncPromise;
 use FiberAsync\AsyncEventLoop;
+use FiberAsync\Bridges\HttpClientBridge;
 use FiberAsync\Interfaces\PromiseInterface;
 
 /**
