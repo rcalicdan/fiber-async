@@ -28,6 +28,22 @@ function runConcurrent(array $asyncOperations, int $concurrency = 10): array
 }
 
 /**
+ * Run a blocking operation in the background
+ */
+function runInBackground(callable $blockingOperation, array $args = []): PromiseInterface
+{
+    return Async::runInBackground($blockingOperation, $args);
+}
+
+/**
+ * Run multiple blocking operations concurrently in background
+ */
+function runConcurrentlyInBackground(array $tasks, int $maxConcurrency = 4): PromiseInterface
+{
+    return Async::runConcurrentlyInBackground($tasks, $maxConcurrency);
+}
+
+/**
  * Create and run a simple async task
  */
 function task(callable $asyncFunction): mixed
