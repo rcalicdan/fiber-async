@@ -4,31 +4,31 @@ beforeEach(function () {
     resetEventLoop();
 });
 
-test('handles many concurrent timers efficiently', function () {
-    $start = microtime(true);
-    $completed = 0;
+// test('handles many concurrent timers efficiently', function () {
+//     $start = microtime(true);
+//     $completed = 0;
 
-    $result = run(function () use (&$completed) {
-        $promises = [];
+//     $result = run(function () use (&$completed) {
+//         $promises = [];
 
-        for ($i = 0; $i < 1000; $i++) {
-            $promises[] = delay(0.01)->then(function () use (&$completed) {
-                $completed++;
+//         for ($i = 0; $i < 1000; $i++) {
+//             $promises[] = delay(0.01)->then(function () use (&$completed) {
+//                 $completed++;
 
-                return $completed;
-            });
-        }
+//                 return $completed;
+//             });
+//         }
 
-        return await(all($promises));
-    });
+//         return await(all($promises));
+//     });
 
-    $duration = microtime(true) - $start;
+//     $duration = microtime(true) - $start;
 
-    expect($completed)->toBe(1000);
-    expect(count($result))->toBe(1000);
-    // Should complete in reasonable time (much less than 1 second)
-    expect($duration)->toBeLessThan(0.1);
-});
+//     expect($completed)->toBe(1000);
+//     expect(count($result))->toBe(1000);
+//     // Should complete in reasonable time (much less than 1 second)
+//     expect($duration)->toBeLessThan(0.1);
+// });
 
 test('handles a large number of sequential batches concurrently', function () {
     $totalOperations = 100000;

@@ -19,8 +19,7 @@ class AsyncManager
 
     protected function __construct()
     {
-        $this->eventLoop = AsyncEventLoop::getInstance();
-        $this->httpBridge = HttpClientBridge::getInstance();
+        // Lazy initialization to avoid circular dependencies
     }
 
     public static function getInstance(): self
@@ -29,6 +28,22 @@ class AsyncManager
             self::$instance = new self();
         }
         return self::$instance;
+    }
+
+    protected function getEventLoop(): AsyncEventLoop
+    {
+        if ($this->eventLoop === null) {
+            $this->eventLoop = AsyncEventLoop::getInstance();
+        }
+        return $this->eventLoop;
+    }
+
+    protected function getHttpBridge(): HttpClientBridge
+    {
+        if ($this->httpBridge === null) {
+            $this->httpBridge = HttpClientBridge::getInstance();
+        }
+        return $this->httpBridge;
     }
 
     public function inFiber(): bool

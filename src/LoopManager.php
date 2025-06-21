@@ -14,8 +14,7 @@ class LoopManager
 
     protected function __construct()
     {
-        $this->eventLoop = AsyncEventLoop::getInstance();
-        $this->asyncManager = AsyncManager::getInstance();
+        // Lazy initialization
     }
 
     public static function getInstance(): self
@@ -24,6 +23,22 @@ class LoopManager
             self::$instance = new self();
         }
         return self::$instance;
+    }
+
+    protected function getEventLoop(): AsyncEventLoop
+    {
+        if ($this->eventLoop === null) {
+            $this->eventLoop = AsyncEventLoop::getInstance();
+        }
+        return $this->eventLoop;
+    }
+
+    protected function getAsyncManager(): AsyncManager
+    {
+        if ($this->asyncManager === null) {
+            $this->asyncManager = AsyncManager::getInstance();
+        }
+        return $this->asyncManager;
     }
 
     public function run(callable|PromiseInterface $asyncOperation): mixed
@@ -107,8 +122,8 @@ class LoopManager
     public function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
     {
         return $this->run(function () use ($asyncOperation, $timeout) {
-            $promise = is_callable($asyncOperation) 
-                ? $this->asyncManager->async($asyncOperation)() 
+            $promise = is_callable($asyncOperation)
+                ? $this->asyncManager->async($asyncOperation)()
                 : $asyncOperation;
 
             $timeoutPromise = $this->asyncManager->async(function () use ($timeout) {

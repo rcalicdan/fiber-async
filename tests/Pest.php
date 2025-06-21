@@ -12,6 +12,8 @@
 */
 
 use Rcalicdan\FiberAsync\AsyncEventLoop;
+use Rcalicdan\FiberAsync\AsyncManager;
+use Rcalicdan\FiberAsync\LoopManager;
 
 pest()->extend(Tests\TestCase::class)->in('Feature', 'Integration');
 pest()->extend(Tests\TestCase::class)->in('Unit');
@@ -45,6 +47,16 @@ expect()->extend('toBeOne', function () {
 function resetEventLoop()
 {
     $reflection = new ReflectionClass(AsyncEventLoop::class);
+    $instance = $reflection->getProperty('instance');
+    $instance->setAccessible(true);
+    $instance->setValue(null, null);
+
+    $reflection = new ReflectionClass(AsyncManager::class);
+    $instance = $reflection->getProperty('instance');
+    $instance->setAccessible(true);
+    $instance->setValue(null, null);
+
+    $reflection = new ReflectionClass(LoopManager::class);
     $instance = $reflection->getProperty('instance');
     $instance->setAccessible(true);
     $instance->setValue(null, null);
