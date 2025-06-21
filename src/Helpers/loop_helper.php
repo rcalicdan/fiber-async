@@ -27,12 +27,10 @@ function run(callable|PromiseInterface $asyncOperation): mixed
             $completed = true;
         });
 
-    // Run the event loop until completion
     while (!$completed && !$loop->isIdle()) {
         $loop->run();
         if ($completed) break;
 
-        // Small sleep to prevent busy waiting
         usleep(1000); // 1ms
     }
 
