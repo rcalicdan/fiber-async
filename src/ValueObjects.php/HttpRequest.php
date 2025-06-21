@@ -1,8 +1,8 @@
 <?php
 
-namespace FiberAsync\ValueObjects;
+namespace Rcalicdan\FiberAsync\ValueObjects;
 
-use FiberAsync\Interfaces\HttpRequestInterface;
+use Rcalicdan\FiberAsync\Contracts\HttpRequestInterface;
 
 class HttpRequest implements HttpRequestInterface
 {

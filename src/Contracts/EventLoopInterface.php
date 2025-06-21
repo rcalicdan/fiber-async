@@ -1,6 +1,6 @@
 <?php
 
-namespace FiberAsync\Interfaces;
+namespace Rcalicdan\FiberAsync\Contracts;
 
 interface EventLoopInterface
 {

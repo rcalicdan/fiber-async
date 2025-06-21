@@ -1,8 +1,8 @@
 <?php
 
-namespace FiberAsync\Services;
+namespace Rcalicdan\FiberAsync\Services;
 
-use FiberAsync\ValueObjects\Timer;
+use Rcalicdan\FiberAsync\ValueObjects\Timer;
 
 class TimerManager
 {

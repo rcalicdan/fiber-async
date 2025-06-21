@@ -11,7 +11,11 @@
 |
 */
 
-pest()->extend(Tests\TestCase::class)->in('Feature');
+use Rcalicdan\FiberAsync\AsyncEventLoop;
+
+pest()->extend(Tests\TestCase::class)->in('Feature', 'Integration');
+pest()->extend(Tests\TestCase::class)->in('Unit');
+pest()->extend(Tests\TestCase::class)->in('Performance');
 
 /*
 |--------------------------------------------------------------------------
@@ -38,6 +42,13 @@ expect()->extend('toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
+function resetEventLoop()
+{
+    $reflection = new ReflectionClass(AsyncEventLoop::class);
+    $instance = $reflection->getProperty('instance');
+    $instance->setAccessible(true);
+    $instance->setValue(null);
+}
 
 function something()
 {

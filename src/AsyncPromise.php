@@ -1,8 +1,8 @@
 <?php
 
-namespace FiberAsync;
+namespace Rcalicdan\FiberAsync;
 
-use FiberAsync\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 
 class AsyncPromise implements PromiseInterface
 {

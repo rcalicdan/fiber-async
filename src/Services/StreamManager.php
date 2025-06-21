@@ -1,8 +1,8 @@
 <?php
 
-namespace FiberAsync\Services;
+namespace Rcalicdan\FiberAsync\Services;
 
-use FiberAsync\ValueObjects\StreamWatcher;
+use Rcalicdan\FiberAsync\ValueObjects\StreamWatcher;
 
 class StreamManager
 {

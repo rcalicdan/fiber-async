@@ -1,7 +1,8 @@
 <?php
+// src/Helpers/loop_helper.php
 
-use FiberAsync\AsyncEventLoop;
-use FiberAsync\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\AsyncEventLoop;
+use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 
 /**
  * Run async operations with automatic event loop management
@@ -90,9 +91,9 @@ function quickFetch(string $url, array $options = []): array
 }
 
 /**
- * Quick delay with automatic loop management
+ * Async delay with automatic loop management
  */
-function sleep(float $seconds): void
+function asyncSleep(float $seconds): void
 {
     run(function () use ($seconds) {
         await(delay($seconds));

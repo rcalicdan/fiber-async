@@ -1,12 +1,12 @@
 <?php
 
-namespace FiberAsync;
+namespace Rcalicdan\FiberAsync;
 
-use FiberAsync\Interfaces\EventLoopInterface;
-use FiberAsync\Services\TimerManager;
-use FiberAsync\Services\HttpRequestManager;
-use FiberAsync\Services\StreamManager;
-use FiberAsync\Services\FiberManager;
+use Rcalicdan\FiberAsync\Contracts\EventLoopInterface;
+use Rcalicdan\FiberAsync\Services\TimerManager;
+use Rcalicdan\FiberAsync\Services\HttpRequestManager;
+use Rcalicdan\FiberAsync\Services\StreamManager;
+use Rcalicdan\FiberAsync\Services\FiberManager;
 
 class AsyncEventLoop implements EventLoopInterface
 {

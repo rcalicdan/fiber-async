@@ -1,6 +1,6 @@
 <?php
 
-namespace FiberAsync\Services;
+namespace Rcalicdan\FiberAsync\Services;
 
 class FiberManager
 {

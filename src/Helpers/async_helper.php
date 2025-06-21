@@ -1,9 +1,9 @@
 <?php
 
-use FiberAsync\AsyncPromise;
-use FiberAsync\AsyncEventLoop;
-use FiberAsync\Bridges\HttpClientBridge;
-use FiberAsync\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\AsyncPromise;
+use Rcalicdan\FiberAsync\AsyncEventLoop;
+use Rcalicdan\FiberAsync\Bridges\HttpClientBridge;
+use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 
 /**
  * Check if code is running inside a Fiber

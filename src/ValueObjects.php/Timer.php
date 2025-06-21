@@ -1,8 +1,8 @@
 <?php
 
-namespace FiberAsync\ValueObjects;
+namespace Rcalicdan\FiberAsync\ValueObjects;
 
-use FiberAsync\Interfaces\TimerInterface;
+use Rcalicdan\FiberAsync\Contracts\TimerInterface;
 
 class Timer implements TimerInterface
 {
