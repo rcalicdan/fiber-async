@@ -1,8 +1,6 @@
 <?php
 
-// src/Helpers/loop_helper.php
-
-use Rcalicdan\FiberAsync\AsyncEventLoop;
+use Rcalicdan\FiberAsync\Facades\Async;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 
 /**
@@ -10,40 +8,7 @@ use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
  */
 function run(callable|PromiseInterface $asyncOperation): mixed
 {
-    $loop = AsyncEventLoop::getInstance();
-    $result = null;
-    $error = null;
-    $completed = false;
-
-    $promise = is_callable($asyncOperation)
-        ? async($asyncOperation)()
-        : $asyncOperation;
-
-    $promise
-        ->then(function ($value) use (&$result, &$completed) {
-            $result = $value;
-            $completed = true;
-        })
-        ->catch(function ($reason) use (&$error, &$completed) {
-            $error = $reason;
-            $completed = true;
-        })
-    ;
-
-    while (! $completed && ! $loop->isIdle()) {
-        $loop->run();
-        if ($completed) {
-            break;
-        }
-
-        usleep(1000); // 1ms
-    }
-
-    if ($error !== null) {
-        throw $error instanceof Throwable ? $error : new Exception((string) $error);
-    }
-
-    return $result;
+    return Async::run($asyncOperation);
 }
 
 /**
@@ -51,19 +16,7 @@ function run(callable|PromiseInterface $asyncOperation): mixed
  */
 function runAll(array $asyncOperations): array
 {
-    return run(function () use ($asyncOperations) {
-        $promises = [];
-
-        foreach ($asyncOperations as $key => $operation) {
-            if (is_callable($operation)) {
-                $promises[$key] = async($operation)();
-            } else {
-                $promises[$key] = $operation;
-            }
-        }
-
-        return await(all($promises));
-    });
+    return Async::runAll($asyncOperations);
 }
 
 /**
@@ -71,9 +24,7 @@ function runAll(array $asyncOperations): array
  */
 function runConcurrent(array $asyncOperations, int $concurrency = 10): array
 {
-    return run(function () use ($asyncOperations, $concurrency) {
-        return await(concurrent($asyncOperations, $concurrency));
-    });
+    return Async::runConcurrent($asyncOperations, $concurrency);
 }
 
 /**
@@ -81,7 +32,7 @@ function runConcurrent(array $asyncOperations, int $concurrency = 10): array
  */
 function task(callable $asyncFunction): mixed
 {
-    return run(async($asyncFunction)());
+    return Async::task($asyncFunction);
 }
 
 /**
@@ -89,9 +40,7 @@ function task(callable $asyncFunction): mixed
  */
 function quickFetch(string $url, array $options = []): array
 {
-    return run(function () use ($url, $options) {
-        return await(fetch($url, $options));
-    });
+    return Async::quickFetch($url, $options);
 }
 
 /**
@@ -99,9 +48,7 @@ function quickFetch(string $url, array $options = []): array
  */
 function asyncSleep(float $seconds): void
 {
-    run(function () use ($seconds) {
-        await(delay($seconds));
-    });
+    Async::asyncSleep($seconds);
 }
 
 /**
@@ -109,17 +56,7 @@ function asyncSleep(float $seconds): void
  */
 function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
 {
-    return run(function () use ($asyncOperation, $timeout) {
-        $promise = is_callable($asyncOperation) ? async($asyncOperation)() : $asyncOperation;
-
-        $timeoutPromise = async(function () use ($timeout) {
-            await(delay($timeout));
-
-            throw new Exception("Operation timed out after {$timeout} seconds");
-        })();
-
-        return await(race([$promise, $timeoutPromise]));
-    });
+    return Async::runWithTimeout($asyncOperation, $timeout);
 }
 
 /**
@@ -127,13 +64,5 @@ function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeou
  */
 function benchmark(callable|PromiseInterface $asyncOperation): array
 {
-    $start = microtime(true);
-    $result = run($asyncOperation);
-    $duration = microtime(true) - $start;
-
-    return [
-        'result' => $result,
-        'duration' => $duration,
-        'duration_ms' => round($duration * 1000, 2),
-    ];
+    return Async::benchmark($asyncOperation);
 }

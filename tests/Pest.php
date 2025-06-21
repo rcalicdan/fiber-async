@@ -12,6 +12,7 @@
 */
 
 use Rcalicdan\FiberAsync\AsyncEventLoop;
+use Rcalicdan\FiberAsync\Facades\Async;
 
 pest()->extend(Tests\TestCase::class)->in('Feature', 'Integration');
 pest()->extend(Tests\TestCase::class)->in('Unit');
@@ -48,6 +49,7 @@ function resetEventLoop()
     $instance = $reflection->getProperty('instance');
     $instance->setAccessible(true);
     $instance->setValue(null, null);
+    Async::reset();
 }
 
 function something()
