@@ -26,6 +26,11 @@
         "laravel/pint": "^1.10",
         "pestphp/pest": "4.x-dev"
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
     "config": {
         "allow-plugins": {
             "pestphp/pest-plugin": true
