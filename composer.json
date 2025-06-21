@@ -6,7 +6,10 @@
     "autoload": {
         "psr-4": {
             "Rcalicdan\\FiberAsync\\": "src/"
-        }
+        },
+        "files": [
+            "src/Helpers/async_helper.php"
+        ]
     },
     "authors": [
         {
