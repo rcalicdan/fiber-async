@@ -48,7 +48,7 @@ class LoopManager
         $completed = false;
 
         $promise = is_callable($asyncOperation)
-            ? $this->asyncManager->async($asyncOperation)()
+            ? $this->getAsyncManager()->async($asyncOperation)()
             : $asyncOperation;
 
         $promise
@@ -62,7 +62,7 @@ class LoopManager
             });
 
         while (!$completed && !$this->eventLoop->isIdle()) {
-            $this->eventLoop->run();
+            $this->getEventLoop()->run();
             if ($completed) {
                 break;
             }
@@ -83,39 +83,39 @@ class LoopManager
 
             foreach ($asyncOperations as $key => $operation) {
                 if (is_callable($operation)) {
-                    $promises[$key] = $this->asyncManager->async($operation)();
+                    $promises[$key] = $this->getAsyncManager()->async($operation)();
                 } else {
                     $promises[$key] = $operation;
                 }
             }
 
-            return $this->asyncManager->await($this->asyncManager->all($promises));
+            return $this->getAsyncManager()->await($this->getAsyncManager()->all($promises));
         });
     }
 
     public function runConcurrent(array $asyncOperations, int $concurrency = 10): array
     {
         return $this->run(function () use ($asyncOperations, $concurrency) {
-            return $this->asyncManager->await($this->asyncManager->concurrent($asyncOperations, $concurrency));
+            return $this->getAsyncManager()->await($this->getAsyncManager()->concurrent($asyncOperations, $concurrency));
         });
     }
 
     public function task(callable $asyncFunction): mixed
     {
-        return $this->run($this->asyncManager->async($asyncFunction)());
+        return $this->run($this->getAsyncManager()->async($asyncFunction)());
     }
 
     public function quickFetch(string $url, array $options = []): array
     {
         return $this->run(function () use ($url, $options) {
-            return $this->asyncManager->await($this->asyncManager->fetch($url, $options));
+            return $this->getAsyncManager()->await($this->getAsyncManager()->fetch($url, $options));
         });
     }
 
     public function asyncSleep(float $seconds): void
     {
         $this->run(function () use ($seconds) {
-            $this->asyncManager->await($this->asyncManager->delay($seconds));
+            $this->getAsyncManager()->await($this->getAsyncManager()->delay($seconds));
         });
     }
 
@@ -123,15 +123,15 @@ class LoopManager
     {
         return $this->run(function () use ($asyncOperation, $timeout) {
             $promise = is_callable($asyncOperation)
-                ? $this->asyncManager->async($asyncOperation)()
+                ? $this->getAsyncManager()->async($asyncOperation)()
                 : $asyncOperation;
 
-            $timeoutPromise = $this->asyncManager->async(function () use ($timeout) {
-                $this->asyncManager->await($this->asyncManager->delay($timeout));
+            $timeoutPromise = $this->getAsyncManager()->async(function () use ($timeout) {
+                $this->getAsyncManager()->await($this->getAsyncManager()->delay($timeout));
                 throw new Exception("Operation timed out after {$timeout} seconds");
             })();
 
-            return $this->asyncManager->await($this->asyncManager->race([$promise, $timeoutPromise]));
+            return $this->getAsyncManager()->await($this->getAsyncManager()->race([$promise, $timeoutPromise]));
         });
     }
 

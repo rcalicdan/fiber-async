@@ -64,7 +64,7 @@ class AsyncManager
                     }
                 });
 
-                $this->eventLoop->addFiber($fiber);
+                $this->getEventLoop()->addFiber($fiber);
             });
         };
     }
@@ -103,7 +103,7 @@ class AsyncManager
     public function delay(float $seconds): PromiseInterface
     {
         return new AsyncPromise(function ($resolve) use ($seconds) {
-            $this->eventLoop->addTimer($seconds, function () use ($resolve) {
+            $this->getEventLoop()->addTimer($seconds, function () use ($resolve) {
                 $resolve(null);
             });
         });
@@ -112,7 +112,7 @@ class AsyncManager
     public function fetch(string $url, array $options = []): PromiseInterface
     {
         return new AsyncPromise(function ($resolve, $reject) use ($url, $options) {
-            $this->eventLoop->addHttpRequest($url, $options, function ($error, $response, $httpCode) use ($resolve, $reject) {
+            $this->getEventLoop()->addHttpRequest($url, $options, function ($error, $response, $httpCode) use ($resolve, $reject) {
                 if ($error) {
                     $reject(new Exception('HTTP Request failed: ' . $error));
                 } else {
@@ -228,17 +228,17 @@ class AsyncManager
 
     public function guzzle(string $method, string $url, array $options = []): PromiseInterface
     {
-        return $this->httpBridge->guzzle($method, $url, $options);
+        return $this->getHttpBridge()->guzzle($method, $url, $options);
     }
 
     public function http()
     {
-        return $this->httpBridge->laravel();
+        return $this->getHttpBridge()->laravel();
     }
 
     public function wrapSync(callable $syncCall): PromiseInterface
     {
-        return $this->httpBridge->wrap($syncCall);
+        return $this->getHttpBridge()->wrap($syncCall);
     }
 
     public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
