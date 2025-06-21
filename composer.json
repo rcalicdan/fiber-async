@@ -8,7 +8,8 @@
             "Rcalicdan\\FiberAsync\\": "src/"
         },
         "files": [
-            "src/Helpers/async_helper.php"
+            "src/Helpers/async_helper.php",
+            "src/Helpers/loop_helper.php"
         ]
     },
     "authors": [
