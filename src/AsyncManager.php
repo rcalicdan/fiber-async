@@ -14,8 +14,8 @@ use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 class AsyncManager
 {
     protected static ?self $instance = null;
-    protected AsyncEventLoop $eventLoop;
-    protected HttpClientBridge $httpBridge;
+    protected ?AsyncEventLoop $eventLoop = null;
+    protected ?HttpClientBridge $httpBridge = null;
 
     protected function __construct()
     {

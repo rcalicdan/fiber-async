@@ -9,8 +9,8 @@ use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 class LoopManager
 {
     protected static ?self $instance = null;
-    protected AsyncEventLoop $eventLoop;
-    protected AsyncManager $asyncManager;
+    protected ?AsyncEventLoop $eventLoop;
+    protected ?AsyncManager $asyncManager;
 
     protected function __construct()
     {
