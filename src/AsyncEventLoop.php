@@ -7,7 +7,6 @@ use Rcalicdan\FiberAsync\Services\FiberManager;
 use Rcalicdan\FiberAsync\Services\HttpRequestManager;
 use Rcalicdan\FiberAsync\Services\StreamManager;
 use Rcalicdan\FiberAsync\Services\TimerManager;
-use Rcalicdan\FiberAsync\Services\StreamMultiplexer;
 
 class AsyncEventLoop implements EventLoopInterface
 {
@@ -18,24 +17,22 @@ class AsyncEventLoop implements EventLoopInterface
     private HttpRequestManager $httpRequestManager;
     private StreamManager $streamManager;
     private FiberManager $fiberManager;
-    private StreamMultiplexer $streamMultiplexer;
     private array $deferredCallbacks = [];
     private int $lastActivity = 0;
 
     private function __construct()
     {
-        $this->timerManager = new TimerManager();
-        $this->httpRequestManager = new HttpRequestManager();
-        $this->streamManager = new StreamManager();
-        $this->fiberManager = new FiberManager();
-        $this->streamMultiplexer = new StreamMultiplexer();
+        $this->timerManager = new TimerManager;
+        $this->httpRequestManager = new HttpRequestManager;
+        $this->streamManager = new StreamManager;
+        $this->fiberManager = new FiberManager;
         $this->lastActivity = time();
     }
 
     public static function getInstance(): AsyncEventLoop
     {
         if (self::$instance === null) {
-            self::$instance = new self();
+            self::$instance = new self;
         }
 
         return self::$instance;
@@ -74,10 +71,14 @@ class AsyncEventLoop implements EventLoopInterface
     public function run(): void
     {
         while ($this->running && $this->hasWork()) {
-            $hasWork = $this->tick();
-            
-            if (!$hasWork) {
-                $this->processIO();
+            $hasImmediateWork = $this->tick();
+
+            // Only sleep if there's no immediate work and no fibers waiting
+            if (! $hasImmediateWork && ! $this->fiberManager->hasActiveFibers()) {
+                $sleepTime = $this->calculateOptimalSleep();
+                if ($sleepTime > 0) {
+                    usleep($sleepTime);
+                }
             }
         }
     }
@@ -86,32 +87,32 @@ class AsyncEventLoop implements EventLoopInterface
     {
         $workDone = false;
 
-        // Process immediate callbacks first (highest priority)
+        // Process immediate callbacks first
         if ($this->processNextTickCallbacks()) {
             $workDone = true;
         }
 
-        // Process ready timers
+        // Process timers
         if ($this->timerManager->processTimers()) {
             $workDone = true;
         }
 
-        // Process HTTP requests (non-blocking check)
+        // Process HTTP requests (non-blocking)
         if ($this->httpRequestManager->processRequests()) {
             $workDone = true;
         }
 
-        // Process custom streams
+        // Process streams (non-blocking)
         if ($this->streamManager->processStreams()) {
             $workDone = true;
         }
 
-        // Process fibers (resume suspended ones)
+        // Process fibers
         if ($this->fiberManager->processFibers()) {
             $workDone = true;
         }
 
-        // Process deferred callbacks (lowest priority)
+        // Process deferred callbacks
         if ($this->processDeferredCallbacks()) {
             $workDone = true;
         }
@@ -123,42 +124,17 @@ class AsyncEventLoop implements EventLoopInterface
         return $workDone;
     }
 
-    private function processIO(): void
-    {
-        $read = $write = $except = [];
-        
-        // Collect streams that need monitoring
-        $this->httpRequestManager->collectStreams($read, $write, $except);
-        $this->streamManager->collectStreams($read, $write, $except);
-        
-        if (empty($read) && empty($write) && empty($except)) {
-            // No I/O to monitor, minimal sleep to prevent CPU spinning
-            usleep(100); // 0.1ms - only when completely idle
-            return;
-        }
-
-        // Calculate timeout based on next timer
-        $timeout = $this->calculateIOTimeout();
-        
-        // Non-blocking I/O multiplexing
-        $result = stream_select($read, $write, $except, 0, $timeout);
-        
-        if ($result > 0) {
-            // Handle ready streams
-            $this->httpRequestManager->handleReadyStreams($read, $write);
-            $this->streamManager->handleReadyStreams($read, $write);
-        }
-    }
-
-    private function calculateIOTimeout(): int
+    private function calculateOptimalSleep(): int
     {
         $nextTimer = $this->timerManager->getNextTimerDelay();
-        
-        if ($nextTimer === null) {
-            return 1000; 
+
+        if ($nextTimer !== null) {
+            // Sleep until next timer, but max 1ms
+            return min(1000, (int) ($nextTimer * 1000000));
         }
-        
-        return min(1000, (int)($nextTimer * 1000000));
+
+        // Default minimal sleep
+        return 100; // 0.1ms
     }
 
     public function stop(): void
@@ -172,14 +148,13 @@ class AsyncEventLoop implements EventLoopInterface
             return false;
         }
 
-        $callbacks = $this->tickCallbacks;
-        $this->tickCallbacks = [];
+        while (! empty($this->tickCallbacks)) {
+            $callback = array_shift($this->tickCallbacks);
 
-        foreach ($callbacks as $callback) {
             try {
                 $callback();
             } catch (\Throwable $e) {
-                error_log('NextTick callback error: ' . $e->getMessage());
+                error_log('NextTick callback error: '.$e->getMessage());
             }
         }
 
@@ -199,7 +174,7 @@ class AsyncEventLoop implements EventLoopInterface
             try {
                 $callback();
             } catch (\Throwable $e) {
-                error_log('Deferred callback error: ' . $e->getMessage());
+                error_log('Deferred callback error: '.$e->getMessage());
             }
         }
 
@@ -212,12 +187,12 @@ class AsyncEventLoop implements EventLoopInterface
                $this->httpRequestManager->hasRequests() ||
                $this->streamManager->hasWatchers() ||
                $this->fiberManager->hasFibers() ||
-               !empty($this->tickCallbacks) ||
-               !empty($this->deferredCallbacks);
+               ! empty($this->tickCallbacks) ||
+               ! empty($this->deferredCallbacks);
     }
 
     public function isIdle(): bool
     {
-        return !$this->hasWork() || (time() - $this->lastActivity) > 5;
+        return ! $this->hasWork() || (time() - $this->lastActivity) > 5;
     }
 }

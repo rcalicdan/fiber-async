@@ -44,7 +44,6 @@ class AsyncOperations
 
     /**
      * Awaits a Promise and returns its resolved value or throws on rejection
-     * This is now truly non-blocking - it yields control cooperatively
      */
     public function await(PromiseInterface $promise): mixed
     {
@@ -66,9 +65,9 @@ class AsyncOperations
                 $completed = true;
             });
 
-        // Cooperative yielding - let other fibers/operations run
+        // Suspend the fiber until the promise completes
         while (!$completed) {
-            Fiber::suspend(); // Non-blocking - yields control
+            Fiber::suspend();
         }
 
         if ($error !== null) {
@@ -80,7 +79,6 @@ class AsyncOperations
 
     /**
      * Delays execution for a specified number of seconds
-     * Now truly non-blocking using timers instead of sleep
      */
     public function delay(float $seconds): PromiseInterface
     {
