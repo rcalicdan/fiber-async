@@ -7,7 +7,27 @@
     echo "Running basic functionality test...\n";
 
     try {
-        // Test basic promise resolution
+        // Test concurrent sleep operations
+        $start = microtime(true);
+        $results = run(function () {
+            return await(all([
+                resolve(sleep(1))->then(fn() => 'X'),
+                resolve(sleep(1))->then(fn() => 'Y'),
+                resolve(sleep(1))->then(fn() => 'Z'),
+            ]));
+        });
+        $duration = microtime(true) - $start;
+
+        // Check if operations ran concurrently (should be ~1 second, not ~3 seconds)
+        $expectedMaxDuration = 1.5; // Allow some tolerance for execution overhead
+        $ranConcurrently = $duration < $expectedMaxDuration;
+
+        if ($ranConcurrently) {
+            echo "✓ Concurrent sleep test passed: " . implode(', ', $results) . " in {$duration}s (ran concurrently)\n";
+        } else {
+            echo "✗ Concurrent sleep test failed: " . implode(', ', $results) . " in {$duration}s (ran sequentially)\n";
+        }
+
         $result = run(function () {
             return await(resolve('Hello, Async World!'));
         });
