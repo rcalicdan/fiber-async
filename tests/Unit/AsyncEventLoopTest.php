@@ -4,11 +4,7 @@ use Rcalicdan\FiberAsync\AsyncEventLoop;
 use Rcalicdan\FiberAsync\AsyncPromise;
 
 beforeEach(function () {
-    // Reset the singleton instance for each test
-    $reflection = new ReflectionClass(AsyncEventLoop::class);
-    $instance = $reflection->getProperty('instance');
-    $instance->setAccessible(true);
-    $instance->setValue(null);
+   resetEventLoop();
 });
 
 test('event loop singleton works correctly', function () {

@@ -4,25 +4,21 @@ use Rcalicdan\FiberAsync\AsyncPromise;
 use Rcalicdan\FiberAsync\AsyncEventLoop;
 
 beforeEach(function () {
-    // Reset the singleton instance for each test
-    $reflection = new ReflectionClass(AsyncEventLoop::class);
-    $instance = $reflection->getProperty('instance');
-    $instance->setAccessible(true);
-    $instance->setValue(null);
+    resetEventLoop();
 });
 
 test('promise can be resolved', function () {
     $promise = new AsyncPromise();
     $resolved = false;
     $value = null;
-    
+
     $promise->then(function ($val) use (&$resolved, &$value) {
         $resolved = true;
         $value = $val;
     });
-    
+
     $promise->resolve('test value');
-    
+
     // Process the event loop to handle callbacks
     $loop = AsyncEventLoop::getInstance();
     $start = microtime(true);
@@ -31,7 +27,7 @@ test('promise can be resolved', function () {
         if ($resolved) break;
         usleep(1000);
     }
-    
+
     expect($resolved)->toBeTrue();
     expect($value)->toBe('test value');
     expect($promise->isResolved())->toBeTrue();
@@ -42,14 +38,14 @@ test('promise can be rejected', function () {
     $promise = new AsyncPromise();
     $rejected = false;
     $reason = null;
-    
+
     $promise->catch(function ($r) use (&$rejected, &$reason) {
         $rejected = true;
         $reason = $r;
     });
-    
+
     $promise->reject('test error');
-    
+
     // Process the event loop to handle callbacks
     $loop = AsyncEventLoop::getInstance();
     $start = microtime(true);
@@ -58,7 +54,7 @@ test('promise can be rejected', function () {
         if ($rejected) break;
         usleep(1000);
     }
-    
+
     expect($rejected)->toBeTrue();
     expect($reason)->toBeInstanceOf(Exception::class);
     expect($promise->isRejected())->toBeTrue();
@@ -68,16 +64,16 @@ test('promise can be rejected', function () {
 test('promise with executor function works', function () {
     $resolved = false;
     $value = null;
-    
+
     $promise = new AsyncPromise(function ($resolve, $reject) {
         $resolve('executor value');
     });
-    
+
     $promise->then(function ($val) use (&$resolved, &$value) {
         $resolved = true;
         $value = $val;
     });
-    
+
     // Process the event loop to handle callbacks
     $loop = AsyncEventLoop::getInstance();
     $start = microtime(true);
@@ -86,18 +82,18 @@ test('promise with executor function works', function () {
         if ($resolved) break;
         usleep(1000);
     }
-    
+
     expect($resolved)->toBeTrue();
     expect($value)->toBe('executor value');
 });
 
 test('promise chaining works', function () {
     $finalValue = null;
-    
+
     $promise = new AsyncPromise(function ($resolve) {
         $resolve(5);
     });
-    
+
     $promise
         ->then(function ($value) {
             return $value * 2;
@@ -105,7 +101,7 @@ test('promise chaining works', function () {
         ->then(function ($value) use (&$finalValue) {
             $finalValue = $value;
         });
-    
+
     // Process the event loop to handle callbacks
     $loop = AsyncEventLoop::getInstance();
     $start = microtime(true);
@@ -114,21 +110,21 @@ test('promise chaining works', function () {
         if ($finalValue !== null) break;
         usleep(1000);
     }
-    
+
     expect($finalValue)->toBe(10);
 });
 
 test('promise finally callback executes', function () {
     $finallyExecuted = false;
-    
+
     $promise = new AsyncPromise(function ($resolve) {
         $resolve('test');
     });
-    
+
     $promise->finally(function () use (&$finallyExecuted) {
         $finallyExecuted = true;
     });
-    
+
     // Process the event loop to handle callbacks
     $loop = AsyncEventLoop::getInstance();
     $start = microtime(true);
@@ -137,6 +133,6 @@ test('promise finally callback executes', function () {
         if ($finallyExecuted) break;
         usleep(1000);
     }
-    
+
     expect($finallyExecuted)->toBeTrue();
 });

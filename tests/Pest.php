@@ -47,7 +47,7 @@ function resetEventLoop()
     $reflection = new ReflectionClass(AsyncEventLoop::class);
     $instance = $reflection->getProperty('instance');
     $instance->setAccessible(true);
-    $instance->setValue(null);
+    $instance->setValue(null, null); 
 }
 
 function something()
