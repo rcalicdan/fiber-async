@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Bridges;
 
 use Rcalicdan\FiberAsync\AsyncPromise;
 use Rcalicdan\FiberAsync\AsyncEventLoop;
-use Rcalicdan\FiberAsync\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Promise\PromiseInterface as GuzzlePromiseInterface;
 use Illuminate\Http\Client\Factory as LaravelHttpFactory;
