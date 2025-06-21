@@ -1,0 +1,25 @@
+{
+    "name": "rcalicdan/fiber-async",
+    "description": "fiber-async is a modern PHP library that simplifies asynchronous programming using PHP Fibers. It offers a clean, expressive syntax for running non-blocking code, handling concurrency, and managing asynchronous flows with structured error handling.",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Rcalicdan\\FiberAsync\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Reymart A. Calicdan",
+            "email": "reymart.calicdan06@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": "^8.1"
+    },
+    "require-dev": {
+        "pestphp/pest": "^1.20",
+        "laravel/pint": "^1.10"
+    }
+}

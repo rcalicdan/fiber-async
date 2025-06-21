@@ -1,8 +1,8 @@
 <?php
 
-namespace TrueAsync\Services;
+namespace FiberAsync\Services;
 
-use TrueAsync\ValueObjects\StreamWatcher;
+use FiberAsync\ValueObjects\StreamWatcher;
 
 class StreamManager
 {

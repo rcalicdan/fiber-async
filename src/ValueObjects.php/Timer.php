@@ -1,8 +1,8 @@
 <?php
 
-namespace TrueAsync\ValueObjects;
+namespace FiberAsync\ValueObjects;
 
-use TrueAsync\Interfaces\TimerInterface;
+use FiberAsync\Interfaces\TimerInterface;
 
 class Timer implements TimerInterface
 {

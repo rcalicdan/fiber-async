@@ -1,6 +1,6 @@
 <?php
 
-namespace TrueAsync\Interfaces;
+namespace FiberAsync\Interfaces;
 
 interface PromiseInterface
 {

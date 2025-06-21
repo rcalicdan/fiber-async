@@ -1,8 +1,8 @@
 <?php
 
-namespace TrueAsync\Services;
+namespace FiberAsync\Services;
 
-use TrueAsync\ValueObjects\Timer;
+use FiberAsync\ValueObjects\Timer;
 
 class TimerManager
 {

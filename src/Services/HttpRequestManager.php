@@ -1,8 +1,8 @@
 <?php
 
-namespace TrueAsync\Services;
+namespace FiberAsync\Services;
 
-use TrueAsync\ValueObjects\HttpRequest;
+use FiberAsync\ValueObjects\HttpRequest;
 
 class HttpRequestManager
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace TrueAsync\Services;
+namespace FiberAsync\Services;
 
 class FiberManager
 {

@@ -1,8 +1,8 @@
 <?php
 
-namespace TrueAsync\ValueObjects;
+namespace FiberAsync\ValueObjects;
 
-use TrueAsync\Interfaces\HttpRequestInterface;
+use FiberAsync\Interfaces\HttpRequestInterface;
 
 class HttpRequest implements HttpRequestInterface
 {

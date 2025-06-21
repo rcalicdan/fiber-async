@@ -1,10 +1,10 @@
 <?php
 
-namespace TrueAsync\Helpers;
+namespace FiberAsync\Helpers;
 
-use TrueAsync\AsyncPromise;
-use TrueAsync\AsyncEventLoop;
-use TrueAsync\Interfaces\PromiseInterface;
+use FiberAsync\AsyncPromise;
+use FiberAsync\AsyncEventLoop;
+use FiberAsync\Interfaces\PromiseInterface;
 
 /**
  * Check if code is running inside a Fiber

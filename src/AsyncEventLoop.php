@@ -1,12 +1,12 @@
 <?php
 
-namespace TrueAsync;
+namespace FiberAsync;
 
-use TrueAsync\Interfaces\EventLoopInterface;
-use TrueAsync\Services\TimerManager;
-use TrueAsync\Services\HttpRequestManager;
-use TrueAsync\Services\StreamManager;
-use TrueAsync\Services\FiberManager;
+use FiberAsync\Interfaces\EventLoopInterface;
+use FiberAsync\Services\TimerManager;
+use FiberAsync\Services\HttpRequestManager;
+use FiberAsync\Services\StreamManager;
+use FiberAsync\Services\FiberManager;
 
 class AsyncEventLoop implements EventLoopInterface
 {

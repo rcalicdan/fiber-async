@@ -1,8 +1,8 @@
 <?php
 
-namespace TrueAsync;
+namespace FiberAsync;
 
-use TrueAsync\Interfaces\PromiseInterface;
+use FiberAsync\Interfaces\PromiseInterface;
 
 class AsyncPromise implements PromiseInterface
 {

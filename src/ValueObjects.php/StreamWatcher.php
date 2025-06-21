@@ -1,6 +1,6 @@
 <?php
 
-namespace TrueAsync\ValueObjects;
+namespace FiberAsync\ValueObjects;
 
 class StreamWatcher
 {

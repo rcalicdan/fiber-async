@@ -1,10 +1,10 @@
 <?php
 
-namespace TrueAsync\Bridges;
+namespace FiberAsync\Bridges;
 
-use TrueAsync\AsyncPromise;
-use TrueAsync\AsyncEventLoop;
-use TrueAsync\Interfaces\PromiseInterface;
+use FiberAsync\AsyncPromise;
+use FiberAsync\AsyncEventLoop;
+use FiberAsync\Interfaces\PromiseInterface;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Promise\PromiseInterface as GuzzlePromiseInterface;
 use Illuminate\Http\Client\Factory as LaravelHttpFactory;
