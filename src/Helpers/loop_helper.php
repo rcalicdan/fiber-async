@@ -77,7 +77,7 @@ function runConcurrent(array $asyncOperations, int $concurrency = 10): array
  */
 function task(callable $asyncFunction): mixed
 {
-    return run(async($asyncFunction));
+  return run(async($asyncFunction)()); 
 }
 
 /**

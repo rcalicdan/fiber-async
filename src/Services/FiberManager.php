@@ -21,10 +21,14 @@ class FiberManager
         }
 
         $processed = false;
+        $fibersToResumeThisTick = $this->suspendedFibers;
+        $this->suspendedFibers = [];
 
-        foreach ($this->fibers as $key => $fiber) {
+        $fibersToStartThisTick = $this->fibers;
+        $this->fibers = [];
+
+        foreach ($fibersToStartThisTick as $fiber) {
             if ($fiber->isTerminated()) {
-                unset($this->fibers[$key]);
                 continue;
             }
 
@@ -32,24 +36,17 @@ class FiberManager
                 if (!$fiber->isStarted()) {
                     $fiber->start();
                     $processed = true;
-                    
-                    if ($fiber->isSuspended()) {
-                        $this->suspendedFibers[] = $fiber;
-                    }
-                } elseif ($fiber->isSuspended()) {
+                }
+                if ($fiber->isSuspended()) {
                     $this->suspendedFibers[] = $fiber;
                 }
-                
-                unset($this->fibers[$key]);
             } catch (\Throwable $e) {
-                unset($this->fibers[$key]);
                 error_log("Fiber error: " . $e->getMessage());
             }
         }
 
-        foreach ($this->suspendedFibers as $key => $fiber) {
+        foreach ($fibersToResumeThisTick as $fiber) {
             if ($fiber->isTerminated()) {
-                unset($this->suspendedFibers[$key]);
                 continue;
             }
 
@@ -57,12 +54,11 @@ class FiberManager
                 try {
                     $fiber->resume();
                     $processed = true;
-                    
-                    if ($fiber->isTerminated()) {
-                        unset($this->suspendedFibers[$key]);
+
+                    if ($fiber->isSuspended()) {
+                        $this->suspendedFibers[] = $fiber;
                     }
                 } catch (\Throwable $e) {
-                    unset($this->suspendedFibers[$key]);
                     error_log("Fiber resume error: " . $e->getMessage());
                 }
             }
