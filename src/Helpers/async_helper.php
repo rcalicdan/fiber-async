@@ -94,7 +94,7 @@ function asyncify(callable $syncFunction): callable
 /**
  * Guzzle HTTP client bridge
  */
-function guzzle(string $method, string $url, array $options = []): PromiseInterface
+function async_guzzle(string $method, string $url, array $options = []): PromiseInterface
 {
     return Async::guzzle($method, $url, $options);
 }
@@ -102,7 +102,7 @@ function guzzle(string $method, string $url, array $options = []): PromiseInterf
 /**
  * Laravel HTTP client bridge
  */
-function http()
+function async_http()
 {
     return Async::http();
 }
