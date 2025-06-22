@@ -16,7 +16,7 @@ class BackgroundProcessManager
 
         // Check if Serializor class exists and get the correct class name
         $serializorClass = $this->getSerializorClass();
-        
+
         // Use the correct Serializor class to serialize the task and arguments
         $serializor = new $serializorClass();
         $serializedTask = base64_encode($serializor->serialize([
@@ -27,7 +27,7 @@ class BackgroundProcessManager
         // Create a temporary PHP script to execute
         $scriptPath = $this->createBackgroundScript($serializedTask, $serializorClass);
 
-        // Start the process
+        // Start the process - THIS IS NOW NON-BLOCKING
         $descriptors = [
             0 => ['pipe', 'r'], // stdin
             1 => ['pipe', 'w'], // stdout
@@ -44,14 +44,17 @@ class BackgroundProcessManager
         );
 
         if (is_resource($process)) {
-            // Make stdout and stderr non-blocking
+            // Make stdout and stderr non-blocking - CRITICAL FOR CONCURRENCY
             stream_set_blocking($pipes[1], false);
             stream_set_blocking($pipes[2], false);
+
+            // Don't close stdin immediately - some processes might need it
+            fclose($pipes[0]);
 
             $this->runningProcesses[$processId] = new BackgroundProcess(
                 $processId,
                 $process,
-                $pipes,
+                [$pipes[1], $pipes[2]], // Only keep stdout and stderr
                 $scriptPath,
                 microtime(true)
             );
@@ -166,8 +169,9 @@ PHP;
 
             if (!$status['running']) {
                 // Process completed
-                $output = stream_get_contents($bgProcess->getPipes()[1]);
-                $error = stream_get_contents($bgProcess->getPipes()[2]);
+                $pipes = $bgProcess->getPipes();
+                $output = stream_get_contents($pipes[0]); // stdout
+                $error = stream_get_contents($pipes[1]);  // stderr
 
                 $this->completeProcess($processId, $output, $error, $status['exitcode']);
                 $processed = true;
@@ -175,6 +179,64 @@ PHP;
         }
 
         return $processed;
+    }
+
+    public function runMultipleConcurrently(array $tasks, int $maxConcurrency = 4): array
+    {
+        if (empty($tasks)) {
+            return [];
+        }
+
+        $processIds = [];
+        $results = [];
+        $runningCount = 0;
+        $taskIndex = 0;
+        $totalTasks = count($tasks);
+
+        // Start initial batch up to maxConcurrency
+        while ($runningCount < $maxConcurrency && $taskIndex < $totalTasks) {
+            $task = $tasks[$taskIndex];
+            $processId = $this->runInBackground($task['callable'], $task['args'] ?? []);
+            $processIds[$taskIndex] = $processId;
+            $runningCount++;
+            $taskIndex++;
+        }
+
+        // Process remaining tasks as others complete
+        while (!empty($processIds)) {
+            // Process any completed tasks
+            $this->processBackgroundTasks();
+
+            // Check for completed processes
+            foreach ($processIds as $originalIndex => $processId) {
+                if ($this->isCompleted($processId)) {
+                    try {
+                        $results[$originalIndex] = $this->getResult($processId);
+                    } catch (\Throwable $e) {
+                        $results[$originalIndex] = $e;
+                    }
+
+                    unset($processIds[$originalIndex]);
+                    $runningCount--;
+
+                    // Start next task if available
+                    if ($taskIndex < $totalTasks) {
+                        $task = $tasks[$taskIndex];
+                        $newProcessId = $this->runInBackground($task['callable'], $task['args'] ?? []);
+                        $processIds[$taskIndex] = $newProcessId;
+                        $runningCount++;
+                        $taskIndex++;
+                    }
+                }
+            }
+
+            // Small delay to prevent busy waiting
+            usleep(1000); // 1ms
+        }
+
+        // Sort results by original order
+        ksort($results);
+        return array_values($results);
     }
 
     private function completeProcess(string $processId, string $output, string $error, int $exitCode): void
