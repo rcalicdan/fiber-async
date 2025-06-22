@@ -251,9 +251,6 @@ class AsyncOperations
         return HttpClientBridge::getInstance()->wrap($syncCall);
     }
 
-    /**
-     * Run multiple async operations concurrently with concurrency limit
-     */
     public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {
         return new AsyncPromise(function ($resolve, $reject) use ($tasks, $concurrency) {
@@ -274,7 +271,11 @@ class AsyncOperations
                     $task = $tasks[$currentIndex];
                     $running++;
 
-                    $promise = is_callable($task) ? $task() : $task;
+                    if (is_callable($task)) {
+                        $promise = $this->async($task)();
+                    } else {
+                        $promise = $task;
+                    }
 
                     $promise
                         ->then(function ($result) use ($currentIndex, &$results, &$running, &$completed, $total, $resolve, $processNext) {
