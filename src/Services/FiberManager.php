@@ -22,7 +22,7 @@ class FiberManager
 
         $processed = false;
 
-        // Start all new fibers immediately (don't wait between them)
+        // Start all new fibers immediately
         $fibersToStart = $this->fibers;
         $this->fibers = [];
 
@@ -45,25 +45,26 @@ class FiberManager
             }
         }
 
-        // Resume all suspended fibers (allowing them to proceed concurrently)
-        $fibersToResume = $this->suspendedFibers;
-        $this->suspendedFibers = [];
+        if (empty($fibersToStart)) {
+            $fibersToResume = $this->suspendedFibers;
+            $this->suspendedFibers = [];
 
-        foreach ($fibersToResume as $fiber) {
-            if ($fiber->isTerminated()) {
-                continue;
-            }
+            foreach ($fibersToResume as $fiber) {
+                if ($fiber->isTerminated()) {
+                    continue;
+                }
 
-            if ($fiber->isSuspended()) {
-                try {
-                    $fiber->resume();
-                    $processed = true;
+                if ($fiber->isSuspended()) {
+                    try {
+                        $fiber->resume();
+                        $processed = true;
 
-                    if ($fiber->isSuspended()) {
-                        $this->suspendedFibers[] = $fiber;
+                        if ($fiber->isSuspended()) {
+                            $this->suspendedFibers[] = $fiber;
+                        }
+                    } catch (\Throwable $e) {
+                        error_log('Fiber resume error: ' . $e->getMessage());
                     }
-                } catch (\Throwable $e) {
-                    error_log('Fiber resume error: ' . $e->getMessage());
                 }
             }
         }

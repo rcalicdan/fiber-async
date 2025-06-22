@@ -466,7 +466,7 @@ $mainTest = async(function () {
 
             // Calculate efficiency (tasks per second)
             $efficiency = round(20 / $duration, 2);
-            echo " (${efficiency} tasks/sec)\n";
+            echo " ({$efficiency} tasks/sec)\n";
         } else {
             echo "Limit $limit: Failed\n";
         }
