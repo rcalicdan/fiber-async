@@ -1,26 +1,14 @@
-Array task: {"callback":[],"test_id":"array_test_68581f03687fb","description":"Testing array-based background execution"}
-Array task: {"test":"connection"}
-Array task: {"callback":[],"test_id":"array_test_68581faf365dd","description":"Testing array-based background execution"}
-Array task: {"test":"connection"}
-Array task: {"callback":[],"test_id":"array_test_6858200509c9f","description":"Testing array-based background execution"}
-Array task: {"test":"connection"}
-Array task: {"callback":[],"test_id":"array_test_6858209a415a8","description":"Testing array-based background execution"}
+Array task: {"callback":[],"test_id":"array_test_685828a378e80","description":"Testing array-based background execution"}
 Array task: {"test":"connection"}
 Array task: {"test":"connection"}
 Array task: {"test":"connection"}
-Array task: {"job_id":"job_6858251928da50.00112951_1750607129","type":"closure","created_at":1750607129,"priority":0,"tags":[],"queue":null,"config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":[],"args":[]}
-Array task: {"job_id":"job_6858251929cd52.25087379_1750607129","type":"array","created_at":1750607129,"priority":0,"tags":[],"queue":null,"config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":{"action":"test","data":{"test":true}},"args":[]}
 Array task: {"test":"connection"}
-Array task: {"job_id":"job_685825192b6606.84204813_1750607129","type":"closure","created_at":1750607129,"priority":0,"tags":[],"queue":null,"config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":[],"args":[]}
-Array task: {"job_id":"job_685825192cb080.06576085_1750607129","type":"array","created_at":1750607129,"priority":0,"tags":[],"queue":null,"config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":{"action":"process_data","data":{"user_id":123,"task":"send_email"},"callback":[]},"args":[]}
-Array task: {"job_id":"job_685825192e5b24.08835384_1750607129","type":"closure","created_at":1750607129,"priority":0,"tags":[],"queue":null,"config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":[],"args":[],"delay":3}
-Array task: {"job_id":"job_685825192fa063.53995844_1750607129","type":"closure","created_at":1750607129,"priority":1,"tags":["concurrent","test_1"],"queue":null,"config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":[],"args":[1]}
-Array task: {"job_id":"job_6858251930b249.46856145_1750607129","type":"closure","created_at":1750607129,"priority":2,"tags":["concurrent","test_2"],"queue":null,"config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":[],"args":[2]}
-Array task: {"job_id":"job_6858251931e408.89142540_1750607129","type":"closure","created_at":1750607129,"priority":3,"tags":["concurrent","test_3"],"queue":null,"config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":[],"args":[3]}
-Array task: {"job_id":"job_685825193309a8.18205837_1750607129","type":"closure","created_at":1750607129,"priority":4,"tags":["concurrent","test_4"],"queue":null,"config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":[],"args":[4]}
-Array task: {"job_id":"job_6858251933e492.03543067_1750607129","type":"closure","created_at":1750607129,"priority":5,"tags":["concurrent","test_5"],"queue":null,"config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":[],"args":[5]}
-Array task: {"job_id":"job_6858251937da64.19150353_1750607129","type":"http_request","created_at":1750607129,"priority":0,"tags":[],"queue":null,"config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":{"type":"http_request","url":"https:\/\/httpbin.org\/delay\/2","options":{"method":"GET","timeout":30,"headers":["User-Agent: BackgroundJob-Test\/1.0"]}},"args":[]}
-Array task: {"job_id":"job_68582519386353.92671465_1750607129","type":"database","created_at":1750607129,"priority":0,"tags":["db","user_update"],"queue":"database","config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":{"type":"database","operation":"update_user_stats","data":{"user_id":123,"stats":{"login_count":1,"last_login":1750607129},"table":"user_statistics"}},"args":[]}
-Array task: {"job_id":"job_6858251939be62.22312649_1750607129","type":"closure","created_at":1750607129,"priority":0,"tags":[],"queue":null,"config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":[],"args":[]}
-Array task: {"job_id":"job_685825193b5357.52335779_1750607129","type":"closure","created_at":1750607129,"priority":0,"tags":[],"queue":null,"config":{"max_retries":2,"retry_delay":1,"timeout":30,"memory_limit":"256M"},"job":[],"args":[]}
+Array task: {"test":"connection"}
+Array task: {"test":"connection"}
+Array task: {"test":"connection"}
+Array task: {"test":"connection"}
+Array task: {"test":"connection"}
+Array task: {"test":"connection"}
+Array task: {"test":"connection"}
+Array task: {"test":"connection"}
 Array task: {"test":"connection"}

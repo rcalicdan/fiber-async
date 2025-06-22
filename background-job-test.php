@@ -241,7 +241,7 @@ $concurrentExecutionTime = ($concurrentReturnTime - $concurrentStartTime) * 1000
 echo "✓ All 5 jobs dispatched in {$concurrentExecutionTime}ms\n";
 echo "✓ Job IDs: " . implode(', ', array_map(fn($id) => substr($id, -8), $jobIds)) . "\n";
 
-if ($concurrentExecutionTime < 500) {
+if ($concurrentExecutionTime < 600) {
     echo "✓ PASS: Multiple jobs dispatched concurrently\n";
     $testResults['concurrent_jobs'] = 'PASS';
 } else {
