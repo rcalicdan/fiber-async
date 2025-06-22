@@ -24,7 +24,7 @@ class Background
     {
         $payload = self::serializePayload($task);
         $workerUrl = self::getWorkerUrl();
-        
+
         self::postAsync($workerUrl, ['payload' => $payload]);
     }
 
@@ -96,13 +96,13 @@ class Background
             }
         }
 
-        throw new \RuntimeException('Could not locate or create bg_worker.php. Set FIBERASYNC_WORKER environment variable or disable auto_create_worker.');
+        throw new \RuntimeException(message: 'Could not locate or create bg_worker.php. Set FIBERASYNC_WORKER environment variable or disable auto_create_worker.');
     }
 
     private static function checkEnvironmentVariable(): ?string
     {
         $workerPath = getenv('FIBERASYNC_WORKER');
-        
+
         if ($workerPath && file_exists($workerPath)) {
             return self::filePathToUrl($workerPath);
         }
@@ -126,10 +126,10 @@ class Background
     private static function createWorkerIfNeeded(): ?string
     {
         $workerPath = self::determineWorkerCreationPath();
-        
+
         if (!file_exists($workerPath)) {
             $workerContent = self::generateWorkerContent();
-            
+
             if (file_put_contents($workerPath, $workerContent) === false) {
                 if (self::$config['log_errors']) {
                     error_log("FiberAsync: Could not create worker at {$workerPath}");
@@ -188,8 +188,8 @@ class Background
 
     private static function isProjectRoot(string $directory): bool
     {
-        return file_exists($directory . '/composer.json') || 
-               file_exists($directory . '/vendor/autoload.php');
+        return file_exists($directory . '/composer.json') ||
+            file_exists($directory . '/vendor/autoload.php');
     }
 
     private static function getProjectRootPaths(string $projectRoot, string $workerFilename): array
@@ -242,14 +242,14 @@ class Background
 
         // Normalize path separators
         $filePath = str_replace('\\', '/', $filePath);
-        
+
         if (isset($_SERVER['DOCUMENT_ROOT']) && $_SERVER['DOCUMENT_ROOT']) {
             $documentRoot = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
             $relativePath = str_replace($documentRoot, '', $filePath);
-            
+
             $scheme = self::getScheme();
             $host = self::getHost();
-            
+
             return "{$scheme}://{$host}{$relativePath}";
         }
 
@@ -266,11 +266,11 @@ class Background
         if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] && $_SERVER['HTTPS'] !== 'off') {
             return 'https';
         }
-        
+
         if (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) {
             return 'https';
         }
-        
+
         return 'http';
     }
 
@@ -280,24 +280,24 @@ class Background
         if (isset($_SERVER['HTTP_HOST']) && $_SERVER['HTTP_HOST']) {
             return $_SERVER['HTTP_HOST'];
         }
-        
+
         // Fallback to SERVER_NAME with port
         if (isset($_SERVER['SERVER_NAME']) && $_SERVER['SERVER_NAME']) {
             $host = $_SERVER['SERVER_NAME'];
-            
+
             // Add port if not standard
             if (isset($_SERVER['SERVER_PORT'])) {
                 $port = $_SERVER['SERVER_PORT'];
                 $scheme = self::getScheme();
-                
+
                 if (($scheme === 'http' && $port != 80) || ($scheme === 'https' && $port != 443)) {
                     $host .= ':' . $port;
                 }
             }
-            
+
             return $host;
         }
-        
+
         // Ultimate fallback
         return self::$config['fallback_host'];
     }
@@ -307,7 +307,7 @@ class Background
         $filename = basename($filePath);
         $scheme = self::getScheme();
         $host = self::getHost();
-        
+
         return "{$scheme}://{$host}/{$filename}";
     }
 
@@ -328,11 +328,11 @@ class Background
         ]);
 
         $result = @fopen($url, 'r', false, $context);
-        
+
         // if ($result === false && self::$config['log_errors']) {
         //     error_log("FiberAsync: Failed to connect to worker at {$url}");
         // }
-        
+
         if ($result) {
             fclose($result);
         }
@@ -456,7 +456,7 @@ function logTask(string $message, array $data = []): void
     {
         try {
             $workerUrl = self::getWorkerUrl();
-            
+
             // Test with a simple array task
             self::postAsync($workerUrl, [
                 'payload' => json_encode([
@@ -464,7 +464,7 @@ function logTask(string $message, array $data = []): void
                     'data' => ['test' => 'connection']
                 ])
             ]);
-            
+
             return true;
         } catch (\Exception $e) {
             if (self::$config['log_errors']) {
