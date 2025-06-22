@@ -12,3 +12,9 @@ Array task: {"test":"connection"}
 Array task: {"test":"connection"}
 Array task: {"test":"connection"}
 Array task: {"test":"connection"}
+Array task: {"test":"connection"}
+Array task: {"test":"connection"}
+Array task: null
+Array task: {"test":"connection"}
+Array task: null
+Array task: {"test":"connection"}
