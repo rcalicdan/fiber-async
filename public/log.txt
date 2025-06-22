@@ -1,0 +1,8 @@
+Array task: {"callback":[],"test_id":"array_test_68581f03687fb","description":"Testing array-based background execution"}
+Array task: {"test":"connection"}
+Array task: {"callback":[],"test_id":"array_test_68581faf365dd","description":"Testing array-based background execution"}
+Array task: {"test":"connection"}
+Array task: {"callback":[],"test_id":"array_test_6858200509c9f","description":"Testing array-based background execution"}
+Array task: {"test":"connection"}
+Array task: {"callback":[],"test_id":"array_test_6858209a415a8","description":"Testing array-based background execution"}
+Array task: {"test":"connection"}

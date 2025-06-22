@@ -317,25 +317,35 @@ class Background
 
     private static function postAsync(string $url, array $params): void
     {
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => "Content-type: application/x-www-form-urlencoded\r\n",
-                'content' => http_build_query($params),
-                'timeout' => self::$config['timeout'],
-                'ignore_errors' => true, // Don't throw errors for HTTP error codes
-            ]
+        if (!extension_loaded('curl')) {
+            if (self::$config['log_errors']) {
+                error_log("FiberAsync: cURL extension required for true async execution");
+            }
+            return;
+        }
+
+        $ch = curl_init();
+
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query($params),
+            CURLOPT_RETURNTRANSFER => false, // Don't wait for response body
+            CURLOPT_HEADER => false,
+            CURLOPT_TIMEOUT_MS => 100, // Very short timeout - fire and forget
+            CURLOPT_CONNECTTIMEOUT_MS => 100,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_SSL_VERIFYPEER => false, // For localhost testing
+            CURLOPT_NOBODY => false,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/x-www-form-urlencoded',
+                'Connection: close', // Don't keep connection alive
+            ],
         ]);
 
-        $result = @fopen($url, 'r', false, $context);
-
-        // if ($result === false && self::$config['log_errors']) {
-        //     error_log("FiberAsync: Failed to connect to worker at {$url}");
-        // }
-
-        if ($result) {
-            fclose($result);
-        }
+        // Execute and immediately close - fire and forget
+        @curl_exec($ch);
+        curl_close($ch);
     }
 
     // =====================================
