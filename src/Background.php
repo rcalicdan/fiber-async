@@ -329,9 +329,9 @@ class Background
 
         $result = @fopen($url, 'r', false, $context);
         
-        if ($result === false && self::$config['log_errors']) {
-            error_log("FiberAsync: Failed to connect to worker at {$url}");
-        }
+        // if ($result === false && self::$config['log_errors']) {
+        //     error_log("FiberAsync: Failed to connect to worker at {$url}");
+        // }
         
         if ($result) {
             fclose($result);
