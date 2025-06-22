@@ -3,7 +3,6 @@
 namespace Rcalicdan\FiberAsync;
 
 use Rcalicdan\FiberAsync\Contracts\EventLoopInterface;
-use Rcalicdan\FiberAsync\Services\BackgroundProcessManager;
 use Rcalicdan\FiberAsync\Services\FiberManager;
 use Rcalicdan\FiberAsync\Services\HttpRequestManager;
 use Rcalicdan\FiberAsync\Services\StreamManager;
@@ -18,7 +17,6 @@ class AsyncEventLoop implements EventLoopInterface
     private HttpRequestManager $httpRequestManager;
     private StreamManager $streamManager;
     private FiberManager $fiberManager;
-    private BackgroundProcessManager $backgroundProcessManager;
     private array $deferredCallbacks = [];
     private int $lastActivity = 0;
 
@@ -28,7 +26,6 @@ class AsyncEventLoop implements EventLoopInterface
         $this->httpRequestManager = new HttpRequestManager;
         $this->streamManager = new StreamManager;
         $this->fiberManager = new FiberManager;
-        $this->backgroundProcessManager = new BackgroundProcessManager;
         $this->lastActivity = time();
     }
 
@@ -86,21 +83,6 @@ class AsyncEventLoop implements EventLoopInterface
         }
     }
 
-    public function runInBackground(callable $task, array $args = []): string
-    {
-        return $this->backgroundProcessManager->runInBackground($task, $args);
-    }
-
-    public function isBackgroundTaskCompleted(string $processId): bool
-    {
-        return $this->backgroundProcessManager->isCompleted($processId);
-    }
-
-    public function getBackgroundResult(string $processId): mixed
-    {
-        return $this->backgroundProcessManager->getResult($processId);
-    }
-
     private function tick(): bool
     {
         $workDone = false;
@@ -132,11 +114,6 @@ class AsyncEventLoop implements EventLoopInterface
 
         // Process deferred callbacks
         if ($this->processDeferredCallbacks()) {
-            $workDone = true;
-        }
-
-        // Process background tasks
-        if ($this->backgroundProcessManager->processBackgroundTasks()) {
             $workDone = true;
         }
 
@@ -210,7 +187,6 @@ class AsyncEventLoop implements EventLoopInterface
             $this->httpRequestManager->hasRequests() ||
             $this->streamManager->hasWatchers() ||
             $this->fiberManager->hasFibers() ||
-            $this->backgroundProcessManager->hasRunningProcesses() ||
             ! empty($this->tickCallbacks) ||
             ! empty($this->deferredCallbacks);
     }

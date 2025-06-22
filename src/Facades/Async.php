@@ -147,14 +147,4 @@ class Async
     {
         return self::getLoopOperations()->benchmark($asyncOperation);
     }
-
-    public static function runInBackground(callable $blockingOperation, array $args = []): PromiseInterface
-    {
-        return self::getAsyncOperations()->runInBackground($blockingOperation, $args);
-    }
-
-    public static function runConcurrentlyInBackground(array $tasks, int $maxConcurrency = 4): PromiseInterface
-    {
-        return self::getAsyncOperations()->runConcurrentlyInBackground($tasks, $maxConcurrency);
-    }
 }
