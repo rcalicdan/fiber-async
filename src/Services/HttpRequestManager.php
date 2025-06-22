@@ -60,7 +60,10 @@ class HttpRequestManager
 
         $processed = false;
         $running = null;
-        curl_multi_exec($this->multiHandle, $running);
+
+        do {
+            $mrc = curl_multi_exec($this->multiHandle, $running);
+        } while ($mrc === CURLM_CALL_MULTI_PERFORM);
 
         while ($info = curl_multi_info_read($this->multiHandle)) {
             $handle = $info['handle'];

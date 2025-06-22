@@ -92,23 +92,28 @@ class AsyncEventLoop implements EventLoopInterface
             $workDone = true;
         }
 
+        // Process HTTP requests BEFORE fibers (allows requests to start immediately)
+        if ($this->httpRequestManager->processRequests()) {
+            $workDone = true;
+        }
+
+        // Process fibers (they may add more HTTP requests)
+        if ($this->fiberManager->processFibers()) {
+            $workDone = true;
+        }
+
+        // Process HTTP requests again (handle newly added requests)
+        if ($this->httpRequestManager->processRequests()) {
+            $workDone = true;
+        }
+
         // Process timers
         if ($this->timerManager->processTimers()) {
             $workDone = true;
         }
 
-        // Process HTTP requests (non-blocking)
-        if ($this->httpRequestManager->processRequests()) {
-            $workDone = true;
-        }
-
-        // Process streams (non-blocking)
+        // Process streams
         if ($this->streamManager->processStreams()) {
-            $workDone = true;
-        }
-
-        // Process fibers
-        if ($this->fiberManager->processFibers()) {
             $workDone = true;
         }
 

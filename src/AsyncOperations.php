@@ -271,11 +271,7 @@ class AsyncOperations
                     $task = $tasks[$currentIndex];
                     $running++;
 
-                    if (is_callable($task)) {
-                        $promise = $this->async($task)();
-                    } else {
-                        $promise = $task;
-                    }
+                    $promise = is_callable($task) ? $this->async($task)() : $task;
 
                     $promise
                         ->then(function ($result) use ($currentIndex, &$results, &$running, &$completed, $total, $resolve, $processNext) {
@@ -287,7 +283,7 @@ class AsyncOperations
                                 ksort($results);
                                 $resolve(array_values($results));
                             } else {
-                                $processNext();
+                                AsyncEventLoop::getInstance()->nextTick($processNext);
                             }
                         })
                         ->catch(function ($error) use (&$running, $reject) {
@@ -297,7 +293,8 @@ class AsyncOperations
                 }
             };
 
-            $processNext();
+            // Start initial batch
+            AsyncEventLoop::getInstance()->nextTick($processNext);
         });
     }
 }

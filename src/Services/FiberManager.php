@@ -21,31 +21,35 @@ class FiberManager
         }
 
         $processed = false;
-        $fibersToResumeThisTick = $this->suspendedFibers;
-        $this->suspendedFibers = [];
 
-        $fibersToStartThisTick = $this->fibers;
+        // Start all new fibers immediately (don't wait between them)
+        $fibersToStart = $this->fibers;
         $this->fibers = [];
 
-        foreach ($fibersToStartThisTick as $fiber) {
+        foreach ($fibersToStart as $fiber) {
             if ($fiber->isTerminated()) {
                 continue;
             }
 
             try {
-                if (! $fiber->isStarted()) {
+                if (!$fiber->isStarted()) {
                     $fiber->start();
                     $processed = true;
                 }
+
                 if ($fiber->isSuspended()) {
                     $this->suspendedFibers[] = $fiber;
                 }
             } catch (\Throwable $e) {
-                error_log('Fiber error: '.$e->getMessage());
+                error_log('Fiber error: ' . $e->getMessage());
             }
         }
 
-        foreach ($fibersToResumeThisTick as $fiber) {
+        // Resume all suspended fibers (allowing them to proceed concurrently)
+        $fibersToResume = $this->suspendedFibers;
+        $this->suspendedFibers = [];
+
+        foreach ($fibersToResume as $fiber) {
             if ($fiber->isTerminated()) {
                 continue;
             }
@@ -59,7 +63,7 @@ class FiberManager
                         $this->suspendedFibers[] = $fiber;
                     }
                 } catch (\Throwable $e) {
-                    error_log('Fiber resume error: '.$e->getMessage());
+                    error_log('Fiber resume error: ' . $e->getMessage());
                 }
             }
         }
