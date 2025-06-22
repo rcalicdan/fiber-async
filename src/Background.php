@@ -73,7 +73,7 @@ class Background
     // WORKER DISCOVERY
     // =====================================
 
-    private static function getWorkerUrl(): string
+    public static function getWorkerUrl(): string
     {
         if (self::$cachedWorkerUrl !== null) {
             return self::$cachedWorkerUrl;

@@ -58,7 +58,7 @@ class BackgroundJob
     public static function dispatch($job, ...$args): string
     {
         $jobId = self::generateJobId();
-        
+
         try {
             if (!self::$config['enabled']) {
                 self::log('debug', "Background jobs disabled, running synchronously", ['job_id' => $jobId]);
@@ -66,14 +66,14 @@ class BackgroundJob
             }
 
             $payload = self::buildJobPayload($job, $args, $jobId);
-            
+
             if (self::$delay) {
                 $payload['delay'] = self::$delay;
-                self::$delay = null; // Reset after use
+                self::$delay = null;
             }
 
-            Background::run($payload);
-            
+            self::postJobDirectly($payload);
+
             self::log('info', "Job dispatched successfully", [
                 'job_id' => $jobId,
                 'type' => self::getJobType($job),
@@ -81,26 +81,46 @@ class BackgroundJob
                 'priority' => self::$priority
             ]);
 
-            // Reset state
             self::resetState();
-            
             return $jobId;
-            
         } catch (Exception $e) {
             self::log('error', "Failed to dispatch job", [
                 'job_id' => $jobId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             if (self::$config['fallback_to_sync']) {
                 self::log('info', "Falling back to synchronous execution", ['job_id' => $jobId]);
                 return self::runSynchronously($job, $args, $jobId);
             }
-            
+
             throw $e;
         }
     }
+
+    private static function postJobDirectly(array $payload): void
+    {
+        $workerUrl = Background::getWorkerUrl();
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $workerUrl,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query(['payload' => json_encode($payload)]),
+            CURLOPT_RETURNTRANSFER => false,
+            CURLOPT_TIMEOUT_MS => 100,
+            CURLOPT_CONNECTTIMEOUT_MS => 100,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/x-www-form-urlencoded',
+                'Connection: close',
+            ],
+        ]);
+
+        @curl_exec($ch);
+        curl_close($ch);
+    }
+
 
     /**
      * Dispatch a job to run after a delay
@@ -158,7 +178,7 @@ class BackgroundJob
     public static function configure(array $config): void
     {
         self::$config = array_merge(self::$config, $config);
-        
+
         // Pass relevant config to Background class
         Background::configure([
             'timeout' => self::$config['timeout'],
@@ -193,9 +213,9 @@ class BackgroundJob
             throw new InvalidArgumentException("Job class {$jobClass} not found");
         }
 
-        return self::dispatch(function() use ($jobClass, $data) {
+        return self::dispatch(function () use ($jobClass, $data) {
             $job = new $jobClass();
-            
+
             if (method_exists($job, 'handle')) {
                 $job->handle($data);
             } elseif (method_exists($job, 'execute')) {
@@ -298,17 +318,17 @@ class BackgroundJob
     public static function test(): array
     {
         $results = [];
-        
+
         // Test 1: Basic dispatch
         try {
-            $jobId = self::dispatch(function() {
+            $jobId = self::dispatch(function () {
                 file_put_contents(sys_get_temp_dir() . '/bg_job_test.txt', 'Test successful: ' . date('Y-m-d H:i:s'));
             });
             $results['basic_dispatch'] = ['status' => 'success', 'job_id' => $jobId];
         } catch (Exception $e) {
             $results['basic_dispatch'] = ['status' => 'failed', 'error' => $e->getMessage()];
         }
-        
+
         // Test 2: Array dispatch
         try {
             $jobId = self::dispatch(['action' => 'test', 'data' => ['test' => true]]);
@@ -316,12 +336,12 @@ class BackgroundJob
         } catch (Exception $e) {
             $results['array_dispatch'] = ['status' => 'failed', 'error' => $e->getMessage()];
         }
-        
+
         // Test 3: Worker connection
         $results['worker_connection'] = [
             'status' => Background::testWorkerConnection() ? 'success' : 'failed'
         ];
-        
+
         return $results;
     }
 
@@ -382,14 +402,14 @@ class BackgroundJob
     private static function runSynchronously($job, array $args, string $jobId): string
     {
         self::log('debug', "Running job synchronously", ['job_id' => $jobId]);
-        
+
         try {
             if ($job instanceof Closure) {
                 $job(...$args);
             } elseif (is_array($job) && isset($job['callback']) && is_callable($job['callback'])) {
                 call_user_func($job['callback'], $job, ...$args);
             }
-            
+
             self::log('info', "Synchronous job completed", ['job_id' => $jobId]);
         } catch (Exception $e) {
             self::log('error', "Synchronous job failed", [
@@ -398,7 +418,7 @@ class BackgroundJob
             ]);
             throw $e;
         }
-        
+
         return $jobId;
     }
 
@@ -429,7 +449,7 @@ class BackgroundJob
         $levels = ['debug' => 0, 'info' => 1, 'warning' => 2, 'error' => 3, 'none' => 4];
         $currentLevel = $levels[self::$config['log_level']] ?? 1;
         $messageLevel = $levels[$level] ?? 1;
-        
+
         return $messageLevel >= $currentLevel;
     }
 
@@ -439,7 +459,7 @@ class BackgroundJob
         if ($method === 'dispatch') {
             return self::dispatch(...$args);
         }
-        
+
         throw new InvalidArgumentException("Method {$method} not found");
     }
 }
