@@ -134,12 +134,10 @@ class AsyncEventLoop implements EventLoopInterface
         $nextTimer = $this->timerManager->getNextTimerDelay();
 
         if ($nextTimer !== null) {
-            // Sleep until next timer, but max 1ms
             return min(1000, (int) ($nextTimer * 1000000));
         }
 
-        // Default minimal sleep
-        return 100; // 0.1ms
+        return 100; 
     }
 
     public function stop(): void
