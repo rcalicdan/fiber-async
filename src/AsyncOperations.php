@@ -251,67 +251,67 @@ class AsyncOperations
         return HttpClientBridge::getInstance()->wrap($syncCall);
     }
 
- public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
-{
-    return new AsyncPromise(function ($resolve, $reject) use ($tasks, $concurrency) {
-        if (empty($tasks)) {
-            $resolve([]);
-            return;
-        }
-
-        // FIX: Convert tasks to indexed array and preserve original keys
-        $taskList = array_values($tasks); // Get sequential numeric indices
-        $originalKeys = array_keys($tasks); // Preserve original keys for results
-        
-        $results = [];
-        $running = 0;
-        $completed = 0;
-        $total = count($taskList);
-        $taskIndex = 0;
-
-        $processNext = function () use (&$processNext, &$taskList, &$originalKeys, &$running, &$completed, &$results, &$total, &$taskIndex, $concurrency, $resolve, $reject) {
-            while ($running < $concurrency && $taskIndex < $total) {
-                $currentIndex = $taskIndex++;
-                $task = $taskList[$currentIndex]; // FIX: Use taskList with numeric indices
-                $originalKey = $originalKeys[$currentIndex]; // Get the original key
-                $running++;
-
-                // FIX: Ensure we have a proper promise
-                try {
-                    $promise = is_callable($task) ? $this->async($task)() : $task;
-                    
-                    // FIX: Validate that we got a promise
-                    if (!($promise instanceof PromiseInterface)) {
-                        throw new \RuntimeException("Task must return a Promise or be a callable that returns a Promise");
-                    }
-                } catch (\Throwable $e) {
-                    $running--;
-                    $reject($e);
-                    return;
-                }
-
-                $promise
-                    ->then(function ($result) use ($originalKey, &$results, &$running, &$completed, $total, $resolve, $processNext) {
-                        $results[$originalKey] = $result; // FIX: Use original key for results
-                        $running--;
-                        $completed++;
-
-                        if ($completed === $total) {
-                            // FIX: Maintain original key order
-                            $resolve($results);
-                        } else {
-                            AsyncEventLoop::getInstance()->nextTick($processNext);
-                        }
-                    })
-                    ->catch(function ($error) use (&$running, $reject) {
-                        $running--;
-                        $reject($error);
-                    });
+    public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
+    {
+        return new AsyncPromise(function ($resolve, $reject) use ($tasks, $concurrency) {
+            if (empty($tasks)) {
+                $resolve([]);
+                return;
             }
-        };
 
-        // Start initial batch
-        AsyncEventLoop::getInstance()->nextTick($processNext);
-    });
-}
+            // FIX: Convert tasks to indexed array and preserve original keys
+            $taskList = array_values($tasks); // Get sequential numeric indices
+            $originalKeys = array_keys($tasks); // Preserve original keys for results
+
+            $results = [];
+            $running = 0;
+            $completed = 0;
+            $total = count($taskList);
+            $taskIndex = 0;
+
+            $processNext = function () use (&$processNext, &$taskList, &$originalKeys, &$running, &$completed, &$results, &$total, &$taskIndex, $concurrency, $resolve, $reject) {
+                while ($running < $concurrency && $taskIndex < $total) {
+                    $currentIndex = $taskIndex++;
+                    $task = $taskList[$currentIndex]; // FIX: Use taskList with numeric indices
+                    $originalKey = $originalKeys[$currentIndex]; // Get the original key
+                    $running++;
+
+                    // FIX: Ensure we have a proper promise
+                    try {
+                        $promise = is_callable($task) ? $this->async($task)() : $task;
+
+                        // FIX: Validate that we got a promise
+                        if (!($promise instanceof PromiseInterface)) {
+                            throw new RuntimeException("Task must return a Promise or be a callable that returns a Promise");
+                        }
+                    } catch (Throwable $e) {
+                        $running--;
+                        $reject($e);
+                        return;
+                    }
+
+                    $promise
+                        ->then(function ($result) use ($originalKey, &$results, &$running, &$completed, $total, $resolve, $processNext) {
+                            $results[$originalKey] = $result; // FIX: Use original key for results
+                            $running--;
+                            $completed++;
+
+                            if ($completed === $total) {
+                                // FIX: Maintain original key order
+                                $resolve($results);
+                            } else {
+                                AsyncEventLoop::getInstance()->nextTick($processNext);
+                            }
+                        })
+                        ->catch(function ($error) use (&$running, $reject) {
+                            $running--;
+                            $reject($error);
+                        });
+                }
+            };
+
+            // Start initial batch
+            AsyncEventLoop::getInstance()->nextTick($processNext);
+        });
+    }
 }

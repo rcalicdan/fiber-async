@@ -3,10 +3,10 @@
 namespace Rcalicdan\FiberAsync;
 
 use Rcalicdan\FiberAsync\Contracts\EventLoopInterface;
-use Rcalicdan\FiberAsync\Services\FiberManager;
-use Rcalicdan\FiberAsync\Services\HttpRequestManager;
-use Rcalicdan\FiberAsync\Services\StreamManager;
-use Rcalicdan\FiberAsync\Services\TimerManager;
+use Rcalicdan\FiberAsync\Managers\FiberManager;
+use Rcalicdan\FiberAsync\Managers\HttpRequestManager;
+use Rcalicdan\FiberAsync\Managers\StreamManager;
+use Rcalicdan\FiberAsync\Managers\TimerManager;
 
 class AsyncEventLoop implements EventLoopInterface
 {

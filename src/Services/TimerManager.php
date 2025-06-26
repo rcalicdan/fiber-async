@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\Services;
+namespace Rcalicdan\FiberAsync\Managers;
 
 use Rcalicdan\FiberAsync\ValueObjects\Timer;
 
