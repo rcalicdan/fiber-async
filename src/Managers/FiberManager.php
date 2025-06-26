@@ -39,9 +39,7 @@ class FiberManager
 
         if (!empty($this->fibers)) {
             $processed = $this->processNewFibers() || $processed;
-        }
-
-        if (empty($this->fibers) && !empty($this->suspendedFibers)) {
+        } elseif (!empty($this->suspendedFibers)) {
             $processed = $this->processSuspendedFibers() || $processed;
         }
 
