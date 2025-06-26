@@ -78,7 +78,7 @@ function reject(mixed $reason): PromiseInterface
 /**
  * Try-catch wrapper for async operations
  */
-function tryAsync(callable $asyncFunction): callable
+function try_async(callable $asyncFunction): callable
 {
     return Async::tryAsync($asyncFunction);
 }
@@ -110,7 +110,7 @@ function async_http()
 /**
  * Wrap synchronous operations
  */
-function wrapSync(callable $syncCall): PromiseInterface
+function wrap_sync(callable $syncCall): PromiseInterface
 {
     return Async::wrapSync($syncCall);
 }

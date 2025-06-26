@@ -39,7 +39,7 @@ describe('Async Performance Benchmarks', function () {
                     return ['index' => $index, 'status' => $response['status'], 'url' => $url];
                 };
             }
-            return runConcurrent($tasks, 3);
+            return run_concurrent($tasks, 3);
         });
         $concurrentTime = microtime(true) - $concurrentStart;
 
@@ -102,7 +102,7 @@ describe('Async Performance Benchmarks', function () {
                 }
             ];
 
-            return runConcurrent($tasks, 4);
+            return run_concurrent($tasks, 4);
         });
         $concurrentTime = microtime(true) - $concurrentStart;
 
@@ -142,7 +142,7 @@ describe('Async Performance Benchmarks', function () {
                     return ['index' => $index, 'delay' => $delayTime];
                 };
             }
-            return runConcurrent($tasks, 5);
+            return run_concurrent($tasks, 5);
         });
         $concurrentTime = microtime(true) - $concurrentStart;
 
@@ -160,7 +160,7 @@ describe('Async Performance Benchmarks', function () {
         expect($improvement)->toBeGreaterThan(3.0);
     });
 
-    test('runConcurrent with string keys works correctly', function () {
+    test('run_concurrent with string keys works correctly', function () {
         $start = microtime(true);
 
         $results = run(function () {
@@ -179,7 +179,7 @@ describe('Async Performance Benchmarks', function () {
                 }
             ];
 
-            return runConcurrent($tasks, 3);
+            return run_concurrent($tasks, 3);
         });
 
         $duration = microtime(true) - $start;
@@ -216,7 +216,7 @@ describe('Async Performance Benchmarks', function () {
                 };
             }
 
-            return runConcurrent($tasks, 5);
+            return run_concurrent($tasks, 5);
         });
 
         $duration = microtime(true) - $start;
@@ -250,7 +250,7 @@ describe('Async Performance Benchmarks', function () {
                 }
             ];
 
-            return runConcurrent($tasks, 3);
+            return run_concurrent($tasks, 3);
         });
 
         expect($results)->toHaveKey('valid_request');
@@ -273,7 +273,7 @@ describe('Async Performance Benchmarks', function () {
                 'simple_delay' => delay(0.1)
             ];
 
-            return runConcurrent($tasks, 3);
+            return run_concurrent($tasks, 3);
         });
 
         expect($results)->toHaveKey('direct_promise');
@@ -312,7 +312,7 @@ describe('Concurrency Limit Analysis', function () {
                     };
                 }
 
-                return runConcurrent($tasks, $limit);
+                return run_concurrent($tasks, $limit);
             });
 
             $duration = microtime(true) - $start;
@@ -371,7 +371,7 @@ describe('Concurrency Limit Analysis', function () {
                     };
                 }
 
-                return runConcurrent($tasks, $optimalConcurrency);
+                return run_concurrent($tasks, $optimalConcurrency);
             });
 
             $duration = microtime(true) - $start;
@@ -407,7 +407,7 @@ describe('Memory and Resource Management', function () {
                 };
             }
 
-            return runConcurrent($tasks, 10);
+            return run_concurrent($tasks, 10);
         });
 
         $finalMemory = memory_get_usage(true);

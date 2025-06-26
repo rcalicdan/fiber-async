@@ -25,19 +25,19 @@ test('task function works as shorthand for run', function () {
     expect($result)->toBe('task result');
 });
 
-test('asyncSleep function delays execution', function () {
+test('async_sleep function delays execution', function () {
     $start = microtime(true);
 
-    asyncSleep(0.05);
+    async_sleep(0.05);
 
     $duration = microtime(true) - $start;
     expect($duration)->toBeGreaterThan(0.04);
 });
 
-test('runAll executes multiple operations concurrently', function () {
+test('run_all executes multiple operations concurrently', function () {
     $start = microtime(true);
 
-    $results = runAll([
+    $results = run_all([
         'op1' => function () {
             return await(delay(0.05)->then(fn () => 'result1'));
         },
@@ -53,9 +53,9 @@ test('runAll executes multiple operations concurrently', function () {
     expect($duration)->toBeLessThan(0.08);
 });
 
-test('runWithTimeout throws exception on timeout', function () {
+test('run_with_timeout throws exception on timeout', function () {
     expect(function () {
-        runWithTimeout(function () {
+        run_with_timeout(function () {
             return await(delay(0.1));
         }, 0.05);
     })->toThrow(Exception::class);
@@ -63,7 +63,7 @@ test('runWithTimeout throws exception on timeout', function () {
 
 test('benchmark returns result and timing information', function () {
     $benchmark = benchmark(function () {
-        asyncSleep(0.05);
+        async_sleep(0.05);
 
         return 'benchmark result';
     });

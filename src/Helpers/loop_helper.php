@@ -14,7 +14,7 @@ function run(callable|PromiseInterface $asyncOperation): mixed
 /**
  * Run multiple async operations concurrently
  */
-function runAll(array $asyncOperations): array
+function run_all(array $asyncOperations): array
 {
     return Async::runAll($asyncOperations);
 }
@@ -22,7 +22,7 @@ function runAll(array $asyncOperations): array
 /**
  * Run async operations with concurrency limit
  */
-function runConcurrent(array $asyncOperations, int $concurrency = 10): array
+function run_concurrent(array $asyncOperations, int $concurrency = 10): array
 {
     return Async::runConcurrent($asyncOperations, $concurrency);
 }
@@ -38,7 +38,7 @@ function task(callable $asyncFunction): mixed
 /**
  * Quick HTTP fetch with automatic loop management
  */
-function quickFetch(string $url, array $options = []): array
+function quick_fetch(string $url, array $options = []): array
 {
     return Async::quickFetch($url, $options);
 }
@@ -46,7 +46,7 @@ function quickFetch(string $url, array $options = []): array
 /**
  * Async delay with automatic loop management
  */
-function asyncSleep(float $seconds): void
+function async_sleep(float $seconds): void
 {
     Async::asyncSleep($seconds);
 }
@@ -54,7 +54,7 @@ function asyncSleep(float $seconds): void
 /**
  * Run with timeout
  */
-function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
+function run_with_timeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
 {
     return Async::runWithTimeout($asyncOperation, $timeout);
 }

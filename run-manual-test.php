@@ -256,7 +256,7 @@ class WorkloadGenerator
                 };
             }
 
-            return runConcurrent($tasks, $concurrencyLimit);
+            return run_concurrent($tasks, $concurrencyLimit);
         };
     }
 
@@ -278,7 +278,7 @@ class WorkloadGenerator
                 };
             }
 
-            return runConcurrent($tasks, $optimalConcurrency);
+            return run_concurrent($tasks, $optimalConcurrency);
         };
     }
 }
@@ -466,7 +466,7 @@ class ConcurrentPerformanceTestSuite
         $concurrentResults = $this->benchmarkRunner->execute(
             "Concurrent HTTP requests",
             function () {
-                return runConcurrent($this->httpTaskManager->createConcurrentTasks(), 3);
+                return run_concurrent($this->httpTaskManager->createConcurrentTasks(), 3);
             }
         );
 
@@ -489,7 +489,7 @@ class ConcurrentPerformanceTestSuite
         $concurrentResults = $this->benchmarkRunner->execute(
             "Concurrent mixed operations",
             function () {
-                return runConcurrent($this->mixedTaskManager->createConcurrentTasks(), 4);
+                return run_concurrent($this->mixedTaskManager->createConcurrentTasks(), 4);
             }
         );
 
@@ -512,7 +512,7 @@ class ConcurrentPerformanceTestSuite
         $concurrentResults = $this->benchmarkRunner->execute(
             "Concurrent delays",
             function () {
-                return runConcurrent($this->delayTaskManager->createConcurrentTasks(), 5);
+                return run_concurrent($this->delayTaskManager->createConcurrentTasks(), 5);
             }
         );
 
@@ -527,7 +527,7 @@ class ConcurrentPerformanceTestSuite
         $results = [];
 
         // Test 4: String keys
-        echo "4️⃣ RUNCONCURRENT WITH STRING KEYS\n";
+        echo "4️⃣ run_concurrent WITH STRING KEYS\n";
         echo str_repeat("-", 40) . "\n";
         
         $stringKeyTasks = [
@@ -552,9 +552,9 @@ class ConcurrentPerformanceTestSuite
         ];
 
         $results['String Keys'] = $this->benchmarkRunner->execute(
-            "runConcurrent with string keys",
+            "run_concurrent with string keys",
             function () use ($stringKeyTasks) {
-                return runConcurrent($stringKeyTasks, 3);
+                return run_concurrent($stringKeyTasks, 3);
             }
         );
 
@@ -589,7 +589,7 @@ class ConcurrentPerformanceTestSuite
         $results['Mixed Promises'] = $this->benchmarkRunner->execute(
             "Mixed promise types",
             function () use ($mixedPromiseTasks) {
-                return runConcurrent($mixedPromiseTasks, 3);
+                return run_concurrent($mixedPromiseTasks, 3);
             }
         );
 
@@ -600,7 +600,7 @@ class ConcurrentPerformanceTestSuite
         $results['Error Handling'] = $this->benchmarkRunner->execute(
             "Error handling in concurrent",
             function () {
-                return runConcurrent($this->errorTaskManager->createErrorTestTasks(), 3);
+                return run_concurrent($this->errorTaskManager->createErrorTestTasks(), 3);
             }
         );
 
