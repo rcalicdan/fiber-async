@@ -7,11 +7,11 @@ use Rcalicdan\FiberAsync\Managers\FiberManager;
 use Rcalicdan\FiberAsync\Managers\HttpRequestManager;
 use Rcalicdan\FiberAsync\Managers\StreamManager;
 use Rcalicdan\FiberAsync\Managers\TimerManager;
-use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\Handler\TickHandler;
-use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\Handler\WorkHandler;
-use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\Handler\SleepHandler;
-use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\Handler\ActivityHandler;
-use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\Handler\StateHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\TickHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\WorkHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\SleepHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\ActivityHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\StateHandler;
 
 class AsyncEventLoop implements EventLoopInterface
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\Handler;
+namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop;
 
 class TickHandler
 {
