@@ -2,16 +2,26 @@
 
 namespace Rcalicdan\FiberAsync\Managers;
 
-use Rcalicdan\FiberAsync\ValueObjects\Timer;
+use Rcalicdan\FiberAsync\Handlers\Timer\TimerExecutionHandler;
+use Rcalicdan\FiberAsync\Handlers\Timer\TimerScheduleHandler;
 
 class TimerManager
 {
-    /** @var Timer[] */
+    /** @var \Rcalicdan\FiberAsync\ValueObjects\Timer[] */
     private array $timers = [];
+
+    private TimerExecutionHandler $executionHandler;
+    private TimerScheduleHandler $scheduleHandler;
+
+    public function __construct()
+    {
+        $this->executionHandler = new TimerExecutionHandler();
+        $this->scheduleHandler = new TimerScheduleHandler();
+    }
 
     public function addTimer(float $delay, callable $callback): string
     {
-        $timer = new Timer($delay, $callback);
+        $timer = $this->scheduleHandler->createTimer($delay, $callback);
         $this->timers[$timer->getId()] = $timer;
 
         return $timer->getId();
@@ -19,44 +29,18 @@ class TimerManager
 
     public function processTimers(): bool
     {
-        if (empty($this->timers)) {
-            return false;
-        }
-
         $currentTime = microtime(true);
-        $processed = false;
-
-        foreach ($this->timers as $id => $timer) {
-            if ($timer->isReady($currentTime)) {
-                $timer->execute();
-                unset($this->timers[$id]);
-                $processed = true;
-            }
-        }
-
-        return $processed;
+        return $this->executionHandler->executeReadyTimers($this->timers, $currentTime);
     }
 
     public function hasTimers(): bool
     {
-        return ! empty($this->timers);
+        return !empty($this->timers);
     }
 
     public function getNextTimerDelay(): ?float
     {
-        if (empty($this->timers)) {
-            return null;
-        }
-
         $currentTime = microtime(true);
-        $nextExecuteTime = PHP_FLOAT_MAX;
-
-        foreach ($this->timers as $timer) {
-            $nextExecuteTime = min($nextExecuteTime, $timer->getExecuteAt());
-        }
-
-        $delay = $nextExecuteTime - $currentTime;
-
-        return $delay > 0 ? $delay : 0;
+        return $this->scheduleHandler->calculateDelay($this->timers, $currentTime);
     }
 }

@@ -1,9 +1,10 @@
 <?php
 
-// src/Services/HttpRequestManager.php
-
 namespace Rcalicdan\FiberAsync\Managers;
 
+use Rcalicdan\FiberAsync\Handlers\Http\HttpRequestHandler;
+use Rcalicdan\FiberAsync\Handlers\Http\HttpResponseHandler;
+use Rcalicdan\FiberAsync\Handlers\Http\CurlMultiHandler;
 use Rcalicdan\FiberAsync\ValueObjects\HttpRequest;
 
 class HttpRequestManager
@@ -14,14 +15,22 @@ class HttpRequestManager
     private array $activeRequests = [];
     private \CurlMultiHandle $multiHandle;
 
+    private HttpRequestHandler $requestHandler;
+    private HttpResponseHandler $responseHandler;
+    private CurlMultiHandler $curlHandler;
+
     public function __construct()
     {
-        $this->multiHandle = curl_multi_init();
+        $this->requestHandler = new HttpRequestHandler();
+        $this->responseHandler = new HttpResponseHandler();
+        $this->curlHandler = new CurlMultiHandler();
+        $this->multiHandle = $this->curlHandler->createMultiHandle();
     }
 
     public function addHttpRequest(string $url, array $options, callable $callback): void
     {
-        $this->pendingRequests[] = new HttpRequest($url, $options, $callback);
+        $request = $this->requestHandler->createRequest($url, $options, $callback);
+        $this->pendingRequests[] = $request;
     }
 
     public function processRequests(): bool
@@ -42,11 +51,12 @@ class HttpRequestManager
     private function addPendingRequests(): bool
     {
         $added = false;
-        while (! empty($this->pendingRequests)) {
+        while (!empty($this->pendingRequests)) {
             $request = array_shift($this->pendingRequests);
-            curl_multi_add_handle($this->multiHandle, $request->getHandle());
-            $this->activeRequests[(int) $request->getHandle()] = $request;
-            $added = true;
+            if ($this->requestHandler->addRequestToMultiHandle($this->multiHandle, $request)) {
+                $this->activeRequests[(int) $request->getHandle()] = $request;
+                $added = true;
+            }
         }
 
         return $added;
@@ -58,46 +68,17 @@ class HttpRequestManager
             return false;
         }
 
-        $processed = false;
-        $running = null;
-
-        do {
-            $mrc = curl_multi_exec($this->multiHandle, $running);
-        } while ($mrc === CURLM_CALL_MULTI_PERFORM);
-
-        while ($info = curl_multi_info_read($this->multiHandle)) {
-            $handle = $info['handle'];
-            $handleId = (int) $handle;
-
-            if (isset($this->activeRequests[$handleId])) {
-                $request = $this->activeRequests[$handleId];
-
-                if ($info['result'] === CURLE_OK) {
-                    $response = curl_multi_getcontent($handle);
-                    $httpCode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
-                    $request->executeCallback(null, $response, $httpCode);
-                } else {
-                    $error = curl_error($handle);
-                    $request->executeCallback($error, null, null);
-                }
-
-                curl_multi_remove_handle($this->multiHandle, $handle);
-                curl_close($handle);
-                unset($this->activeRequests[$handleId]);
-                $processed = true;
-            }
-        }
-
-        return $processed;
+        $this->curlHandler->executeMultiHandle($this->multiHandle);
+        return $this->responseHandler->processCompletedRequests($this->multiHandle, $this->activeRequests);
     }
 
     public function hasRequests(): bool
     {
-        return ! empty($this->pendingRequests) || ! empty($this->activeRequests);
+        return !empty($this->pendingRequests) || !empty($this->activeRequests);
     }
 
     public function __destruct()
     {
-        curl_multi_close($this->multiHandle);
+        $this->curlHandler->closeMultiHandle($this->multiHandle);
     }
 }

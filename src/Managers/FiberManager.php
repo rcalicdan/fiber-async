@@ -2,12 +2,27 @@
 
 namespace Rcalicdan\FiberAsync\Managers;
 
+use Rcalicdan\FiberAsync\Handlers\Fiber\FiberStartHandler;
+use Rcalicdan\FiberAsync\Handlers\Fiber\FiberResumeHandler;
+use Rcalicdan\FiberAsync\Handlers\Fiber\FiberStateHandler;
+
 class FiberManager
 {
     /** @var \Fiber[] */
     private array $fibers = [];
     /** @var \Fiber[] */
     private array $suspendedFibers = [];
+
+    private FiberStartHandler $startHandler;
+    private FiberResumeHandler $resumeHandler;
+    private FiberStateHandler $stateHandler;
+
+    public function __construct()
+    {
+        $this->startHandler = new FiberStartHandler();
+        $this->resumeHandler = new FiberResumeHandler();
+        $this->stateHandler = new FiberStateHandler();
+    }
 
     public function addFiber(\Fiber $fiber): void
     {
@@ -22,49 +37,52 @@ class FiberManager
 
         $processed = false;
 
-        // Start all new fibers immediately
+        if (!empty($this->fibers)) {
+            $processed = $this->processNewFibers() || $processed;
+        }
+
+        if (empty($this->fibers) && !empty($this->suspendedFibers)) {
+            $processed = $this->processSuspendedFibers() || $processed;
+        }
+
+        return $processed;
+    }
+
+    private function processNewFibers(): bool
+    {
         $fibersToStart = $this->fibers;
         $this->fibers = [];
+        $processed = false;
 
         foreach ($fibersToStart as $fiber) {
-            if ($fiber->isTerminated()) {
-                continue;
-            }
-
-            try {
-                if (!$fiber->isStarted()) {
-                    $fiber->start();
+            if ($this->startHandler->canStart($fiber)) {
+                if ($this->startHandler->startFiber($fiber)) {
                     $processed = true;
                 }
 
                 if ($fiber->isSuspended()) {
                     $this->suspendedFibers[] = $fiber;
                 }
-            } catch (\Throwable $e) {
-                error_log('Fiber error: ' . $e->getMessage());
             }
         }
 
-        if (empty($fibersToStart)) {
-            $fibersToResume = $this->suspendedFibers;
-            $this->suspendedFibers = [];
+        return $processed;
+    }
 
-            foreach ($fibersToResume as $fiber) {
-                if ($fiber->isTerminated()) {
-                    continue;
+    private function processSuspendedFibers(): bool
+    {
+        $fibersToResume = $this->suspendedFibers;
+        $this->suspendedFibers = [];
+        $processed = false;
+
+        foreach ($fibersToResume as $fiber) {
+            if ($this->resumeHandler->canResume($fiber)) {
+                if ($this->resumeHandler->resumeFiber($fiber)) {
+                    $processed = true;
                 }
 
                 if ($fiber->isSuspended()) {
-                    try {
-                        $fiber->resume();
-                        $processed = true;
-
-                        if ($fiber->isSuspended()) {
-                            $this->suspendedFibers[] = $fiber;
-                        }
-                    } catch (\Throwable $e) {
-                        error_log('Fiber resume error: ' . $e->getMessage());
-                    }
+                    $this->suspendedFibers[] = $fiber;
                 }
             }
         }
@@ -74,17 +92,11 @@ class FiberManager
 
     public function hasFibers(): bool
     {
-        return ! empty($this->fibers) || ! empty($this->suspendedFibers);
+        return !empty($this->fibers) || !empty($this->suspendedFibers);
     }
 
     public function hasActiveFibers(): bool
     {
-        foreach ($this->suspendedFibers as $fiber) {
-            if (! $fiber->isTerminated()) {
-                return true;
-            }
-        }
-
-        return ! empty($this->fibers);
+        return $this->stateHandler->hasActiveFibers($this->suspendedFibers) || !empty($this->fibers);
     }
 }
