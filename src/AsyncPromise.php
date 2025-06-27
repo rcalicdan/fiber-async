@@ -3,128 +3,61 @@
 namespace Rcalicdan\FiberAsync;
 
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
+use Rcalicdan\FiberAsync\Handlers\AsyncPromise\StateHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncPromise\CallbackHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncPromise\ExecutorHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncPromise\ChainHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncPromise\ResolutionHandler;
 
 class AsyncPromise implements PromiseInterface
 {
-    private bool $resolved = false;
-    private bool $rejected = false;
-    private mixed $value = null;
-    private mixed $reason = null;
-    private array $thenCallbacks = [];
-    private array $catchCallbacks = [];
-    private array $finallyCallbacks = [];
+    private StateHandler $stateHandler;
+    private CallbackHandler $callbackHandler;
+    private ExecutorHandler $executorHandler;
+    private ChainHandler $chainHandler;
+    private ResolutionHandler $resolutionHandler;
 
     public function __construct(?callable $executor = null)
     {
-        if ($executor) {
-            try {
-                $executor(
-                    fn ($value) => $this->resolve($value),
-                    fn ($reason) => $this->reject($reason)
-                );
-            } catch (\Throwable $e) {
-                $this->reject($e);
-            }
-        }
+        $this->stateHandler = new StateHandler;
+        $this->callbackHandler = new CallbackHandler;
+        $this->executorHandler = new ExecutorHandler;
+        $this->chainHandler = new ChainHandler;
+        $this->resolutionHandler = new ResolutionHandler(
+            $this->stateHandler,
+            $this->callbackHandler
+        );
+
+        $this->executorHandler->executeExecutor(
+            $executor,
+            fn($value) => $this->resolve($value),
+            fn($reason) => $this->reject($reason)
+        );
     }
 
     public function resolve(mixed $value): void
     {
-        if ($this->resolved || $this->rejected) {
-            return;
-        }
-
-        $this->resolved = true;
-        $this->value = $value;
-
-        AsyncEventLoop::getInstance()->nextTick(function () {
-            foreach ($this->thenCallbacks as $callback) {
-                try {
-                    $callback($this->value);
-                } catch (\Throwable $e) {
-                    error_log('Promise then callback error: '.$e->getMessage());
-                }
-            }
-            $this->executeFinally();
-        });
+        $this->resolutionHandler->handleResolve($value);
     }
 
     public function reject(mixed $reason): void
     {
-        if ($this->resolved || $this->rejected) {
-            return;
-        }
-
-        $this->rejected = true;
-        $this->reason = $reason instanceof \Throwable ? $reason : new \Exception((string) $reason);
-
-        AsyncEventLoop::getInstance()->nextTick(function () {
-            foreach ($this->catchCallbacks as $callback) {
-                try {
-                    $callback($this->reason);
-                } catch (\Throwable $e) {
-                    error_log('Promise catch callback error: '.$e->getMessage());
-                }
-            }
-            $this->executeFinally();
-        });
-    }
-
-    private function executeFinally(): void
-    {
-        foreach ($this->finallyCallbacks as $callback) {
-            try {
-                $callback();
-            } catch (\Throwable $e) {
-                error_log('Promise finally callback error: '.$e->getMessage());
-            }
-        }
+        $this->resolutionHandler->handleReject($reason);
     }
 
     public function then(?callable $onFulfilled = null, ?callable $onRejected = null): PromiseInterface
     {
         return new self(function ($resolve, $reject) use ($onFulfilled, $onRejected) {
-            $handleResolve = function ($value) use ($onFulfilled, $resolve, $reject) {
-                if ($onFulfilled) {
-                    try {
-                        $result = $onFulfilled($value);
-                        if ($result instanceof PromiseInterface) {
-                            $result->then($resolve, $reject);
-                        } else {
-                            $resolve($result);
-                        }
-                    } catch (\Throwable $e) {
-                        $reject($e);
-                    }
-                } else {
-                    $resolve($value);
-                }
-            };
+            $handleResolve = $this->chainHandler->createThenHandler($onFulfilled, $resolve, $reject);
+            $handleReject = $this->chainHandler->createCatchHandler($onRejected, $resolve, $reject);
 
-            $handleReject = function ($reason) use ($onRejected, $resolve, $reject) {
-                if ($onRejected) {
-                    try {
-                        $result = $onRejected($reason);
-                        if ($result instanceof PromiseInterface) {
-                            $result->then($resolve, $reject);
-                        } else {
-                            $resolve($result);
-                        }
-                    } catch (\Throwable $e) {
-                        $reject($e);
-                    }
-                } else {
-                    $reject($reason);
-                }
-            };
-
-            if ($this->resolved) {
-                AsyncEventLoop::getInstance()->nextTick(fn () => $handleResolve($this->value));
-            } elseif ($this->rejected) {
-                AsyncEventLoop::getInstance()->nextTick(fn () => $handleReject($this->reason));
+            if ($this->stateHandler->isResolved()) {
+                $this->chainHandler->scheduleHandler(fn() => $handleResolve($this->stateHandler->getValue()));
+            } elseif ($this->stateHandler->isRejected()) {
+                $this->chainHandler->scheduleHandler(fn() => $handleReject($this->stateHandler->getReason()));
             } else {
-                $this->thenCallbacks[] = $handleResolve;
-                $this->catchCallbacks[] = $handleReject;
+                $this->callbackHandler->addThenCallback($handleResolve);
+                $this->callbackHandler->addCatchCallback($handleReject);
             }
         });
     }
@@ -136,33 +69,32 @@ class AsyncPromise implements PromiseInterface
 
     public function finally(callable $onFinally): PromiseInterface
     {
-        $this->finallyCallbacks[] = $onFinally;
-
+        $this->callbackHandler->addFinallyCallback($onFinally);
         return $this;
     }
 
     public function isResolved(): bool
     {
-        return $this->resolved;
+        return $this->stateHandler->isResolved();
     }
 
     public function isRejected(): bool
     {
-        return $this->rejected;
+        return $this->stateHandler->isRejected();
     }
 
     public function isPending(): bool
     {
-        return ! $this->resolved && ! $this->rejected;
+        return $this->stateHandler->isPending();
     }
 
     public function getValue(): mixed
     {
-        return $this->value;
+        return $this->stateHandler->getValue();
     }
 
     public function getReason(): mixed
     {
-        return $this->reason;
+        return $this->stateHandler->getReason();
     }
 }
