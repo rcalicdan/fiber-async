@@ -27,7 +27,7 @@ interface EventLoopInterface
      * @param  callable  $callback  Callback to handle the response with signature:
      *                              function(?string $error, ?string $response, ?int $httpCode): void
      */
-    public function addHttpRequest(string $url, array $options, callable $callback): void;
+    public function addHttpRequest(string $url, array $options, callable $callback): string;
 
     /**
      * Watches a stream for readability and executes callback when ready.

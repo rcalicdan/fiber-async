@@ -1,5 +1,7 @@
 <?php
 
+use Rcalicdan\FiberAsync\AsyncEventLoop;
+
 require_once 'vendor/autoload.php';
 
 /**
@@ -412,12 +414,15 @@ function testRaceConditions(): void
             $raceTime = microtime(true) - $raceStart;
             echo "Race completed in " . formatTime($raceTime) . "\n";
             
+            echo "Checking event loop state...\n";
+            $eventLoop = AsyncEventLoop::getInstance();
+            echo "Event loop idle: " . ($eventLoop->isIdle() ? 'yes' : 'no') . "\n";
+            
             return $result;
         });
         
         $totalTime = microtime(true) - $startTime;
         echo "✓ HTTP race completed in " . formatTime($totalTime) . "\n";
-        echo "Winner delay should be ~1 second\n";
     } catch (Exception $e) {
         echo "✗ HTTP race failed: " . $e->getMessage() . "\n";
     }

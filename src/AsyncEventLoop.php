@@ -154,9 +154,9 @@ class AsyncEventLoop implements EventLoopInterface
      * @param  array  $options  HTTP request options (headers, method, body, etc.)
      * @param  callable  $callback  Function to execute when request completes
      */
-    public function addHttpRequest(string $url, array $options, callable $callback): void
+    public function addHttpRequest(string $url, array $options, callable $callback): string
     {
-        $this->httpRequestManager->addHttpRequest($url, $options, $callback);
+        return $this->httpRequestManager->addHttpRequest($url, $options, $callback);
     }
 
     /**

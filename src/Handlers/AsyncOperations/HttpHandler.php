@@ -49,10 +49,12 @@ final readonly class HttpHandler
             }
         });
 
-        // Set up cancellation handler
-        $promise->setCancelHandler(function () use ($requestId) {
+        // Set up cancellation handler AFTER we have the request ID
+        $promise->setCancelHandler(function () use (&$requestId) {  // ← Use reference
             if ($requestId !== null) {
-                AsyncEventLoop::getInstance()->cancelHttpRequest($requestId);
+                echo "Cancelling HTTP request: $requestId\n";  // ← Add debug
+                $cancelled = AsyncEventLoop::getInstance()->cancelHttpRequest($requestId);
+                echo "Cancel result: " . ($cancelled ? 'success' : 'failed') . "\n";
             }
         });
 
