@@ -83,10 +83,17 @@ final readonly class PromiseCollectionHandler
                 if ($settled) return;
                 $settled = true;
 
-                // Cancel all cancellable promises
                 foreach ($promises as $promise) {
+                    // Cancel direct CancellablePromise instances
                     if ($promise instanceof CancellablePromise && !$promise->isCancelled()) {
                         $promise->cancel();
+                    }
+                    // Cancel root cancellable promises in chains
+                    elseif ($promise instanceof AsyncPromise) {
+                        $rootCancellable = $promise->getRootCancellable();
+                        if ($rootCancellable && !$rootCancellable->isCancelled()) {
+                            $rootCancellable->cancel();
+                        }
                     }
                 }
             };

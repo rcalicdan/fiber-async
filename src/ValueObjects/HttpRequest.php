@@ -34,6 +34,11 @@ class HttpRequest implements HttpRequestInterface
     private string $url;
 
     /**
+     * @var string|null Unique identifier for this request, if any
+     */
+    private ?string $id = null;
+
+    /**
      * Create a new HTTP request with specified configuration.
      *
      * Initializes the HTTP request with the target URL, request options,
@@ -147,5 +152,30 @@ class HttpRequest implements HttpRequestInterface
     public function executeCallback(?string $error, ?string $response, ?int $httpCode): void
     {
         ($this->callback)($error, $response, $httpCode);
+    }
+
+    /**
+     * Set the unique identifier for this request.
+     *
+     * This method assigns a unique identifier to the request, which can
+     * be used for tracking, logging, or identifying purposes.
+     *
+     * @param  string  $id  Unique identifier for the request
+     */
+    public function setId(string $id): void
+    {
+        $this->id = $id;
+    }
+
+    /**
+     * Get the unique identifier for this request.
+     *
+     * Retrieves the unique identifier assigned to the request, if any.
+     *
+     * @return string|null Unique identifier for the request, or null if not set
+     */
+    public function getId(): ?string
+    {
+        return $this->id;
     }
 }

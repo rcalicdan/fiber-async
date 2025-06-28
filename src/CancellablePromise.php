@@ -9,6 +9,7 @@ class CancellablePromise extends AsyncPromise
 {
     private ?string $timerId = null;
     private bool $cancelled = false;
+    private $cancelHandler = null;
 
     /**
      * Set the timer ID associated with this promise
@@ -18,16 +19,30 @@ class CancellablePromise extends AsyncPromise
         $this->timerId = $timerId;
     }
 
-    /**
-     * Cancel the promise and its associated timer
-     */
     public function cancel(): void
     {
-        if (!$this->cancelled && $this->timerId !== null) {
+        if (!$this->cancelled) {
             $this->cancelled = true;
-            AsyncEventLoop::getInstance()->cancelTimer($this->timerId);
+
+            if ($this->cancelHandler) {
+                try {
+                    ($this->cancelHandler)();
+                } catch (\Throwable $e) {
+                    error_log('Cancel handler error: ' . $e->getMessage());
+                }
+            }
+
+            if ($this->timerId !== null) {
+                AsyncEventLoop::getInstance()->cancelTimer($this->timerId);
+            }
+
             $this->reject(new \Exception('Promise cancelled'));
         }
+    }
+
+    public function setCancelHandler(callable $handler): void
+    {
+        $this->cancelHandler = $handler;
     }
 
     /**

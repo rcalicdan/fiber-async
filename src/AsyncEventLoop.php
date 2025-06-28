@@ -160,6 +160,17 @@ class AsyncEventLoop implements EventLoopInterface
     }
 
     /**
+     * Cancel a previously scheduled HTTP request.
+     *
+     * @param  string  $requestId  The request ID returned by addHttpRequest()
+     * @return bool True if request was cancelled, false if not found
+     */
+    public function cancelHttpRequest(string $requestId): bool
+    {
+        return $this->httpRequestManager->cancelHttpRequest($requestId);
+    }
+
+    /**
      * Add a stream watcher for I/O operations.
      *
      * @param  resource  $stream  The stream resource to watch

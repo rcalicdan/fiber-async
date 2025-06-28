@@ -48,6 +48,8 @@ class AsyncPromise implements AsyncPromiseInterface
      */
     private ResolutionHandler $resolutionHandler;
 
+    protected ?CancellablePromise $rootCancellable = null;
+
     /**
      * Create a new promise with an optional executor function.
      *
@@ -70,8 +72,8 @@ class AsyncPromise implements AsyncPromiseInterface
 
         $this->executorHandler->executeExecutor(
             $executor,
-            fn ($value) => $this->resolve($value),
-            fn ($reason) => $this->reject($reason)
+            fn($value) => $this->resolve($value),
+            fn($reason) => $this->reject($reason)
         );
     }
 
@@ -113,19 +115,32 @@ class AsyncPromise implements AsyncPromiseInterface
      */
     public function then(?callable $onFulfilled = null, ?callable $onRejected = null): PromiseInterface
     {
-        return new self(function ($resolve, $reject) use ($onFulfilled, $onRejected) {
+        $newPromise = new self(function ($resolve, $reject) use ($onFulfilled, $onRejected) {
             $handleResolve = $this->chainHandler->createThenHandler($onFulfilled, $resolve, $reject);
             $handleReject = $this->chainHandler->createCatchHandler($onRejected, $resolve, $reject);
 
             if ($this->stateHandler->isResolved()) {
-                $this->chainHandler->scheduleHandler(fn () => $handleResolve($this->stateHandler->getValue()));
+                $this->chainHandler->scheduleHandler(fn() => $handleResolve($this->stateHandler->getValue()));
             } elseif ($this->stateHandler->isRejected()) {
-                $this->chainHandler->scheduleHandler(fn () => $handleReject($this->stateHandler->getReason()));
+                $this->chainHandler->scheduleHandler(fn() => $handleReject($this->stateHandler->getReason()));
             } else {
                 $this->callbackHandler->addThenCallback($handleResolve);
                 $this->callbackHandler->addCatchCallback($handleReject);
             }
         });
+        // Preserve reference to root cancellable promise
+        if ($this instanceof CancellablePromise) {
+            $newPromise->rootCancellable = $this;
+        } elseif ($this->rootCancellable) {
+            $newPromise->rootCancellable = $this->rootCancellable;
+        }
+
+        return $newPromise;
+    }
+
+    public function getRootCancellable(): ?CancellablePromise
+    {
+        return $this->rootCancellable;
     }
 
     /**

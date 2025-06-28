@@ -6,6 +6,7 @@ use Exception;
 use Rcalicdan\FiberAsync\AsyncEventLoop;
 use Rcalicdan\FiberAsync\AsyncPromise;
 use Rcalicdan\FiberAsync\Bridges\HttpClientBridge;
+use Rcalicdan\FiberAsync\CancellablePromise;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 
 /**
@@ -29,19 +30,33 @@ final readonly class HttpHandler
      */
     public function fetch(string $url, array $options = []): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($url, $options) {
-            AsyncEventLoop::getInstance()->addHttpRequest($url, $options, function ($error, $response, $httpCode) use ($resolve, $reject) {
-                if ($error) {
-                    $reject(new Exception('HTTP Request failed: '.$error));
-                } else {
-                    $resolve([
-                        'body' => $response,
-                        'status' => $httpCode,
-                        'ok' => $httpCode >= 200 && $httpCode < 300,
-                    ]);
-                }
-            });
+        $promise = new CancellablePromise();
+        $requestId = null;
+
+        $requestId = AsyncEventLoop::getInstance()->addHttpRequest($url, $options, function ($error, $response, $httpCode) use ($promise) {
+            if ($promise->isCancelled()) {
+                return; // Don't resolve if already cancelled
+            }
+
+            if ($error) {
+                $promise->reject(new Exception('HTTP Request failed: ' . $error));
+            } else {
+                $promise->resolve([
+                    'body' => $response,
+                    'status' => $httpCode,
+                    'ok' => $httpCode >= 200 && $httpCode < 300,
+                ]);
+            }
         });
+
+        // Set up cancellation handler
+        $promise->setCancelHandler(function () use ($requestId) {
+            if ($requestId !== null) {
+                AsyncEventLoop::getInstance()->cancelHttpRequest($requestId);
+            }
+        });
+
+        return $promise;
     }
 
     /**
