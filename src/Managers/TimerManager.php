@@ -27,6 +27,26 @@ class TimerManager
         return $timer->getId();
     }
 
+    /**
+     * Cancel a timer by its ID
+     */
+    public function cancelTimer(string $timerId): bool
+    {
+        if (isset($this->timers[$timerId])) {
+            unset($this->timers[$timerId]);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Check if a timer exists and is active
+     */
+    public function hasTimer(string $timerId): bool
+    {
+        return isset($this->timers[$timerId]);
+    }
+
     public function processTimers(): bool
     {
         $currentTime = microtime(true);

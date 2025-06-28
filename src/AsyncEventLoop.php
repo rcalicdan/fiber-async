@@ -137,6 +137,17 @@ class AsyncEventLoop implements EventLoopInterface
     }
 
     /**
+     * Cancel a previously scheduled timer.
+     *
+     * @param  string  $timerId  The timer ID returned by addTimer()
+     * @return bool True if timer was cancelled, false if not found
+     */
+    public function cancelTimer(string $timerId): bool
+    {
+        return $this->timerManager->cancelTimer($timerId);
+    }
+
+    /**
      * Schedule an asynchronous HTTP request.
      *
      * @param  string  $url  The URL to request

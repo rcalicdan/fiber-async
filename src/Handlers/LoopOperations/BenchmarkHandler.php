@@ -38,14 +38,20 @@ final readonly class BenchmarkHandler
      */
     public function benchmark(callable|PromiseInterface $asyncOperation): array
     {
+        $startMemory = memory_get_usage();
         $start = microtime(true);
         $result = $this->executionHandler->run($asyncOperation);
         $duration = microtime(true) - $start;
+        $memoryUsed = memory_get_usage() - $startMemory;
 
         return [
             'result' => $result,
-            'duration' => $duration,
-            'duration_ms' => round($duration * 1000, 2),
+            'benchmark' => [
+                'execution_time' => $duration,
+                'duration_ms' => round($duration * 1000, 2),
+                'memory_used' => $memoryUsed,
+                'peak_memory' => memory_get_peak_usage(),
+            ]
         ];
     }
 

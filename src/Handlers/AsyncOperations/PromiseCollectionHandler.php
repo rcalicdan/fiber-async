@@ -4,6 +4,7 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncOperations;
 
 use Exception;
 use Rcalicdan\FiberAsync\AsyncPromise;
+use Rcalicdan\FiberAsync\CancellablePromise;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 
 /**
@@ -73,27 +74,33 @@ final readonly class PromiseCollectionHandler
         return new AsyncPromise(function ($resolve, $reject) use ($promises) {
             if (empty($promises)) {
                 $reject(new Exception('No promises provided'));
-
                 return;
             }
 
             $settled = false;
 
+            $cancelOthers = function () use (&$promises, &$settled) {
+                if ($settled) return;
+                $settled = true;
+
+                // Cancel all cancellable promises
+                foreach ($promises as $promise) {
+                    if ($promise instanceof CancellablePromise && !$promise->isCancelled()) {
+                        $promise->cancel();
+                    }
+                }
+            };
+
             foreach ($promises as $promise) {
                 $promise
-                    ->then(function ($value) use (&$settled, $resolve) {
-                        if (! $settled) {
-                            $settled = true;
-                            $resolve($value);
-                        }
+                    ->then(function ($value) use ($resolve, $cancelOthers) {
+                        $cancelOthers();
+                        $resolve($value);
                     })
-                    ->catch(function ($reason) use (&$settled, $reject) {
-                        if (! $settled) {
-                            $settled = true;
-                            $reject($reason);
-                        }
-                    })
-                ;
+                    ->catch(function ($reason) use ($reject, $cancelOthers) {
+                        $cancelOthers();
+                        $reject($reason);
+                    });
             }
         });
     }
