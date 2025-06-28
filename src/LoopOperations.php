@@ -2,6 +2,7 @@
 
 namespace Rcalicdan\FiberAsync;
 
+use Rcalicdan\FiberAsync\Contracts\LoopOperationsInterface;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\Handlers\LoopOperations\BenchmarkHandler;
 use Rcalicdan\FiberAsync\Handlers\LoopOperations\ConcurrentExecutionHandler;
@@ -21,7 +22,7 @@ use Rcalicdan\FiberAsync\Handlers\LoopOperations\TimeoutHandler;
  * Unlike AsyncOperations which requires manual loop management, this class
  * provides a "run and forget" interface for simpler async operation execution.
  */
-class LoopOperations
+class LoopOperations implements LoopOperationsInterface
 {
     /**
      * @var AsyncOperations Core async operations handler

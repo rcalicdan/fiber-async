@@ -2,6 +2,7 @@
 
 namespace Rcalicdan\FiberAsync;
 
+use Rcalicdan\FiberAsync\Contracts\AsyncOperationsInterface;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\AsyncExecutionHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\AwaitHandler;
@@ -22,7 +23,7 @@ use Rcalicdan\FiberAsync\Handlers\AsyncOperations\TimerHandler;
  * The class acts as a facade over various specialized handlers, providing a
  * unified interface for common async patterns and operations.
  */
-class AsyncOperations
+class AsyncOperations implements AsyncOperationsInterface
 {
     /**
      * @var FiberContextHandler Handles fiber context detection and management
