@@ -91,7 +91,7 @@ final class Async
      * context, enabling it to use async operations like await. This is the
      * primary method for creating async functions from synchronous code.
      *
-     * @param callable $asyncFunction The function to convert to async
+     * @param  callable  $asyncFunction  The function to convert to async
      * @return callable An async version that returns a Promise
      */
     public static function async(callable $asyncFunction): callable
@@ -106,8 +106,9 @@ final class Async
      * to the event loop until the promise settles. Must be called from within
      * a fiber context. Returns the resolved value or throws on rejection.
      *
-     * @param PromiseInterface $promise The promise to await
+     * @param  PromiseInterface  $promise  The promise to await
      * @return mixed The resolved value of the promise
+     *
      * @throws \Exception If the promise is rejected
      */
     public static function await(PromiseInterface $promise): mixed
@@ -122,7 +123,7 @@ final class Async
      * the specified delay. Useful for creating pauses in async execution
      * without blocking the event loop.
      *
-     * @param float $seconds Number of seconds to delay
+     * @param  float  $seconds  Number of seconds to delay
      * @return PromiseInterface A promise that resolves after the delay
      */
     public static function delay(float $seconds): PromiseInterface
@@ -137,8 +138,8 @@ final class Async
      * the event loop. The promise resolves with the response data when the
      * request completes.
      *
-     * @param string $url The URL to request
-     * @param array $options Request options (method, headers, body, timeout, etc.)
+     * @param  string  $url  The URL to request
+     * @param  array  $options  Request options (method, headers, body, timeout, etc.)
      * @return PromiseInterface A promise that resolves with the HTTP response
      */
     public static function fetch(string $url, array $options = []): PromiseInterface
@@ -153,7 +154,7 @@ final class Async
      * an array of their results in the same order. If any promise rejects,
      * the returned promise immediately rejects with the first rejection reason.
      *
-     * @param array $promises Array of promises to wait for
+     * @param  array  $promises  Array of promises to wait for
      * @return PromiseInterface A promise that resolves with an array of all results
      */
     public static function all(array $promises): PromiseInterface
@@ -168,7 +169,7 @@ final class Async
      * promise in the array to settle. Useful for timeout scenarios or when
      * you need the fastest response from multiple sources.
      *
-     * @param array $promises Array of promises to race
+     * @param  array  $promises  Array of promises to race
      * @return PromiseInterface A promise that settles with the first result
      */
     public static function race(array $promises): PromiseInterface
@@ -182,7 +183,7 @@ final class Async
      * This is useful for creating resolved promises in async workflows or
      * for converting synchronous values into promise-compatible form.
      *
-     * @param mixed $value The value to resolve the promise with
+     * @param  mixed  $value  The value to resolve the promise with
      * @return PromiseInterface A promise resolved with the provided value
      */
     public static function resolve(mixed $value): PromiseInterface
@@ -196,7 +197,7 @@ final class Async
      * This is useful for creating rejected promises in async workflows or
      * for converting exceptions into promise-compatible form.
      *
-     * @param mixed $reason The reason for rejection (typically an exception)
+     * @param  mixed  $reason  The reason for rejection (typically an exception)
      * @return PromiseInterface A promise rejected with the provided reason
      */
     public static function reject(mixed $reason): PromiseInterface
@@ -211,7 +212,7 @@ final class Async
      * and convert them to rejected promises, preventing uncaught exceptions
      * from crashing the event loop.
      *
-     * @param callable $asyncFunction The async function to make safe
+     * @param  callable  $asyncFunction  The async function to make safe
      * @return callable A safe version that always returns a promise
      */
     public static function tryAsync(callable $asyncFunction): callable
@@ -226,7 +227,7 @@ final class Async
      * without blocking the event loop. The function will be executed in a way
      * that doesn't interfere with concurrent async operations.
      *
-     * @param callable $syncFunction The synchronous function to wrap
+     * @param  callable  $syncFunction  The synchronous function to wrap
      * @return callable An async-compatible version of the function
      */
     public static function asyncify(callable $syncFunction): callable
@@ -241,9 +242,9 @@ final class Async
      * async compatibility. Returns a promise that resolves with the Guzzle
      * response object.
      *
-     * @param string $method HTTP method (GET, POST, PUT, DELETE, etc.)
-     * @param string $url The URL to request
-     * @param array $options Guzzle-specific request options
+     * @param  string  $method  HTTP method (GET, POST, PUT, DELETE, etc.)
+     * @param  string  $url  The URL to request
+     * @param  array  $options  Guzzle-specific request options
      * @return PromiseInterface A promise that resolves with the Guzzle response
      */
     public static function guzzle(string $method, string $url, array $options = []): PromiseInterface
@@ -271,7 +272,7 @@ final class Async
      * the event loop, returning a promise for the result. Useful for integrating
      * blocking operations into async workflows.
      *
-     * @param callable $syncCall The synchronous operation to wrap
+     * @param  callable  $syncCall  The synchronous operation to wrap
      * @return PromiseInterface A promise that resolves with the operation result
      */
     public static function wrapSync(callable $syncCall): PromiseInterface
@@ -286,8 +287,8 @@ final class Async
      * overwhelming the system. This is essential for handling large numbers
      * of concurrent operations without exhausting system resources.
      *
-     * @param array $tasks Array of tasks (callables or promises) to execute
-     * @param int $concurrency Maximum number of concurrent executions
+     * @param  array  $tasks  Array of tasks (callables or promises) to execute
+     * @param  int  $concurrency  Maximum number of concurrent executions
      * @return PromiseInterface A promise that resolves with all task results
      */
     public static function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
@@ -302,7 +303,7 @@ final class Async
      * executes the operation, waits for completion, and stops the loop.
      * This is the primary method for running async operations with minimal setup.
      *
-     * @param callable|PromiseInterface $asyncOperation The operation to execute
+     * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
      * @return mixed The result of the async operation
      */
     public static function run(callable|PromiseInterface $asyncOperation): mixed
@@ -317,7 +318,7 @@ final class Async
      * returns their results in the same order as the input array. The event
      * loop is managed automatically throughout the entire process.
      *
-     * @param array $asyncOperations Array of callables or promises to execute
+     * @param  array  $asyncOperations  Array of callables or promises to execute
      * @return array Results of all operations in the same order as input
      */
     public static function runAll(array $asyncOperations): array
@@ -332,8 +333,8 @@ final class Async
      * maintaining high throughput. The event loop lifecycle is handled automatically,
      * making this ideal for processing large numbers of operations safely.
      *
-     * @param array $asyncOperations Array of operations to execute
-     * @param int $concurrency Maximum number of concurrent operations
+     * @param  array  $asyncOperations  Array of operations to execute
+     * @param  int  $concurrency  Maximum number of concurrent operations
      * @return array Results of all operations
      */
     public static function runConcurrent(array $asyncOperations, int $concurrency = 10): array
@@ -348,7 +349,7 @@ final class Async
      * manually managing the event loop. Perfect for simple async operations
      * that don't require complex setup.
      *
-     * @param callable $asyncFunction The async function to execute
+     * @param  callable  $asyncFunction  The async function to execute
      * @return mixed The result of the async function
      */
     public static function task(callable $asyncFunction): mixed
@@ -363,8 +364,8 @@ final class Async
      * loop, making the request, waiting for the response, and cleaning up.
      * Returns the raw response data directly.
      *
-     * @param string $url The URL to fetch
-     * @param array $options HTTP request options
+     * @param  string  $url  The URL to fetch
+     * @param  array  $options  HTTP request options
      * @return array The HTTP response data
      */
     public static function quickFetch(string $url, array $options = []): array
@@ -379,7 +380,7 @@ final class Async
      * managed automatically. This is useful for simple timing operations that
      * don't require manual loop control.
      *
-     * @param float $seconds Number of seconds to delay
+     * @param  float  $seconds  Number of seconds to delay
      */
     public static function asyncSleep(float $seconds): void
     {
@@ -393,9 +394,10 @@ final class Async
      * complete within the timeout, it's cancelled and a timeout exception is thrown.
      * The event loop is managed automatically throughout.
      *
-     * @param callable|PromiseInterface $asyncOperation The operation to execute
-     * @param float $timeout Maximum time to wait in seconds
+     * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
+     * @param  float  $timeout  Maximum time to wait in seconds
      * @return mixed The result of the operation if completed within timeout
+     *
      * @throws \Exception If the operation times out
      */
     public static function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
@@ -410,7 +412,7 @@ final class Async
      * Returns both the operation result and detailed benchmark information
      * including execution time, memory usage, and other performance metrics.
      *
-     * @param callable|PromiseInterface $asyncOperation The operation to benchmark
+     * @param  callable|PromiseInterface  $asyncOperation  The operation to benchmark
      * @return array Array containing 'result' and 'benchmark' keys with performance data
      */
     public static function benchmark(callable|PromiseInterface $asyncOperation): array

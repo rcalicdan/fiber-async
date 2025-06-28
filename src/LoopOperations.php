@@ -61,7 +61,7 @@ class LoopOperations
     /**
      * Initialize loop operations with all required handlers.
      *
-     * @param AsyncOperations|null $asyncOps Optional async operations instance
+     * @param  AsyncOperations|null  $asyncOps  Optional async operations instance
      */
     public function __construct(?AsyncOperations $asyncOps = null)
     {
@@ -81,7 +81,7 @@ class LoopOperations
      * and stopping the loop when complete. It's the primary method for
      * running async operations with minimal setup.
      *
-     * @param callable|PromiseInterface $asyncOperation The operation to execute
+     * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
      * @return mixed The result of the async operation
      */
     public function run(callable|PromiseInterface $asyncOperation): mixed
@@ -95,7 +95,7 @@ class LoopOperations
      * All operations are started simultaneously and the method waits for
      * all to complete before returning their results in the same order.
      *
-     * @param array $asyncOperations Array of callables or promises to execute
+     * @param  array  $asyncOperations  Array of callables or promises to execute
      * @return array Results of all operations in the same order as input
      */
     public function runAll(array $asyncOperations): array
@@ -109,8 +109,8 @@ class LoopOperations
      * Executes operations in batches to prevent overwhelming the system.
      * Useful for processing large numbers of operations with resource constraints.
      *
-     * @param array $asyncOperations Array of operations to execute
-     * @param int $concurrency Maximum number of concurrent operations
+     * @param  array  $asyncOperations  Array of operations to execute
+     * @param  int  $concurrency  Maximum number of concurrent operations
      * @return array Results of all operations
      */
     public function runConcurrent(array $asyncOperations, int $concurrency = 10): array
@@ -124,7 +124,7 @@ class LoopOperations
      * This is a convenience method for running a single async function
      * without manually managing the event loop.
      *
-     * @param callable $asyncFunction The async function to execute
+     * @param  callable  $asyncFunction  The async function to execute
      * @return mixed The result of the async function
      */
     public function task(callable $asyncFunction): mixed
@@ -138,7 +138,7 @@ class LoopOperations
      * This method starts the event loop, waits for the specified duration,
      * then stops the loop. Useful for simple delay operations.
      *
-     * @param float $seconds Number of seconds to delay
+     * @param  float  $seconds  Number of seconds to delay
      */
     public function asyncSleep(float $seconds): void
     {
@@ -151,8 +151,8 @@ class LoopOperations
      * This method handles the entire HTTP request lifecycle including
      * starting the event loop, making the request, and returning the result.
      *
-     * @param string $url The URL to fetch
-     * @param array $options HTTP request options
+     * @param  string  $url  The URL to fetch
+     * @param  array  $options  HTTP request options
      * @return array The HTTP response data
      */
     public function quickFetch(string $url, array $options = []): array
@@ -166,9 +166,10 @@ class LoopOperations
      * If the operation doesn't complete within the specified timeout,
      * it will be cancelled and a timeout exception will be thrown.
      *
-     * @param callable|PromiseInterface $asyncOperation The operation to execute
-     * @param float $timeout Maximum time to wait in seconds
+     * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
+     * @param  float  $timeout  Maximum time to wait in seconds
      * @return mixed The result of the operation if completed within timeout
+     *
      * @throws \Exception If the operation times out
      */
     public function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
@@ -182,7 +183,7 @@ class LoopOperations
      * Returns both the operation result and performance metrics including
      * execution time, memory usage, and other benchmarking data.
      *
-     * @param callable|PromiseInterface $asyncOperation The operation to benchmark
+     * @param  callable|PromiseInterface  $asyncOperation  The operation to benchmark
      * @return array Array containing 'result' and 'benchmark' keys with timing data
      */
     public function benchmark(callable|PromiseInterface $asyncOperation): array
@@ -196,7 +197,7 @@ class LoopOperations
      * Takes the array returned by benchmark() and formats it into a
      * readable string with execution time and performance metrics.
      *
-     * @param array $benchmarkResult The result array from benchmark()
+     * @param  array  $benchmarkResult  The result array from benchmark()
      * @return string Formatted benchmark information
      */
     public function formatBenchmark(array $benchmarkResult): string

@@ -10,7 +10,7 @@ use Rcalicdan\FiberAsync\Facades\Async;
  * executes the operation, waits for completion, and stops the loop.
  * This is the primary method for running async operations with minimal setup.
  *
- * @param callable|PromiseInterface $asyncOperation The operation to execute
+ * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
  * @return mixed The result of the async operation
  */
 function run(callable|PromiseInterface $asyncOperation): mixed
@@ -25,7 +25,7 @@ function run(callable|PromiseInterface $asyncOperation): mixed
  * returns their results in the same order as the input array. The event
  * loop is managed automatically throughout the entire process.
  *
- * @param array $asyncOperations Array of callables or promises to execute
+ * @param  array  $asyncOperations  Array of callables or promises to execute
  * @return array Results of all operations in the same order as input
  */
 function run_all(array $asyncOperations): array
@@ -40,8 +40,8 @@ function run_all(array $asyncOperations): array
  * maintaining high throughput. The event loop lifecycle is handled automatically,
  * making this ideal for processing large numbers of operations safely.
  *
- * @param array $asyncOperations Array of operations to execute
- * @param int $concurrency Maximum number of concurrent operations
+ * @param  array  $asyncOperations  Array of operations to execute
+ * @param  int  $concurrency  Maximum number of concurrent operations
  * @return array Results of all operations
  */
 function run_concurrent(array $asyncOperations, int $concurrency = 10): array
@@ -56,7 +56,7 @@ function run_concurrent(array $asyncOperations, int $concurrency = 10): array
  * manually managing the event loop. Perfect for simple async operations
  * that don't require complex setup.
  *
- * @param callable $asyncFunction The async function to execute
+ * @param  callable  $asyncFunction  The async function to execute
  * @return mixed The result of the async function
  */
 function task(callable $asyncFunction): mixed
@@ -71,8 +71,8 @@ function task(callable $asyncFunction): mixed
  * loop, making the request, waiting for the response, and cleaning up.
  * Returns the raw response data directly.
  *
- * @param string $url The URL to fetch
- * @param array $options HTTP request options
+ * @param  string  $url  The URL to fetch
+ * @param  array  $options  HTTP request options
  * @return array The HTTP response data
  */
 function quick_fetch(string $url, array $options = []): array
@@ -87,7 +87,7 @@ function quick_fetch(string $url, array $options = []): array
  * managed automatically. This is useful for simple timing operations that
  * don't require manual loop control.
  *
- * @param float $seconds Number of seconds to delay
+ * @param  float  $seconds  Number of seconds to delay
  */
 function async_sleep(float $seconds): void
 {
@@ -101,10 +101,11 @@ function async_sleep(float $seconds): void
  * complete within the timeout, it's cancelled and a timeout exception is thrown.
  * The event loop is managed automatically throughout.
  *
- * @param callable|PromiseInterface $asyncOperation The operation to execute
- * @param float $timeout Maximum time to wait in seconds
+ * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
+ * @param  float  $timeout  Maximum time to wait in seconds
  * @return mixed The result of the operation if completed within timeout
- * @throws \Exception If the operation times out
+ *
+ * @throws Exception If the operation times out
  */
 function run_with_timeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
 {
@@ -118,7 +119,7 @@ function run_with_timeout(callable|PromiseInterface $asyncOperation, float $time
  * Returns both the operation result and detailed benchmark information
  * including execution time, memory usage, and other performance metrics.
  *
- * @param callable|PromiseInterface $asyncOperation The operation to benchmark
+ * @param  callable|PromiseInterface  $asyncOperation  The operation to benchmark
  * @return array Array containing 'result' and 'benchmark' keys with performance data
  */
 function benchmark(callable|PromiseInterface $asyncOperation): array

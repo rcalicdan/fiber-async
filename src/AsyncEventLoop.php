@@ -127,8 +127,8 @@ class AsyncEventLoop implements EventLoopInterface
     /**
      * Schedule a timer to execute a callback after a specified delay.
      *
-     * @param float $delay Delay in seconds before executing the callback
-     * @param callable $callback Function to execute when timer expires
+     * @param  float  $delay  Delay in seconds before executing the callback
+     * @param  callable  $callback  Function to execute when timer expires
      * @return string Unique identifier for the timer
      */
     public function addTimer(float $delay, callable $callback): string
@@ -139,9 +139,9 @@ class AsyncEventLoop implements EventLoopInterface
     /**
      * Schedule an asynchronous HTTP request.
      *
-     * @param string $url The URL to request
-     * @param array $options HTTP request options (headers, method, body, etc.)
-     * @param callable $callback Function to execute when request completes
+     * @param  string  $url  The URL to request
+     * @param  array  $options  HTTP request options (headers, method, body, etc.)
+     * @param  callable  $callback  Function to execute when request completes
      */
     public function addHttpRequest(string $url, array $options, callable $callback): void
     {
@@ -151,8 +151,8 @@ class AsyncEventLoop implements EventLoopInterface
     /**
      * Add a stream watcher for I/O operations.
      *
-     * @param resource $stream The stream resource to watch
-     * @param callable $callback Function to execute when stream has data
+     * @param  resource  $stream  The stream resource to watch
+     * @param  callable  $callback  Function to execute when stream has data
      */
     public function addStreamWatcher($stream, callable $callback): void
     {
@@ -162,7 +162,7 @@ class AsyncEventLoop implements EventLoopInterface
     /**
      * Add a fiber to be managed by the event loop.
      *
-     * @param \Fiber $fiber The fiber instance to add to the loop
+     * @param  \Fiber  $fiber  The fiber instance to add to the loop
      */
     public function addFiber(\Fiber $fiber): void
     {
@@ -175,7 +175,7 @@ class AsyncEventLoop implements EventLoopInterface
      * Next-tick callbacks have the highest priority and execute before
      * any other work in the next loop iteration.
      *
-     * @param callable $callback Function to execute on next tick
+     * @param  callable  $callback  Function to execute on next tick
      */
     public function nextTick(callable $callback): void
     {
@@ -188,7 +188,7 @@ class AsyncEventLoop implements EventLoopInterface
      * Deferred callbacks run after all immediate work is processed
      * but before the loop sleeps or waits for events.
      *
-     * @param callable $callback Function to execute when deferred
+     * @param  callable  $callback  Function to execute when deferred
      */
     public function defer(callable $callback): void
     {

@@ -54,7 +54,7 @@ class AsyncPromise implements PromiseInterface
      * can be used to settle the promise. If no executor is provided,
      * the promise starts in a pending state.
      *
-     * @param callable|null $executor Function to execute immediately with resolve/reject callbacks
+     * @param  callable|null  $executor  Function to execute immediately with resolve/reject callbacks
      */
     public function __construct(?callable $executor = null)
     {
@@ -69,8 +69,8 @@ class AsyncPromise implements PromiseInterface
 
         $this->executorHandler->executeExecutor(
             $executor,
-            fn($value) => $this->resolve($value),
-            fn($reason) => $this->reject($reason)
+            fn ($value) => $this->resolve($value),
+            fn ($reason) => $this->reject($reason)
         );
     }
 
@@ -80,7 +80,7 @@ class AsyncPromise implements PromiseInterface
      * If the promise is already settled, this operation has no effect.
      * The resolution triggers all registered fulfillment callbacks.
      *
-     * @param mixed $value The value to resolve the promise with
+     * @param  mixed  $value  The value to resolve the promise with
      */
     public function resolve(mixed $value): void
     {
@@ -93,7 +93,7 @@ class AsyncPromise implements PromiseInterface
      * If the promise is already settled, this operation has no effect.
      * The rejection triggers all registered rejection callbacks.
      *
-     * @param mixed $reason The reason for rejection (typically an exception)
+     * @param  mixed  $reason  The reason for rejection (typically an exception)
      */
     public function reject(mixed $reason): void
     {
@@ -106,8 +106,8 @@ class AsyncPromise implements PromiseInterface
      * Returns a new promise that will be resolved with the return value
      * of the executed handler. This enables promise chaining.
      *
-     * @param callable|null $onFulfilled Handler for when promise is resolved
-     * @param callable|null $onRejected Handler for when promise is rejected
+     * @param  callable|null  $onFulfilled  Handler for when promise is resolved
+     * @param  callable|null  $onRejected  Handler for when promise is rejected
      * @return PromiseInterface A new promise for the chained operation
      */
     public function then(?callable $onFulfilled = null, ?callable $onRejected = null): PromiseInterface
@@ -117,9 +117,9 @@ class AsyncPromise implements PromiseInterface
             $handleReject = $this->chainHandler->createCatchHandler($onRejected, $resolve, $reject);
 
             if ($this->stateHandler->isResolved()) {
-                $this->chainHandler->scheduleHandler(fn() => $handleResolve($this->stateHandler->getValue()));
+                $this->chainHandler->scheduleHandler(fn () => $handleResolve($this->stateHandler->getValue()));
             } elseif ($this->stateHandler->isRejected()) {
-                $this->chainHandler->scheduleHandler(fn() => $handleReject($this->stateHandler->getReason()));
+                $this->chainHandler->scheduleHandler(fn () => $handleReject($this->stateHandler->getReason()));
             } else {
                 $this->callbackHandler->addThenCallback($handleResolve);
                 $this->callbackHandler->addCatchCallback($handleReject);
@@ -133,7 +133,7 @@ class AsyncPromise implements PromiseInterface
      * This is a convenience method equivalent to calling then(null, onRejected).
      * Returns a new promise for chaining.
      *
-     * @param callable $onRejected Handler for when promise is rejected
+     * @param  callable  $onRejected  Handler for when promise is rejected
      * @return PromiseInterface A new promise for the chained operation
      */
     public function catch(callable $onRejected): PromiseInterface
@@ -147,7 +147,7 @@ class AsyncPromise implements PromiseInterface
      * The finally handler receives no arguments and its return value
      * does not affect the promise chain. It's used for cleanup operations.
      *
-     * @param callable $onFinally Handler to execute when promise settles
+     * @param  callable  $onFinally  Handler to execute when promise settles
      * @return PromiseInterface The same promise instance for chaining
      */
     public function finally(callable $onFinally): PromiseInterface
