@@ -11,7 +11,7 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncPromise;
  */
 final class CallbackHandler
 {
-    /** 
+    /**
      * @var array<callable> Callbacks to execute when Promise resolves
      */
     private array $thenCallbacks = [];
@@ -70,7 +70,7 @@ final class CallbackHandler
             try {
                 $callback($value);
             } catch (\Throwable $e) {
-                error_log('Promise then callback error: ' . $e->getMessage());
+                error_log('Promise then callback error: '.$e->getMessage());
             }
         }
     }
@@ -89,7 +89,7 @@ final class CallbackHandler
             try {
                 $callback($reason);
             } catch (\Throwable $e) {
-                error_log('Promise catch callback error: ' . $e->getMessage());
+                error_log('Promise catch callback error: '.$e->getMessage());
             }
         }
     }
@@ -107,7 +107,7 @@ final class CallbackHandler
             try {
                 $callback();
             } catch (\Throwable $e) {
-                error_log('Promise finally callback error: ' . $e->getMessage());
+                error_log('Promise finally callback error: '.$e->getMessage());
             }
         }
     }

@@ -69,7 +69,7 @@ final class TickHandler
             try {
                 $callback();
             } catch (\Throwable $e) {
-                error_log('NextTick callback error: ' . $e->getMessage());
+                error_log('NextTick callback error: '.$e->getMessage());
             }
         }
 
@@ -97,7 +97,7 @@ final class TickHandler
             try {
                 $callback();
             } catch (\Throwable $e) {
-                error_log('Deferred callback error: ' . $e->getMessage());
+                error_log('Deferred callback error: '.$e->getMessage());
             }
         }
 

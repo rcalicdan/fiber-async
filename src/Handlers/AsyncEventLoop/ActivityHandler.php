@@ -11,7 +11,9 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop;
  */
 final class ActivityHandler
 {
-    /** @var int Unix timestamp of the last recorded activity */
+    /**
+     * @var int Unix timestamp of the last recorded activity
+     */
     private int $lastActivity = 0;
 
     /**

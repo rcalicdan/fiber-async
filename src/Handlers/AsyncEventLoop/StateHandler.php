@@ -11,7 +11,9 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop;
  */
 final class StateHandler
 {
-    /** @var bool Whether the event loop is currently running */
+    /**
+     * @var bool Whether the event loop is currently running
+     */
     private bool $running = true;
 
     /**
