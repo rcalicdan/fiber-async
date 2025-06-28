@@ -11,13 +11,19 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncPromise;
  */
 final class CallbackHandler
 {
-    /** @var array<callable> Callbacks to execute when Promise resolves */
+    /** 
+     * @var array<callable> Callbacks to execute when Promise resolves
+     */
     private array $thenCallbacks = [];
 
-    /** @var array<callable> Callbacks to execute when Promise rejects */
+    /**
+     * @var array<callable> Callbacks to execute when Promise rejects
+     */
     private array $catchCallbacks = [];
 
-    /** @var array<callable> Callbacks to execute when Promise settles (resolve or reject) */
+    /**
+     * @var array<callable> Callbacks to execute when Promise settles (resolve or reject)
+     *  */
     private array $finallyCallbacks = [];
 
     /**
@@ -64,7 +70,7 @@ final class CallbackHandler
             try {
                 $callback($value);
             } catch (\Throwable $e) {
-                error_log('Promise then callback error: '.$e->getMessage());
+                error_log('Promise then callback error: ' . $e->getMessage());
             }
         }
     }
@@ -83,7 +89,7 @@ final class CallbackHandler
             try {
                 $callback($reason);
             } catch (\Throwable $e) {
-                error_log('Promise catch callback error: '.$e->getMessage());
+                error_log('Promise catch callback error: ' . $e->getMessage());
             }
         }
     }
@@ -101,7 +107,7 @@ final class CallbackHandler
             try {
                 $callback();
             } catch (\Throwable $e) {
-                error_log('Promise finally callback error: '.$e->getMessage());
+                error_log('Promise finally callback error: ' . $e->getMessage());
             }
         }
     }

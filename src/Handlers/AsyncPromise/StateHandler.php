@@ -11,16 +11,24 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncPromise;
  */
 final class StateHandler
 {
-    /** @var bool Whether the Promise has been resolved */
+    /**
+     * @var bool Whether the Promise has been resolved
+     */
     private bool $resolved = false;
 
-    /** @var bool Whether the Promise has been rejected */
+    /**
+     * @var bool Whether the Promise has been rejected
+     * */
     private bool $rejected = false;
 
-    /** @var mixed The resolved value (if resolved) */
+    /**
+     * @var mixed The resolved value (if resolved)
+     * */
     private mixed $value = null;
 
-    /** @var mixed The rejection reason (if rejected) */
+    /**
+     * @var mixed The rejection reason (if rejected)
+     *  */
     private mixed $reason = null;
 
     /**

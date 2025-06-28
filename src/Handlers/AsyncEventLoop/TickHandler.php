@@ -13,10 +13,14 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop;
  */
 final class TickHandler
 {
-    /** @var array<callable> Callbacks to execute on the next tick */
+    /**
+     * @var array<callable> Callbacks to execute on the next tick
+     */
     private array $tickCallbacks = [];
 
-    /** @var array<callable> Callbacks to execute after current work phase */
+    /**
+     * @var array<callable> Callbacks to execute after current work phase
+     */
     private array $deferredCallbacks = [];
 
     /**
@@ -65,7 +69,7 @@ final class TickHandler
             try {
                 $callback();
             } catch (\Throwable $e) {
-                error_log('NextTick callback error: '.$e->getMessage());
+                error_log('NextTick callback error: ' . $e->getMessage());
             }
         }
 
@@ -93,7 +97,7 @@ final class TickHandler
             try {
                 $callback();
             } catch (\Throwable $e) {
-                error_log('Deferred callback error: '.$e->getMessage());
+                error_log('Deferred callback error: ' . $e->getMessage());
             }
         }
 
