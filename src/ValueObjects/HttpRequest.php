@@ -41,9 +41,9 @@ class HttpRequest implements HttpRequestInterface
      * based on the provided options, with sensible defaults for timeout,
      * SSL verification, and other common settings.
      *
-     * @param string $url The URL to request
-     * @param array $options Request configuration options
-     * @param callable $callback Function to call when request completes
+     * @param  string  $url  The URL to request
+     * @param  array  $options  Request configuration options
+     * @param  callable  $callback  Function to call when request completes
      */
     public function __construct(string $url, array $options, callable $callback)
     {
@@ -60,8 +60,8 @@ class HttpRequest implements HttpRequestInterface
      * SSL settings. Provides sensible defaults for options not explicitly
      * specified to ensure reliable request behavior.
      *
-     * @param string $url The target URL for the request
-     * @param array $options Configuration options for the request
+     * @param  string  $url  The target URL for the request
+     * @param  array  $options  Configuration options for the request
      * @return \CurlHandle Configured cURL handle ready for execution
      */
     private function createCurlHandle(string $url, array $options): \CurlHandle
@@ -140,9 +140,9 @@ class HttpRequest implements HttpRequestInterface
      * the request results (error, response body, HTTP status code) to
      * the completion callback for promise resolution or rejection.
      *
-     * @param string|null $error Error message if the request failed
-     * @param string|null $response Response body if the request succeeded
-     * @param int|null $httpCode HTTP status code from the response
+     * @param  string|null  $error  Error message if the request failed
+     * @param  string|null  $response  Response body if the request succeeded
+     * @param  int|null  $httpCode  HTTP status code from the response
      */
     public function executeCallback(?string $error, ?string $response, ?int $httpCode): void
     {

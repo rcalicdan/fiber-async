@@ -40,8 +40,8 @@ class Timer implements TimerInterface
      * and the specified delay. Generates a unique ID for timer tracking
      * and management within the event loop system.
      *
-     * @param float $delay Number of seconds to delay before execution
-     * @param callable $callback Function to call when timer fires
+     * @param  float  $delay  Number of seconds to delay before execution
+     * @param  callable  $callback  Function to call when timer fires
      */
     public function __construct(float $delay, callable $callback)
     {
@@ -99,7 +99,7 @@ class Timer implements TimerInterface
      * to determine if the timer should fire. Returns true when
      * the current time meets or exceeds the scheduled time.
      *
-     * @param float $currentTime The current timestamp to check against
+     * @param  float  $currentTime  The current timestamp to check against
      * @return bool True if the timer is ready to execute, false otherwise
      */
     public function isReady(float $currentTime): bool

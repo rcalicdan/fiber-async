@@ -33,8 +33,8 @@ class StreamWatcher
      * executed when the stream becomes ready for I/O operations. The callback
      * will receive the stream resource as its parameter when invoked.
      *
-     * @param resource $stream The stream resource to monitor
-     * @param callable $callback Function to call when stream is ready
+     * @param  resource  $stream  The stream resource to monitor
+     * @param  callable  $callback  Function to call when stream is ready
      */
     public function __construct($stream, callable $callback)
     {

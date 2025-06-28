@@ -66,9 +66,9 @@ class HttpClientBridge
      * The method preserves all Guzzle features and options while adding
      * proper fiber context management and event loop integration.
      *
-     * @param string $method HTTP method (GET, POST, PUT, DELETE, etc.)
-     * @param string $url The URL to request
-     * @param array $options Guzzle-specific request options (headers, timeout, etc.)
+     * @param  string  $method  HTTP method (GET, POST, PUT, DELETE, etc.)
+     * @param  string  $url  The URL to request
+     * @param  array  $options  Guzzle-specific request options (headers, timeout, etc.)
      * @return PromiseInterface A fiber-compatible promise that resolves with the Guzzle response
      */
     public function guzzle(string $method, string $url, array $options = []): PromiseInterface
@@ -126,7 +126,7 @@ class HttpClientBridge
      * The wrapped operation will not block other concurrent operations and
      * can be used with await() and other async control flow methods.
      *
-     * @param callable $httpCall The synchronous HTTP operation to wrap
+     * @param  callable  $httpCall  The synchronous HTTP operation to wrap
      * @return PromiseInterface A promise that resolves with the HTTP operation result
      */
     public function wrap(callable $httpCall): PromiseInterface
@@ -153,18 +153,18 @@ class HttpClientBridge
      * and errors, ensuring proper event loop scheduling and fiber context
      * management throughout the promise lifecycle.
      *
-     * @param GuzzlePromiseInterface $guzzlePromise The Guzzle promise to bridge
-     * @param callable $resolve Callback for successful resolution
-     * @param callable $reject Callback for promise rejection
+     * @param  GuzzlePromiseInterface  $guzzlePromise  The Guzzle promise to bridge
+     * @param  callable  $resolve  Callback for successful resolution
+     * @param  callable  $reject  Callback for promise rejection
      */
     private function bridgeGuzzlePromise(GuzzlePromiseInterface $guzzlePromise, callable $resolve, callable $reject): void
     {
         $guzzlePromise->then(
             function ($response) use ($resolve) {
-                AsyncEventLoop::getInstance()->nextTick(fn() => $resolve($response));
+                AsyncEventLoop::getInstance()->nextTick(fn () => $resolve($response));
             },
             function ($reason) use ($reject) {
-                AsyncEventLoop::getInstance()->nextTick(fn() => $reject($reason));
+                AsyncEventLoop::getInstance()->nextTick(fn () => $reject($reason));
             }
         );
     }
@@ -191,7 +191,7 @@ class LaravelHttpBridge
     /**
      * Create a new Laravel HTTP bridge instance.
      *
-     * @param LaravelHttpFactory $http The Laravel HTTP factory to bridge
+     * @param  LaravelHttpFactory  $http  The Laravel HTTP factory to bridge
      */
     public function __construct(LaravelHttpFactory $http)
     {
@@ -205,8 +205,8 @@ class LaravelHttpBridge
      * asynchronously without blocking the event loop. The request maintains
      * Laravel's standard behavior while adding async capabilities.
      *
-     * @param string $url The URL to request
-     * @param array $query Optional query parameters to append to the URL
+     * @param  string  $url  The URL to request
+     * @param  array  $query  Optional query parameters to append to the URL
      * @return PromiseInterface A promise that resolves with the Laravel response object
      */
     public function get(string $url, array $query = []): PromiseInterface
@@ -221,8 +221,8 @@ class LaravelHttpBridge
      * asynchronously. The data is automatically encoded as JSON and
      * appropriate headers are set for the request.
      *
-     * @param string $url The URL to post to
-     * @param array $data The data to send as JSON in the request body
+     * @param  string  $url  The URL to post to
+     * @param  array  $data  The data to send as JSON in the request body
      * @return PromiseInterface A promise that resolves with the Laravel response object
      */
     public function post(string $url, array $data = []): PromiseInterface
@@ -237,8 +237,8 @@ class LaravelHttpBridge
      * asynchronously. Similar to POST but uses the PUT HTTP method
      * for resource updates and replacements.
      *
-     * @param string $url The URL to send the PUT request to
-     * @param array $data The data to send as JSON in the request body
+     * @param  string  $url  The URL to send the PUT request to
+     * @param  array  $data  The data to send as JSON in the request body
      * @return PromiseInterface A promise that resolves with the Laravel response object
      */
     public function put(string $url, array $data = []): PromiseInterface
@@ -253,7 +253,7 @@ class LaravelHttpBridge
      * blocking the event loop. Used for resource deletion operations
      * in RESTful APIs.
      *
-     * @param string $url The URL to send the DELETE request to
+     * @param  string  $url  The URL to send the DELETE request to
      * @return PromiseInterface A promise that resolves with the Laravel response object
      */
     public function delete(string $url): PromiseInterface
@@ -268,9 +268,9 @@ class LaravelHttpBridge
      * system. Handles all HTTP methods and options while maintaining Laravel's
      * familiar API and response format.
      *
-     * @param string $method The HTTP method to use
-     * @param string $url The URL to request
-     * @param array $options Request options (query, json, headers, etc.)
+     * @param  string  $method  The HTTP method to use
+     * @param  string  $url  The URL to request
+     * @param  array  $options  Request options (query, json, headers, etc.)
      * @return PromiseInterface A promise that resolves with the Laravel response
      */
     private function makeRequest(string $method, string $url, array $options = []): PromiseInterface
