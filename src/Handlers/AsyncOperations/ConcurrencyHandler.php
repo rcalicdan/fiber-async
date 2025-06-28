@@ -35,7 +35,20 @@ final readonly class ConcurrencyHandler
             $total = count($taskList);
             $taskIndex = 0;
 
-            $processNext = function () use (&$processNext, &$taskList, &$originalKeys, &$running, &$completed, &$results, &$total, &$taskIndex, $concurrency, $resolve, $reject) {
+            $processNext = function () use (
+                &$processNext,
+                &$taskList,
+                &$originalKeys,
+                &$running,
+                &$completed,
+                &$results,
+                &$total,
+                &$taskIndex,
+                $concurrency,
+                $resolve,
+                $reject
+            ) {
+                // Start as many tasks as we can up to the concurrency limit
                 while ($running < $concurrency && $taskIndex < $total) {
                     $currentIndex = $taskIndex++;
                     $task = $taskList[$currentIndex];
@@ -43,7 +56,9 @@ final readonly class ConcurrencyHandler
                     $running++;
 
                     try {
-                        $promise = is_callable($task) ? $this->executionHandler->async($task)() : $task;
+                        $promise = is_callable($task)
+                            ? $this->executionHandler->async($task)()
+                            : $task;
 
                         if (!($promise instanceof PromiseInterface)) {
                             throw new RuntimeException("Task must return a Promise or be a callable that returns a Promise");
@@ -55,7 +70,15 @@ final readonly class ConcurrencyHandler
                     }
 
                     $promise
-                        ->then(function ($result) use ($originalKey, &$results, &$running, &$completed, $total, $resolve, $processNext) {
+                        ->then(function ($result) use (
+                            $originalKey,
+                            &$results,
+                            &$running,
+                            &$completed,
+                            $total,
+                            $resolve,
+                            $processNext
+                        ) {
                             $results[$originalKey] = $result;
                             $running--;
                             $completed++;
@@ -63,6 +86,7 @@ final readonly class ConcurrencyHandler
                             if ($completed === $total) {
                                 $resolve($results);
                             } else {
+                                // Schedule next task processing on next tick
                                 AsyncEventLoop::getInstance()->nextTick($processNext);
                             }
                         })
@@ -73,6 +97,7 @@ final readonly class ConcurrencyHandler
                 }
             };
 
+            // Start initial batch of tasks
             AsyncEventLoop::getInstance()->nextTick($processNext);
         });
     }
