@@ -618,33 +618,3 @@ try {
     echo str_repeat('!', 50) . "\n";
     exit(1);
 }
-
-echo "Testtttttt\n";
-$start = microtime(true);
-$result = run(function() {
-    $promises = [
-        delay(2.0)->then(fn() => 'slow-2s'),
-        delay(1.0)->then(fn() => 'fast-1s'),
-        delay(3.0)->then(fn() => 'slowest-3s'),
-    ];
-    return await(race($promises));
-});
-$time = microtime(true) - $start;
-echo "Race with cancellation Duration: " . formatTime($time) . "\n"; // Should be ~1s
-
-
-echo "Testing race without chaining...\n";
-$start = microtime(true);
-
-echo "Try\n";
-$results = run(function() {
-    $promisess = [
-        delay(2.0),  // No ->then() chaining
-        delay(1.0),  // No ->then() chaining  
-        delay(3.0),  // No ->then() chaining
-    ];
-    return await(race($promisess));
-});
-
-$time = microtime(true) - $start;
-echo "Unchained race duration: " . formatTime($time) . "\n";
