@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Handlers\Timer;
 
 use Rcalicdan\FiberAsync\ValueObjects\Timer;
 
-class TimerExecutionHandler
+final readonly class TimerExecutionHandler
 {
     public function executeReadyTimers(array &$timers, float $currentTime): bool
     {

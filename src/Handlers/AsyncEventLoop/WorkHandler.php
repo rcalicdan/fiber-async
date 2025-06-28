@@ -7,7 +7,7 @@ use Rcalicdan\FiberAsync\Managers\HttpRequestManager;
 use Rcalicdan\FiberAsync\Managers\StreamManager;
 use Rcalicdan\FiberAsync\Managers\TimerManager;
 
-class WorkHandler
+final readonly class WorkHandler
 {
     private TimerManager $timerManager;
     private HttpRequestManager $httpRequestManager;

@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop;
 
-class ActivityHandler
+final class ActivityHandler
 {
     private int $lastActivity = 0;
 

@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Handlers\Http;
 
 use Rcalicdan\FiberAsync\ValueObjects\HttpRequest;
 
-class HttpResponseHandler
+final readonly class HttpResponseHandler
 {
     public function handleSuccessfulResponse($handle, HttpRequest $request): void
     {

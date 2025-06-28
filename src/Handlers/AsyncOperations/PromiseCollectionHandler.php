@@ -6,7 +6,7 @@ use Rcalicdan\FiberAsync\AsyncPromise;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Exception;
 
-class PromiseCollectionHandler
+final readonly class PromiseCollectionHandler
 {
     public function all(array $promises): PromiseInterface
     {

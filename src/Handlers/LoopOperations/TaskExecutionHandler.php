@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Handlers\LoopOperations;
 
 use Rcalicdan\FiberAsync\AsyncOperations;
 
-class TaskExecutionHandler
+final readonly class TaskExecutionHandler
 {
     private AsyncOperations $asyncOps;
     private LoopExecutionHandler $executionHandler;

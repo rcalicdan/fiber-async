@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Handlers\Stream;
 
 use Rcalicdan\FiberAsync\ValueObjects\StreamWatcher;
 
-class StreamSelectHandler
+final readonly class StreamSelectHandler
 {
     public function selectStreams(array $watchers): array
     {

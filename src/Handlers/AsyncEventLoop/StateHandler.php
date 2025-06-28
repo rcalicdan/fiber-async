@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop;
 
-class StateHandler
+final class StateHandler
 {
     private bool $running = true;
 

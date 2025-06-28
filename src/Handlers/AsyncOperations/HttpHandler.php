@@ -8,7 +8,7 @@ use Rcalicdan\FiberAsync\Bridges\HttpClientBridge;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Exception;
 
-class HttpHandler
+final readonly class HttpHandler
 {
     public function fetch(string $url, array $options = []): PromiseInterface
     {

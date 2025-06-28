@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Handlers\LoopOperations;
 
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 
-class BenchmarkHandler
+final readonly class BenchmarkHandler
 {
     private LoopExecutionHandler $executionHandler;
 

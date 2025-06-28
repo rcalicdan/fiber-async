@@ -6,7 +6,7 @@ use Rcalicdan\FiberAsync\AsyncEventLoop;
 use Rcalicdan\FiberAsync\AsyncPromise;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 
-class TimerHandler
+final readonly class TimerHandler
 {
     public function delay(float $seconds): PromiseInterface
     {

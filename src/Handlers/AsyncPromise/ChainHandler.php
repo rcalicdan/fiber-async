@@ -5,7 +5,7 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncPromise;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\AsyncEventLoop;
 
-class ChainHandler
+final readonly class ChainHandler
 {
     public function createThenHandler(?callable $onFulfilled, callable $resolve, callable $reject): callable
     {

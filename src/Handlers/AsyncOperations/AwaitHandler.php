@@ -7,7 +7,7 @@ use Fiber;
 use Exception;
 use Throwable;
 
-class AwaitHandler
+final readonly class AwaitHandler
 {
     private FiberContextHandler $contextHandler;
 

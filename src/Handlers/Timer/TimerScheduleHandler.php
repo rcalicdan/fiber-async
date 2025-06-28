@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Handlers\Timer;
 
 use Rcalicdan\FiberAsync\ValueObjects\Timer;
 
-class TimerScheduleHandler
+final readonly class TimerScheduleHandler
 {
     public function createTimer(float $delay, callable $callback): Timer
     {
