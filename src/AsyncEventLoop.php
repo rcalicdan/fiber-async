@@ -3,15 +3,15 @@
 namespace Rcalicdan\FiberAsync;
 
 use Rcalicdan\FiberAsync\Contracts\EventLoopInterface;
+use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\ActivityHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\SleepHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\StateHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\TickHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\WorkHandler;
 use Rcalicdan\FiberAsync\Managers\FiberManager;
 use Rcalicdan\FiberAsync\Managers\HttpRequestManager;
 use Rcalicdan\FiberAsync\Managers\StreamManager;
 use Rcalicdan\FiberAsync\Managers\TimerManager;
-use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\TickHandler;
-use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\WorkHandler;
-use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\SleepHandler;
-use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\ActivityHandler;
-use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\StateHandler;
 
 class AsyncEventLoop implements EventLoopInterface
 {
@@ -122,6 +122,6 @@ class AsyncEventLoop implements EventLoopInterface
 
     public function isIdle(): bool
     {
-        return !$this->workHandler->hasWork() || $this->activityHandler->isIdle();
+        return ! $this->workHandler->hasWork() || $this->activityHandler->isIdle();
     }
 }

@@ -1,7 +1,7 @@
 <?php
 
-use Rcalicdan\FiberAsync\Facades\Async;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
+use Rcalicdan\FiberAsync\Facades\Async;
 
 /**
  * Check if code is running inside a Fiber

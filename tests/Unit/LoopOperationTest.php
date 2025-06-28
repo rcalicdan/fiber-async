@@ -1,26 +1,26 @@
 <?php
 
-use Rcalicdan\FiberAsync\LoopOperations;
 use Rcalicdan\FiberAsync\AsyncOperations;
+use Rcalicdan\FiberAsync\LoopOperations;
 
 beforeEach(function () {
     resetEventLoop();
 });
 
 test('LoopOperations class can be instantiated', function () {
-    $loopOps = new LoopOperations();
+    $loopOps = new LoopOperations;
     expect($loopOps)->toBeInstanceOf(LoopOperations::class);
 });
 
 test('LoopOperations can be instantiated with AsyncOperations', function () {
-    $asyncOps = new AsyncOperations();
+    $asyncOps = new AsyncOperations;
     $loopOps = new LoopOperations($asyncOps);
     expect($loopOps)->toBeInstanceOf(LoopOperations::class);
 });
 
 test('LoopOperations task method works', function () {
-    $loopOps = new LoopOperations();
-    
+    $loopOps = new LoopOperations;
+
     $result = $loopOps->task(function () {
         return 'task result';
     });
@@ -29,7 +29,7 @@ test('LoopOperations task method works', function () {
 });
 
 test('LoopOperations asyncSleep method works', function () {
-    $loopOps = new LoopOperations();
+    $loopOps = new LoopOperations;
     $start = microtime(true);
 
     $loopOps->asyncSleep(0.05);

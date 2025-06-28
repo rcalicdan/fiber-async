@@ -22,7 +22,7 @@ class LoopOperations
 
     public function __construct(?AsyncOperations $asyncOps = null)
     {
-        $this->asyncOps = $asyncOps ?? new AsyncOperations();
+        $this->asyncOps = $asyncOps ?? new AsyncOperations;
         $this->executionHandler = new LoopExecutionHandler($this->asyncOps);
         $this->concurrentHandler = new ConcurrentExecutionHandler($this->asyncOps, $this->executionHandler);
         $this->taskHandler = new TaskExecutionHandler($this->asyncOps, $this->executionHandler);

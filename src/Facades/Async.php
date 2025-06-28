@@ -3,8 +3,8 @@
 namespace Rcalicdan\FiberAsync\Facades;
 
 use Rcalicdan\FiberAsync\AsyncOperations;
-use Rcalicdan\FiberAsync\LoopOperations;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
+use Rcalicdan\FiberAsync\LoopOperations;
 
 final class Async
 {
@@ -14,8 +14,9 @@ final class Async
     protected static function getAsyncOperations(): AsyncOperations
     {
         if (self::$asyncOps === null) {
-            self::$asyncOps = new AsyncOperations();
+            self::$asyncOps = new AsyncOperations;
         }
+
         return self::$asyncOps;
     }
 
@@ -24,6 +25,7 @@ final class Async
         if (self::$loopOps === null) {
             self::$loopOps = new LoopOperations(self::getAsyncOperations());
         }
+
         return self::$loopOps;
     }
 

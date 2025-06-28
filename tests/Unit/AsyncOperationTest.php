@@ -1,19 +1,19 @@
 <?php
 
-use Rcalicdan\FiberAsync\AsyncOperations;
 use Rcalicdan\FiberAsync\AsyncEventLoop;
+use Rcalicdan\FiberAsync\AsyncOperations;
 
 beforeEach(function () {
     resetEventLoop();
 });
 
 test('AsyncOperations class can be instantiated', function () {
-    $asyncOps = new AsyncOperations();
+    $asyncOps = new AsyncOperations;
     expect($asyncOps)->toBeInstanceOf(AsyncOperations::class);
 });
 
 test('AsyncOperations async method works', function () {
-    $asyncOps = new AsyncOperations();
+    $asyncOps = new AsyncOperations;
     $asyncFunc = $asyncOps->async(function ($value) {
         return $value * 2;
     });
@@ -37,7 +37,7 @@ test('AsyncOperations async method works', function () {
 });
 
 test('AsyncOperations resolve method works', function () {
-    $asyncOps = new AsyncOperations();
+    $asyncOps = new AsyncOperations;
     $resolved = false;
     $value = null;
 
@@ -48,7 +48,7 @@ test('AsyncOperations resolve method works', function () {
 
     $loop = AsyncEventLoop::getInstance();
     $start = microtime(true);
-    while (!$resolved && (microtime(true) - $start) < 1) {
+    while (! $resolved && (microtime(true) - $start) < 1) {
         $loop->run();
         if ($resolved) {
             break;

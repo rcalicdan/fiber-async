@@ -60,7 +60,7 @@ test('memory usage stays reasonable with many operations', function () {
 
         for ($i = 0; $i < 50; $i++) {
             $promises[] = async(function () use ($i) {
-                return await(delay(0.001)->then(fn() => $i * 2));
+                return await(delay(0.001)->then(fn () => $i * 2));
             })();
         }
 

@@ -2,8 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\Managers;
 
-use Rcalicdan\FiberAsync\Handlers\Stream\StreamWatcherHandler;
 use Rcalicdan\FiberAsync\Handlers\Stream\StreamSelectHandler;
+use Rcalicdan\FiberAsync\Handlers\Stream\StreamWatcherHandler;
 
 class StreamManager
 {
@@ -15,8 +15,8 @@ class StreamManager
 
     public function __construct()
     {
-        $this->watcherHandler = new StreamWatcherHandler();
-        $this->selectHandler = new StreamSelectHandler();
+        $this->watcherHandler = new StreamWatcherHandler;
+        $this->selectHandler = new StreamSelectHandler;
     }
 
     public function addStreamWatcher($stream, callable $callback): void
@@ -28,14 +28,14 @@ class StreamManager
     public function processStreams(): void
     {
         $readyStreams = $this->selectHandler->selectStreams($this->watchers);
-        
-        if (!empty($readyStreams)) {
+
+        if (! empty($readyStreams)) {
             $this->selectHandler->processReadyStreams($readyStreams, $this->watchers);
         }
     }
 
     public function hasWatchers(): bool
     {
-        return !empty($this->watchers);
+        return ! empty($this->watchers);
     }
 }

@@ -2,8 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\Managers;
 
-use Rcalicdan\FiberAsync\Handlers\Fiber\FiberStartHandler;
 use Rcalicdan\FiberAsync\Handlers\Fiber\FiberResumeHandler;
+use Rcalicdan\FiberAsync\Handlers\Fiber\FiberStartHandler;
 use Rcalicdan\FiberAsync\Handlers\Fiber\FiberStateHandler;
 
 class FiberManager
@@ -19,9 +19,9 @@ class FiberManager
 
     public function __construct()
     {
-        $this->startHandler = new FiberStartHandler();
-        $this->resumeHandler = new FiberResumeHandler();
-        $this->stateHandler = new FiberStateHandler();
+        $this->startHandler = new FiberStartHandler;
+        $this->resumeHandler = new FiberResumeHandler;
+        $this->stateHandler = new FiberStateHandler;
     }
 
     public function addFiber(\Fiber $fiber): void
@@ -37,9 +37,9 @@ class FiberManager
 
         $processed = false;
 
-        if (!empty($this->fibers)) {
+        if (! empty($this->fibers)) {
             $processed = $this->processNewFibers() || $processed;
-        } elseif (!empty($this->suspendedFibers)) {
+        } elseif (! empty($this->suspendedFibers)) {
             $processed = $this->processSuspendedFibers() || $processed;
         }
 
@@ -90,11 +90,11 @@ class FiberManager
 
     public function hasFibers(): bool
     {
-        return !empty($this->fibers) || !empty($this->suspendedFibers);
+        return ! empty($this->fibers) || ! empty($this->suspendedFibers);
     }
 
     public function hasActiveFibers(): bool
     {
-        return $this->stateHandler->hasActiveFibers($this->suspendedFibers) || !empty($this->fibers);
+        return $this->stateHandler->hasActiveFibers($this->suspendedFibers) || ! empty($this->fibers);
     }
 }

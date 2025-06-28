@@ -3,11 +3,11 @@
 namespace Rcalicdan\FiberAsync;
 
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
-use Rcalicdan\FiberAsync\Handlers\AsyncPromise\StateHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncPromise\CallbackHandler;
-use Rcalicdan\FiberAsync\Handlers\AsyncPromise\ExecutorHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncPromise\ChainHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncPromise\ExecutorHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncPromise\ResolutionHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncPromise\StateHandler;
 
 class AsyncPromise implements PromiseInterface
 {
@@ -30,8 +30,8 @@ class AsyncPromise implements PromiseInterface
 
         $this->executorHandler->executeExecutor(
             $executor,
-            fn($value) => $this->resolve($value),
-            fn($reason) => $this->reject($reason)
+            fn ($value) => $this->resolve($value),
+            fn ($reason) => $this->reject($reason)
         );
     }
 
@@ -52,9 +52,9 @@ class AsyncPromise implements PromiseInterface
             $handleReject = $this->chainHandler->createCatchHandler($onRejected, $resolve, $reject);
 
             if ($this->stateHandler->isResolved()) {
-                $this->chainHandler->scheduleHandler(fn() => $handleResolve($this->stateHandler->getValue()));
+                $this->chainHandler->scheduleHandler(fn () => $handleResolve($this->stateHandler->getValue()));
             } elseif ($this->stateHandler->isRejected()) {
-                $this->chainHandler->scheduleHandler(fn() => $handleReject($this->stateHandler->getReason()));
+                $this->chainHandler->scheduleHandler(fn () => $handleReject($this->stateHandler->getReason()));
             } else {
                 $this->callbackHandler->addThenCallback($handleResolve);
                 $this->callbackHandler->addCatchCallback($handleReject);
@@ -70,6 +70,7 @@ class AsyncPromise implements PromiseInterface
     public function finally(callable $onFinally): PromiseInterface
     {
         $this->callbackHandler->addFinallyCallback($onFinally);
+
         return $this;
     }
 

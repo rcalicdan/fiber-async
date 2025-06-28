@@ -2,40 +2,33 @@
 
 namespace Rcalicdan\FiberAsync\Handlers\LoopOperations;
 
+use Exception;
 use Rcalicdan\FiberAsync\AsyncOperations;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
-use Exception;
 
 /**
  * Handles timeout functionality for async operations.
- * 
+ *
  * This class provides the ability to run async operations with
  * a maximum execution time, throwing an exception if the timeout is exceeded.
- * 
- * @package Rcalicdan\FiberAsync\Handlers\LoopOperations
- * @author  Rcalicdan
  */
 final readonly class TimeoutHandler
 {
     /**
      * Async operations instance for timeout management.
-     * 
-     * @var AsyncOperations
      */
     private AsyncOperations $asyncOps;
 
     /**
      * Loop execution handler for running operations.
-     * 
-     * @var LoopExecutionHandler
      */
     private LoopExecutionHandler $executionHandler;
 
     /**
      * Initialize the timeout handler.
-     * 
-     * @param AsyncOperations       $asyncOps         Async operations instance
-     * @param LoopExecutionHandler  $executionHandler Loop execution handler
+     *
+     * @param  AsyncOperations  $asyncOps  Async operations instance
+     * @param  LoopExecutionHandler  $executionHandler  Loop execution handler
      */
     public function __construct(AsyncOperations $asyncOps, LoopExecutionHandler $executionHandler)
     {
@@ -45,14 +38,15 @@ final readonly class TimeoutHandler
 
     /**
      * Run an async operation with a timeout limit.
-     * 
+     *
      * Executes the operation and races it against a timeout. If the operation
      * completes before the timeout, its result is returned. If the timeout
      * is reached first, an exception is thrown.
-     * 
-     * @param callable|PromiseInterface $asyncOperation The operation to execute
-     * @param float                     $timeout        Timeout in seconds
+     *
+     * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
+     * @param  float  $timeout  Timeout in seconds
      * @return mixed The result of the async operation
+     *
      * @throws Exception If the operation times out
      */
     public function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
@@ -68,17 +62,18 @@ final readonly class TimeoutHandler
 
     /**
      * Create a promise that rejects after the specified timeout.
-     * 
+     *
      * Creates a promise that will automatically reject with a timeout
      * exception after the specified duration.
-     * 
-     * @param float $timeout Timeout duration in seconds
+     *
+     * @param  float  $timeout  Timeout duration in seconds
      * @return PromiseInterface Promise that rejects on timeout
      */
     private function createTimeoutPromise(float $timeout): PromiseInterface
     {
         return $this->asyncOps->async(function () use ($timeout) {
             $this->asyncOps->await($this->asyncOps->delay($timeout));
+
             throw new Exception("Operation timed out after {$timeout} seconds");
         })();
     }

@@ -15,8 +15,8 @@ class TimerManager
 
     public function __construct()
     {
-        $this->executionHandler = new TimerExecutionHandler();
-        $this->scheduleHandler = new TimerScheduleHandler();
+        $this->executionHandler = new TimerExecutionHandler;
+        $this->scheduleHandler = new TimerScheduleHandler;
     }
 
     public function addTimer(float $delay, callable $callback): string
@@ -30,17 +30,19 @@ class TimerManager
     public function processTimers(): bool
     {
         $currentTime = microtime(true);
+
         return $this->executionHandler->executeReadyTimers($this->timers, $currentTime);
     }
 
     public function hasTimers(): bool
     {
-        return !empty($this->timers);
+        return ! empty($this->timers);
     }
 
     public function getNextTimerDelay(): ?float
     {
         $currentTime = microtime(true);
+
         return $this->scheduleHandler->calculateDelay($this->timers, $currentTime);
     }
 }

@@ -22,9 +22,10 @@ describe('Fast File Upload Performance Tests', function () {
             for ($i = 0; $i < $fileCount; $i++) {
                 $results[] = Async::run(
                     Async::delay(0.01) // Simulate 10ms upload time
-                        ->then(fn() => ["status" => "uploaded", "file" => "file_{$i}.txt"])
+                        ->then(fn () => ['status' => 'uploaded', 'file' => "file_{$i}.txt"])
                 );
             }
+
             return $results;
         });
 
@@ -33,8 +34,10 @@ describe('Fast File Upload Performance Tests', function () {
             $promises = [];
             for ($i = 0; $i < $fileCount; $i++) {
                 $promises[] = Async::delay(0.01) // Simulate 10ms upload time
-                    ->then(fn() => ["status" => "uploaded", "file" => "file_{$i}.txt"]);
+                    ->then(fn () => ['status' => 'uploaded', 'file' => "file_{$i}.txt"])
+                ;
             }
+
             return Async::runAll($promises);
         });
 
@@ -44,7 +47,7 @@ describe('Fast File Upload Performance Tests', function () {
         expect($concurrentResult['success'])->toBeTrue();
         expect($comparison['improvement_factor'])->toBeGreaterThan(2.0);
 
-        echo "\n" . BenchmarkHelper::formatResults($comparison) . "\n";
+        echo "\n".BenchmarkHelper::formatResults($comparison)."\n";
     });
 
     test('debug concurrent vs sequential execution', function () {
@@ -57,9 +60,9 @@ describe('Fast File Upload Performance Tests', function () {
         $start = microtime(true);
         $sequentialResults = [];
         for ($i = 0; $i < $taskCount; $i++) {
-            echo "Sequential task {$i} starting at " . round((microtime(true) - $start) * 1000) . "ms\n";
-            $result = Async::run(Async::delay($delay)->then(fn() => "task_{$i}"));
-            echo "Sequential task {$i} completed at " . round((microtime(true) - $start) * 1000) . "ms\n";
+            echo "Sequential task {$i} starting at ".round((microtime(true) - $start) * 1000)."ms\n";
+            $result = Async::run(Async::delay($delay)->then(fn () => "task_{$i}"));
+            echo "Sequential task {$i} completed at ".round((microtime(true) - $start) * 1000)."ms\n";
             $sequentialResults[] = $result;
         }
         $sequentialTime = microtime(true) - $start;
@@ -70,9 +73,10 @@ describe('Fast File Upload Performance Tests', function () {
         $start = microtime(true);
         $promises = [];
         for ($i = 0; $i < $taskCount; $i++) {
-            echo "Concurrent task {$i} created at " . round((microtime(true) - $start) * 1000) . "ms\n";
+            echo "Concurrent task {$i} created at ".round((microtime(true) - $start) * 1000)."ms\n";
             $promises[] = Async::delay($delay)->then(function () use ($i, $start) {
-                echo "Concurrent task {$i} completed at " . round((microtime(true) - $start) * 1000) . "ms\n";
+                echo "Concurrent task {$i} completed at ".round((microtime(true) - $start) * 1000)."ms\n";
+
                 return "task_{$i}";
             });
         }
@@ -80,9 +84,9 @@ describe('Fast File Upload Performance Tests', function () {
         $concurrentTime = microtime(true) - $start;
 
         echo "\nResults:\n";
-        echo "Sequential: {$sequentialTime}s (expected ~" . ($delay * $taskCount) . "s)\n";
+        echo "Sequential: {$sequentialTime}s (expected ~".($delay * $taskCount)."s)\n";
         echo "Concurrent: {$concurrentTime}s (expected ~{$delay}s)\n";
-        echo "Ratio: " . ($sequentialTime / $concurrentTime) . "x\n";
+        echo 'Ratio: '.($sequentialTime / $concurrentTime)."x\n";
 
         // Basic assertions
         expect(count($sequentialResults))->toBe($taskCount);
@@ -97,18 +101,20 @@ describe('Fast File Upload Performance Tests', function () {
             $results = [];
             for ($i = 0; $i < $fileCount; $i++) {
                 $results[] = Async::run(
-                    Async::delay(0.200)->then(fn() => ["uploaded" => "file_{$i}.txt"])
+                    Async::delay(0.200)->then(fn () => ['uploaded' => "file_{$i}.txt"])
                 );
             }
+
             return $results;
         });
 
-        // Test concurrent execution  
+        // Test concurrent execution
         $concurrentResult = BenchmarkHelper::measureTime(function () use ($fileCount) {
             $promises = [];
             for ($i = 0; $i < $fileCount; $i++) {
-                $promises[] = Async::delay(0.200)->then(fn() => ["uploaded" => "file_{$i}.txt"]);
+                $promises[] = Async::delay(0.200)->then(fn () => ['uploaded' => "file_{$i}.txt"]);
             }
+
             return Async::runAll($promises); // Use runAll instead of runConcurrent
         });
 
@@ -132,23 +138,24 @@ describe('Fast File Upload Performance Tests', function () {
         $start = microtime(true);
         $promises = [];
         for ($i = 0; $i < $fileCount; $i++) {
-            $promises[] = Async::delay($delay)->then(fn() => "task_{$i}");
+            $promises[] = Async::delay($delay)->then(fn () => "task_{$i}");
         }
         $runAllResults = Async::runAll($promises);
         $runAllTime = microtime(true) - $start;
-        echo "runAll: " . round($runAllTime * 1000) . "ms\n";
+        echo 'runAll: '.round($runAllTime * 1000)."ms\n";
 
         $start = microtime(true);
         $tasks = [];
         for ($i = 0; $i < $fileCount; $i++) {
             $tasks[] = function () use ($i, $delay) {
                 Async::await(Async::delay($delay));
+
                 return "task_{$i}";
             };
         }
         $runConcurrentResults = Async::runConcurrent($tasks, 10);
         $runConcurrentTime = microtime(true) - $start;
-        echo "runConcurrent (concurrency=10): " . round($runConcurrentTime * 1000) . "ms\n";
+        echo 'runConcurrent (concurrency=10): '.round($runConcurrentTime * 1000)."ms\n";
 
         // Test runConcurrent with low concurrency - FIXED
         $start = microtime(true);
@@ -157,12 +164,13 @@ describe('Fast File Upload Performance Tests', function () {
             $tasks[] = function () use ($i, $delay) {
                 // Use await instead of returning a promise
                 Async::await(Async::delay($delay));
+
                 return "task_{$i}";
             };
         }
         $runConcurrentLowResults = Async::runConcurrent($tasks, 1);
         $runConcurrentLowTime = microtime(true) - $start;
-        echo "runConcurrent (concurrency=1): " . round($runConcurrentLowTime * 1000) . "ms\n";
+        echo 'runConcurrent (concurrency=1): '.round($runConcurrentLowTime * 1000)."ms\n";
 
         echo "\nExpected behavior:\n";
         echo "- runAll and runConcurrent(concurrency=10) should be similar (~100ms)\n";
@@ -182,8 +190,10 @@ describe('Fast File Upload Performance Tests', function () {
                 $promises = [];
                 for ($i = 0; $i < $uploadCount; $i++) {
                     $promises[] = Async::delay($delay)
-                        ->then(fn() => ["file" => "upload_{$i}", "delay" => $delay]);
+                        ->then(fn () => ['file' => "upload_{$i}", 'delay' => $delay])
+                    ;
                 }
+
                 return Async::runAll($promises);
             });
 
@@ -202,9 +212,11 @@ describe('Fast File Upload Performance Tests', function () {
             for ($i = 0; $i < $taskCount; $i++) {
                 $tasks[] = function () use ($i) {
                     return Async::delay(0.001) // 1ms task
-                        ->then(fn() => "task_{$i}_complete");
+                        ->then(fn () => "task_{$i}_complete")
+                    ;
                 };
             }
+
             return Async::runConcurrent($tasks, 10);
         });
 
@@ -213,8 +225,8 @@ describe('Fast File Upload Performance Tests', function () {
 
         echo "\nMemory Usage for {$taskCount} tasks:\n";
         echo "Duration: {$result['duration']}s\n";
-        echo "Memory used: " . formatBytes($memoryUsed) . "\n";
-        echo "Memory per task: " . formatBytes($memoryUsed / $taskCount) . "\n";
+        echo 'Memory used: '.formatBytes($memoryUsed)."\n";
+        echo 'Memory per task: '.formatBytes($memoryUsed / $taskCount)."\n";
 
         expect($result['success'])->toBeTrue();
         expect(count($result['result']))->toBe($taskCount);
@@ -233,19 +245,22 @@ describe('Fast File Upload Performance Tests', function () {
                             if (rand(0, 100) / 100 < $errorRate) {
                                 throw new Exception("Upload failed for file_{$i}");
                             }
+
                             return "file_{$i}_uploaded";
-                        });
+                        })
+                    ;
                 };
             }
 
             // Use tryAsync to handle errors gracefully
-            $safeTasks = array_map(fn($task) => Async::tryAsync($task), $tasks);
+            $safeTasks = array_map(fn ($task) => Async::tryAsync($task), $tasks);
+
             return Async::runConcurrent($safeTasks, 5);
         });
 
         echo "\nError Handling Performance:\n";
         echo "Duration: {$result['duration']}s\n";
-        echo "Tasks completed: " . count(array_filter($result['result'], fn($r) => $r !== null)) . "/{$taskCount}\n";
+        echo 'Tasks completed: '.count(array_filter($result['result'], fn ($r) => $r !== null))."/{$taskCount}\n";
 
         expect($result['success'])->toBeTrue();
     });
@@ -259,7 +274,8 @@ describe('Fast File Upload Performance Tests', function () {
                 // Simulate uploads with different speeds
                 $delay = 0.005 + ($i * 0.002); // 5ms to 13ms
                 $promises[] = Async::delay($delay)
-                    ->then(fn() => ["file" => "upload_{$i}", "delay" => $delay]);
+                    ->then(fn () => ['file' => "upload_{$i}", 'delay' => $delay])
+                ;
             }
 
             // Race - first one to complete wins
@@ -268,7 +284,7 @@ describe('Fast File Upload Performance Tests', function () {
 
         echo "\nRace Condition Test:\n";
         echo "Duration: {$result['duration']}s\n";
-        echo "Winner: " . json_encode($result['result']) . "\n";
+        echo 'Winner: '.json_encode($result['result'])."\n";
 
         expect($result['success'])->toBeTrue();
         expect($result['duration'])->toBeLessThan(0.01); // Should complete in ~5ms
@@ -286,7 +302,8 @@ describe('Fast File Upload Performance Tests', function () {
                 $batchPromises = [];
                 foreach ($batch as $fileIndex) {
                     $batchPromises[] = Async::delay(0.003)
-                        ->then(fn() => "file_{$fileIndex}_uploaded");
+                        ->then(fn () => "file_{$fileIndex}_uploaded")
+                    ;
                 }
                 $batchResults = Async::runAll($batchPromises);
                 $allResults = array_merge($allResults, $batchResults);
@@ -297,7 +314,7 @@ describe('Fast File Upload Performance Tests', function () {
 
         echo "\nBatch Processing ({$batchSize} per batch):\n";
         echo "Duration: {$result['duration']}s\n";
-        echo "Files processed: " . count($result['result']) . "\n";
+        echo 'Files processed: '.count($result['result'])."\n";
 
         expect($result['success'])->toBeTrue();
         expect(count($result['result']))->toBe($totalFiles);
@@ -307,7 +324,12 @@ describe('Fast File Upload Performance Tests', function () {
 // Lightweight helper function
 function formatBytes(int $bytes): string
 {
-    if ($bytes < 1024) return $bytes . ' B';
-    if ($bytes < 1048576) return round($bytes / 1024, 1) . ' KB';
-    return round($bytes / 1048576, 1) . ' MB';
+    if ($bytes < 1024) {
+        return $bytes.' B';
+    }
+    if ($bytes < 1048576) {
+        return round($bytes / 1024, 1).' KB';
+    }
+
+    return round($bytes / 1048576, 1).' MB';
 }

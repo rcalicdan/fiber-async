@@ -17,7 +17,7 @@ test('Async Facade can call async operations', function () {
     });
 
     // Process the event loop
-    $loop = \Rcalicdan\FiberAsync\AsyncEventLoop::getInstance();
+    $loop = Rcalicdan\FiberAsync\AsyncEventLoop::getInstance();
     $start = microtime(true);
     while ($result === null && (microtime(true) - $start) < 1) {
         $loop->run();
@@ -47,9 +47,9 @@ test('Async resolve works', function () {
         $value = $val;
     });
 
-    $loop = \Rcalicdan\FiberAsync\AsyncEventLoop::getInstance();
+    $loop = Rcalicdan\FiberAsync\AsyncEventLoop::getInstance();
     $start = microtime(true);
-    while (!$resolved && (microtime(true) - $start) < 1) {
+    while (! $resolved && (microtime(true) - $start) < 1) {
         $loop->run();
         if ($resolved) {
             break;
@@ -64,10 +64,10 @@ test('Async resolve works', function () {
 test('Async Facade can be reset', function () {
     // Use the facade to ensure instances are created
     Async::inFiber();
-    
+
     // Reset should not throw any errors
     Async::reset();
-    
+
     // Should still work after reset
     expect(Async::inFiber())->toBeFalse();
 });

@@ -9,7 +9,7 @@ use Rcalicdan\FiberAsync\Managers\TimerManager;
 
 /**
  * Coordinates work processing across all event loop components.
- * 
+ *
  * This handler orchestrates the execution order of different types of work
  * in the event loop, including HTTP requests, fibers, timers, streams, and
  * callback processing. The order is optimized for performance and correctness.
@@ -23,11 +23,11 @@ final readonly class WorkHandler
     private TickHandler $tickHandler;
 
     /**
-     * @param TimerManager $timerManager Handles timer-based operations
-     * @param HttpRequestManager $httpRequestManager Handles HTTP request processing
-     * @param StreamManager $streamManager Handles stream I/O operations
-     * @param FiberManager $fiberManager Handles fiber execution and management
-     * @param TickHandler $tickHandler Handles next-tick and deferred callbacks
+     * @param  TimerManager  $timerManager  Handles timer-based operations
+     * @param  HttpRequestManager  $httpRequestManager  Handles HTTP request processing
+     * @param  StreamManager  $streamManager  Handles stream I/O operations
+     * @param  FiberManager  $fiberManager  Handles fiber execution and management
+     * @param  TickHandler  $tickHandler  Handles next-tick and deferred callbacks
      */
     public function __construct(
         TimerManager $timerManager,
@@ -45,10 +45,10 @@ final readonly class WorkHandler
 
     /**
      * Check if there's any pending work across all components.
-     * 
+     *
      * This aggregates work status from all managers to determine if the
      * event loop should continue processing or can sleep/exit.
-     * 
+     *
      * @return bool True if any component has pending work, false otherwise
      */
     public function hasWork(): bool
@@ -63,7 +63,7 @@ final readonly class WorkHandler
 
     /**
      * Process all pending work in the correct order.
-     * 
+     *
      * The processing order is carefully designed:
      * 1. Next-tick callbacks (highest priority)
      * 2. HTTP requests (start new requests immediately)
@@ -72,7 +72,7 @@ final readonly class WorkHandler
      * 5. Timers (scheduled callbacks)
      * 6. Streams (I/O operations)
      * 7. Deferred callbacks (cleanup/low priority)
-     * 
+     *
      * @return bool True if any work was processed, false if no work was done
      */
     public function processWork(): bool

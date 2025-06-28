@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__.'/vendor/autoload.php';
 
 /**
  * Handles benchmarking and performance measurement
@@ -11,18 +11,20 @@ class BenchmarkRunner
     {
         echo "📊 Testing: {$name}\n";
         $start = microtime(true);
-        
+
         try {
             $result = $callback();
             $end = microtime(true);
             $duration = round($end - $start, 2);
             echo "   ✅ Completed in {$duration} seconds\n";
-            echo "   📈 Results: " . (is_array($result) ? count($result) . " responses" : "success") . "\n\n";
+            echo '   📈 Results: '.(is_array($result) ? count($result).' responses' : 'success')."\n\n";
+
             return ['duration' => $duration, 'result' => $result];
         } catch (Exception $e) {
             $end = microtime(true);
             $duration = round($end - $start, 2);
-            echo "   ❌ Failed in {$duration} seconds: " . $e->getMessage() . "\n\n";
+            echo "   ❌ Failed in {$duration} seconds: ".$e->getMessage()."\n\n";
+
             return ['duration' => $duration, 'error' => $e->getMessage()];
         }
     }
@@ -42,7 +44,7 @@ class HttpTaskManager
             'https://jsonplaceholder.typicode.com/users/1',
             'https://jsonplaceholder.typicode.com/albums/1',
             'https://jsonplaceholder.typicode.com/comments/1',
-            'https://jsonplaceholder.typicode.com/photos/1'
+            'https://jsonplaceholder.typicode.com/photos/1',
         ];
     }
 
@@ -51,11 +53,12 @@ class HttpTaskManager
         return function () {
             $results = [];
             foreach ($this->urls as $index => $url) {
-                echo "   🔄 Sequential request " . ($index + 1) . "\n";
+                echo '   🔄 Sequential request '.($index + 1)."\n";
                 $response = await(fetch($url));
-                echo "   ✅ Sequential request " . ($index + 1) . " completed\n";
+                echo '   ✅ Sequential request '.($index + 1)." completed\n";
                 $results[] = ['index' => $index, 'status' => $response['status'], 'url' => $url];
             }
+
             return $results;
         };
     }
@@ -65,12 +68,14 @@ class HttpTaskManager
         $tasks = [];
         foreach ($this->urls as $index => $url) {
             $tasks[] = function () use ($url, $index) {
-                echo "   🔄 Concurrent request " . ($index + 1) . "\n";
+                echo '   🔄 Concurrent request '.($index + 1)."\n";
                 $response = await(fetch($url));
-                echo "   ✅ Concurrent request " . ($index + 1) . " completed\n";
+                echo '   ✅ Concurrent request '.($index + 1)." completed\n";
+
                 return ['index' => $index, 'status' => $response['status'], 'url' => $url];
             };
         }
+
         return $tasks;
     }
 }
@@ -92,11 +97,12 @@ class DelayTaskManager
         return function () {
             $results = [];
             foreach ($this->delays as $index => $delayTime) {
-                echo "   🔄 Sequential delay " . ($index + 1) . " ({$delayTime}s)\n";
+                echo '   🔄 Sequential delay '.($index + 1)." ({$delayTime}s)\n";
                 await(delay($delayTime));
-                echo "   ✅ Sequential delay " . ($index + 1) . " completed\n";
+                echo '   ✅ Sequential delay '.($index + 1)." completed\n";
                 $results[] = ['index' => $index, 'delay' => $delayTime];
             }
+
             return $results;
         };
     }
@@ -106,12 +112,14 @@ class DelayTaskManager
         $tasks = [];
         foreach ($this->delays as $index => $delayTime) {
             $tasks[] = function () use ($index, $delayTime) {
-                echo "   🔄 Concurrent delay " . ($index + 1) . " ({$delayTime}s)\n";
+                echo '   🔄 Concurrent delay '.($index + 1)." ({$delayTime}s)\n";
                 await(delay($delayTime));
-                echo "   ✅ Concurrent delay " . ($index + 1) . " completed\n";
+                echo '   ✅ Concurrent delay '.($index + 1)." completed\n";
+
                 return ['index' => $index, 'delay' => $delayTime];
             };
         }
+
         return $tasks;
     }
 }
@@ -157,26 +165,30 @@ class MixedTaskManager
                 echo "   🔄 Concurrent delay 1\n";
                 await(delay(0.5));
                 echo "   ✅ Concurrent delay 1 completed\n";
+
                 return ['type' => 'delay', 'duration' => 0.5];
             },
             'http1' => function () {
                 echo "   🔄 Concurrent HTTP request 1\n";
                 $response = await(fetch('https://jsonplaceholder.typicode.com/posts/1'));
                 echo "   ✅ Concurrent HTTP request 1 completed\n";
+
                 return ['type' => 'http', 'status' => $response['status']];
             },
             'delay2' => function () {
                 echo "   🔄 Concurrent delay 2\n";
                 await(delay(0.3));
                 echo "   ✅ Concurrent delay 2 completed\n";
+
                 return ['type' => 'delay', 'duration' => 0.3];
             },
             'http2' => function () {
                 echo "   🔄 Concurrent HTTP request 2\n";
                 $response = await(fetch('https://jsonplaceholder.typicode.com/users/1'));
                 echo "   ✅ Concurrent HTTP request 2 completed\n";
+
                 return ['type' => 'http', 'status' => $response['status']];
-            }
+            },
         ];
     }
 }
@@ -193,16 +205,20 @@ class ErrorHandlingTaskManager
                 echo "   🔄 Valid request starting\n";
                 $response = await(fetch('https://jsonplaceholder.typicode.com/posts/1'));
                 echo "   ✅ Valid request completed\n";
+
                 return ['type' => 'valid', 'status' => $response['status']];
             },
             'invalid_request' => function () {
                 echo "   🔄 Invalid request starting\n";
+
                 try {
                     $response = await(fetch('https://invalid-domain-12345.com/api/test'));
                     echo "   ✅ Invalid request unexpectedly succeeded\n";
+
                     return ['type' => 'invalid', 'status' => $response['status']];
                 } catch (Exception $e) {
                     echo "   ⚠️  Invalid request properly failed\n";
+
                     return ['type' => 'invalid', 'error' => 'handled'];
                 }
             },
@@ -210,8 +226,9 @@ class ErrorHandlingTaskManager
                 echo "   🔄 Another valid request starting\n";
                 $response = await(fetch('https://jsonplaceholder.typicode.com/users/1'));
                 echo "   ✅ Another valid request completed\n";
+
                 return ['type' => 'valid2', 'status' => $response['status']];
-            }
+            },
         ];
     }
 }
@@ -233,24 +250,28 @@ class WorkloadGenerator
 
                     switch ($i % 4) {
                         case 0:
-                            $response = await(fetch("https://jsonplaceholder.typicode.com/posts/" . ($i % 10 + 1)));
+                            $response = await(fetch('https://jsonplaceholder.typicode.com/posts/'.($i % 10 + 1)));
                             echo "   ✅ Task $i (HTTP) completed\n";
+
                             return ['task' => $i, 'type' => 'http', 'status' => $response['status']];
 
                         case 1:
                             await(delay(0.2));
                             echo "   ✅ Task $i (short delay) completed\n";
+
                             return ['task' => $i, 'type' => 'short_delay', 'duration' => 0.2];
 
                         case 2:
                             await(delay(0.5));
                             echo "   ✅ Task $i (medium delay) completed\n";
+
                             return ['task' => $i, 'type' => 'medium_delay', 'duration' => 0.5];
 
                         case 3:
                             await(delay(0.1));
-                            $response = await(fetch("https://jsonplaceholder.typicode.com/users/" . ($i % 10 + 1)));
+                            $response = await(fetch('https://jsonplaceholder.typicode.com/users/'.($i % 10 + 1)));
                             echo "   ✅ Task $i (HTTP+delay) completed\n";
+
                             return ['task' => $i, 'type' => 'combo', 'status' => $response['status']];
                     }
                 };
@@ -269,10 +290,12 @@ class WorkloadGenerator
                 $taskName = "task_$i";
                 $tasks[$taskName] = function () use ($i) {
                     if ($i % 2 === 0) {
-                        $response = await(fetch("https://jsonplaceholder.typicode.com/posts/" . ($i % 10 + 1)));
+                        $response = await(fetch('https://jsonplaceholder.typicode.com/posts/'.($i % 10 + 1)));
+
                         return ['task' => $i, 'type' => 'http', 'status' => $response['status']];
                     } else {
                         await(delay(0.3));
+
                         return ['task' => $i, 'type' => 'delay', 'duration' => 0.3];
                     }
                 };
@@ -291,7 +314,7 @@ class PerformanceAnalyzer
     public function generatePerformanceSummary(array $results): void
     {
         echo "📈 PERFORMANCE SUMMARY & COMPARISONS\n";
-        echo str_repeat("=", 70) . "\n";
+        echo str_repeat('=', 70)."\n";
 
         foreach ($results as $testName => $result) {
             if (isset($result['duration'])) {
@@ -305,7 +328,7 @@ class PerformanceAnalyzer
     public function generatePerformanceComparisons(array $comparisons): void
     {
         echo "\n🔥 PERFORMANCE IMPROVEMENTS\n";
-        echo str_repeat("-", 40) . "\n";
+        echo str_repeat('-', 40)."\n";
 
         foreach ($comparisons as $comparisonName => $comparison) {
             [$sequential, $concurrent] = $comparison;
@@ -325,9 +348,9 @@ class PerformanceAnalyzer
     public function analyzeConcurrencyLimits(array $varyingConcurrencyResults): array
     {
         echo "🔬 CONCURRENCY LIMIT ANALYSIS\n";
-        echo str_repeat("=", 70) . "\n";
+        echo str_repeat('=', 70)."\n";
         echo "📊 Performance by Concurrency Limit (20 tasks):\n";
-        echo str_repeat("-", 50) . "\n";
+        echo str_repeat('-', 50)."\n";
 
         $bestTime = PHP_FLOAT_MAX;
         $bestLimit = 0;
@@ -357,7 +380,7 @@ class PerformanceAnalyzer
         }
 
         echo "\n🏆 OPTIMAL CONCURRENCY ANALYSIS:\n";
-        echo str_repeat("-", 40) . "\n";
+        echo str_repeat('-', 40)."\n";
         echo "Best performance: Limit $bestLimit with {$bestTime}s\n";
         echo "Worst performance: Limit $worstLimit with {$worstTime}s\n";
 
@@ -372,7 +395,7 @@ class PerformanceAnalyzer
     public function analyzeWorkloadScaling(array $workloadSizeResults): void
     {
         echo "\n📊 WORKLOAD SCALING ANALYSIS:\n";
-        echo str_repeat("-", 40) . "\n";
+        echo str_repeat('-', 40)."\n";
 
         foreach ($workloadSizeResults as $size => $result) {
             if (isset($result['duration'])) {
@@ -386,15 +409,15 @@ class PerformanceAnalyzer
     public function displayMemoryUsage(): void
     {
         echo "\n💾 MEMORY USAGE:\n";
-        echo str_repeat("-", 30) . "\n";
-        echo "Peak memory usage: " . round(memory_get_peak_usage(true) / 1024 / 1024, 2) . " MB\n";
-        echo "Current memory usage: " . round(memory_get_usage(true) / 1024 / 1024, 2) . " MB\n\n";
+        echo str_repeat('-', 30)."\n";
+        echo 'Peak memory usage: '.round(memory_get_peak_usage(true) / 1024 / 1024, 2)." MB\n";
+        echo 'Current memory usage: '.round(memory_get_usage(true) / 1024 / 1024, 2)." MB\n\n";
     }
 
     public function displayRecommendations(int $bestLimit): void
     {
         echo "\n🎯 RECOMMENDATIONS:\n";
-        echo str_repeat("-", 30) . "\n";
+        echo str_repeat('-', 30)."\n";
         echo "• Optimal concurrency limit appears to be around: $bestLimit\n";
         echo "• For I/O-heavy workloads, consider limits between 4-8\n";
         echo "• Monitor memory usage with high concurrency limits\n";
@@ -417,37 +440,37 @@ class ConcurrentPerformanceTestSuite
 
     public function __construct()
     {
-        $this->benchmarkRunner = new BenchmarkRunner();
-        $this->httpTaskManager = new HttpTaskManager();
-        $this->delayTaskManager = new DelayTaskManager();
-        $this->mixedTaskManager = new MixedTaskManager();
-        $this->errorTaskManager = new ErrorHandlingTaskManager();
-        $this->workloadGenerator = new WorkloadGenerator();
-        $this->performanceAnalyzer = new PerformanceAnalyzer();
+        $this->benchmarkRunner = new BenchmarkRunner;
+        $this->httpTaskManager = new HttpTaskManager;
+        $this->delayTaskManager = new DelayTaskManager;
+        $this->mixedTaskManager = new MixedTaskManager;
+        $this->errorTaskManager = new ErrorHandlingTaskManager;
+        $this->workloadGenerator = new WorkloadGenerator;
+        $this->performanceAnalyzer = new PerformanceAnalyzer;
     }
 
     public function runAllTests(): callable
     {
         return async(function () {
             echo "🚀 Testing CONCURRENT vs SEQUENTIAL Performance with Public APIs\n";
-            echo str_repeat("=", 70) . "\n\n";
+            echo str_repeat('=', 70)."\n\n";
 
             // Test 1: Sequential vs Concurrent - Basic HTTP Requests
             $results = [];
             $results = array_merge($results, $this->runBasicHttpTests());
-            
+
             // Test 2: Sequential vs Concurrent - Mixed Operations
             $results = array_merge($results, $this->runMixedOperationTests());
-            
+
             // Test 3: Sequential vs Concurrent - Delay-Heavy Operations
             $results = array_merge($results, $this->runDelayTests());
-            
+
             // Test 4-7: Advanced Tests
             $results = array_merge($results, $this->runAdvancedTests());
-            
+
             // Test 8-9: Concurrency Analysis
             $concurrencyResults = $this->runConcurrencyAnalysis();
-            
+
             // Generate comprehensive reports
             $this->generateReports($results, $concurrencyResults);
         });
@@ -456,15 +479,15 @@ class ConcurrentPerformanceTestSuite
     private function runBasicHttpTests(): array
     {
         echo "1️⃣ SEQUENTIAL vs CONCURRENT - BASIC HTTP REQUESTS\n";
-        echo str_repeat("-", 50) . "\n";
+        echo str_repeat('-', 50)."\n";
 
         $sequentialResults = $this->benchmarkRunner->execute(
-            "Sequential HTTP requests",
+            'Sequential HTTP requests',
             $this->httpTaskManager->createSequentialTask()
         );
 
         $concurrentResults = $this->benchmarkRunner->execute(
-            "Concurrent HTTP requests",
+            'Concurrent HTTP requests',
             function () {
                 return run_concurrent($this->httpTaskManager->createConcurrentTasks(), 3);
             }
@@ -472,22 +495,22 @@ class ConcurrentPerformanceTestSuite
 
         return [
             'Sequential HTTP' => $sequentialResults,
-            'Concurrent HTTP' => $concurrentResults
+            'Concurrent HTTP' => $concurrentResults,
         ];
     }
 
     private function runMixedOperationTests(): array
     {
         echo "2️⃣ SEQUENTIAL vs CONCURRENT - MIXED OPERATIONS\n";
-        echo str_repeat("-", 50) . "\n";
+        echo str_repeat('-', 50)."\n";
 
         $sequentialResults = $this->benchmarkRunner->execute(
-            "Sequential mixed operations",
+            'Sequential mixed operations',
             $this->mixedTaskManager->createSequentialTask()
         );
 
         $concurrentResults = $this->benchmarkRunner->execute(
-            "Concurrent mixed operations",
+            'Concurrent mixed operations',
             function () {
                 return run_concurrent($this->mixedTaskManager->createConcurrentTasks(), 4);
             }
@@ -495,22 +518,22 @@ class ConcurrentPerformanceTestSuite
 
         return [
             'Sequential Mixed' => $sequentialResults,
-            'Concurrent Mixed' => $concurrentResults
+            'Concurrent Mixed' => $concurrentResults,
         ];
     }
 
     private function runDelayTests(): array
     {
         echo "3️⃣ SEQUENTIAL vs CONCURRENT - DELAY-HEAVY OPERATIONS\n";
-        echo str_repeat("-", 50) . "\n";
+        echo str_repeat('-', 50)."\n";
 
         $sequentialResults = $this->benchmarkRunner->execute(
-            "Sequential delays",
+            'Sequential delays',
             $this->delayTaskManager->createSequentialTask()
         );
 
         $concurrentResults = $this->benchmarkRunner->execute(
-            "Concurrent delays",
+            'Concurrent delays',
             function () {
                 return run_concurrent($this->delayTaskManager->createConcurrentTasks(), 5);
             }
@@ -518,7 +541,7 @@ class ConcurrentPerformanceTestSuite
 
         return [
             'Sequential Delays' => $sequentialResults,
-            'Concurrent Delays' => $concurrentResults
+            'Concurrent Delays' => $concurrentResults,
         ];
     }
 
@@ -528,31 +551,34 @@ class ConcurrentPerformanceTestSuite
 
         // Test 4: String keys
         echo "4️⃣ run_concurrent WITH STRING KEYS\n";
-        echo str_repeat("-", 40) . "\n";
-        
+        echo str_repeat('-', 40)."\n";
+
         $stringKeyTasks = [
             'posts' => function () {
                 echo "   🔄 Fetching posts\n";
                 $response = await(fetch('https://jsonplaceholder.typicode.com/posts/1'));
                 echo "   ✅ Posts completed\n";
+
                 return ['type' => 'posts', 'status' => $response['status']];
             },
             'users' => function () {
                 echo "   🔄 Fetching users\n";
                 $response = await(fetch('https://jsonplaceholder.typicode.com/users/1'));
                 echo "   ✅ Users completed\n";
+
                 return ['type' => 'users', 'status' => $response['status']];
             },
             'albums' => function () {
                 echo "   🔄 Fetching albums\n";
                 $response = await(fetch('https://jsonplaceholder.typicode.com/albums/1'));
                 echo "   ✅ Albums completed\n";
+
                 return ['type' => 'albums', 'status' => $response['status']];
-            }
+            },
         ];
 
         $results['String Keys'] = $this->benchmarkRunner->execute(
-            "run_concurrent with string keys",
+            'run_concurrent with string keys',
             function () use ($stringKeyTasks) {
                 return run_concurrent($stringKeyTasks, 3);
             }
@@ -560,11 +586,11 @@ class ConcurrentPerformanceTestSuite
 
         // Test 5: High concurrency
         echo "5️⃣ HIGH CONCURRENCY TEST\n";
-        echo str_repeat("-", 40) . "\n";
+        echo str_repeat('-', 40)."\n";
 
         $workloadFunc = $this->workloadGenerator->generateWorkload(10);
         $results['High Concurrency'] = $this->benchmarkRunner->execute(
-            "High concurrency (10 tasks, limit 4)",
+            'High concurrency (10 tasks, limit 4)',
             function () use ($workloadFunc) {
                 return $workloadFunc(4);
             }
@@ -572,7 +598,7 @@ class ConcurrentPerformanceTestSuite
 
         // Test 6: Mixed promise types
         echo "6️⃣ MIXED PROMISE TYPES TEST\n";
-        echo str_repeat("-", 40) . "\n";
+        echo str_repeat('-', 40)."\n";
 
         $mixedPromiseTasks = [
             'direct_promise' => fetch('https://jsonplaceholder.typicode.com/posts/1'),
@@ -581,13 +607,14 @@ class ConcurrentPerformanceTestSuite
                 await(delay(0.1));
                 $response = await(fetch('https://jsonplaceholder.typicode.com/users/1'));
                 echo "   ✅ Async function completed\n";
+
                 return ['type' => 'async_function', 'status' => $response['status']];
             },
-            'simple_delay' => delay(0.3)
+            'simple_delay' => delay(0.3),
         ];
 
         $results['Mixed Promises'] = $this->benchmarkRunner->execute(
-            "Mixed promise types",
+            'Mixed promise types',
             function () use ($mixedPromiseTasks) {
                 return run_concurrent($mixedPromiseTasks, 3);
             }
@@ -595,10 +622,10 @@ class ConcurrentPerformanceTestSuite
 
         // Test 7: Error handling
         echo "7️⃣ ERROR HANDLING TEST\n";
-        echo str_repeat("-", 40) . "\n";
+        echo str_repeat('-', 40)."\n";
 
         $results['Error Handling'] = $this->benchmarkRunner->execute(
-            "Error handling in concurrent",
+            'Error handling in concurrent',
             function () {
                 return run_concurrent($this->errorTaskManager->createErrorTestTasks(), 3);
             }
@@ -610,7 +637,7 @@ class ConcurrentPerformanceTestSuite
     private function runConcurrencyAnalysis(): array
     {
         echo "8️⃣ VARYING CONCURRENCY LIMITS TEST\n";
-        echo str_repeat("-", 50) . "\n";
+        echo str_repeat('-', 50)."\n";
 
         $varyingConcurrencyResults = [];
         $workloadFunc = $this->workloadGenerator->generateWorkload(20);
@@ -627,7 +654,7 @@ class ConcurrentPerformanceTestSuite
         }
 
         echo "9️⃣ WORKLOAD SIZE vs CONCURRENCY LIMIT\n";
-        echo str_repeat("-", 50) . "\n";
+        echo str_repeat('-', 50)."\n";
 
         $workloadSizeResults = [];
         $workloadSizes = [5, 10, 20, 30];
@@ -644,7 +671,7 @@ class ConcurrentPerformanceTestSuite
 
         return [
             'varying' => $varyingConcurrencyResults,
-            'workload_size' => $workloadSizeResults
+            'workload_size' => $workloadSizeResults,
         ];
     }
 
@@ -657,7 +684,7 @@ class ConcurrentPerformanceTestSuite
         $comparisons = [
             'HTTP Requests' => [$results['Sequential HTTP'], $results['Concurrent HTTP']],
             'Mixed Operations' => [$results['Sequential Mixed'], $results['Concurrent Mixed']],
-            'Delay Operations' => [$results['Sequential Delays'], $results['Concurrent Delays']]
+            'Delay Operations' => [$results['Sequential Delays'], $results['Concurrent Delays']],
         ];
         $this->performanceAnalyzer->generatePerformanceComparisons($comparisons);
 
@@ -683,5 +710,5 @@ class ConcurrentPerformanceTestSuite
 }
 
 // Run the test suite
-$testSuite = new ConcurrentPerformanceTestSuite();
+$testSuite = new ConcurrentPerformanceTestSuite;
 run($testSuite->runAllTests());

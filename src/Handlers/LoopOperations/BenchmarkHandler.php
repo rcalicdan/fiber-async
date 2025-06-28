@@ -6,26 +6,21 @@ use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 
 /**
  * Handles benchmarking of async operations.
- * 
+ *
  * This class provides functionality to measure the execution time
  * of async operations and format the results for display.
- * 
- * @package Rcalicdan\FiberAsync\Handlers\LoopOperations
- * @author  Rcalicdan
  */
 final readonly class BenchmarkHandler
 {
     /**
      * Loop execution handler for running async operations.
-     * 
-     * @var LoopExecutionHandler
      */
     private LoopExecutionHandler $executionHandler;
 
     /**
      * Initialize the benchmark handler.
-     * 
-     * @param LoopExecutionHandler $executionHandler Handler for executing operations
+     *
+     * @param  LoopExecutionHandler  $executionHandler  Handler for executing operations
      */
     public function __construct(LoopExecutionHandler $executionHandler)
     {
@@ -34,11 +29,11 @@ final readonly class BenchmarkHandler
 
     /**
      * Benchmark an async operation and return timing results.
-     * 
+     *
      * Executes the given async operation while measuring its execution time
      * and returns both the result and timing information.
-     * 
-     * @param callable|PromiseInterface $asyncOperation The operation to benchmark
+     *
+     * @param  callable|PromiseInterface  $asyncOperation  The operation to benchmark
      * @return array Associative array with 'result', 'duration', and 'duration_ms' keys
      */
     public function benchmark(callable|PromiseInterface $asyncOperation): array
@@ -56,17 +51,17 @@ final readonly class BenchmarkHandler
 
     /**
      * Format benchmark results into a human-readable string.
-     * 
+     *
      * Creates a formatted string showing the operation duration
      * in both milliseconds and seconds.
-     * 
-     * @param array $benchmarkResult Result array from benchmark() method
+     *
+     * @param  array  $benchmarkResult  Result array from benchmark() method
      * @return string Formatted timing information
      */
     public function formatBenchmarkResult(array $benchmarkResult): string
     {
         return sprintf(
-            "Operation completed in %.2fms (%.6fs)",
+            'Operation completed in %.2fms (%.6fs)',
             $benchmarkResult['duration_ms'],
             $benchmarkResult['duration']
         );

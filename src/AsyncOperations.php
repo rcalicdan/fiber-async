@@ -25,13 +25,13 @@ class AsyncOperations
 
     public function __construct()
     {
-        $this->contextHandler = new FiberContextHandler();
-        $this->promiseHandler = new PromiseHandler();
-        $this->executionHandler = new AsyncExecutionHandler();
+        $this->contextHandler = new FiberContextHandler;
+        $this->promiseHandler = new PromiseHandler;
+        $this->executionHandler = new AsyncExecutionHandler;
         $this->awaitHandler = new AwaitHandler($this->contextHandler);
-        $this->timerHandler = new TimerHandler();
-        $this->httpHandler = new HttpHandler();
-        $this->collectionHandler = new PromiseCollectionHandler();
+        $this->timerHandler = new TimerHandler;
+        $this->httpHandler = new HttpHandler;
+        $this->collectionHandler = new PromiseCollectionHandler;
         $this->concurrencyHandler = new ConcurrencyHandler($this->executionHandler);
     }
 
@@ -49,7 +49,6 @@ class AsyncOperations
     {
         return $this->promiseHandler->reject($reason);
     }
-
 
     public function async(callable $asyncFunction): callable
     {
@@ -95,7 +94,6 @@ class AsyncOperations
     {
         return $this->httpHandler->wrapSync($syncCall);
     }
-
 
     public function all(array $promises): PromiseInterface
     {

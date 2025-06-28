@@ -2,14 +2,14 @@
 
 namespace Rcalicdan\FiberAsync\Handlers\AsyncOperations;
 
-use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
-use Fiber;
 use Exception;
+use Fiber;
+use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Throwable;
 
 /**
  * Handles awaiting Promise resolution within Fiber contexts.
- * 
+ *
  * This handler provides the core await functionality that allows synchronous-style
  * code to wait for asynchronous operations to complete. It works by suspending
  * the current Fiber until the Promise resolves or rejects.
@@ -19,7 +19,7 @@ final readonly class AwaitHandler
     private FiberContextHandler $contextHandler;
 
     /**
-     * @param FiberContextHandler $contextHandler Handler for validating fiber context
+     * @param  FiberContextHandler  $contextHandler  Handler for validating fiber context
      */
     public function __construct(FiberContextHandler $contextHandler)
     {
@@ -28,13 +28,14 @@ final readonly class AwaitHandler
 
     /**
      * Wait for a Promise to resolve and return its value.
-     * 
+     *
      * This method suspends the current Fiber until the Promise is settled.
      * If the Promise resolves, returns the resolved value.
      * If the Promise rejects, throws the rejection reason as an exception.
-     * 
-     * @param PromiseInterface $promise The Promise to await
+     *
+     * @param  PromiseInterface  $promise  The Promise to await
      * @return mixed The resolved value of the Promise
+     *
      * @throws Exception|Throwable If the Promise is rejected
      * @throws \RuntimeException If not called from within a Fiber context
      */
@@ -54,10 +55,11 @@ final readonly class AwaitHandler
             ->catch(function ($reason) use (&$error, &$completed) {
                 $error = $reason;
                 $completed = true;
-            });
+            })
+        ;
 
         // Suspend the fiber until the promise completes
-        while (!$completed) {
+        while (! $completed) {
             Fiber::suspend();
         }
 

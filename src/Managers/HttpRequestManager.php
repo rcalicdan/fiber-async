@@ -2,9 +2,9 @@
 
 namespace Rcalicdan\FiberAsync\Managers;
 
+use Rcalicdan\FiberAsync\Handlers\Http\CurlMultiHandler;
 use Rcalicdan\FiberAsync\Handlers\Http\HttpRequestHandler;
 use Rcalicdan\FiberAsync\Handlers\Http\HttpResponseHandler;
-use Rcalicdan\FiberAsync\Handlers\Http\CurlMultiHandler;
 use Rcalicdan\FiberAsync\ValueObjects\HttpRequest;
 
 class HttpRequestManager
@@ -21,9 +21,9 @@ class HttpRequestManager
 
     public function __construct()
     {
-        $this->requestHandler = new HttpRequestHandler();
-        $this->responseHandler = new HttpResponseHandler();
-        $this->curlHandler = new CurlMultiHandler();
+        $this->requestHandler = new HttpRequestHandler;
+        $this->responseHandler = new HttpResponseHandler;
+        $this->curlHandler = new CurlMultiHandler;
         $this->multiHandle = $this->curlHandler->createMultiHandle();
     }
 
@@ -51,7 +51,7 @@ class HttpRequestManager
     private function addPendingRequests(): bool
     {
         $added = false;
-        while (!empty($this->pendingRequests)) {
+        while (! empty($this->pendingRequests)) {
             $request = array_shift($this->pendingRequests);
             if ($this->requestHandler->addRequestToMultiHandle($this->multiHandle, $request)) {
                 $this->activeRequests[(int) $request->getHandle()] = $request;
@@ -69,12 +69,13 @@ class HttpRequestManager
         }
 
         $this->curlHandler->executeMultiHandle($this->multiHandle);
+
         return $this->responseHandler->processCompletedRequests($this->multiHandle, $this->activeRequests);
     }
 
     public function hasRequests(): bool
     {
-        return !empty($this->pendingRequests) || !empty($this->activeRequests);
+        return ! empty($this->pendingRequests) || ! empty($this->activeRequests);
     }
 
     public function __destruct()

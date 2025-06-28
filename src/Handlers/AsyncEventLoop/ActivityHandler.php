@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop;
 
 /**
  * Handles activity tracking for the event loop to determine idle states.
- * 
+ *
  * This handler tracks the last activity time and provides methods to check
  * if the event loop has been idle for a certain period. This is useful for
  * optimization decisions like when to sleep or perform cleanup operations.
@@ -24,7 +24,7 @@ final class ActivityHandler
 
     /**
      * Update the last activity timestamp to the current time.
-     * 
+     *
      * This should be called whenever significant work is performed
      * in the event loop to maintain accurate idle detection.
      */
@@ -35,7 +35,7 @@ final class ActivityHandler
 
     /**
      * Check if the event loop has been idle for more than 5 seconds.
-     * 
+     *
      * @return bool True if idle for more than 5 seconds, false otherwise
      */
     public function isIdle(): bool
@@ -45,7 +45,7 @@ final class ActivityHandler
 
     /**
      * Get the timestamp of the last recorded activity.
-     * 
+     *
      * @return int Unix timestamp of last activity
      */
     public function getLastActivity(): int
