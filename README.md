@@ -1,7 +1,45 @@
-⚡ FiberAsync: Effortless Asynchronous PHP with Fibers
-FiberAsync is a blazing-fast PHP library that brings JavaScript-style async/await power to native PHP — all without extra extensions. Powered by Fibers, it lets you write elegant, concurrent code that feels synchronous. Use the static Async facade or the intuitive global helpers to run tasks in parallel like a pro. Perfect for APIs, automation, and high-performance PHP scripts.
+# ⚡ FiberAsync: Effortless Asynchronous PHP with Fibers
 
-## Installation & Usage
+**FiberAsync** is a blazing-fast PHP library that brings JavaScript-style `async/await` power to native PHP — all without extra extensions. Powered by **Fibers**, it lets you write elegant, concurrent code that feels synchronous. Use the static `Async` facade or the intuitive global helpers to run tasks in parallel like a pro. Perfect for APIs, automation, and high-performance PHP scripts.
+
+> ✅ **No need to install PHP extensions**
+> ✅ **No `pcntl` or special functions required**
+> ✅ **Runs everywhere** — shared hosting, CLI, or production servers
+
+## 📦 Installation
+
+### ✅ Prerequisites
+
+* **PHP 8.2 or higher** is required.
+  This library uses native [Fibers](https://www.php.net/manual/en/class.fiber.php), which are available starting from PHP 8.1 — but this library targets **PHP 8.2+** for best performance and language features.
+* No need for special PHP extensions or `pcntl`.
+* Works on shared hosting, CLI, or any standard PHP environment.
+
+### 💡 Composer (Recommended)
+
+If you're using Composer, just run:
+
+```bash
+composer require rcalicdan/fiber-async
+```
+
+### 🖐️ Manual Installation
+
+If you're not using Composer, you can manually include the files:
+
+```php
+require_once 'Async.php';
+require_once 'async_helper.php';
+require_once 'loop_helper.php';
+```
+
+That's it! You're ready to write async PHP code with ease.
+
+---
+
+Let me know if you'd like to include a section about publishing it to Packagist, or writing a `composer.json` template.
+
+## Sample Usage
 
 You can use this library in two ways:
 
@@ -61,11 +99,11 @@ $asyncOperation = Async::async(function() {
     // Make multiple HTTP requests concurrently
     $promise1 = Async::fetch('https://api.example.com/users');
     $promise2 = Async::fetch('https://api.example.com/posts');
-    
+
     // Wait for both to complete
     $users = Async::await($promise1);
     $posts = Async::await($promise2);
-    
+
     return ['users' => $users, 'posts' => $posts];
 });
 
@@ -73,10 +111,10 @@ $asyncOperation = Async::async(function() {
 $asyncOperation = async(function() {
     $promise1 = fetch('https://api.example.com/users');
     $promise2 = fetch('https://api.example.com/posts');
-    
+
     $users = await($promise1);
     $posts = await($promise2);
-    
+
     return ['users' => $users, 'posts' => $posts];
 });
 ```
@@ -188,10 +226,10 @@ Create non-blocking delays:
 ```php
 $delayedOperation = Async::async(function() {
     echo "Starting operation...\n";
-    
+
     // Wait 2 seconds without blocking
     Async::await(Async::delay(2));
-    
+
     echo "Operation completed after delay\n";
     return "Done";
 });
@@ -252,7 +290,7 @@ $urls = [
 ];
 
 $scrapeTasks = array_map(function($url) {
-    return async(function() use ($url) {            
+    return async(function() use ($url) {
         $response = await(fetch($url));
         // Process the HTML content
         return [
@@ -486,7 +524,7 @@ function scrapeUrls(array $urls, int $concurrency = 3): array {
     $tasks = array_map(function($url) {
         return async(function() use ($url) {
             $response = await(fetch($url, ['timeout' => 30]));
-            
+
             return [
                 'url' => $url,
                 'status' => $response['status'],
@@ -495,7 +533,7 @@ function scrapeUrls(array $urls, int $concurrency = 3): array {
             ];
         });
     }, $urls);
-    
+
     return run_concurrent($tasks, $concurrency);
 }
 
@@ -520,9 +558,9 @@ function aggregateUserData(int $userId): array {
             'comments' => fetch("https://api.example.com/users/{$userId}/comments"),
             'followers' => fetch("https://api.example.com/users/{$userId}/followers")
         ];
-        
+
         $results = await(all($promises));
-        
+
         return [
             'user_id' => $userId,
             'profile' => $results['profile'],
@@ -547,16 +585,16 @@ function processBatch(array $items, int $concurrency = 5): array {
         return async(function() use ($item, $index) {
             // Simulate processing time
             await(delay(rand(1, 3)));
-            
+
             // Process the item
             $result = processItem($item);
-            
+
             echo "Processed item " . ($index + 1) . "\n";
-            
+
             return $result;
         });
     }, $items, array_keys($items));
-    
+
     return run_concurrent($tasks, $concurrency);
 }
 
@@ -565,3 +603,14 @@ $results = processBatch($items, 3);
 ```
 
 This documentation covers all the major features and usage patterns of the FiberAsync library. Remember that you can always choose between using the static facade (`Async::method()`) or the global helper functions (`method()`) based on your preference - both provide identical functionality.
+
+## 🤝 Contributing
+
+We welcome all contributions!
+
+* Found a bug? 🐛 [Open an issue](../../issues) and let us know.
+* Want to improve performance, add features, or clean up code? Submit a **pull request** — we'd love to see it.
+* New to open source? No worries — FiberAsync is beginner-friendly and a great way to get started with async in PHP.
+
+Your ideas and feedback are what make this project better. Let's build something awesome together!
+
