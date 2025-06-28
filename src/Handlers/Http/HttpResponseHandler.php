@@ -4,8 +4,27 @@ namespace Rcalicdan\FiberAsync\Handlers\Http;
 
 use Rcalicdan\FiberAsync\ValueObjects\HttpRequest;
 
+/**
+ * Handles HTTP response processing and callback execution.
+ * 
+ * This class manages the processing of completed HTTP requests,
+ * including successful responses, error handling, and callback execution.
+ * 
+ * @package Rcalicdan\FiberAsync\Handlers\Http
+ * @author  Rcalicdan
+ */
 final readonly class HttpResponseHandler
 {
+    /**
+     * Handle a successful HTTP response.
+     * 
+     * Extracts the response content and HTTP status code from a completed
+     * request and executes the associated callback with the success data.
+     * 
+     * @param \CurlHandle $handle  The completed cURL handle
+     * @param HttpRequest $request The request object
+     * @return void
+     */
     public function handleSuccessfulResponse($handle, HttpRequest $request): void
     {
         $response = curl_multi_getcontent($handle);
@@ -13,12 +32,32 @@ final readonly class HttpResponseHandler
         $request->executeCallback(null, $response, $httpCode);
     }
 
+    /**
+     * Handle an HTTP response with an error.
+     * 
+     * Extracts the error message from a failed request and executes the
+     * associated callback with the error data.
+     * 
+     * @param \CurlHandle $handle  The failed cURL handle
+     * @param HttpRequest $request The request object
+     * @return void
+     */
     public function handleErrorResponse($handle, HttpRequest $request): void
     {
         $error = curl_error($handle);
         $request->executeCallback($error, null, null);
     }
 
+    /**
+     * Process all completed requests in a multi-handle.
+     * 
+     * Checks for completed requests, processes their responses (success or error),
+     * executes callbacks, and cleans up resources. Updates the active requests array.
+     * 
+     * @param \CurlMultiHandle $multiHandle     The multi-handle to check
+     * @param array           &$activeRequests Reference to active requests array
+     * @return bool True if any requests were processed
+     */
     public function processCompletedRequests(\CurlMultiHandle $multiHandle, array &$activeRequests): bool
     {
         $processed = false;

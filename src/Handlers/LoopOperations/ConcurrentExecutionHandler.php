@@ -4,17 +4,52 @@ namespace Rcalicdan\FiberAsync\Handlers\LoopOperations;
 
 use Rcalicdan\FiberAsync\AsyncOperations;
 
+/**
+ * Handles concurrent execution of multiple async operations.
+ * 
+ * This class provides methods for running multiple async operations
+ * either all at once or with controlled concurrency limits.
+ * 
+ * @package Rcalicdan\FiberAsync\Handlers\LoopOperations
+ * @author  Rcalicdan
+ */
 final readonly class ConcurrentExecutionHandler
 {
+    /**
+     * Async operations instance for creating promises.
+     * 
+     * @var AsyncOperations
+     */
     private AsyncOperations $asyncOps;
+
+    /**
+     * Loop execution handler for running operations.
+     * 
+     * @var LoopExecutionHandler
+     */
     private LoopExecutionHandler $executionHandler;
 
+    /**
+     * Initialize the concurrent execution handler.
+     * 
+     * @param AsyncOperations       $asyncOps         Async operations instance
+     * @param LoopExecutionHandler  $executionHandler Loop execution handler
+     */
     public function __construct(AsyncOperations $asyncOps, LoopExecutionHandler $executionHandler)
     {
         $this->asyncOps = $asyncOps;
         $this->executionHandler = $executionHandler;
     }
 
+    /**
+     * Run all async operations concurrently without limits.
+     * 
+     * Executes all provided operations simultaneously and waits for
+     * all of them to complete before returning the results.
+     * 
+     * @param array $asyncOperations Array of async operations to execute
+     * @return array Results from all operations in the same order
+     */
     public function runAll(array $asyncOperations): array
     {
         return $this->executionHandler->run(function () use ($asyncOperations) {
@@ -28,6 +63,16 @@ final readonly class ConcurrentExecutionHandler
         });
     }
 
+    /**
+     * Run async operations with controlled concurrency.
+     * 
+     * Executes the operations with a maximum number of concurrent
+     * operations running at any given time.
+     * 
+     * @param array $asyncOperations Array of async operations to execute
+     * @param int   $concurrency     Maximum number of concurrent operations (default: 10)
+     * @return array Results from all operations
+     */
     public function runConcurrent(array $asyncOperations, int $concurrency = 10): array
     {
         return $this->executionHandler->run(function () use ($asyncOperations, $concurrency) {
