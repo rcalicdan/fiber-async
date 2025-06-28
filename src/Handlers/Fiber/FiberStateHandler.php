@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Handlers\Fiber;
 
-class FiberStateHandler
+final readonly class FiberStateHandler
 {
     public function filterActiveFibers(array $fibers): array
     {

@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Handlers\Http;
 
-class CurlMultiHandler
+final readonly class CurlMultiHandler
 {
     public function executeMultiHandle(\CurlMultiHandle $multiHandle): int
     {

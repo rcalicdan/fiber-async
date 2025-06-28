@@ -5,7 +5,7 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncOperations;
 use Fiber;
 use RuntimeException;
 
-class FiberContextHandler
+final readonly class FiberContextHandler
 {
     public function inFiber(): bool
     {

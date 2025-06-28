@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Handlers\Fiber;
 
-class FiberResumeHandler
+final readonly class FiberResumeHandler
 {
     public function resumeFiber(\Fiber $fiber): bool
     {

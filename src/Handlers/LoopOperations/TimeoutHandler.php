@@ -6,7 +6,7 @@ use Rcalicdan\FiberAsync\AsyncOperations;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Exception;
 
-class TimeoutHandler
+final readonly class TimeoutHandler
 {
     private AsyncOperations $asyncOps;
     private LoopExecutionHandler $executionHandler;

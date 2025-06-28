@@ -8,7 +8,7 @@ use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Fiber;
 use Throwable;
 
-class AsyncExecutionHandler
+final readonly class AsyncExecutionHandler
 {
     public function async(callable $asyncFunction): callable
     {

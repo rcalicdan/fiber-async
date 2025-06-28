@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Handlers\Fiber;
 
-class FiberStartHandler
+final readonly class FiberStartHandler
 {
     public function startFiber(\Fiber $fiber): bool
     {

@@ -5,7 +5,7 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop;
 use Rcalicdan\FiberAsync\Managers\TimerManager;
 use Rcalicdan\FiberAsync\Managers\FiberManager;
 
-class SleepHandler
+final readonly class SleepHandler
 {
     private TimerManager $timerManager;
     private FiberManager $fiberManager;

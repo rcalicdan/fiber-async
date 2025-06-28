@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop;
 
-class TickHandler
+final class TickHandler
 {
     private array $tickCallbacks = [];
     private array $deferredCallbacks = [];

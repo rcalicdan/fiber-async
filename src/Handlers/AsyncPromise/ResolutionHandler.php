@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncPromise;
 
 use Rcalicdan\FiberAsync\AsyncEventLoop;
 
-class ResolutionHandler
+final readonly class ResolutionHandler
 {
     private StateHandler $stateHandler;
     private CallbackHandler $callbackHandler;

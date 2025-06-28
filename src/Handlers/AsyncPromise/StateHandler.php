@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Handlers\AsyncPromise;
 
-class StateHandler
+final class StateHandler
 {
     private bool $resolved = false;
     private bool $rejected = false;

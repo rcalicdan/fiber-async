@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Handlers\Http;
 
 use Rcalicdan\FiberAsync\ValueObjects\HttpRequest;
 
-class HttpRequestHandler
+final readonly class HttpRequestHandler
 {
     public function createRequest(string $url, array $options, callable $callback): HttpRequest
     {

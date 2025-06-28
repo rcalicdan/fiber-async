@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Handlers\AsyncPromise;
 
-class CallbackHandler
+final class CallbackHandler
 {
     private array $thenCallbacks = [];
     private array $catchCallbacks = [];

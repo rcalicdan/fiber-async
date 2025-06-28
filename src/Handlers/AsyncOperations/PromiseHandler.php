@@ -5,7 +5,7 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncOperations;
 use Rcalicdan\FiberAsync\AsyncPromise;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 
-class PromiseHandler
+final readonly class PromiseHandler
 {
     public function resolve(mixed $value): PromiseInterface
     {

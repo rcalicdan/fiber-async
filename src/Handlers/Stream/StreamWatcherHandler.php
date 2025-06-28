@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Handlers\Stream;
 
 use Rcalicdan\FiberAsync\ValueObjects\StreamWatcher;
 
-class StreamWatcherHandler
+final readonly class StreamWatcherHandler
 {
     public function createWatcher($stream, callable $callback): StreamWatcher
     {

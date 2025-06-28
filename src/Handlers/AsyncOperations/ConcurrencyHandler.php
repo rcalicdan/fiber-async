@@ -8,7 +8,7 @@ use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use RuntimeException;
 use Throwable;
 
-class ConcurrencyHandler
+final readonly class ConcurrencyHandler
 {
     private AsyncExecutionHandler $executionHandler;
 
