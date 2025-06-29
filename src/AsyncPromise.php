@@ -72,8 +72,8 @@ class AsyncPromise implements AsyncPromiseInterface
 
         $this->executorHandler->executeExecutor(
             $executor,
-            fn($value) => $this->resolve($value),
-            fn($reason) => $this->reject($reason)
+            fn ($value) => $this->resolve($value),
+            fn ($reason) => $this->reject($reason)
         );
     }
 
@@ -120,9 +120,9 @@ class AsyncPromise implements AsyncPromiseInterface
             $handleReject = $this->chainHandler->createCatchHandler($onRejected, $resolve, $reject);
 
             if ($this->stateHandler->isResolved()) {
-                $this->chainHandler->scheduleHandler(fn() => $handleResolve($this->stateHandler->getValue()));
+                $this->chainHandler->scheduleHandler(fn () => $handleResolve($this->stateHandler->getValue()));
             } elseif ($this->stateHandler->isRejected()) {
-                $this->chainHandler->scheduleHandler(fn() => $handleReject($this->stateHandler->getReason()));
+                $this->chainHandler->scheduleHandler(fn () => $handleReject($this->stateHandler->getReason()));
             } else {
                 $this->callbackHandler->addThenCallback($handleResolve);
                 $this->callbackHandler->addCatchCallback($handleReject);

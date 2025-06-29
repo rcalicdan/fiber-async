@@ -31,6 +31,7 @@ final readonly class PromiseCollectionHandler
         return new AsyncPromise(function ($resolve, $reject) use ($promises) {
             if (empty($promises)) {
                 $resolve([]);
+
                 return;
             }
 
@@ -50,7 +51,8 @@ final readonly class PromiseCollectionHandler
                     })
                     ->catch(function ($reason) use ($reject) {
                         $reject($reason);
-                    });
+                    })
+                ;
             }
         });
     }
@@ -72,6 +74,7 @@ final readonly class PromiseCollectionHandler
         return new AsyncPromise(function ($resolve, $reject) use ($promises) {
             if (empty($promises)) {
                 $reject(new Exception('No promises provided'));
+
                 return;
             }
 
@@ -80,30 +83,35 @@ final readonly class PromiseCollectionHandler
             foreach ($promises as $index => $promise) {
                 $promise
                     ->then(function ($value) use ($resolve, &$settled, $promises, $index) {
-                        if ($settled) return;
+                        if ($settled) {
+                            return;
+                        }
 
                         $this->handleRaceSettlement($settled, $promises, $index);
                         $resolve($value);
                     })
                     ->catch(function ($reason) use ($reject, &$settled, $promises, $index) {
-                        if ($settled) return;
+                        if ($settled) {
+                            return;
+                        }
 
                         $this->handleRaceSettlement($settled, $promises, $index);
                         $reject($reason);
-                    });
+                    })
+                ;
             }
         });
     }
 
     /**
      * Handle the settlement of a promise in a race operation.
-     * 
+     *
      * This method marks the race as settled and cancels all other promises
      * that didn't win the race.
      *
-     * @param bool $settled Reference to the settled flag
-     * @param array $promises Array of all promises in the race
-     * @param int $winnerIndex Index of the winning promise
+     * @param  bool  $settled  Reference to the settled flag
+     * @param  array  $promises  Array of all promises in the race
+     * @param  int  $winnerIndex  Index of the winning promise
      */
     private function handleRaceSettlement(bool &$settled, array $promises, int $winnerIndex): void
     {
@@ -122,15 +130,15 @@ final readonly class PromiseCollectionHandler
     /**
      * Cancel a promise if it supports cancellation.
      *
-     * @param PromiseInterface $promise The promise to cancel
+     * @param  PromiseInterface  $promise  The promise to cancel
      */
     private function cancelPromiseIfPossible(PromiseInterface $promise): void
     {
-        if ($promise instanceof CancellablePromise && !$promise->isCancelled()) {
+        if ($promise instanceof CancellablePromise && ! $promise->isCancelled()) {
             $promise->cancel();
         } elseif ($promise instanceof AsyncPromise) {
             $rootCancellable = $promise->getRootCancellable();
-            if ($rootCancellable && !$rootCancellable->isCancelled()) {
+            if ($rootCancellable && ! $rootCancellable->isCancelled()) {
                 $rootCancellable->cancel();
             }
         }

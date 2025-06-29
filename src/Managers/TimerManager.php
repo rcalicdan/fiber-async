@@ -34,8 +34,10 @@ class TimerManager
     {
         if (isset($this->timers[$timerId])) {
             unset($this->timers[$timerId]);
+
             return true;
         }
+
         return false;
     }
 

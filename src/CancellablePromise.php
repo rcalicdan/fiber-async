@@ -21,14 +21,14 @@ class CancellablePromise extends AsyncPromise
 
     public function cancel(): void
     {
-        if (!$this->cancelled) {
+        if (! $this->cancelled) {
             $this->cancelled = true;
 
             if ($this->cancelHandler) {
                 try {
                     ($this->cancelHandler)();
                 } catch (\Throwable $e) {
-                    error_log('Cancel handler error: ' . $e->getMessage());
+                    error_log('Cancel handler error: '.$e->getMessage());
                 }
             }
 

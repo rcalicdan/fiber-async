@@ -4,7 +4,6 @@ namespace Rcalicdan\FiberAsync\Handlers\AsyncOperations;
 
 use Exception;
 use Rcalicdan\FiberAsync\AsyncEventLoop;
-use Rcalicdan\FiberAsync\AsyncPromise;
 use Rcalicdan\FiberAsync\Bridges\HttpClientBridge;
 use Rcalicdan\FiberAsync\CancellablePromise;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
@@ -30,7 +29,7 @@ final readonly class HttpHandler
      */
     public function fetch(string $url, array $options = []): PromiseInterface
     {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $requestId = null;
 
         $requestId = AsyncEventLoop::getInstance()->addHttpRequest($url, $options, function ($error, $response, $httpCode) use ($promise) {
@@ -39,7 +38,7 @@ final readonly class HttpHandler
             }
 
             if ($error) {
-                $promise->reject(new Exception('HTTP Request failed: ' . $error));
+                $promise->reject(new Exception("HTTP Request failed: {$error}"));
             } else {
                 $promise->resolve([
                     'body' => $response,

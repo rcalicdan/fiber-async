@@ -69,9 +69,10 @@ test('benchmark returns result and timing information', function () {
     });
 
     expect($benchmark)->toHaveKey('result');
-    expect($benchmark)->toHaveKey('duration');
-    expect($benchmark)->toHaveKey('duration_ms');
+    expect($benchmark)->toHaveKey('benchmark');
+    expect($benchmark['benchmark'])->toHaveKey('execution_time');
+    expect($benchmark['benchmark'])->toHaveKey('duration_ms');
     expect($benchmark['result'])->toBe('benchmark result');
-    expect($benchmark['duration'])->toBeGreaterThan(0.04);
-    expect($benchmark['duration_ms'])->toBeGreaterThan(40);
+    expect($benchmark['benchmark']['execution_time'])->toBeGreaterThan(0.04);
+    expect($benchmark['benchmark']['duration_ms'])->toBeGreaterThan(40);
 });

@@ -51,7 +51,7 @@ final readonly class BenchmarkHandler
                 'duration_ms' => round($duration * 1000, 2),
                 'memory_used' => $memoryUsed,
                 'peak_memory' => memory_get_peak_usage(),
-            ]
+            ],
         ];
     }
 
