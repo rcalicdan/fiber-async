@@ -8,6 +8,7 @@ use Rcalicdan\FiberAsync\Handlers\AsyncOperations\AsyncExecutionHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\AwaitHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\ConcurrencyHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\FiberContextHandler;
+use Rcalicdan\FiberAsync\Handlers\AsyncOperations\FileHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\HttpHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\PromiseCollectionHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\PromiseHandler;
@@ -66,6 +67,11 @@ class AsyncOperations implements AsyncOperationsInterface
     private ConcurrencyHandler $concurrencyHandler;
 
     /**
+     * @var FileHandler Handles asynchronous file operations
+     */
+    private FileHandler $fileHandler;
+
+    /**
      * Initialize the async operations system with all required handlers.
      *
      * Sets up all specialized handlers with proper dependency injection
@@ -81,6 +87,7 @@ class AsyncOperations implements AsyncOperationsInterface
         $this->httpHandler = new HttpHandler;
         $this->collectionHandler = new PromiseCollectionHandler;
         $this->concurrencyHandler = new ConcurrencyHandler($this->executionHandler);
+        $this->fileHandler = new FileHandler;
     }
 
     /**
@@ -277,5 +284,79 @@ class AsyncOperations implements AsyncOperationsInterface
     public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {
         return $this->concurrencyHandler->concurrent($tasks, $concurrency);
+    }
+
+    /**
+     * Read a file asynchronously.
+     *
+     * @param string $path The file path to read
+     * @param int $offset Optional offset to start reading from
+     * @param int|null $length Optional length to read
+     * @return PromiseInterface Promise that resolves with file contents
+     */
+    public function readFile(string $path, int $offset = 0, ?int $length = null): PromiseInterface
+    {
+        return $this->fileHandler->read($path, $offset, $length);
+    }
+
+    /**
+     * Write to a file asynchronously.
+     *
+     * @param string $path The file path to write to
+     * @param string $data The data to write
+     * @param bool $append Whether to append or overwrite
+     * @return PromiseInterface Promise that resolves with bytes written
+     */
+    public function writeFile(string $path, string $data, bool $append = false): PromiseInterface
+    {
+        return $this->fileHandler->write($path, $data, $append);
+    }
+
+    /**
+     * Get file information asynchronously.
+     */
+    public function statFile(string $path): PromiseInterface
+    {
+        return $this->fileHandler->stat($path);
+    }
+
+    /**
+     * Check if file exists asynchronously.
+     */
+    public function fileExists(string $path): PromiseInterface
+    {
+        return $this->fileHandler->exists($path);
+    }
+
+    /**
+     * Delete a file asynchronously.
+     */
+    public function deleteFile(string $path): PromiseInterface
+    {
+        return $this->fileHandler->unlink($path);
+    }
+
+    /**
+     * Create a directory asynchronously.
+     */
+    public function createDir(string $path, int $mode = 0755, bool $recursive = true): PromiseInterface
+    {
+        return $this->fileHandler->mkdir($path, $mode, $recursive);
+    }
+
+    /**
+     * Remove a directory asynchronously.
+     */
+    public function removeDir(string $path): PromiseInterface
+    {
+        return $this->fileHandler->rmdir($path);
+    }
+
+    /**
+     * List directory contents asynchronously.
+     */
+    public function listDir(string $path): PromiseInterface
+    {
+        return $this->fileHandler->scandir($path);
     }
 }
