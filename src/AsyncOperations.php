@@ -87,7 +87,7 @@ class AsyncOperations implements AsyncOperationsInterface
         $this->httpHandler = new HttpHandler;
         $this->collectionHandler = new PromiseCollectionHandler;
         $this->concurrencyHandler = new ConcurrencyHandler($this->executionHandler);
-        $this->fileHandler = new FileHandler;
+        $this->fileHandler = new FileHandler();
     }
 
     /**
