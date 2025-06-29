@@ -419,4 +419,70 @@ final class Async
     {
         return self::getLoopOperations()->benchmark($asyncOperation);
     }
+
+    // Add to Facades/Async.php
+
+    /**
+     * Read a file asynchronously without blocking the event loop.
+     */
+    public static function readFile(string $path, int $offset = 0, ?int $length = null): PromiseInterface
+    {
+        return self::getAsyncOperations()->readFile($path, $offset, $length);
+    }
+
+    /**
+     * Write to a file asynchronously without blocking the event loop.
+     */
+    public static function writeFile(string $path, string $data, bool $append = false): PromiseInterface
+    {
+        return self::getAsyncOperations()->writeFile($path, $data, $append);
+    }
+
+    /**
+     * Get file information asynchronously.
+     */
+    public static function statFile(string $path): PromiseInterface
+    {
+        return self::getAsyncOperations()->statFile($path);
+    }
+
+    /**
+     * Check if file exists asynchronously.
+     */
+    public static function fileExists(string $path): PromiseInterface
+    {
+        return self::getAsyncOperations()->fileExists($path);
+    }
+
+    /**
+     * Delete a file asynchronously.
+     */
+    public static function deleteFile(string $path): PromiseInterface
+    {
+        return self::getAsyncOperations()->deleteFile($path);
+    }
+
+    /**
+     * Create a directory asynchronously.
+     */
+    public static function createDir(string $path, int $mode = 0755, bool $recursive = true): PromiseInterface
+    {
+        return self::getAsyncOperations()->createDir($path, $mode, $recursive);
+    }
+
+    /**
+     * Remove a directory asynchronously.
+     */
+    public static function removeDir(string $path): PromiseInterface
+    {
+        return self::getAsyncOperations()->removeDir($path);
+    }
+
+    /**
+     * List directory contents asynchronously.
+     */
+    public static function listDir(string $path): PromiseInterface
+    {
+        return self::getAsyncOperations()->listDir($path);
+    }
 }
