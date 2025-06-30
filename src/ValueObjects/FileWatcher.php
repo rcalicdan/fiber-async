@@ -11,6 +11,7 @@ class FileWatcher
     private $callback;
     private array $options;
     private float $lastModified;
+    private int $lastSize;
     private float $lastChecked;
 
     public function __construct(string $path, callable $callback, array $options = [])
@@ -19,11 +20,20 @@ class FileWatcher
         $this->path = $path;
         $this->callback = $callback;
         $this->options = array_merge([
-            'polling_interval' => 1.0, // Default 1 second
+            'polling_interval' => 0.1, // Default 100ms for faster detection
             'watch_size' => true,       // Watch file size changes
             'watch_content' => false,   // Watch content hash (expensive)
         ], $options);
-        $this->lastModified = file_exists($path) ? filemtime($path) : 0;
+        
+        // Initialize with current file state
+        if (file_exists($path)) {
+            $this->lastModified = filemtime($path);
+            $this->lastSize = filesize($path);
+        } else {
+            $this->lastModified = 0;
+            $this->lastSize = 0;
+        }
+        
         $this->lastChecked = microtime(true);
     }
 
@@ -78,18 +88,35 @@ class FileWatcher
     public function checkForChanges(): bool
     {
         if (!file_exists($this->path)) {
+            // File was deleted
+            if ($this->lastModified > 0) {
+                $this->lastModified = 0;
+                $this->lastSize = 0;
+                return true;
+            }
             return false;
         }
 
+        clearstatcache(true, $this->path); // Clear stat cache for accurate results
+        
         $currentModified = filemtime($this->path);
-        $hasChanged = $currentModified !== $this->lastModified; 
+        $currentSize = filesize($this->path);
+        
+        $hasChanged = false;
 
-        if (!$hasChanged && $this->options['watch_size']) {
-            // Could add size-based change detection here
+        // Check modification time
+        if ($currentModified !== $this->lastModified) {
+            $hasChanged = true;
         }
 
-        if (!$hasChanged && $this->options['watch_content']) {
-            // Could add content hash-based detection here
+        // Check file size if enabled
+        if (!$hasChanged && $this->options['watch_size'] && $currentSize !== $this->lastSize) {
+            $hasChanged = true;
+        }
+
+        if ($hasChanged) {
+            $this->lastModified = $currentModified;
+            $this->lastSize = $currentSize;
         }
 
         return $hasChanged;

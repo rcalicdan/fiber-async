@@ -36,8 +36,7 @@ final readonly class FileWatcherHandler
             return false;
         }
 
-        $currentModified = filemtime($watcher->getPath());
-        $watcher->updateLastModified($currentModified);
+        // Execute callback when changes are detected
         $watcher->executeCallback('change', $watcher->getPath());
 
         return true;
