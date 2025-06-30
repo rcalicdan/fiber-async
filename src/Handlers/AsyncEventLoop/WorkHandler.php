@@ -3,6 +3,7 @@
 namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop;
 
 use Rcalicdan\FiberAsync\Managers\FiberManager;
+use Rcalicdan\FiberAsync\Managers\FileManager;
 use Rcalicdan\FiberAsync\Managers\HttpRequestManager;
 use Rcalicdan\FiberAsync\Managers\StreamManager;
 use Rcalicdan\FiberAsync\Managers\TimerManager;
@@ -21,6 +22,7 @@ final readonly class WorkHandler
     private StreamManager $streamManager;
     private FiberManager $fiberManager;
     private TickHandler $tickHandler;
+    private FileManager $fileManager;
 
     /**
      * @param  TimerManager  $timerManager  Handles timer-based operations
@@ -28,19 +30,22 @@ final readonly class WorkHandler
      * @param  StreamManager  $streamManager  Handles stream I/O operations
      * @param  FiberManager  $fiberManager  Handles fiber execution and management
      * @param  TickHandler  $tickHandler  Handles next-tick and deferred callbacks
+     * @param  FileManager  $fileManager  Handles file operations
      */
     public function __construct(
         TimerManager $timerManager,
         HttpRequestManager $httpRequestManager,
         StreamManager $streamManager,
         FiberManager $fiberManager,
-        TickHandler $tickHandler
+        TickHandler $tickHandler,
+        FileManager $fileManager
     ) {
         $this->timerManager = $timerManager;
         $this->httpRequestManager = $httpRequestManager;
         $this->streamManager = $streamManager;
         $this->fiberManager = $fiberManager;
         $this->tickHandler = $tickHandler;
+        $this->fileManager = $fileManager;
     }
 
     /**
@@ -53,12 +58,13 @@ final readonly class WorkHandler
      */
     public function hasWork(): bool
     {
-        return $this->timerManager->hasTimers() ||
+        return $this->tickHandler->hasTickCallbacks() ||
+            $this->tickHandler->hasDeferredCallbacks() ||
+            $this->timerManager->hasTimers() ||
             $this->httpRequestManager->hasRequests() ||
+            $this->fileManager->hasWork() ||
             $this->streamManager->hasWatchers() ||
-            $this->fiberManager->hasFibers() ||
-            $this->tickHandler->hasTickCallbacks() ||
-            $this->tickHandler->hasDeferredCallbacks();
+            $this->fiberManager->hasFibers();
     }
 
     /**
@@ -69,9 +75,10 @@ final readonly class WorkHandler
      * 2. HTTP requests (start new requests immediately)
      * 3. Fibers (may add more HTTP requests)
      * 4. HTTP requests again (process newly added requests)
-     * 5. Timers (scheduled callbacks)
-     * 6. Streams (I/O operations)
-     * 7. Deferred callbacks (cleanup/low priority)
+     * 5. File operations (read/write/stat/delete)
+     * 6. Timers (scheduled callbacks)
+     * 7. Streams (I/O operations)
+     * 8. Deferred callbacks (cleanup/low priority)
      *
      * @return bool True if any work was processed, false if no work was done
      */
@@ -92,6 +99,10 @@ final readonly class WorkHandler
         }
 
         if ($this->httpRequestManager->processRequests()) {
+            $workDone = true;
+        }
+
+        if ($this->fileManager->processFileOperations()) {
             $workDone = true;
         }
 

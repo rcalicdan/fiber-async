@@ -294,9 +294,9 @@ class AsyncOperations implements AsyncOperationsInterface
      * @param int|null $length Optional length to read
      * @return PromiseInterface Promise that resolves with file contents
      */
-    public function readFile(string $path, int $offset = 0, ?int $length = null): PromiseInterface
+    public function readFile(string $path, array $options = []): PromiseInterface
     {
-        return $this->fileHandler->read($path, $offset, $length);
+        return $this->fileHandler->readFile($path, $options);
     }
 
     /**
@@ -307,17 +307,21 @@ class AsyncOperations implements AsyncOperationsInterface
      * @param bool $append Whether to append or overwrite
      * @return PromiseInterface Promise that resolves with bytes written
      */
-    public function writeFile(string $path, string $data, bool $append = false): PromiseInterface
+    public function writeFile(string $path, string $data, array $options = []): PromiseInterface
     {
-        return $this->fileHandler->write($path, $data, $append);
+        return $this->fileHandler->writeFile($path, $data, $options);
     }
 
     /**
-     * Get file information asynchronously.
+     * Append to a file asynchronously.
+     * 
+     * @param string $path The file path to append to
+     * @param string $data The data to append
+     * @return PromiseInterface Promise that resolves with bytes written
      */
-    public function statFile(string $path): PromiseInterface
+    public function appendFile(string $path, string $data): PromiseInterface
     {
-        return $this->fileHandler->stat($path);
+        return $this->fileHandler->appendFile($path, $data);
     }
 
     /**
@@ -325,7 +329,15 @@ class AsyncOperations implements AsyncOperationsInterface
      */
     public function fileExists(string $path): PromiseInterface
     {
-        return $this->fileHandler->exists($path);
+        return $this->fileHandler->fileExists($path);
+    }
+
+    /**
+     * Get file information asynchronously.
+     */
+    public function getFileStats(string $path): PromiseInterface
+    {
+        return $this->fileHandler->getFileStats($path);
     }
 
     /**
@@ -333,30 +345,54 @@ class AsyncOperations implements AsyncOperationsInterface
      */
     public function deleteFile(string $path): PromiseInterface
     {
-        return $this->fileHandler->unlink($path);
+        return $this->fileHandler->deleteFile($path);
     }
 
     /**
      * Create a directory asynchronously.
      */
-    public function createDir(string $path, int $mode = 0755, bool $recursive = true): PromiseInterface
+    public function createDirectory(string $path, array $options = []): PromiseInterface
     {
-        return $this->fileHandler->mkdir($path, $mode, $recursive);
+        return $this->fileHandler->createDirectory($path, $options);
     }
 
     /**
      * Remove a directory asynchronously.
      */
-    public function removeDir(string $path): PromiseInterface
+    public function removeDirectory(string $path): PromiseInterface
     {
-        return $this->fileHandler->rmdir($path);
+        return $this->fileHandler->removeDirectory($path);
     }
 
     /**
-     * List directory contents asynchronously.
+     * Copy a file asynchronously.
      */
-    public function listDir(string $path): PromiseInterface
+    public function copyFile(string $source, string $destination): PromiseInterface
     {
-        return $this->fileHandler->scandir($path);
+        return $this->fileHandler->copyFile($source, $destination);
+    }
+
+    /**
+     * Rename a file asynchronously.
+     */
+    public function renameFile(string $oldPath, string $newPath): PromiseInterface
+    {
+        return $this->fileHandler->renameFile($oldPath, $newPath);
+    }
+
+    /**
+     * Watch a file for changes asynchronously.
+     */
+    public function watchFile(string $path, callable $callback, array $options = []): string
+    {
+        return $this->fileHandler->watchFile($path, $callback, $options);
+    }
+
+    /**
+     * Unwatch a file for changes asynchronously.
+     */
+    public function unwatchFile(string $watcherId): bool
+    {
+        return $this->fileHandler->unwatchFile($watcherId);
     }
 }
