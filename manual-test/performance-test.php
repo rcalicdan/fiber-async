@@ -2,7 +2,7 @@
 
 use Rcalicdan\FiberAsync\AsyncEventLoop;
 
-require_once 'vendor/autoload.php';
+require_once '../vendor/autoload.php';
 
 /**
  * Performance Test Script for FiberAsync
