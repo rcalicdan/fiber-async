@@ -246,32 +246,51 @@ class AsyncFileTest
             $testFile = $this->testDir . '/watch_test.txt';
             $changeDetected = false;
 
+            echo "\n  📁 Setting up file watching test...\n";
             file_put_contents($testFile, 'initial content');
+            echo "  📁 Initial file created with content\n";
 
             try {
-                $watcherId = Async::watchFile($testFile, function ($event) use (&$changeDetected) {
-                    $changeDetected = true;
-                }, ['polling_interval' => 0.05]); // 50ms polling
+                $result = Async::run(function () use ($testFile, &$changeDetected) {
+                    echo "  📁 Creating file watcher...\n";
+                    $watcherId = Async::watchFile($testFile, function ($event) use (&$changeDetected) {
+                        echo "  📁 CALLBACK TRIGGERED: Change detected - $event\n";
+                        $changeDetected = true;
+                    }, ['polling_interval' => 0.05]);
 
-                run(function () use ($testFile, &$changeDetected) {
-                    await(delay(0.1));
-                    file_put_contents($testFile, 'modified content');
-                    $timeout = 2; // 2 seconds timeout
-                    $start = microtime(true);
+                    echo "  📁 Watcher created with ID: $watcherId\n";
 
-                    while (!$changeDetected && (microtime(true) - $start) < $timeout) {
-                        await(delay(0.05)); 
+                    // Wait and modify
+                    Async::await(Async::delay(0.2));
+                    echo "  📁 Modifying file...\n";
+                    file_put_contents($testFile, 'modified content at ' . date('H:i:s'));
+
+                    // Wait for detection
+                    $maxWaitTime = 3.0;
+                    $startTime = microtime(true);
+                    $checks = 0;
+
+                    while (!$changeDetected && (microtime(true) - $startTime) < $maxWaitTime) {
+                        Async::await(Async::delay(0.1));
+                        $checks++;
+                        if ($checks % 10 === 0) {
+                            echo "  📁 Still waiting... (checked $checks times)\n";
+                        }
                     }
+
+                    echo "  📁 Change detected: " . ($changeDetected ? 'YES' : 'NO') . "\n";
+
+                    $unwatchSuccess = Async::unwatchFile($watcherId);
+                    echo "  📁 Unwatch success: " . ($unwatchSuccess ? 'YES' : 'NO') . "\n";
+
+                    return $changeDetected && $unwatchSuccess;
                 });
 
-                // Stop watching
-                $unwatchSuccess = Async::unwatchFile($watcherId);
-
-                return $changeDetected && $unwatchSuccess;
-            } catch (Throwable $e) {
-                // File watching might not be supported in all environments
-                echo "  ⚠️  File watching test skipped: " . $e->getMessage() . "\n";
-                return true; // Consider it passed if not supported
+                return $result;
+            } catch (\Throwable $e) {
+                echo "  ❌ File watching error: " . $e->getMessage() . "\n";
+                echo "  📁 Stack trace: " . $e->getTraceAsString() . "\n";
+                return false;
             }
         });
     }
