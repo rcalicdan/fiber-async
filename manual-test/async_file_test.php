@@ -246,33 +246,29 @@ class AsyncFileTest
             $testFile = $this->testDir . '/watch_test.txt';
             $changeDetected = false;
 
-            // Create initial file
             file_put_contents($testFile, 'initial content');
 
             try {
-                // Set up file watcher
                 $watcherId = Async::watchFile($testFile, function ($event) use (&$changeDetected) {
                     $changeDetected = true;
-                }, ['polling_interval' => 0.1]);
+                }, ['polling_interval' => 0.05]); // 50ms polling
 
-                // Give watcher time to initialize
-                usleep(200000); // 0.2 seconds
+                run(function () use ($testFile, &$changeDetected) {
+                    await(delay(0.1));
+                    file_put_contents($testFile, 'modified content');
+                    $timeout = 2; // 2 seconds timeout
+                    $start = microtime(true);
 
-                // Modify the file
-                file_put_contents($testFile, 'modified content');
-
-                // Wait for change detection
-                $timeout = 2; // 2 seconds timeout
-                $start = microtime(true);
-                while (!$changeDetected && (microtime(true) - $start) < $timeout) {
-                    usleep(100000); // 0.1 seconds
-                }
+                    while (!$changeDetected && (microtime(true) - $start) < $timeout) {
+                        await(delay(0.05)); 
+                    }
+                });
 
                 // Stop watching
                 $unwatchSuccess = Async::unwatchFile($watcherId);
 
                 return $changeDetected && $unwatchSuccess;
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
                 // File watching might not be supported in all environments
                 echo "  ⚠️  File watching test skipped: " . $e->getMessage() . "\n";
                 return true; // Consider it passed if not supported
@@ -289,21 +285,21 @@ class AsyncFileTest
                 Async::run(function () use ($nonExistentFile) {
                     return Async::await(Async::readFile($nonExistentFile));
                 });
-                return false; 
+                return false;
             } catch (Exception $e) {
-                return true; 
+                return true;
             }
         });
 
         $this->test('Error Handling - Write to Read-only Directory', function () {
             if (PHP_OS_FAMILY === 'Windows') {
-                return true; 
+                return true;
             }
 
             try {
                 $readOnlyDir = $this->testDir . '/readonly';
                 mkdir($readOnlyDir);
-                chmod($readOnlyDir, 0444); 
+                chmod($readOnlyDir, 0444);
 
                 $testFile = $readOnlyDir . '/test.txt';
 

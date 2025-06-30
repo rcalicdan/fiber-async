@@ -290,8 +290,7 @@ class AsyncOperations implements AsyncOperationsInterface
      * Read a file asynchronously.
      *
      * @param string $path The file path to read
-     * @param int $offset Optional offset to start reading from
-     * @param int|null $length Optional length to read
+     * @param array $options
      * @return PromiseInterface Promise that resolves with file contents
      */
     public function readFile(string $path, array $options = []): PromiseInterface

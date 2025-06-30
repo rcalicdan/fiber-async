@@ -24,7 +24,7 @@ class FileWatcher
             'watch_size' => true,       // Watch file size changes
             'watch_content' => false,   // Watch content hash (expensive)
         ], $options);
-        
+
         // Initialize with current file state
         if (file_exists($path)) {
             $this->lastModified = filemtime($path);
@@ -33,7 +33,7 @@ class FileWatcher
             $this->lastModified = 0;
             $this->lastSize = 0;
         }
-        
+
         $this->lastChecked = microtime(true);
     }
 
@@ -89,7 +89,7 @@ class FileWatcher
     {
         if (!file_exists($this->path)) {
             // File was deleted
-            if ($this->lastModified > 0) {
+            if ($this->lastModified > 0 || $this->lastSize > 0) {
                 $this->lastModified = 0;
                 $this->lastSize = 0;
                 return true;
@@ -97,15 +97,15 @@ class FileWatcher
             return false;
         }
 
-        clearstatcache(true, $this->path); // Clear stat cache for accurate results
-        
+        clearstatcache(true, $this->path);
+
         $currentModified = filemtime($this->path);
         $currentSize = filesize($this->path);
-        
+
         $hasChanged = false;
 
-        // Check modification time
-        if ($currentModified !== $this->lastModified) {
+        // Check modification time (allow for filesystem timestamp precision)
+        if (abs($currentModified - $this->lastModified) > 0.001) {
             $hasChanged = true;
         }
 
@@ -117,9 +117,10 @@ class FileWatcher
         if ($hasChanged) {
             $this->lastModified = $currentModified;
             $this->lastSize = $currentSize;
+            return true;
         }
 
-        return $hasChanged;
+        return false;
     }
 
     public function executeCallback(string $event, string $path): void
