@@ -383,20 +383,6 @@ class AsyncFileTest
         echo "✅ Cleanup completed.\n";
     }
 
-    private function handleRmdir(FileOperation $operation): void
-    {
-        $path = $operation->getPath();
-
-        if (!is_dir($path)) {
-            $operation->executeCallback(null, true);
-            return;
-        }
-
-        // Add recursive removal capability
-        $this->removeDirectoryRecursive($path);
-        $operation->executeCallback(null, true);
-    }
-
     private function removeDirectoryRecursive(string $dir): void
     {
         if (!is_dir($dir)) {

@@ -65,7 +65,7 @@ final readonly class FileOperationHandler
     {
         $path = $operation->getPath();
         $options = $operation->getOptions();
-        
+
         if (!file_exists($path)) {
             throw new \RuntimeException("File does not exist: $path");
         }
@@ -97,7 +97,7 @@ final readonly class FileOperationHandler
         $options = $operation->getOptions();
 
         $flags = $options['flags'] ?? 0;
-        
+
         if (isset($options['create_directories']) && $options['create_directories']) {
             $dir = dirname($path);
             if (!is_dir($dir)) {
@@ -201,13 +201,39 @@ final readonly class FileOperationHandler
             return;
         }
 
-        $result = rmdir($path);
+        // Check if directory is empty
+        $files = array_diff(scandir($path), ['.', '..']);
 
-        if (!$result) {
-            throw new \RuntimeException("Failed to remove directory: $path");
+        if (!empty($files)) {
+            // Directory is not empty, remove recursively
+            $this->removeDirectoryRecursive($path);
+        } else {
+            // Directory is empty, use regular rmdir
+            $result = rmdir($path);
+            if (!$result) {
+                throw new \RuntimeException("Failed to remove directory: $path");
+            }
         }
 
         $operation->executeCallback(null, true);
+    }
+
+    private function removeDirectoryRecursive(string $dir): void
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+            $path = $dir . DIRECTORY_SEPARATOR . $file;
+            if (is_dir($path)) {
+                $this->removeDirectoryRecursive($path);
+            } else {
+                unlink($path);
+            }
+        }
+        rmdir($dir);
     }
 
     private function handleCopy(FileOperation $operation): void

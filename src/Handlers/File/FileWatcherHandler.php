@@ -27,6 +27,11 @@ final readonly class FileWatcherHandler
 
     private function checkWatcher(FileWatcher $watcher): bool
     {
+        // Check if enough time has passed for polling
+        if (!$watcher->shouldCheck()) {
+            return false;
+        }
+
         if (!$watcher->checkForChanges()) {
             return false;
         }

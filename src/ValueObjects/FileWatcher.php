@@ -66,12 +66,12 @@ class FileWatcher
     {
         $now = microtime(true);
         $elapsed = $now - $this->lastChecked;
-        
+
         if ($elapsed >= $this->getPollingInterval()) {
             $this->lastChecked = $now;
             return true;
         }
-        
+
         return false;
     }
 
@@ -82,7 +82,7 @@ class FileWatcher
         }
 
         $currentModified = filemtime($this->path);
-        $hasChanged = $currentModified > $this->lastModified;
+        $hasChanged = $currentModified !== $this->lastModified; 
 
         if (!$hasChanged && $this->options['watch_size']) {
             // Could add size-based change detection here
