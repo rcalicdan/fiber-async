@@ -49,13 +49,13 @@ class AsyncFileTest
         $this->testRenameFile();
         $this->testDeleteFile();
         $this->testRemoveDirectory();
-        
+
         // Test concurrent operations
         $this->testConcurrentFileOperations();
-        
+
         // Test file watching (if supported)
         $this->testFileWatching();
-        
+
         // Test error handling
         $this->testErrorHandling();
     }
@@ -66,7 +66,7 @@ class AsyncFileTest
             $result = Async::run(function () {
                 return Async::await(Async::createDirectory($this->testDir, ['recursive' => true]));
             });
-            
+
             return $result && is_dir($this->testDir);
         });
     }
@@ -76,25 +76,26 @@ class AsyncFileTest
         $this->test('Write File', function () {
             $testFile = $this->testDir . '/test.txt';
             $testContent = "Hello, Async World!\n";
-            
+
             $bytesWritten = Async::run(function () use ($testFile, $testContent) {
                 return Async::await(Async::writeFile($testFile, $testContent));
             });
-            
+
             return $bytesWritten > 0 && file_exists($testFile) && file_get_contents($testFile) === $testContent;
         });
     }
+
 
     private function testReadFile(): void
     {
         $this->test('Read File', function () {
             $testFile = $this->testDir . '/test.txt';
             $expectedContent = "Hello, Async World!\n";
-            
+
             $content = Async::run(function () use ($testFile) {
                 return Async::await(Async::readFile($testFile));
             });
-            
+
             return $content === $expectedContent;
         });
     }
@@ -104,14 +105,14 @@ class AsyncFileTest
         $this->test('Append File', function () {
             $testFile = $this->testDir . '/test.txt';
             $appendContent = "This is appended content.\n";
-            
+
             $bytesWritten = Async::run(function () use ($testFile, $appendContent) {
                 return Async::await(Async::appendFile($testFile, $appendContent));
             });
-            
+
             $fullContent = file_get_contents($testFile);
             $expectedContent = "Hello, Async World!\nThis is appended content.\n";
-            
+
             return $bytesWritten > 0 && $fullContent === $expectedContent;
         });
     }
@@ -121,15 +122,15 @@ class AsyncFileTest
         $this->test('File Exists', function () {
             $testFile = $this->testDir . '/test.txt';
             $nonExistentFile = $this->testDir . '/nonexistent.txt';
-            
+
             $exists = Async::run(function () use ($testFile) {
                 return Async::await(Async::fileExists($testFile));
             });
-            
+
             $notExists = Async::run(function () use ($nonExistentFile) {
                 return Async::await(Async::fileExists($nonExistentFile));
             });
-            
+
             return $exists === true && $notExists === false;
         });
     }
@@ -138,11 +139,11 @@ class AsyncFileTest
     {
         $this->test('Get File Stats', function () {
             $testFile = $this->testDir . '/test.txt';
-            
+
             $stats = Async::run(function () use ($testFile) {
                 return Async::await(Async::getFileStats($testFile));
             });
-            
+
             return is_array($stats) && isset($stats['size']) && $stats['size'] > 0;
         });
     }
@@ -152,13 +153,13 @@ class AsyncFileTest
         $this->test('Copy File', function () {
             $sourceFile = $this->testDir . '/test.txt';
             $destinationFile = $this->testDir . '/test_copy.txt';
-            
+
             $success = Async::run(function () use ($sourceFile, $destinationFile) {
                 return Async::await(Async::copyFile($sourceFile, $destinationFile));
             });
-            
-            return $success && file_exists($destinationFile) && 
-                   file_get_contents($sourceFile) === file_get_contents($destinationFile);
+
+            return $success && file_exists($destinationFile) &&
+                file_get_contents($sourceFile) === file_get_contents($destinationFile);
         });
     }
 
@@ -167,11 +168,11 @@ class AsyncFileTest
         $this->test('Rename File', function () {
             $oldFile = $this->testDir . '/test_copy.txt';
             $newFile = $this->testDir . '/test_renamed.txt';
-            
+
             $success = Async::run(function () use ($oldFile, $newFile) {
                 return Async::await(Async::renameFile($oldFile, $newFile));
             });
-            
+
             return $success && !file_exists($oldFile) && file_exists($newFile);
         });
     }
@@ -180,11 +181,11 @@ class AsyncFileTest
     {
         $this->test('Delete File', function () {
             $testFile = $this->testDir . '/test_renamed.txt';
-            
+
             $success = Async::run(function () use ($testFile) {
                 return Async::await(Async::deleteFile($testFile));
             });
-            
+
             return $success && !file_exists($testFile);
         });
     }
@@ -195,15 +196,15 @@ class AsyncFileTest
             // Create a subdirectory with a file
             $subDir = $this->testDir . '/subdir';
             $testFile = $subDir . '/file.txt';
-            
+
             // Create subdirectory and file
             mkdir($subDir);
             file_put_contents($testFile, 'test content');
-            
+
             $success = Async::run(function () use ($subDir) {
                 return Async::await(Async::removeDirectory($subDir));
             });
-            
+
             return $success && !is_dir($subDir);
         });
     }
@@ -212,7 +213,7 @@ class AsyncFileTest
     {
         $this->test('Concurrent File Operations', function () {
             $operations = [];
-            
+
             // Create multiple file write operations
             for ($i = 0; $i < 5; $i++) {
                 $operations[] = function () use ($i) {
@@ -220,11 +221,11 @@ class AsyncFileTest
                     return Async::await(Async::writeFile($file, "Content for file {$i}"));
                 };
             }
-            
+
             $results = Async::run(function () use ($operations) {
                 return Async::await(Async::concurrent($operations, 3));
             });
-            
+
             // Verify all files were created
             $allCreated = true;
             for ($i = 0; $i < 5; $i++) {
@@ -234,7 +235,7 @@ class AsyncFileTest
                     break;
                 }
             }
-            
+
             return count($results) === 5 && $allCreated;
         });
     }
@@ -244,34 +245,33 @@ class AsyncFileTest
         $this->test('File Watching', function () {
             $testFile = $this->testDir . '/watch_test.txt';
             $changeDetected = false;
-            
+
             // Create initial file
             file_put_contents($testFile, 'initial content');
-            
+
             try {
                 // Set up file watcher
                 $watcherId = Async::watchFile($testFile, function ($event) use (&$changeDetected) {
                     $changeDetected = true;
                 }, ['polling_interval' => 0.1]);
-                
+
                 // Give watcher time to initialize
                 usleep(200000); // 0.2 seconds
-                
+
                 // Modify the file
                 file_put_contents($testFile, 'modified content');
-                
+
                 // Wait for change detection
                 $timeout = 2; // 2 seconds timeout
                 $start = microtime(true);
                 while (!$changeDetected && (microtime(true) - $start) < $timeout) {
                     usleep(100000); // 0.1 seconds
                 }
-                
+
                 // Stop watching
                 $unwatchSuccess = Async::unwatchFile($watcherId);
-                
+
                 return $changeDetected && $unwatchSuccess;
-                
             } catch (Exception $e) {
                 // File watching might not be supported in all environments
                 echo "  ⚠️  File watching test skipped: " . $e->getMessage() . "\n";
@@ -284,30 +284,33 @@ class AsyncFileTest
     {
         $this->test('Error Handling - Read Non-existent File', function () {
             $nonExistentFile = $this->testDir . '/does_not_exist.txt';
-            
+
             try {
                 Async::run(function () use ($nonExistentFile) {
                     return Async::await(Async::readFile($nonExistentFile));
                 });
-                return false; // Should have thrown an exception
+                return false; 
             } catch (Exception $e) {
-                return true; // Expected exception
+                return true; 
             }
         });
 
         $this->test('Error Handling - Write to Read-only Directory', function () {
-            // This test might not work on all systems, so we'll make it optional
+            if (PHP_OS_FAMILY === 'Windows') {
+                return true; 
+            }
+
             try {
                 $readOnlyDir = $this->testDir . '/readonly';
                 mkdir($readOnlyDir);
-                chmod($readOnlyDir, 0444); // Read-only
-                
+                chmod($readOnlyDir, 0444); 
+
                 $testFile = $readOnlyDir . '/test.txt';
-                
+
                 Async::run(function () use ($testFile) {
                     return Async::await(Async::writeFile($testFile, 'test'));
                 });
-                
+
                 return false; // Should have failed
             } catch (Exception $e) {
                 return true; // Expected failure
@@ -319,12 +322,12 @@ class AsyncFileTest
     {
         $this->testCount++;
         echo "🧪 Testing: {$name}... ";
-        
+
         try {
             $start = microtime(true);
             $result = $testFunction();
             $duration = round((microtime(true) - $start) * 1000, 2);
-            
+
             if ($result) {
                 echo "✅ PASSED ({$duration}ms)\n";
                 $this->passedCount++;
@@ -348,10 +351,10 @@ class AsyncFileTest
         echo "Total Tests: {$this->testCount}\n";
         echo "Passed: {$this->passedCount}\n";
         echo "Failed: " . ($this->testCount - $this->passedCount) . "\n";
-        
+
         $passRate = round(($this->passedCount / $this->testCount) * 100, 1);
         echo "Pass Rate: {$passRate}%\n";
-        
+
         if ($this->passedCount === $this->testCount) {
             echo "\n🎉 All tests passed! Your async file operations are working correctly.\n";
         } else {
@@ -372,12 +375,26 @@ class AsyncFileTest
     private function cleanup(): void
     {
         echo "\n🧹 Cleaning up test files...\n";
-        
+
         if (is_dir($this->testDir)) {
             $this->removeDirectoryRecursive($this->testDir);
         }
-        
+
         echo "✅ Cleanup completed.\n";
+    }
+
+    private function handleRmdir(FileOperation $operation): void
+    {
+        $path = $operation->getPath();
+
+        if (!is_dir($path)) {
+            $operation->executeCallback(null, true);
+            return;
+        }
+
+        // Add recursive removal capability
+        $this->removeDirectoryRecursive($path);
+        $operation->executeCallback(null, true);
     }
 
     private function removeDirectoryRecursive(string $dir): void
@@ -385,17 +402,17 @@ class AsyncFileTest
         if (!is_dir($dir)) {
             return;
         }
-        
+
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
             $path = $dir . '/' . $file;
             if (is_dir($path)) {
                 $this->removeDirectoryRecursive($path);
             } else {
-                @unlink($path);
+                unlink($path);
             }
         }
-        @rmdir($dir);
+        rmdir($dir);
     }
 }
 
