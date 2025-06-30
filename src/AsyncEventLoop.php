@@ -9,6 +9,7 @@ use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\StateHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\TickHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\WorkHandler;
 use Rcalicdan\FiberAsync\Managers\FiberManager;
+use Rcalicdan\FiberAsync\Managers\FileManager;
 use Rcalicdan\FiberAsync\Managers\HttpRequestManager;
 use Rcalicdan\FiberAsync\Managers\StreamManager;
 use Rcalicdan\FiberAsync\Managers\TimerManager;
@@ -77,6 +78,11 @@ class AsyncEventLoop implements EventLoopInterface
     private StateHandler $stateHandler;
 
     /**
+     * @var FileManager Manages file operations
+     */
+    private FileManager $fileManager;
+
+    /**
      * Initialize the event loop with all required managers and handlers.
      *
      * Private constructor to enforce singleton pattern. Sets up all managers
@@ -91,6 +97,7 @@ class AsyncEventLoop implements EventLoopInterface
         $this->tickHandler = new TickHandler;
         $this->activityHandler = new ActivityHandler;
         $this->stateHandler = new StateHandler;
+        $this->fileManager = new FileManager();
 
         // Initialize handlers that depend on managers
         $this->workHandler = new WorkHandler(
@@ -98,7 +105,8 @@ class AsyncEventLoop implements EventLoopInterface
             $this->httpRequestManager,
             $this->streamManager,
             $this->fiberManager,
-            $this->tickHandler
+            $this->tickHandler,
+            $this->fileManager,
         );
 
         $this->sleepHandler = new SleepHandler(
@@ -278,5 +286,42 @@ class AsyncEventLoop implements EventLoopInterface
     public function isIdle(): bool
     {
         return ! $this->workHandler->hasWork() || $this->activityHandler->isIdle();
+    }
+
+    /**
+     * Schedule an asynchronous file operation
+     */
+    public function addFileOperation(
+        string $type,
+        string $path,
+        mixed $data,
+        callable $callback,
+        array $options = []
+    ): string {
+        return $this->fileManager->addFileOperation($type, $path, $data, $callback, $options);
+    }
+
+    /**
+     * Cancel a file operation
+     */
+    public function cancelFileOperation(string $operationId): bool
+    {
+        return $this->fileManager->cancelFileOperation($operationId);
+    }
+
+    /**
+     * Add a file watcher
+     */
+    public function addFileWatcher(string $path, callable $callback, array $options = []): string
+    {
+        return $this->fileManager->addFileWatcher($path, $callback, $options);
+    }
+
+    /**
+     * Remove a file watcher
+     */
+    public function removeFileWatcher(string $watcherId): bool
+    {
+        return $this->fileManager->removeFileWatcher($watcherId);
     }
 }
