@@ -21,12 +21,12 @@ class RealisticFileBenchmark
     public function runBenchmark()
     {
         $scenarios = [
-            'Local SSD' => ['read' => 0.1, 'write' => 0.2, 'overhead' => 0.5],
-            'Local Network' => ['read' => 2, 'write' => 3, 'overhead' => 1],
-            'WAN Low Latency' => ['read' => 20, 'write' => 25, 'overhead' => 2],
-            'WAN Medium Latency' => ['read' => 50, 'write' => 60, 'overhead' => 3],
-            'Cloud Storage' => ['read' => 100, 'write' => 150, 'overhead' => 5],
-            'Satellite' => ['read' => 500, 'write' => 600, 'overhead' => 10],
+            'Local SSD' => ['read' => 0.1, 'write' => 0.2, 'overhead' => 0.5], //ms
+            'Local Network' => ['read' => 2, 'write' => 3, 'overhead' => 1], //ms
+            'WAN Low Latency' => ['read' => 20, 'write' => 25, 'overhead' => 2], //ms
+            'WAN Medium Latency' => ['read' => 50, 'write' => 60, 'overhead' => 3], //ms
+            'Cloud Storage' => ['read' => 100, 'write' => 150, 'overhead' => 5], //ms
+            'Satellite' => ['read' => 500, 'write' => 600, 'overhead' => 10], //ms
         ];
 
         foreach ($scenarios as $name => $latency) {
