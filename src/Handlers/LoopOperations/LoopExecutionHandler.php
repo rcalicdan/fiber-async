@@ -62,15 +62,13 @@ final readonly class LoopExecutionHandler
             ->catch(function ($reason) use (&$error, &$completed) {
                 $error = $reason;
                 $completed = true;
-            })
-        ;
+            });
 
-        while (! $completed && ! $loop->isIdle()) {
+        while (!$completed) {
             $loop->run();
-            if ($completed) {
-                break;
+            if (!$completed) {
+                usleep(1000); // 1ms - prevent busy waiting
             }
-            usleep(1000); // 1ms
         }
 
         if ($error !== null) {
