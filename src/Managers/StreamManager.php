@@ -2,40 +2,46 @@
 
 namespace Rcalicdan\FiberAsync\Managers;
 
-use Rcalicdan\FiberAsync\Handlers\Stream\StreamSelectHandler;
-use Rcalicdan\FiberAsync\Handlers\Stream\StreamWatcherHandler;
+use Rcalicdan\FiberAsync\ValueObjects\StreamWatcher;
 
 class StreamManager
 {
-    /** @var \Rcalicdan\FiberAsync\ValueObjects\StreamWatcher[] */
+    /** @var StreamWatcher[] */
     private array $watchers = [];
-
-    private StreamWatcherHandler $watcherHandler;
-    private StreamSelectHandler $selectHandler;
-
-    public function __construct()
-    {
-        $this->watcherHandler = new StreamWatcherHandler;
-        $this->selectHandler = new StreamSelectHandler;
-    }
 
     public function addStreamWatcher($stream, callable $callback): void
     {
-        $watcher = $this->watcherHandler->createWatcher($stream, $callback);
-        $this->watchers[] = $watcher;
+        $this->watchers[] = new StreamWatcher($stream, $callback);
     }
 
-    public function processStreams(): void
+    public function getReadStreams(): array
     {
-        $readyStreams = $this->selectHandler->selectStreams($this->watchers);
+        $streams = [];
+        foreach ($this->watchers as $watcher) {
+            $streams[] = $watcher->getStream();
+        }
+        return $streams;
+    }
 
-        if (! empty($readyStreams)) {
-            $this->selectHandler->processReadyStreams($readyStreams, $this->watchers);
+    public function processReadyStreams(array $readyStreams): void
+    {
+        if (empty($readyStreams)) {
+            return;
+        }
+        
+        foreach ($readyStreams as $stream) {
+            foreach ($this->watchers as $key => $watcher) {
+                if ($watcher->getStream() === $stream) {
+                    $watcher->execute();
+                    unset($this->watchers[$key]);
+                    break;
+                }
+            }
         }
     }
 
     public function hasWatchers(): bool
     {
-        return ! empty($this->watchers);
+        return !empty($this->watchers);
     }
 }

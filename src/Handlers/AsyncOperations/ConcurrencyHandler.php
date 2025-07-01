@@ -42,89 +42,79 @@ final readonly class ConcurrencyHandler
      */
     public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($tasks, $concurrency) {
+        return new AsyncPromise(function ($resolve) use ($tasks, $concurrency) {
             if (empty($tasks)) {
                 $resolve([]);
-
                 return;
             }
 
-            // Convert tasks to indexed array and preserve original keys
-            $taskList = array_values($tasks);
-            $originalKeys = array_keys($tasks);
-
+            $taskKeys = array_keys($tasks);
+            $taskCount = count($tasks);
             $results = [];
-            $running = 0;
-            $completed = 0;
-            $total = count($taskList);
-            $taskIndex = 0;
+            $completedCount = 0;
+            $runningCount = 0;
+            $nextTaskIndex = 0;
 
-            $processNext = function () use (
-                &$processNext,
-                &$taskList,
-                &$originalKeys,
-                &$running,
-                &$completed,
+            $launchNextTask = function () use (
+                &$nextTaskIndex,
+                &$runningCount,
+                $taskKeys,
+                $tasks,
                 &$results,
-                &$total,
-                &$taskIndex,
-                $concurrency,
+                &$completedCount,
+                $taskCount,
                 $resolve,
-                $reject
+                &$launchNextTask,
+                $concurrency
             ) {
-                // Start as many tasks as we can up to the concurrency limit
-                while ($running < $concurrency && $taskIndex < $total) {
-                    $currentIndex = $taskIndex++;
-                    $task = $taskList[$currentIndex];
-                    $originalKey = $originalKeys[$currentIndex];
-                    $running++;
+                // This is the final resolution condition
+                if ($completedCount === $taskCount) {
+                    ksort($results);
+                    $resolve($results);
+                    return;
+                }
+
+                while ($runningCount < $concurrency && $nextTaskIndex < $taskCount) {
+                    $key = $taskKeys[$nextTaskIndex];
+                    $task = $tasks[$key];
+                    $nextTaskIndex++;
+                    $runningCount++;
 
                     try {
-                        $promise = is_callable($task)
-                            ? $this->executionHandler->async($task)()
-                            : $task;
-
-                        if (! ($promise instanceof PromiseInterface)) {
-                            throw new RuntimeException('Task must return a Promise or be a callable that returns a Promise');
+                        $promise = is_callable($task) ? ($this->executionHandler->async($task))() : $task;
+                        if (!($promise instanceof PromiseInterface)) {
+                            throw new RuntimeException('Task must return a Promise');
                         }
                     } catch (Throwable $e) {
-                        $running--;
-                        $reject($e);
-
-                        return;
+                        // Task creation itself failed.
+                        $results[$key] = $e;
+                        $completedCount++;
+                        $runningCount--;
+                        // Recurse to try and launch another task
+                        $launchNextTask();
+                        continue;
                     }
 
-                    $promise
-                        ->then(function ($result) use (
-                            $originalKey,
-                            &$results,
-                            &$running,
-                            &$completed,
-                            $total,
-                            $resolve,
-                            $processNext
-                        ) {
-                            $results[$originalKey] = $result;
-                            $running--;
-                            $completed++;
-
-                            if ($completed === $total) {
-                                $resolve($results);
-                            } else {
-                                // Schedule next task processing on next tick
-                                AsyncEventLoop::getInstance()->nextTick($processNext);
-                            }
-                        })
-                        ->catch(function ($error) use (&$running, $reject) {
-                            $running--;
-                            $reject($error);
-                        })
-                    ;
+                    $promise->then(
+                        function ($value) use ($key, &$results, &$completedCount, &$runningCount, $launchNextTask) {
+                            $results[$key] = $value;
+                            $completedCount++;
+                            $runningCount--;
+                            $launchNextTask();
+                        },
+                        // FIX: This now collects errors instead of failing fast.
+                        function ($error) use ($key, &$results, &$completedCount, &$runningCount, $launchNextTask) {
+                            $results[$key] = $error;
+                            $completedCount++;
+                            $runningCount--;
+                            $launchNextTask();
+                        }
+                    );
                 }
             };
 
-            // Start initial batch of tasks
-            AsyncEventLoop::getInstance()->nextTick($processNext);
+            // Start the process
+            $launchNextTask();
         });
     }
 }

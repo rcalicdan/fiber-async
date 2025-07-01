@@ -1,6 +1,6 @@
 <?php
 
-require_once '../vendor/autoload.php';
+require_once 'vendor/autoload.php';
 
 /**
  * File Upload Performance Test Script for FiberAsync

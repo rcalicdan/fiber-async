@@ -8,7 +8,7 @@ class RealisticFileBenchmark
 {
     private string $testDir;
     private int $fileCount = 50;
-    private int $fileSize = 6950;
+    private int $fileSize = 1024;
 
     public function __construct()
     {
@@ -57,31 +57,31 @@ class RealisticFileBenchmark
             echo "\n🔗 Testing: {$name}\n";
             echo str_repeat('-', 60) . "\n";
 
-            $this->runScenario($name, $latency);
+            $this->runAllTestsForScenario($latency);
         }
     }
 
-    private function runScenario(string $scenario, array $latency)
+    private function runAllTestsForScenario(array $latency)
     {
-        // Test 1: Sequential Operations
-        $syncTime = $this->benchmarkSync('sequential', $latency);
-        $asyncTime = $this->benchmarkAsync('sequential', $latency);
-        $this->printResults('Sequential Operations', $syncTime, $asyncTime);
+        // Test 1: Sequential Workload
+        $syncTime1 = $this->benchmarkSync('sequential', $latency);
+        $asyncTime1 = $this->benchmarkAsync('sequential', $latency);
+        $this->printResults('Sequential Operations', $syncTime1, $asyncTime1);
 
-        // Test 2: Concurrent Operations
-        $syncTime = $this->benchmarkSync('concurrent', $latency);
-        $asyncTime = $this->benchmarkAsync('concurrent', $latency);
-        $this->printResults('Concurrent Operations', $syncTime, $asyncTime);
+        // Test 2: Concurrent Workload
+        $syncTime2 = $this->benchmarkSync('concurrent', $latency);
+        $asyncTime2 = $this->benchmarkAsync('concurrent', $latency);
+        $this->printResults('Concurrent Operations', $syncTime2, $asyncTime2);
 
         // Test 3: Mixed Workload
-        $syncTime = $this->benchmarkSync('mixed', $latency);
-        $asyncTime = $this->benchmarkAsync('mixed', $latency);
-        $this->printResults('Mixed Workload', $syncTime, $asyncTime);
+        $syncTime3 = $this->benchmarkSync('mixed', $latency);
+        $asyncTime3 = $this->benchmarkAsync('mixed', $latency);
+        $this->printResults('Mixed Workload', $syncTime3, $asyncTime3);
 
-        // Test 4: Burst Operations
-        $syncTime = $this->benchmarkSync('burst', $latency);
-        $asyncTime = $this->benchmarkAsync('burst', $latency);
-        $this->printResults('Burst Operations', $syncTime, $asyncTime);
+        // Test 4: Burst Workload
+        $syncTime4 = $this->benchmarkSync('burst', $latency);
+        $asyncTime4 = $this->benchmarkAsync('burst', $latency);
+        $this->printResults('Burst Operations', $syncTime4, $asyncTime4);
     }
 
     private function benchmarkSync(string $testType, array $latency): float
@@ -134,20 +134,17 @@ class RealisticFileBenchmark
             $filename = $this->testDir . "/sync_seq_{$i}.txt";
             $content = str_repeat('A', $this->fileSize);
 
-            // Simulate write with latency
-            usleep($latency['write'] * 1000);
+            usleep((int)($latency['write'] * 1000));
             file_put_contents($filename, $content);
-            usleep($latency['overhead'] * 1000);
+            usleep((int)($latency['overhead'] * 1000));
 
-            // Simulate read with latency
-            usleep($latency['read'] * 1000);
+            usleep((int)($latency['read'] * 1000));
             file_get_contents($filename);
-            usleep($latency['overhead'] * 1000);
+            usleep((int)($latency['overhead'] * 1000));
 
-            // Simulate delete with latency
-            usleep($latency['write'] * 1000); // Delete has similar latency to write
+            usleep((int)($latency['write'] * 1000));
             unlink($filename);
-            usleep($latency['overhead'] * 1000);
+            usleep((int)($latency['overhead'] * 1000));
         }
     }
 
@@ -157,8 +154,6 @@ class RealisticFileBenchmark
             for ($i = 0; $i < $this->fileCount; $i++) {
                 $filename = $this->testDir . "/async_seq_{$i}.txt";
                 $content = str_repeat('A', $this->fileSize);
-
-                // This helper returns a promise, which we await before starting the next iteration.
                 Async::await($this->performAsyncFileOperationPromise($filename, $content, $latency));
             }
         });
@@ -166,88 +161,65 @@ class RealisticFileBenchmark
 
     private function performAsyncFileOperationPromise(string $filename, string $content, array $latency)
     {
-        // This helper returns an already-started Promise, perfect for sequential awaiting.
         return Async::async(function () use ($filename, $content, $latency) {
-            // Write operation
             Async::await(Async::delay($latency['write'] / 1000));
             Async::await(Async::writeFile($filename, $content));
             Async::await(Async::delay($latency['overhead'] / 1000));
-
-            // Read operation
             Async::await(Async::delay($latency['read'] / 1000));
             Async::await(Async::readFile($filename));
             Async::await(Async::delay($latency['overhead'] / 1000));
-
-            // Delete operation
             Async::await(Async::delay($latency['write'] / 1000));
             Async::await(Async::deleteFile($filename));
             Async::await(Async::delay($latency['overhead'] / 1000));
-
             return true;
         })();
     }
 
     private function runConcurrentSync(array $latency): void
     {
-        // Sync operations must run sequentially - simulate what would happen
         for ($i = 0; $i < $this->fileCount; $i++) {
             $filename = $this->testDir . "/sync_conc_{$i}.txt";
             $content = str_repeat('A', $this->fileSize);
 
-            // All operations must complete sequentially in sync world
-            usleep($latency['write'] * 1000);
+            usleep((int)($latency['write'] * 1000));
             file_put_contents($filename, $content);
-            usleep($latency['overhead'] * 1000);
+            usleep((int)($latency['overhead'] * 1000));
 
-            usleep($latency['read'] * 1000);
+            usleep((int)($latency['read'] * 1000));
             file_get_contents($filename);
-            usleep($latency['overhead'] * 1000);
+            usleep((int)($latency['overhead'] * 1000));
 
-            usleep($latency['write'] * 1000);
+            usleep((int)($latency['write'] * 1000));
             unlink($filename);
-            usleep($latency['overhead'] * 1000);
+            usleep((int)($latency['overhead'] * 1000));
         }
     }
 
     private function runConcurrentAsync(array $latency): void
     {
         $operations = [];
-
         for ($i = 0; $i < $this->fileCount; $i++) {
             $filename = $this->testDir . "/async_conc_{$i}.txt";
             $content = str_repeat('A', $this->fileSize);
-
-            // FIX: Collect the operations (as callables), but do not execute them yet.
             $operations[] = $this->performAsyncFileOperation($filename, $content, $latency);
         }
-
-        // FIX: Use Async::concurrent to run the collected callables.
-        // This correctly starts the event loop and executes all operations concurrently.
         Async::run(function () use ($operations) {
-            // A concurrency limit equal to the number of files means they all run at once.
             return Async::await(Async::concurrent($operations, $this->fileCount));
         });
     }
 
     private function performAsyncFileOperation(string $filename, string $content, array $latency): callable
     {
-        // This helper returns a callable, perfect for collecting and running with Async::concurrent.
         return function () use ($filename, $content, $latency) {
-            // Write operation
             Async::await(Async::delay($latency['write'] / 1000));
             Async::await(Async::writeFile($filename, $content));
             Async::await(Async::delay($latency['overhead'] / 1000));
-
-            // Read operation
             Async::await(Async::delay($latency['read'] / 1000));
             Async::await(Async::readFile($filename));
             Async::await(Async::delay($latency['overhead'] / 1000));
-
-            // Delete operation
             Async::await(Async::delay($latency['write'] / 1000));
             Async::await(Async::deleteFile($filename));
             Async::await(Async::delay($latency['overhead'] / 1000));
-
             return true;
         };
     }
@@ -256,32 +228,30 @@ class RealisticFileBenchmark
     {
         $operations = ['read', 'write', 'copy', 'delete'];
         $baseFilename = $this->testDir . '/mixed_';
-
         for ($i = 0; $i < $this->fileCount; $i++) {
             $op = $operations[$i % 4];
             $filename = $baseFilename . $i . '.txt';
             $content = str_repeat('B', $this->fileSize);
-
             switch ($op) {
                 case 'write':
-                    usleep($latency['write'] * 1000);
+                    usleep((int)($latency['write'] * 1000));
                     file_put_contents($filename, $content);
                     break;
                 case 'read':
                     if (file_exists($filename)) {
-                        usleep($latency['read'] * 1000);
+                        usleep((int)($latency['read'] * 1000));
                         file_get_contents($filename);
                     }
                     break;
                 case 'copy':
                     if (file_exists($filename)) {
-                        usleep($latency['read'] * 1000 + $latency['write'] * 1000);
+                        usleep((int)(($latency['read'] + $latency['write']) * 1000));
                         copy($filename, $filename . '.copy');
                     }
                     break;
                 case 'delete':
                     if (file_exists($filename)) {
-                        usleep($latency['write'] * 1000);
+                        usleep((int)($latency['write'] * 1000));
                         unlink($filename);
                     }
                     if (file_exists($filename . '.copy')) {
@@ -289,7 +259,7 @@ class RealisticFileBenchmark
                     }
                     break;
             }
-            usleep($latency['overhead'] * 1000);
+            usleep((int)($latency['overhead'] * 1000));
         }
     }
 
@@ -297,16 +267,12 @@ class RealisticFileBenchmark
     {
         $operations = [];
         $baseFilename = $this->testDir . '/async_mixed_';
-
         for ($i = 0; $i < $this->fileCount; $i++) {
             $op = ['read', 'write', 'copy', 'delete'][$i % 4];
             $filename = $baseFilename . $i . '.txt';
             $content = str_repeat('B', $this->fileSize);
-
             $operations[] = $this->createMixedAsyncOperation($op, $filename, $content, $latency);
         }
-
-        // FIX: Use Async::concurrent instead of Async::all, because we have an array of callables, not promises.
         Async::run(function () use ($operations) {
             return Async::await(Async::concurrent($operations, $this->fileCount));
         });
@@ -349,45 +315,42 @@ class RealisticFileBenchmark
 
     private function runBurstSync(array $latency): void
     {
-        // Simulate high load - many operations in sequence
         for ($i = 0; $i < $this->fileCount * 2; $i++) {
             $filename = $this->testDir . "/burst_sync_{$i}.txt";
             $content = str_repeat('C', $this->fileSize);
 
-            usleep($latency['write'] * 1000);
+            usleep((int)($latency['write'] * 1000));
             file_put_contents($filename, $content);
-            usleep($latency['overhead'] * 1000);
+            usleep((int)($latency['overhead'] * 1000));
 
-            usleep($latency['read'] * 1000);
+            usleep((int)($latency['read'] * 1000));
             file_get_contents($filename);
-            usleep($latency['overhead'] * 1000);
+            usleep((int)($latency['overhead'] / 1000));
 
-            usleep($latency['write'] * 1000);
+            usleep((int)($latency['write'] * 1000));
             unlink($filename);
-            usleep($latency['overhead'] * 1000);
+            usleep((int)($latency['overhead'] * 1000));
         }
     }
+
+
 
     private function runBurstAsync(array $latency): void
     {
         $operations = [];
-
         for ($i = 0; $i < $this->fileCount * 2; $i++) {
             $filename = $this->testDir . "/burst_async_{$i}.txt";
             $content = str_repeat('C', $this->fileSize);
-
             $operations[] = $this->performAsyncFileOperation($filename, $content, $latency);
         }
-
-        // This method was already correct, using concurrent with a specific limit.
         Async::run(function () use ($operations) {
-            return Async::await(Async::concurrent($operations, 20)); // Higher concurrency for burst
+            return Async::await(Async::concurrent($operations, 20));
         });
     }
 
     private function printResults(string $testName, float $syncTime, float $asyncTime): void
     {
-        $improvement = (($syncTime - $asyncTime) / $syncTime) * 100;
+        $improvement = $syncTime > 0 ? (($syncTime - $asyncTime) / $syncTime) * 100 : 0;
         $speedRatio = $syncTime > 0 && $asyncTime > 0 ? $syncTime / $asyncTime : 0;
 
         printf(
@@ -402,22 +365,19 @@ class RealisticFileBenchmark
 
     public function __destruct()
     {
-        // Cleanup
         if (is_dir($this->testDir)) {
             $files = new \RecursiveIteratorIterator(
                 new \RecursiveDirectoryIterator($this->testDir, \RecursiveDirectoryIterator::SKIP_DOTS),
                 \RecursiveIteratorIterator::CHILD_FIRST
             );
-
             foreach ($files as $fileinfo) {
                 $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
-                $todo($fileinfo->getRealPath());
+                @$todo($fileinfo->getRealPath());
             }
-            rmdir($this->testDir);
+            @rmdir($this->testDir);
         }
     }
 }
 
-// Run the benchmark
 $benchmark = new RealisticFileBenchmark();
 $benchmark->runBenchmark();

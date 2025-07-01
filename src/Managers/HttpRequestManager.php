@@ -9,14 +9,10 @@ use Rcalicdan\FiberAsync\ValueObjects\HttpRequest;
 
 class HttpRequestManager
 {
-    /** @var HttpRequest[] */
     private array $pendingRequests = [];
-    /** @var HttpRequest[] */
     private array $activeRequests = [];
-    /** @var array<string, HttpRequest> Map of request IDs to requests for cancellation */
     private array $requestsById = [];
     private \CurlMultiHandle $multiHandle;
-
     private HttpRequestHandler $requestHandler;
     private HttpResponseHandler $responseHandler;
     private CurlMultiHandler $curlHandler;
@@ -29,14 +25,33 @@ class HttpRequestManager
         $this->multiHandle = $this->curlHandler->createMultiHandle();
     }
 
-    /**
-     * Add an HTTP request and return a unique request ID for cancellation
-     */
+    public function getSelectTimeout(): ?float
+    {
+        if (!$this->hasRequests()) {
+            return null;
+        }
+
+        if (function_exists('curl_multi_timeout')) {
+            $timeout_ms = -1;
+            \curl_multi_timeout($this->multiHandle, $timeout_ms);
+            
+            if ($timeout_ms > 0) {
+                return $timeout_ms / 1000.0;
+            }
+            
+            if ($timeout_ms === 0) {
+                return 0.0;
+            }
+        }
+        
+        return 0.001;
+    }
+
     public function addHttpRequest(string $url, array $options, callable $callback): string
     {
         $requestId = uniqid('http_', true);
         $request = $this->requestHandler->createRequest($url, $options, $callback);
-        $request->setId($requestId); // You'll need to add this method to HttpRequest
+        $request->setId($requestId);
 
         $this->pendingRequests[] = $request;
         $this->requestsById[$requestId] = $request;
@@ -44,21 +59,18 @@ class HttpRequestManager
         return $requestId;
     }
 
-    /**
-     * Cancel an HTTP request by its ID
-     */
     public function cancelHttpRequest(string $requestId): bool
     {
-        if (! isset($this->requestsById[$requestId])) {
+        if (!isset($this->requestsById[$requestId])) {
             return false;
         }
 
         $request = $this->requestsById[$requestId];
-
         $pendingKey = array_search($request, $this->pendingRequests, true);
+
         if ($pendingKey !== false) {
             unset($this->pendingRequests[$pendingKey]);
-            $this->pendingRequests = array_values($this->pendingRequests); // Re-index
+            $this->pendingRequests = array_values($this->pendingRequests);
         }
 
         $handle = $request->getHandle();
@@ -70,69 +82,50 @@ class HttpRequestManager
 
         unset($this->requestsById[$requestId]);
 
-        $callback = $request->getCallback();
-        if ($callback) {
+        if ($callback = $request->getCallback()) {
             $callback('Request cancelled', null, 0);
         }
-
         return true;
     }
 
     public function processRequests(): bool
     {
-        $workDone = false;
-
-        if ($this->addPendingRequests()) {
-            $workDone = true;
-        }
-
-        if ($this->processActiveRequests()) {
-            $workDone = true;
-        }
-
-        return $workDone;
+        $this->addPendingRequests();
+        $this->processActiveRequests();
+        return $this->hasRequests();
     }
 
-    private function addPendingRequests(): bool
+    private function addPendingRequests(): void
     {
-        $added = false;
-        while (! empty($this->pendingRequests)) {
+        while (!empty($this->pendingRequests)) {
             $request = array_shift($this->pendingRequests);
             if ($this->requestHandler->addRequestToMultiHandle($this->multiHandle, $request)) {
                 $this->activeRequests[(int) $request->getHandle()] = $request;
-                $added = true;
             }
         }
-
-        return $added;
     }
 
-    private function processActiveRequests(): bool
+    private function processActiveRequests(): void
     {
         if (empty($this->activeRequests)) {
-            return false;
+            return;
         }
 
         $this->curlHandler->executeMultiHandle($this->multiHandle);
+        $this->responseHandler->processCompletedRequests($this->multiHandle, $this->activeRequests);
 
-        $completed = $this->responseHandler->processCompletedRequests($this->multiHandle, $this->activeRequests);
-
-        // Clean up completed requests from the ID map
-        foreach ($this->activeRequests as $handle => $request) {
-            if (! $request->getHandle()) { // Request completed
-                $requestId = $request->getId();
-                if ($requestId && isset($this->requestsById[$requestId])) {
+        foreach ($this->activeRequests as $request) {
+            if (!$request->getHandle()) {
+                if ($requestId = $request->getId()) {
                     unset($this->requestsById[$requestId]);
                 }
             }
         }
-
-        return $completed;
     }
 
     public function hasRequests(): bool
     {
-        return ! empty($this->pendingRequests) || ! empty($this->activeRequests);
+        return !empty($this->pendingRequests) || !empty($this->activeRequests);
     }
 
     public function __destruct()

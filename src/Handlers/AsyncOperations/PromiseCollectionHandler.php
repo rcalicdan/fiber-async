@@ -31,28 +31,39 @@ final readonly class PromiseCollectionHandler
         return new AsyncPromise(function ($resolve, $reject) use ($promises) {
             if (empty($promises)) {
                 $resolve([]);
-
                 return;
             }
 
             $results = [];
             $completed = 0;
             $total = count($promises);
+            $rejected = false; // Add fail-fast flag
 
             foreach ($promises as $index => $promise) {
-                $promise
-                    ->then(function ($value) use (&$results, &$completed, $total, $index, $resolve) {
+                if (!($promise instanceof PromiseInterface)) {
+                    $reject(new Exception('All items in array must be Promises'));
+                    return;
+                }
+
+                $promise->then(
+                    function ($value) use (&$results, &$completed, $total, $index, $resolve, &$rejected) {
+                        if ($rejected) return;
+
                         $results[$index] = $value;
                         $completed++;
                         if ($completed === $total) {
-                            ksort($results); // Maintain order
-                            $resolve(array_values($results));
+                            ksort($results);
+                            // FIX: Remove array_values to preserve associative keys.
+                            $resolve($results);
                         }
-                    })
-                    ->catch(function ($reason) use ($reject) {
+                    },
+                    function ($reason) use ($reject, &$rejected) {
+                        if ($rejected) return;
+
+                        $rejected = true;
                         $reject($reason);
-                    })
-                ;
+                    }
+                );
             }
         });
     }
