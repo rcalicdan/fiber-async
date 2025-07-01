@@ -26,6 +26,9 @@ class AsyncEventLoop implements EventLoopInterface
     private StateHandler $stateHandler;
     private FileManager $fileManager;
 
+    /** @var resource[] A dummy stream pair to ensure stream_select never gets empty arrays */
+    private array $dummyStreams;
+
     private function __construct()
     {
         $this->timerManager = new TimerManager;
@@ -37,6 +40,20 @@ class AsyncEventLoop implements EventLoopInterface
         $this->fileManager = new FileManager();
         $this->sleepHandler = new SleepHandler($this->timerManager, $this->fiberManager);
         $this->workHandler = new WorkHandler($this->timerManager, $this->httpRequestManager, $this->streamManager, $this->fiberManager, $this->tickHandler, $this->fileManager);
+
+        // Create the dummy stream pair. This is the core of the fix.
+        // It will fail on non-Linux systems if not suppressed.
+        // We'll use a fallback for Windows.
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            // stream_socket_pair is not reliable on Windows, create a loopback socket
+            $server = stream_socket_server('tcp://127.0.0.1:0');
+            $address = stream_socket_get_name($server, false);
+            $client = stream_socket_client('tcp://' . $address);
+            $this->dummyStreams = [stream_socket_accept($server), $client];
+        } else {
+            // Use the more efficient unix socket pair on Linux/macOS
+            $this->dummyStreams = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+        }
     }
 
     public static function getInstance(): AsyncEventLoop
@@ -59,7 +76,11 @@ class AsyncEventLoop implements EventLoopInterface
                 continue;
             }
 
+            // Always add the dummy stream to the read array.
+            // This prevents the ValueError when only timers are active.
             $read = $this->streamManager->getReadStreams();
+            $read[] = $this->dummyStreams[0];
+
             $write = [];
             $except = null;
 
@@ -75,15 +96,15 @@ class AsyncEventLoop implements EventLoopInterface
                 $delay = $curlDelay;
             }
 
-            if (empty($read) && empty($write)) {
-                $sleepDuration = ($delay === null) ? 1000 : (int) max(0, $delay * 1_000_000);
-                $this->sleepHandler->sleep($sleepDuration);
-            } else {
-                $tv_sec = ($delay === null) ? 1 : (int) $delay;
-                $tv_usec = ($delay === null) ? 0 : (int) (($delay - $tv_sec) * 1_000_000);
-                @stream_select($read, $write, $except, $tv_sec, $tv_usec);
-            }
+            // We now ONLY have one path: stream_select. No more usleep.
+            $tv_sec = ($delay === null) ? 1 : (int) $delay;
+            $tv_usec = ($delay === null) ? 0 : (int) (($delay - $tv_sec) * 1_000_000);
 
+            @stream_select($read, $write, $except, $tv_sec, $tv_usec);
+
+            // After waiting, process whatever is ready.
+            // The dummy stream will never be in the $read array after select returns,
+            // so we don't need special handling for it.
             $this->streamManager->processReadyStreams($read);
             $this->httpRequestManager->processRequests();
             $this->timerManager->processTimers();
