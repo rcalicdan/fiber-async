@@ -2,8 +2,6 @@
 
 require_once 'vendor/autoload.php';
 
-use Rcalicdan\FiberAsync\Facades\Async;
-
 class RealisticFileBenchmark
 {
     private string $testDir;
@@ -91,10 +89,10 @@ class RealisticFileBenchmark
         // START TIMING OUTSIDE THE ASYNC CONTEXT
         $startTime = microtime(true);
 
-        $result = Async::run(function () use ($task) {
+        $result = run(function () use ($task) {
             try {
-                $promise = Async::async($task)();
-                Async::await($promise);
+                $promise = async($task)();
+                await($promise);
                 return true;
             } catch (\Throwable $e) {
                 echo "\n--- ASYNC ERROR ---\n";
@@ -190,7 +188,7 @@ class RealisticFileBenchmark
                 $filename = $this->testDir . "/async_seq_{$i}.txt";
                 $content = str_repeat('A', $this->fileSize);
                 // This should be awaited to ensure sequential execution
-                Async::await($this->createFullFileOperationPromise($filename, $content, $latency));
+                await($this->createFullFileOperationPromise($filename, $content, $latency));
             }
         };
     }
@@ -209,7 +207,7 @@ class RealisticFileBenchmark
             $result = await(concurrent($operations, $this->fileCount));
 
             // Add a small delay to ensure everything is truly done
-            Async::await(Async::delay(0.01));
+            await(delay(0.01));
 
             return $result;
         };
@@ -226,7 +224,7 @@ class RealisticFileBenchmark
                 $content = str_repeat('B', $this->fileSize);
                 $operations[] = $this->createMixedAsyncOperation($op, $filename, $content, $latency);
             }
-            Async::await(Async::concurrent($operations, $this->fileCount));
+            await(concurrent($operations, $this->fileCount));
         };
     }
 
@@ -239,7 +237,7 @@ class RealisticFileBenchmark
                 $content = str_repeat('C', $this->fileSize);
                 $operations[] = $this->createFullFileOperationCallable($filename, $content, $latency);
             }
-            Async::await(Async::concurrent($operations, 20)); // Concurrency limit for burst
+            await(concurrent($operations, 20)); // Concurrency limit for burst
         };
     }
 
@@ -247,12 +245,12 @@ class RealisticFileBenchmark
     private function createFullFileOperationCallable(string $filename, string $content, array $latency): callable
     {
         return function () use ($filename, $content, $latency) {
-            Async::await(Async::delay(($latency['write'] + $latency['overhead']) / 1000));
-            Async::await(Async::writeFile($filename, $content));
-            Async::await(Async::delay(($latency['read'] + $latency['overhead']) / 1000));
-            Async::await(Async::readFile($filename));
-            Async::await(Async::delay(($latency['write'] + $latency['overhead']) / 1000));
-            Async::await(Async::deleteFile($filename));
+            await(delay(($latency['write'] + $latency['overhead']) / 1000));
+            await(write_file_async($filename, $content));
+            await(delay(($latency['read'] + $latency['overhead']) / 1000));
+            await(read_file_async($filename));
+            await(delay(($latency['write'] + $latency['overhead']) / 1000));
+            await(delete_file_async($filename));
             return true;
         };
     }
@@ -260,7 +258,7 @@ class RealisticFileBenchmark
     private function createFullFileOperationPromise(string $filename, string $content, array $latency)
     {
         $callable = $this->createFullFileOperationCallable($filename, $content, $latency);
-        return Async::async($callable)();
+        return async($callable)();
     }
 
     private function createMixedAsyncOperation(string $op, string $filename, string $content, array $latency): callable
@@ -268,32 +266,32 @@ class RealisticFileBenchmark
         return function () use ($op, $filename, $content, $latency) {
             switch ($op) {
                 case 'write':
-                    Async::await(Async::delay($latency['write'] / 1000));
-                    Async::await(Async::writeFile($filename, $content));
+                    await(delay($latency['write'] / 1000));
+                    await(write_file_async($filename, $content));
                     break;
                 case 'read':
-                    if (Async::await(Async::fileExists($filename))) {
-                        Async::await(Async::delay($latency['read'] / 1000));
-                        Async::await(Async::readFile($filename));
+                    if (await(file_exists_async($filename))) {
+                        await(delay($latency['read'] / 1000));
+                        await(read_file_async($filename));
                     }
                     break;
                 case 'copy':
-                    if (Async::await(Async::fileExists($filename))) {
-                        Async::await(Async::delay(($latency['read'] + $latency['write']) / 1000));
-                        Async::await(Async::copyFile($filename, $filename . '.copy'));
+                    if (await(file_exists_async($filename))) {
+                        await(delay(($latency['read'] + $latency['write']) / 1000));
+                        await(copy_file_async($filename, $filename . '.copy'));
                     }
                     break;
                 case 'delete':
-                    if (Async::await(Async::fileExists($filename))) {
-                        Async::await(Async::delay($latency['write'] / 1000));
-                        Async::await(Async::deleteFile($filename));
+                    if (await(file_exists_async($filename))) {
+                        await(delay($latency['write'] / 1000));
+                        await(delete_file_async($filename));
                     }
-                    if (Async::await(Async::fileExists($filename . '.copy'))) {
-                        Async::await(Async::deleteFile($filename . '.copy'));
+                    if (await(file_exists_async($filename . '.copy'))) {
+                        await(delete_file_async($filename . '.copy'));
                     }
                     break;
             }
-            Async::await(Async::delay($latency['overhead'] / 1000));
+            await(delay($latency['overhead'] / 1000));
             return true;
         };
     }
