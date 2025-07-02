@@ -9,7 +9,8 @@
         },
         "files": [
             "src/Helpers/async_helper.php",
-            "src/Helpers/loop_helper.php"
+            "src/Helpers/loop_helper.php",
+            "src/Helpers/file_helper.php"
         ]
     },
     "authors": [

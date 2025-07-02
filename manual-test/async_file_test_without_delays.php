@@ -20,7 +20,7 @@ class RealisticAsyncBenchmark
 
     public function runAllBenchmarks()
     {
-        echo "🚀 REALISTIC ASYNC FILE I/O BENCHMARK\n";
+        echo "🚀 REALISTIC ASYNC FILE I/O BENCHMARK without delays and using local SSD\n";
         echo str_repeat('=', 70) . "\n\n";
 
         // Test 1: Different file sizes
