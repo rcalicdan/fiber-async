@@ -207,43 +207,6 @@ class AsyncOperations implements AsyncOperationsInterface
     }
 
     /**
-     * Perform an HTTP request using Guzzle HTTP client.
-     *
-     * @param  string  $method  HTTP method (GET, POST, etc.)
-     * @param  string  $url  The URL to request
-     * @param  array  $options  Guzzle-specific request options
-     * @return PromiseInterface A promise that resolves with the response
-     */
-    public function guzzle(string $method, string $url, array $options = []): PromiseInterface
-    {
-        return $this->httpHandler->guzzle($method, $url, $options);
-    }
-
-    /**
-     * Get the HTTP handler for advanced HTTP operations.
-     *
-     * @return mixed The HTTP handler instance for direct access
-     */
-    public function http()
-    {
-        return $this->httpHandler->http();
-    }
-
-    /**
-     * Wrap a synchronous operation in a promise.
-     *
-     * This is useful for integrating blocking operations into
-     * async workflows without blocking the event loop.
-     *
-     * @param  callable  $syncCall  The synchronous operation to wrap
-     * @return PromiseInterface A promise that resolves with the operation result
-     */
-    public function wrapSync(callable $syncCall): PromiseInterface
-    {
-        return $this->httpHandler->wrapSync($syncCall);
-    }
-
-    /**
      * Wait for all promises to resolve and return their results.
      *
      * If any promise rejects, the returned promise will reject with

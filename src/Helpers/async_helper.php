@@ -168,51 +168,6 @@ function asyncify(callable $syncFunction): callable
 }
 
 /**
- * Perform an HTTP request using the Guzzle HTTP client.
- *
- * Provides access to Guzzle-specific features and options while maintaining
- * async compatibility. Returns a promise that resolves with the Guzzle
- * response object.
- *
- * @param  string  $method  HTTP method (GET, POST, PUT, DELETE, etc.)
- * @param  string  $url  The URL to request
- * @param  array  $options  Guzzle-specific request options
- * @return PromiseInterface A promise that resolves with the Guzzle response
- */
-function async_guzzle(string $method, string $url, array $options = []): PromiseInterface
-{
-    return Async::guzzle($method, $url, $options);
-}
-
-/**
- * Get the HTTP handler for advanced HTTP operations.
- *
- * Provides direct access to the underlying HTTP handler for operations
- * that require more control than the standard fetch function provides.
- *
- * @return mixed The HTTP handler instance for direct access
- */
-function async_http()
-{
-    return Async::http();
-}
-
-/**
- * Wrap a synchronous operation in a promise.
- *
- * Takes a synchronous callable and executes it in a way that doesn't block
- * the event loop, returning a promise for the result. Useful for integrating
- * blocking operations into async workflows.
- *
- * @param  callable  $syncCall  The synchronous operation to wrap
- * @return PromiseInterface A promise that resolves with the operation result
- */
-function wrap_sync(callable $syncCall): PromiseInterface
-{
-    return Async::wrapSync($syncCall);
-}
-
-/**
  * Execute multiple tasks concurrently with a concurrency limit.
  *
  * Processes an array of tasks (callables or promises) in batches to avoid
