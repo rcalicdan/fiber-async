@@ -1,9 +1,6 @@
 <?php
-// test_http_concurrent.php
 
 require_once 'vendor/autoload.php';
-
-use Rcalicdan\FiberAsync\Facades\Http;
 
 // Test URLs - using public APIs that support CORS and are reliable
 $testUrls = [

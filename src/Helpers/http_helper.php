@@ -1,7 +1,5 @@
 <?php
 
-// src/helpers.php
-
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\Facades\Http;
 use Rcalicdan\FiberAsync\Http\Request;
