@@ -18,6 +18,7 @@ class Request
     private bool $verifySSL = true;
     private ?string $userAgent = null;
     private ?array $auth = null;
+    private ?RetryConfig $retryConfig = null;
 
     public function __construct(HttpHandler $handler)
     {
@@ -101,6 +102,37 @@ class Request
     {
         $this->followRedirects = $follow;
         $this->maxRedirects = $max;
+        return $this;
+    }
+
+    /**
+     * Configure retry behavior
+     */
+    public function retry(int $maxRetries = 3, float $baseDelay = 1.0, float $backoffMultiplier = 2.0): self
+    {
+        $this->retryConfig = new RetryConfig(
+            maxRetries: $maxRetries,
+            baseDelay: $baseDelay,
+            backoffMultiplier: $backoffMultiplier
+        );
+        return $this;
+    }
+
+    /**
+     * Configure advanced retry behavior
+     */
+    public function retryWith(RetryConfig $config): self
+    {
+        $this->retryConfig = $config;
+        return $this;
+    }
+
+    /**
+     * Disable retry behavior
+     */
+    public function noRetry(): self
+    {
+        $this->retryConfig = null;
         return $this;
     }
 
@@ -201,12 +233,17 @@ class Request
         return $this->send('DELETE', $url);
     }
 
-    /**
+ /**
      * Send the request with specified method
      */
     public function send(string $method, string $url): PromiseInterface
     {
         $options = $this->buildCurlOptions($method, $url);
+        
+        if ($this->retryConfig) {
+            return $this->handler->fetchWithRetry($url, $options, $this->retryConfig);
+        }
+        
         return $this->handler->fetch($url, $options);
     }
 
@@ -230,7 +267,16 @@ class Request
             CURLOPT_NOBODY => false,
         ];
 
-        // Add headers
+        $this->addHeaderOptions($options);
+        $this->addBodyOptions($options);
+        $this->addAuthenticationOptions($options);
+
+        // Merge with custom options
+        return array_merge($options, $this->options);
+    }
+
+    private function addHeaderOptions(array &$options): void
+    {
         if ($this->headers) {
             $headerStrings = [];
             foreach ($this->headers as $name => $value) {
@@ -238,13 +284,17 @@ class Request
             }
             $options[CURLOPT_HTTPHEADER] = $headerStrings;
         }
+    }
 
-        // Add body
+    private function addBodyOptions(array &$options): void
+    {
         if ($this->body) {
             $options[CURLOPT_POSTFIELDS] = $this->body;
         }
+    }
 
-        // Add authentication
+    private function addAuthenticationOptions(array &$options): void
+    {
         if ($this->auth) {
             [$type, $username, $password] = $this->auth;
             if ($type === 'basic') {
@@ -252,8 +302,5 @@ class Request
                 $options[CURLOPT_HTTPAUTH] = CURLAUTH_BASIC;
             }
         }
-
-        // Merge with custom options
-        return array_merge($options, $this->options);
     }
 }

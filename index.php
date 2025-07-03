@@ -92,6 +92,52 @@ require_once 'vendor/autoload.php';
             gap: 20px;
             margin-top: 20px;
         }
+
+        .timing-info {
+            background: #fff3cd;
+            padding: 8px 12px;
+            border-radius: 4px;
+            border-left: 3px solid #ffc107;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .timing-fast {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+
+        .timing-medium {
+            border-left-color: #ffc107;
+            background: #fff3cd;
+        }
+
+        .timing-slow {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+
+        .timing-summary {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+
+        .timing-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
     </style>
 </head>
 
@@ -111,10 +157,23 @@ require_once 'vendor/autoload.php';
             // Define the APIs we'll call
             $apis = [
                 'jsonplaceholder' => 'https://jsonplaceholder.typicode.com/posts/1',
-                'httpbin_ip' => 'https://httpbin.org/ip',
+                // 'httpbin_ip' => 'https://httpbin.org/ip',
                 'github_user' => 'https://api.github.com/users/octocat',
                 'random_user' => 'https://randomuser.me/api/',
-                'cat_fact' => 'https://catfact.ninja/fact'
+                'cat_fact' => 'https://catfact.ninja/fact',
+                'dog_ceo' => 'https://dog.ceo/api/breeds/image/random',
+                'advice' => 'https://api.adviceslip.com/advice',
+                'joke' => 'https://official-joke-api.appspot.com/random_joke',
+                'age_predictor' => 'https://api.agify.io/?name=michael',
+                'gender_predictor' => 'https://api.genderize.io/?name=luc',
+                'nationalize' => 'https://api.nationalize.io/?name=nathaniel',
+                'ipify' => 'https://api.ipify.org?format=json',
+                'coingecko_btc' => 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
+                'exchange_rates' => 'https://api.exchangerate-api.com/v4/latest/USD',
+                'chuck_norris' => 'https://api.chucknorris.io/jokes/random',
+                'open_meteo' => 'https://api.open-meteo.com/v1/forecast?latitude=35&longitude=139&current_weather=true',
+                'reqres_users' => 'https://reqres.in/api/users/2',
+                'pokeapi' => 'https://pokeapi.co/api/v2/pokemon/pikachu',
             ];
 
             switch ($_POST['action']) {
@@ -152,24 +211,47 @@ require_once 'vendor/autoload.php';
         try {
             // Create async functions for each API call
             $asyncTasks = [];
+            $timings = [];
+
             foreach ($apis as $name => $url) {
-                $asyncTasks[$name] = async(function () use ($url, $name) {
+                $asyncTasks[$name] = async(function () use ($url, $name, &$timings) {
                     echo "<div class='loading'>🔄 Fetching {$name}...</div>";
                     flush();
 
-                    $response = await(fetch($url, [
-                        'timeout' => 10,
-                        'headers' => [
-                            'User-Agent' => 'Async PHP Demo/1.0'
-                        ]
-                    ]));
+                    $startTime = microtime(true);
 
-                    return [
-                        'name' => $name,
-                        'url' => $url,
-                        'data' => $response,
-                        'status' => 'success'
-                    ];
+                    try {
+                        $response = await(fetch($url, [
+                            'timeout' => 30,
+                            'headers' => [
+                                'User-Agent' => 'Mozilla/5.0 (compatible; AsyncPHP/1.0)'
+                            ],
+                            'verify_ssl' => false,
+                        ]));
+
+                        $endTime = microtime(true);
+                        $requestTime = $endTime - $startTime;
+
+                        return [
+                            'name' => $name,
+                            'url' => $url,
+                            'data' => $response,
+                            'status' => 'success',
+                            'request_time' => $requestTime
+                        ];
+                    } catch (Exception $e) {
+                        $endTime = microtime(true);
+                        $requestTime = $endTime - $startTime;
+
+                        return [
+                            'name' => $name,
+                            'url' => $url,
+                            'data' => null,
+                            'status' => 'error',
+                            'error' => $e->getMessage(),
+                            'request_time' => $requestTime
+                        ];
+                    }
                 });
             }
 
@@ -204,6 +286,8 @@ require_once 'vendor/autoload.php';
                 echo "<div class='loading'>🔄 Fetching {$name}...</div>";
                 flush();
 
+                $requestStart = microtime(true);
+
                 $context = stream_context_create([
                     'http' => [
                         'timeout' => 10,
@@ -212,20 +296,24 @@ require_once 'vendor/autoload.php';
                 ]);
 
                 $response = file_get_contents($url, false, $context);
+                $requestEnd = microtime(true);
+                $requestTime = $requestEnd - $requestStart;
 
                 if ($response !== false) {
                     $results[] = [
                         'name' => $name,
                         'url' => $url,
                         'data' => ['body' => $response],
-                        'status' => 'success'
+                        'status' => 'success',
+                        'request_time' => $requestTime
                     ];
                 } else {
                     $results[] = [
                         'name' => $name,
                         'url' => $url,
                         'data' => null,
-                        'status' => 'error'
+                        'status' => 'error',
+                        'request_time' => $requestTime
                     ];
                 }
             }
@@ -250,22 +338,84 @@ require_once 'vendor/autoload.php';
 
     function displayResults($results, $benchmark, $type)
     {
+        // Calculate timing statistics
+        $successfulRequests = array_filter($results, function ($r) {
+            return $r['status'] === 'success';
+        });
+        $failedRequests = array_filter($results, function ($r) {
+            return $r['status'] === 'error';
+        });
+
+        $requestTimes = array_map(function ($r) {
+            return $r['request_time'];
+        }, $results);
+        $successTimes = array_map(function ($r) {
+            return $r['request_time'];
+        }, $successfulRequests);
+
+        $totalRequests = count($results);
+        $successCount = count($successfulRequests);
+        $failCount = count($failedRequests);
+
+        $avgTime = !empty($requestTimes) ? array_sum($requestTimes) / count($requestTimes) : 0;
+        $avgSuccessTime = !empty($successTimes) ? array_sum($successTimes) / count($successTimes) : 0;
+        $maxTime = !empty($requestTimes) ? max($requestTimes) : 0;
+        $minTime = !empty($requestTimes) ? min($requestTimes) : 0;
+
         // Display benchmark information
         echo "<div class='benchmark'>";
         echo "<h3>📊 {$type} Performance Metrics</h3>";
-        echo "<p><strong>⏱️ Execution Time:</strong> " . number_format($benchmark['execution_time'], 4) . " seconds</p>";
+        echo "<p><strong>⏱️ Total Execution Time:</strong> " . number_format($benchmark['execution_time'], 4) . " seconds</p>";
         echo "<p><strong>🧠 Memory Used:</strong> " . formatBytes($benchmark['memory_used']) . "</p>";
         if (isset($benchmark['peak_memory'])) {
             echo "<p><strong>📈 Peak Memory:</strong> " . formatBytes($benchmark['peak_memory']) . "</p>";
         }
         echo "</div>";
 
-        // Display API results
+        // Display timing summary
+        echo "<div class='timing-summary'>";
+        echo "<h3>🕒 Individual Request Timing Analysis</h3>";
+        echo "<div class='timing-stats'>";
+        echo "<div class='stat-item'><strong>Total Requests</strong><br>{$totalRequests}</div>";
+        echo "<div class='stat-item'><strong>✅ Successful</strong><br>{$successCount}</div>";
+        echo "<div class='stat-item'><strong>❌ Failed</strong><br>{$failCount}</div>";
+        echo "<div class='stat-item'><strong>📊 Avg Time</strong><br>" . number_format($avgTime, 3) . "s</div>";
+        echo "<div class='stat-item'><strong>📊 Avg Success Time</strong><br>" . number_format($avgSuccessTime, 3) . "s</div>";
+        echo "<div class='stat-item'><strong>⚡ Fastest</strong><br>" . number_format($minTime, 3) . "s</div>";
+        echo "<div class='stat-item'><strong>🐌 Slowest</strong><br>" . number_format($maxTime, 3) . "s</div>";
+        echo "</div>";
+
+        // Calculate time savings for async
+        if ($type === 'Async') {
+            $totalSyncTime = array_sum($requestTimes);
+            $timeSaved = $totalSyncTime - $benchmark['execution_time'];
+            $percentSaved = $totalSyncTime > 0 ? ($timeSaved / $totalSyncTime) * 100 : 0;
+
+            echo "<div style='margin-top: 15px; padding: 10px; background: #d1ecf1; border-radius: 5px;'>";
+            echo "<strong>🚀 Async Benefits:</strong><br>";
+            echo "If run synchronously: " . number_format($totalSyncTime, 3) . "s<br>";
+            echo "Time saved: " . number_format($timeSaved, 3) . "s (" . number_format($percentSaved, 1) . "% faster)";
+            echo "</div>";
+        }
+
+        echo "</div>";
+
+        // Display API results with individual timing
         foreach ($results as $result) {
+            $timingClass = getTimingClass($result['request_time']);
+
             echo "<div class='api-result'>";
             echo "<h4>🌐 " . ucfirst(str_replace('_', ' ', $result['name'])) . "</h4>";
             echo "<p><strong>URL:</strong> " . htmlspecialchars($result['url']) . "</p>";
             echo "<p><strong>Status:</strong> " . ($result['status'] === 'success' ? '✅ Success' : '❌ Failed') . "</p>";
+
+            // Individual timing information
+            echo "<div class='timing-info {$timingClass}'>";
+            echo "<strong>⏱️ Request Time:</strong> " . number_format($result['request_time'], 4) . " seconds";
+            if ($result['status'] === 'error' && isset($result['error'])) {
+                echo " - <strong>Error:</strong> " . htmlspecialchars($result['error']);
+            }
+            echo "</div>";
 
             if ($result['status'] === 'success' && $result['data']) {
                 // Handle async response data differently
@@ -291,6 +441,17 @@ require_once 'vendor/autoload.php';
                 }
             }
             echo "</div>";
+        }
+    }
+
+    function getTimingClass($time)
+    {
+        if ($time < 1.0) {
+            return 'timing-fast';
+        } elseif ($time < 3.0) {
+            return 'timing-medium';
+        } else {
+            return 'timing-slow';
         }
     }
 

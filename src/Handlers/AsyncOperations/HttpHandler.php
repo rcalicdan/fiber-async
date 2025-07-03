@@ -8,6 +8,7 @@ use Rcalicdan\FiberAsync\CancellablePromise;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
+use Rcalicdan\FiberAsync\Http\RetryConfig;
 
 final readonly class HttpHandler
 {
@@ -73,6 +74,69 @@ final readonly class HttpHandler
                 $promise->resolve(new Response($response, $httpCode, $headers));
             }
         });
+
+        $promise->setCancelHandler(function () use (&$requestId) {
+            if ($requestId !== null) {
+                AsyncEventLoop::getInstance()->cancelHttpRequest($requestId);
+            }
+        });
+
+        return $promise;
+    }
+
+    /**
+     * Enhanced fetch with retry support
+     */
+    public function fetchWithRetry(string $url, array $options, RetryConfig $retryConfig): PromiseInterface
+    {
+        $promise = new CancellablePromise();
+        $attempt = 0;
+        $requestId = null;
+
+        $executeRequest = function () use ($url, $options, $retryConfig, $promise, &$attempt, &$requestId, &$executeRequest) {
+            $attempt++;
+
+            $requestId = AsyncEventLoop::getInstance()->addHttpRequest(
+                $url,
+                $options,
+                function ($error, $response, $httpCode, $headers = []) use ($retryConfig, $promise, $attempt, $url, $options, &$executeRequest) {
+                    if ($promise->isCancelled()) {
+                        return;
+                    }
+
+                    $shouldRetry = $retryConfig->shouldRetry($attempt, $httpCode, $error);
+
+                    if ($error && $shouldRetry) {
+                        $delay = $retryConfig->getDelay($attempt);
+
+                        // Schedule retry after delay
+                        AsyncEventLoop::getInstance()->addTimer($delay, function () use ($executeRequest) {
+                            $executeRequest();
+                        });
+                        return;
+                    }
+
+                    if ($httpCode > 0 && $shouldRetry) {
+                        $delay = $retryConfig->getDelay($attempt);
+
+                        // Schedule retry after delay for retryable status codes
+                        AsyncEventLoop::getInstance()->addTimer($delay, function () use ($executeRequest) {
+                            $executeRequest();
+                        });
+                        return;
+                    }
+
+                    // No retry needed or max retries reached
+                    if ($error) {
+                        $promise->reject(new Exception("HTTP Request failed after {$attempt} attempts: {$error}"));
+                    } else {
+                        $promise->resolve(new Response($response, $httpCode, $headers));
+                    }
+                }
+            );
+        };
+
+        $executeRequest();
 
         $promise->setCancelHandler(function () use (&$requestId) {
             if ($requestId !== null) {
