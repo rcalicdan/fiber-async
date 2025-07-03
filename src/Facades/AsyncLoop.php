@@ -144,6 +144,20 @@ final class AsyncLoop
     }
 
     /**
+     * Perform an async delay with automatic event loop management.
+     *
+     * Creates a delay without blocking the current thread, with the event loop
+     * managed automatically. This is useful for simple timing operations that
+     * don't require manual loop control.
+     *
+     * @param  float  $seconds  Number of seconds to delay
+     */
+    public static function asyncSleep(float $seconds): void
+    {
+        self::getLoopOperations()->asyncSleep($seconds);
+    }
+
+    /**
      * Run an async operation and measure its performance metrics.
      *
      * @param  callable|PromiseInterface  $asyncOperation  The operation to benchmark

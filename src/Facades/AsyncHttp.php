@@ -16,7 +16,7 @@ use Rcalicdan\FiberAsync\Http\Request;
  * @method static PromiseInterface delete(string $url)
  * @method static PromiseInterface fetch(string $url, array $options = [])
  */
-class Http
+class AsyncHttp
 {
     /**
      * @var HttpHandler|null Singleton instance

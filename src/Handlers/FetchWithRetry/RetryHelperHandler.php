@@ -1,11 +1,10 @@
-<?php 
+<?php
 
 namespace Src\Handlers\FetchWithRetry;
 
 class RetryHelperHandler
 {
     public static function getRetryLogic($request, $url, $options = [])
-
     {
         if (isset($options['headers'])) {
             $request->headers($options['headers']);

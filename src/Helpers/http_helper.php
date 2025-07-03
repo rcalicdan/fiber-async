@@ -1,9 +1,8 @@
 <?php
 
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
-use Rcalicdan\FiberAsync\Facades\Http;
+use Rcalicdan\FiberAsync\Facades\AsyncHttp;
 use Rcalicdan\FiberAsync\Http\Request;
-use Rcalicdan\FiberAsync\Http\RetryConfig;
 use Src\Handlers\FetchWithRetry\RetryHelperHandler;
 
 if (!function_exists('http')) {
@@ -12,7 +11,7 @@ if (!function_exists('http')) {
      */
     function http(): Request
     {
-        return Http::request();
+        return AsyncHttp::request();
     }
 }
 
@@ -22,7 +21,7 @@ if (!function_exists('http_get')) {
      */
     function http_get(string $url, array $query = []): PromiseInterface
     {
-        return Http::get($url, $query);
+        return AsyncHttp::get($url, $query);
     }
 }
 
@@ -32,7 +31,7 @@ if (!function_exists('http_post')) {
      */
     function http_post(string $url, array $data = []): PromiseInterface
     {
-        return Http::post($url, $data);
+        return AsyncHttp::post($url, $data);
     }
 }
 
@@ -42,7 +41,7 @@ if (!function_exists('http_put')) {
      */
     function http_put(string $url, array $data = []): PromiseInterface
     {
-        return Http::put($url, $data);
+        return AsyncHttp::put($url, $data);
     }
 }
 
@@ -52,7 +51,7 @@ if (!function_exists('http_delete')) {
      */
     function http_delete(string $url): PromiseInterface
     {
-        return Http::delete($url);
+        return AsyncHttp::delete($url);
     }
 }
 
@@ -62,7 +61,7 @@ if (!function_exists('fetch')) {
      */
     function fetch(string $url, array $options = []): PromiseInterface
     {
-        return Http::fetch($url, $options);
+        return AsyncHttp::fetch($url, $options);
     }
 }
 
@@ -72,7 +71,7 @@ if (!function_exists('fetch_with_retry')) {
      */
     function fetch_with_retry(string $url, array $options = [], int $maxRetries = 3, float $baseDelay = 1.0): PromiseInterface
     {
-        $request = Http::request()->retry($maxRetries, $baseDelay);
+        $request = AsyncHttp::request()->retry($maxRetries, $baseDelay);
         $response = RetryHelperHandler::getRetryLogic($request, $url, $options);
         return $response;
     }
