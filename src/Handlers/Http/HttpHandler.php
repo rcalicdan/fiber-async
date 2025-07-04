@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\Handlers\AsyncOperations;
+namespace Rcalicdan\FiberAsync\Handlers\Http;
 
 use Exception;
 use Rcalicdan\FiberAsync\AsyncEventLoop;
