@@ -101,12 +101,12 @@ class AsyncEventLoop implements EventLoopInterface
 
         // Initialize handlers that depend on managers
         $this->workHandler = new WorkHandler(
-            $this->timerManager,
-            $this->httpRequestManager,
-            $this->streamManager,
-            $this->fiberManager,
-            $this->tickHandler,
-            $this->fileManager,
+            timerManager: $this->timerManager,
+            httpRequestManager: $this->httpRequestManager,
+            streamManager: $this->streamManager,
+            fiberManager: $this->fiberManager,
+            tickHandler: $this->tickHandler,
+            fileManager: $this->fileManager,
         );
 
         $this->sleepHandler = new SleepHandler(

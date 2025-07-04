@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Facades;
 
-use Rcalicdan\FiberAsync\AsyncOperations;
+use Rcalicdan\FiberAsync\AsyncFileOperations;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 
 /**
@@ -15,19 +15,19 @@ use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 final class AsyncFile
 {
     /**
-     * @var AsyncOperations|null Cached instance of core async operations handler
+     * @var AsyncFileOperations|null Cached instance of core async operations handler
      */
-    private static ?AsyncOperations $asyncOps = null;
+    private static ?AsyncFileOperations $asyncOps = null;
 
     /**
-     * Get the singleton instance of AsyncOperations with lazy initialization.
+     * Get the singleton instance of AsyncFileOperations with lazy initialization.
      *
-     * @return AsyncOperations The core async operations handler
+     * @return AsyncFileOperations The core async operations handler
      */
-    protected static function getAsyncOperations(): AsyncOperations
+    protected static function getAsyncFileOperations(): AsyncFileOperations
     {
         if (self::$asyncOps === null) {
-            self::$asyncOps = new AsyncOperations;
+            self::$asyncOps = new AsyncFileOperations;
         }
 
         return self::$asyncOps;
@@ -50,7 +50,7 @@ final class AsyncFile
      */
     public static function read(string $path, array $options = []): PromiseInterface
     {
-        return self::getAsyncOperations()->readFile($path, $options);
+        return self::getAsyncFileOperations()->readFile($path, $options);
     }
 
     /**
@@ -63,7 +63,7 @@ final class AsyncFile
      */
     public static function write(string $path, string $data, array $options = []): PromiseInterface
     {
-        return self::getAsyncOperations()->writeFile($path, $data, $options);
+        return self::getAsyncFileOperations()->writeFile($path, $data, $options);
     }
 
     /**
@@ -75,7 +75,7 @@ final class AsyncFile
      */
     public static function append(string $path, string $data): PromiseInterface
     {
-        return self::getAsyncOperations()->appendFile($path, $data);
+        return self::getAsyncFileOperations()->appendFile($path, $data);
     }
 
     /**
@@ -86,7 +86,7 @@ final class AsyncFile
      */
     public static function exists(string $path): PromiseInterface
     {
-        return self::getAsyncOperations()->fileExists($path);
+        return self::getAsyncFileOperations()->fileExists($path);
     }
 
     /**
@@ -97,7 +97,7 @@ final class AsyncFile
      */
     public static function stats(string $path): PromiseInterface
     {
-        return self::getAsyncOperations()->getFileStats($path);
+        return self::getAsyncFileOperations()->getFileStats($path);
     }
 
     /**
@@ -108,7 +108,7 @@ final class AsyncFile
      */
     public static function delete(string $path): PromiseInterface
     {
-        return self::getAsyncOperations()->deleteFile($path);
+        return self::getAsyncFileOperations()->deleteFile($path);
     }
 
     /**
@@ -120,7 +120,7 @@ final class AsyncFile
      */
     public static function copy(string $source, string $destination): PromiseInterface
     {
-        return self::getAsyncOperations()->copyFile($source, $destination);
+        return self::getAsyncFileOperations()->copyFile($source, $destination);
     }
 
     /**
@@ -132,7 +132,7 @@ final class AsyncFile
      */
     public static function rename(string $oldPath, string $newPath): PromiseInterface
     {
-        return self::getAsyncOperations()->renameFile($oldPath, $newPath);
+        return self::getAsyncFileOperations()->renameFile($oldPath, $newPath);
     }
 
     /**
@@ -145,7 +145,7 @@ final class AsyncFile
      */
     public static function watch(string $path, callable $callback, array $options = []): string
     {
-        return self::getAsyncOperations()->watchFile($path, $callback, $options);
+        return self::getAsyncFileOperations()->watchFile($path, $callback, $options);
     }
 
     /**
@@ -156,7 +156,7 @@ final class AsyncFile
      */
     public static function unwatch(string $watcherId): bool
     {
-        return self::getAsyncOperations()->unwatchFile($watcherId);
+        return self::getAsyncFileOperations()->unwatchFile($watcherId);
     }
 
     /**
@@ -168,7 +168,7 @@ final class AsyncFile
      */
     public static function createDirectory(string $path, array $options = []): PromiseInterface
     {
-        return self::getAsyncOperations()->createDirectory($path, $options);
+        return self::getAsyncFileOperations()->createDirectory($path, $options);
     }
 
     /**
@@ -179,6 +179,6 @@ final class AsyncFile
      */
     public static function removeDirectory(string $path): PromiseInterface
     {
-        return self::getAsyncOperations()->removeDirectory($path);
+        return self::getAsyncFileOperations()->removeDirectory($path);
     }
 }
