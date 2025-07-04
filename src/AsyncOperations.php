@@ -52,11 +52,6 @@ class AsyncOperations implements AsyncOperationsInterface
     private TimerHandler $timerHandler;
 
     /**
-     * @var HttpHandler Handles HTTP request operations
-     */
-    private HttpHandler $httpHandler;
-
-    /**
      * @var PromiseCollectionHandler Manages collections of promises (all, race)
      */
     private PromiseCollectionHandler $collectionHandler;
@@ -84,7 +79,6 @@ class AsyncOperations implements AsyncOperationsInterface
         $this->executionHandler = new AsyncExecutionHandler;
         $this->awaitHandler = new AwaitHandler($this->contextHandler);
         $this->timerHandler = new TimerHandler;
-        $this->httpHandler = new HttpHandler;
         $this->collectionHandler = new PromiseCollectionHandler;
         $this->concurrencyHandler = new ConcurrencyHandler($this->executionHandler);
         $this->fileHandler = new FileHandler;
@@ -192,18 +186,6 @@ class AsyncOperations implements AsyncOperationsInterface
     public function delay(float $seconds): PromiseInterface
     {
         return $this->timerHandler->delay($seconds);
-    }
-
-    /**
-     * Perform an HTTP request and return a promise.
-     *
-     * @param  string  $url  The URL to request
-     * @param  array  $options  Request options (method, headers, body, etc.)
-     * @return PromiseInterface A promise that resolves with the response
-     */
-    public function fetch(string $url, array $options = []): PromiseInterface
-    {
-        return $this->httpHandler->fetch($url, $options);
     }
 
     /**

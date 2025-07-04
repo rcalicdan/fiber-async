@@ -109,18 +109,6 @@ final class AsyncLoop
     }
 
     /**
-     * Perform an HTTP fetch with automatic event loop management.
-     *
-     * @param  string  $url  The URL to fetch
-     * @param  array  $options  HTTP request options
-     * @return array The HTTP response data
-     */
-    public static function quickFetch(string $url, array $options = []): array
-    {
-        return self::getLoopOperations()->quickFetch($url, $options);
-    }
-
-    /**
      * Perform an async delay with automatic event loop management.
      *
      * @param  float  $seconds  Number of seconds to delay

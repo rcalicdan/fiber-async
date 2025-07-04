@@ -1,6 +1,6 @@
 <?php
 
-namespace Src\Handlers\FetchWithRetry;
+namespace Rcalicdan\FiberAsync\Handlers\FetchWithRetry;
 
 class RetryHelperHandler
 {

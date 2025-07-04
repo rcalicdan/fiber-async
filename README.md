@@ -484,20 +484,6 @@ $promise = wrap_sync(function() {
 $result = Async::run($promise);
 ```
 
-## Quick Utilities
-
-### Quick HTTP Fetch
-
-For simple HTTP requests with automatic loop management:
-
-```php
-// Returns response data directly
-$data = Async::quickFetch('https://api.example.com/data');
-
-// Using helper function
-$data = quick_fetch('https://api.example.com/data');
-```
-
 ### Simple Tasks
 
 For quick async tasks:

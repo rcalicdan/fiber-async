@@ -64,22 +64,6 @@ function delay(float $seconds): PromiseInterface
 }
 
 /**
- * Perform an asynchronous HTTP request and return a promise.
- *
- * Creates an HTTP request that executes asynchronously without blocking
- * the event loop. The promise resolves with the response data when the
- * request completes.
- *
- * @param  string  $url  The URL to request
- * @param  array  $options  Request options (method, headers, body, timeout, etc.)
- * @return PromiseInterface A promise that resolves with the HTTP response
- */
-function fetch(string $url, array $options = []): PromiseInterface
-{
-    return Async::fetch($url, $options);
-}
-
-/**
  * Wait for all promises to resolve and return their results in order.
  *
  * Creates a promise that resolves when all input promises resolve, with

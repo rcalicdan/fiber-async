@@ -59,18 +59,6 @@ interface LoopOperationsInterface
     public function asyncSleep(float $seconds): void;
 
     /**
-     * Performs a quick HTTP fetch operation.
-     *
-     * A convenience method for simple HTTP GET requests that returns
-     * the response data in a structured format.
-     *
-     * @param  string  $url  The URL to fetch
-     * @param  array  $options  Optional request options
-     * @return array Response data including body, status, headers, etc.
-     */
-    public function quickFetch(string $url, array $options = []): array;
-
-    /**
      * Runs an async operation with a timeout.
      *
      * If the operation doesn't complete within the timeout period,

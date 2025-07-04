@@ -88,15 +88,6 @@ interface AsyncOperationsInterface
     public function delay(float $seconds): PromiseInterface;
 
     /**
-     * Performs an asynchronous HTTP request using the built-in fetch mechanism.
-     *
-     * @param  string  $url  The URL to fetch
-     * @param  array  $options  Optional request options (headers, method, body, etc.)
-     * @return PromiseInterface A promise that resolves with the HTTP response
-     */
-    public function fetch(string $url, array $options = []): PromiseInterface;
-
-    /**
      * Waits for all promises to resolve or any to reject.
      *
      * Returns a promise that resolves with an array of all resolved values

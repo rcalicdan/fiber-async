@@ -65,22 +65,6 @@ function task(callable $asyncFunction): mixed
 }
 
 /**
- * Perform an HTTP fetch with automatic event loop management.
- *
- * Handles the complete HTTP request lifecycle including starting the event
- * loop, making the request, waiting for the response, and cleaning up.
- * Returns the raw response data directly.
- *
- * @param  string  $url  The URL to fetch
- * @param  array  $options  HTTP request options
- * @return array The HTTP response data
- */
-function quick_fetch(string $url, array $options = []): array
-{
-    return AsyncLoop::quickFetch($url, $options);
-}
-
-/**
  * Perform an async delay with automatic event loop management.
  *
  * Creates a delay without blocking the current thread, with the event loop

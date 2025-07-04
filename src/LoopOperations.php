@@ -10,6 +10,7 @@ use Rcalicdan\FiberAsync\Handlers\LoopOperations\HttpExecutionHandler;
 use Rcalicdan\FiberAsync\Handlers\LoopOperations\LoopExecutionHandler;
 use Rcalicdan\FiberAsync\Handlers\LoopOperations\TaskExecutionHandler;
 use Rcalicdan\FiberAsync\Handlers\LoopOperations\TimeoutHandler;
+use Rcalicdan\FiberAsync\Http\Response;
 
 /**
  * High-level operations that manage the event loop lifecycle automatically.
@@ -45,11 +46,6 @@ class LoopOperations implements LoopOperationsInterface
     private TaskExecutionHandler $taskHandler;
 
     /**
-     * @var HttpExecutionHandler Handles HTTP operation execution
-     */
-    private HttpExecutionHandler $httpHandler;
-
-    /**
      * @var TimeoutHandler Manages operations with timeout constraints
      */
     private TimeoutHandler $timeoutHandler;
@@ -70,7 +66,6 @@ class LoopOperations implements LoopOperationsInterface
         $this->executionHandler = new LoopExecutionHandler($this->asyncOps);
         $this->concurrentHandler = new ConcurrentExecutionHandler($this->asyncOps, $this->executionHandler);
         $this->taskHandler = new TaskExecutionHandler($this->asyncOps, $this->executionHandler);
-        $this->httpHandler = new HttpExecutionHandler($this->asyncOps, $this->executionHandler);
         $this->timeoutHandler = new TimeoutHandler($this->asyncOps, $this->executionHandler);
         $this->benchmarkHandler = new BenchmarkHandler($this->executionHandler);
     }
@@ -144,21 +139,6 @@ class LoopOperations implements LoopOperationsInterface
     public function asyncSleep(float $seconds): void
     {
         $this->taskHandler->asyncSleep($seconds);
-    }
-
-    /**
-     * Perform a quick HTTP fetch with automatic loop management.
-     *
-     * This method handles the entire HTTP request lifecycle including
-     * starting the event loop, making the request, and returning the result.
-     *
-     * @param  string  $url  The URL to fetch
-     * @param  array  $options  HTTP request options
-     * @return array The HTTP response data
-     */
-    public function quickFetch(string $url, array $options = []): array
-    {
-        return $this->httpHandler->quickFetch($url, $options);
     }
 
     /**
