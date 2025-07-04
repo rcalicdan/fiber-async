@@ -44,8 +44,8 @@ final class AsyncFile
     /**
      * Read a file asynchronously.
      *
-     * @param string $path The file path to read
-     * @param array $options Optional parameters for the read operation
+     * @param  string  $path  The file path to read
+     * @param  array  $options  Optional parameters for the read operation
      * @return PromiseInterface Promise that resolves with file contents
      */
     public static function read(string $path, array $options = []): PromiseInterface
@@ -56,9 +56,9 @@ final class AsyncFile
     /**
      * Write to a file asynchronously.
      *
-     * @param string $path The file path to write to
-     * @param string $data The data to write
-     * @param array $options Write options (append, permissions, etc.)
+     * @param  string  $path  The file path to write to
+     * @param  string  $data  The data to write
+     * @param  array  $options  Write options (append, permissions, etc.)
      * @return PromiseInterface Promise that resolves with bytes written
      */
     public static function write(string $path, string $data, array $options = []): PromiseInterface
@@ -69,8 +69,8 @@ final class AsyncFile
     /**
      * Append to a file asynchronously.
      *
-     * @param string $path The file path to append to
-     * @param string $data The data to append
+     * @param  string  $path  The file path to append to
+     * @param  string  $data  The data to append
      * @return PromiseInterface Promise that resolves with bytes written
      */
     public static function append(string $path, string $data): PromiseInterface
@@ -81,7 +81,7 @@ final class AsyncFile
     /**
      * Check if a file exists asynchronously.
      *
-     * @param string $path The file path to check
+     * @param  string  $path  The file path to check
      * @return PromiseInterface Promise that resolves with boolean existence status
      */
     public static function exists(string $path): PromiseInterface
@@ -92,7 +92,7 @@ final class AsyncFile
     /**
      * Get file information asynchronously.
      *
-     * @param string $path The file path to get information for
+     * @param  string  $path  The file path to get information for
      * @return PromiseInterface Promise that resolves with file statistics
      */
     public static function stats(string $path): PromiseInterface
@@ -103,7 +103,7 @@ final class AsyncFile
     /**
      * Delete a file asynchronously.
      *
-     * @param string $path The file path to delete
+     * @param  string  $path  The file path to delete
      * @return PromiseInterface Promise that resolves with deletion status
      */
     public static function delete(string $path): PromiseInterface
@@ -114,8 +114,8 @@ final class AsyncFile
     /**
      * Copy a file asynchronously.
      *
-     * @param string $source The source file path
-     * @param string $destination The destination file path
+     * @param  string  $source  The source file path
+     * @param  string  $destination  The destination file path
      * @return PromiseInterface Promise that resolves with copy status
      */
     public static function copy(string $source, string $destination): PromiseInterface
@@ -126,8 +126,8 @@ final class AsyncFile
     /**
      * Rename a file asynchronously.
      *
-     * @param string $oldPath The current file path
-     * @param string $newPath The new file path
+     * @param  string  $oldPath  The current file path
+     * @param  string  $newPath  The new file path
      * @return PromiseInterface Promise that resolves with rename status
      */
     public static function rename(string $oldPath, string $newPath): PromiseInterface
@@ -138,9 +138,9 @@ final class AsyncFile
     /**
      * Watch a file for changes asynchronously.
      *
-     * @param string $path The file path to watch
-     * @param callable $callback Callback to execute when file changes
-     * @param array $options Watch options (polling interval, etc.)
+     * @param  string  $path  The file path to watch
+     * @param  callable  $callback  Callback to execute when file changes
+     * @param  array  $options  Watch options (polling interval, etc.)
      * @return string Watcher ID for managing the watch operation
      */
     public static function watch(string $path, callable $callback, array $options = []): string
@@ -151,7 +151,7 @@ final class AsyncFile
     /**
      * Stop watching a file for changes.
      *
-     * @param string $watcherId The watcher ID to remove
+     * @param  string  $watcherId  The watcher ID to remove
      * @return bool True if watcher was removed, false otherwise
      */
     public static function unwatch(string $watcherId): bool
@@ -162,8 +162,8 @@ final class AsyncFile
     /**
      * Create a directory asynchronously.
      *
-     * @param string $path The directory path to create
-     * @param array $options Creation options (recursive, permissions, etc.)
+     * @param  string  $path  The directory path to create
+     * @param  array  $options  Creation options (recursive, permissions, etc.)
      * @return PromiseInterface Promise that resolves with creation status
      */
     public static function createDirectory(string $path, array $options = []): PromiseInterface
@@ -174,7 +174,7 @@ final class AsyncFile
     /**
      * Remove a directory asynchronously.
      *
-     * @param string $path The directory path to remove
+     * @param  string  $path  The directory path to remove
      * @return PromiseInterface Promise that resolves with removal status
      */
     public static function removeDirectory(string $path): PromiseInterface

@@ -54,6 +54,7 @@ class RetryConfig
                 return true;
             }
         }
+
         return false;
     }
 }

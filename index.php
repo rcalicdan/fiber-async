@@ -36,7 +36,7 @@ require_once 'index-php.php';
 
         <div id="js-results"></div>
 
-        <?php if (isset($_POST['action'])) : ?>
+        <?php if (isset($_POST['action'])) { ?>
             <?php
             $apis = [
                 'jsonplaceholder' => 'https://jsonplaceholder.typicode.com/posts/1',
@@ -57,44 +57,48 @@ require_once 'index-php.php';
 
             switch ($_POST['action']) {
                 case 'fiber':
-                    echo "<h2>🔥 Fiber Async Results</h2>";
+                    echo '<h2>🔥 Fiber Async Results</h2>';
                     runFiberAsyncDemo($apis);
+
                     break;
 
                 case 'guzzle':
-                    echo "<h2>🚀 Guzzle Promises Results</h2>";
+                    echo '<h2>🚀 Guzzle Promises Results</h2>';
                     runGuzzleAsyncDemo($apis);
+
                     break;
 
                 case 'sync':
-                    echo "<h2>🐌 PHP Synchronous Results</h2>";
+                    echo '<h2>🐌 PHP Synchronous Results</h2>';
                     runSyncDemo($apis);
+
                     break;
 
                 case 'compare_php':
-                    echo "<h2>⚡ PHP Performance Comparison</h2>";
+                    echo '<h2>⚡ PHP Performance Comparison</h2>';
                     echo "<div class='comparison-grid'>";
 
-                    echo "<div>";
-                    echo "<h3>🔥 Fiber Async</h3>";
+                    echo '<div>';
+                    echo '<h3>🔥 Fiber Async</h3>';
                     runFiberAsyncDemo($apis);
-                    echo "</div>";
+                    echo '</div>';
 
-                    echo "<div>";
-                    echo "<h3>🚀 Guzzle Promises</h3>";
+                    echo '<div>';
+                    echo '<h3>🚀 Guzzle Promises</h3>';
                     runGuzzleAsyncDemo($apis);
-                    echo "</div>";
+                    echo '</div>';
 
-                    echo "<div>";
-                    echo "<h3>🐌 PHP Synchronous</h3>";
+                    echo '<div>';
+                    echo '<h3>🐌 PHP Synchronous</h3>';
                     runSyncDemo($apis);
-                    echo "</div>";
+                    echo '</div>';
 
-                    echo "</div>";
+                    echo '</div>';
+
                     break;
             }
             ?>
-        <?php endif; ?>
+        <?php } ?>
 
         <div id="performance-comparison" style="display: none;">
             <div class="performance-comparison">

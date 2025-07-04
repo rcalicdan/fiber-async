@@ -62,11 +62,12 @@ final readonly class LoopExecutionHandler
             ->catch(function ($reason) use (&$error, &$completed) {
                 $error = $reason;
                 $completed = true;
-            });
+            })
+        ;
 
-        while (!$completed) {
+        while (! $completed) {
             $loop->run();
-            if (!$completed) {
+            if (! $completed) {
                 usleep(1000); // 1ms - prevent busy waiting
             }
         }

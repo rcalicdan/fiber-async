@@ -87,7 +87,7 @@ class AsyncOperations implements AsyncOperationsInterface
         $this->httpHandler = new HttpHandler;
         $this->collectionHandler = new PromiseCollectionHandler;
         $this->concurrencyHandler = new ConcurrencyHandler($this->executionHandler);
-        $this->fileHandler = new FileHandler();
+        $this->fileHandler = new FileHandler;
     }
 
     /**
@@ -252,8 +252,7 @@ class AsyncOperations implements AsyncOperationsInterface
     /**
      * Read a file asynchronously.
      *
-     * @param string $path The file path to read
-     * @param array $options
+     * @param  string  $path  The file path to read
      * @return PromiseInterface Promise that resolves with file contents
      */
     public function readFile(string $path, array $options = []): PromiseInterface
@@ -264,9 +263,9 @@ class AsyncOperations implements AsyncOperationsInterface
     /**
      * Write to a file asynchronously.
      *
-     * @param string $path The file path to write to
-     * @param string $data The data to write
-     * @param bool $append Whether to append or overwrite
+     * @param  string  $path  The file path to write to
+     * @param  string  $data  The data to write
+     * @param  bool  $append  Whether to append or overwrite
      * @return PromiseInterface Promise that resolves with bytes written
      */
     public function writeFile(string $path, string $data, array $options = []): PromiseInterface
@@ -276,9 +275,9 @@ class AsyncOperations implements AsyncOperationsInterface
 
     /**
      * Append to a file asynchronously.
-     * 
-     * @param string $path The file path to append to
-     * @param string $data The data to append
+     *
+     * @param  string  $path  The file path to append to
+     * @param  string  $data  The data to append
      * @return PromiseInterface Promise that resolves with bytes written
      */
     public function appendFile(string $path, string $data): PromiseInterface

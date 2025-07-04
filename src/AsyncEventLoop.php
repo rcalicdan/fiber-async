@@ -97,7 +97,7 @@ class AsyncEventLoop implements EventLoopInterface
         $this->tickHandler = new TickHandler;
         $this->activityHandler = new ActivityHandler;
         $this->stateHandler = new StateHandler;
-        $this->fileManager = new FileManager();
+        $this->fileManager = new FileManager;
 
         // Initialize handlers that depend on managers
         $this->workHandler = new WorkHandler(

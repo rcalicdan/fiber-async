@@ -3,8 +3,8 @@
 namespace Rcalicdan\FiberAsync\Facades;
 
 use Rcalicdan\FiberAsync\AsyncOperations;
-use Rcalicdan\FiberAsync\LoopOperations;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
+use Rcalicdan\FiberAsync\LoopOperations;
 
 /**
  * Static facade for event loop management and high-level async execution.
@@ -136,6 +136,7 @@ final class AsyncLoop
      * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
      * @param  float  $timeout  Maximum time to wait in seconds
      * @return mixed The result of the operation if completed within timeout
+     *
      * @throws \Exception If the operation times out
      */
     public static function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed

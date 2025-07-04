@@ -1,4 +1,5 @@
 <?php
+
 // src/Handlers/AsyncOperations/FileHandler.php
 
 namespace Rcalicdan\FiberAsync\Handlers\AsyncOperations;

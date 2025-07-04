@@ -9,8 +9,8 @@ use Rcalicdan\FiberAsync\Facades\AsyncFile;
  * Reads the contents of a file without blocking the event loop. The promise
  * resolves with the file contents as a string when the read operation completes.
  *
- * @param string $path The file path to read
- * @param array $options Optional parameters for the read operation
+ * @param  string  $path  The file path to read
+ * @param  array  $options  Optional parameters for the read operation
  * @return PromiseInterface Promise that resolves with file contents
  */
 function read_file_async(string $path, array $options = []): PromiseInterface
@@ -24,9 +24,9 @@ function read_file_async(string $path, array $options = []): PromiseInterface
  * Writes data to a file without blocking the event loop. The promise resolves
  * with the number of bytes written when the operation completes.
  *
- * @param string $path The file path to write to
- * @param string $data The data to write
- * @param array $options Write options (append, permissions, etc.)
+ * @param  string  $path  The file path to write to
+ * @param  string  $data  The data to write
+ * @param  array  $options  Write options (append, permissions, etc.)
  * @return PromiseInterface Promise that resolves with bytes written
  */
 function write_file_async(string $path, string $data, array $options = []): PromiseInterface
@@ -41,8 +41,8 @@ function write_file_async(string $path, string $data, array $options = []): Prom
  * If the file doesn't exist, it will be created. The promise resolves with
  * the number of bytes written.
  *
- * @param string $path The file path to append to
- * @param string $data The data to append
+ * @param  string  $path  The file path to append to
+ * @param  string  $data  The data to append
  * @return PromiseInterface Promise that resolves with bytes written
  */
 function append_file_async(string $path, string $data): PromiseInterface
@@ -56,7 +56,7 @@ function append_file_async(string $path, string $data): PromiseInterface
  * Checks for file existence without blocking the event loop. The promise
  * resolves with a boolean indicating whether the file exists.
  *
- * @param string $path The file path to check
+ * @param  string  $path  The file path to check
  * @return PromiseInterface Promise that resolves with boolean existence status
  */
 function file_exists_async(string $path): PromiseInterface
@@ -71,7 +71,7 @@ function file_exists_async(string $path): PromiseInterface
  * The promise resolves with an array containing file information such as
  * size, modification time, permissions, etc.
  *
- * @param string $path The file path to get information for
+ * @param  string  $path  The file path to get information for
  * @return PromiseInterface Promise that resolves with file statistics
  */
 function file_stats_async(string $path): PromiseInterface
@@ -85,7 +85,7 @@ function file_stats_async(string $path): PromiseInterface
  * Removes a file from the filesystem without blocking the event loop.
  * The promise resolves with a boolean indicating success or failure.
  *
- * @param string $path The file path to delete
+ * @param  string  $path  The file path to delete
  * @return PromiseInterface Promise that resolves with deletion status
  */
 function delete_file_async(string $path): PromiseInterface
@@ -99,8 +99,8 @@ function delete_file_async(string $path): PromiseInterface
  * Copies a file from source to destination without blocking the event loop.
  * The promise resolves with a boolean indicating whether the copy was successful.
  *
- * @param string $source The source file path
- * @param string $destination The destination file path
+ * @param  string  $source  The source file path
+ * @param  string  $destination  The destination file path
  * @return PromiseInterface Promise that resolves with copy status
  */
 function copy_file_async(string $source, string $destination): PromiseInterface
@@ -114,8 +114,8 @@ function copy_file_async(string $source, string $destination): PromiseInterface
  * Renames or moves a file from old path to new path without blocking the
  * event loop. The promise resolves with a boolean indicating success.
  *
- * @param string $oldPath The current file path
- * @param string $newPath The new file path
+ * @param  string  $oldPath  The current file path
+ * @param  string  $newPath  The new file path
  * @return PromiseInterface Promise that resolves with rename status
  */
 function rename_file_async(string $oldPath, string $newPath): PromiseInterface
@@ -130,9 +130,9 @@ function rename_file_async(string $oldPath, string $newPath): PromiseInterface
  * provided callback when changes occur. Returns a watcher ID that can be
  * used to stop watching later.
  *
- * @param string $path The file path to watch
- * @param callable $callback Callback to execute when file changes
- * @param array $options Watch options (polling interval, etc.)
+ * @param  string  $path  The file path to watch
+ * @param  callable  $callback  Callback to execute when file changes
+ * @param  array  $options  Watch options (polling interval, etc.)
  * @return string Watcher ID for managing the watch operation
  */
 function watch_file_async(string $path, callable $callback, array $options = []): string
@@ -146,7 +146,7 @@ function watch_file_async(string $path, callable $callback, array $options = [])
  * Removes a file watcher using the watcher ID returned by watch_file().
  * Returns a boolean indicating whether the watcher was successfully removed.
  *
- * @param string $watcherId The watcher ID to remove
+ * @param  string  $watcherId  The watcher ID to remove
  * @return bool True if watcher was removed, false otherwise
  */
 function unwatch_file_async(string $watcherId): bool
@@ -160,12 +160,11 @@ function unwatch_file_async(string $watcherId): bool
  * Creates a directory (and parent directories if needed) without blocking
  * the event loop. The promise resolves with a boolean indicating success.
  *
- * @param string $path The directory path to create
- * @param array $options Creation options (recursive, permissions, etc.)
+ * @param  string  $path  The directory path to create
+ * @param  array  $options  Creation options (recursive, permissions, etc.)
  * @return PromiseInterface Promise that resolves with creation status
  */
 function create_directory_async(string $path, array $options = []): PromiseInterface
-
 {
     return AsyncFile::createDirectory($path, $options);
 }
@@ -176,11 +175,10 @@ function create_directory_async(string $path, array $options = []): PromiseInter
  * Removes a directory from the filesystem without blocking the event loop.
  * The promise resolves with a boolean indicating success or failure.
  *
- * @param string $path The directory path to remove
+ * @param  string  $path  The directory path to remove
  * @return PromiseInterface Promise that resolves with removal status
  */
 function remove_directory_async(string $path): PromiseInterface
-
 {
     return AsyncFile::removeDirectory($path);
 }
@@ -191,12 +189,11 @@ function remove_directory_async(string $path): PromiseInterface
  * Creates a directory and all necessary parent directories without blocking
  * the event loop. This is a convenience function for recursive directory creation.
  *
- * @param string $path The directory path to create
- * @param int $permissions Directory permissions (default: 0755)
+ * @param  string  $path  The directory path to create
+ * @param  int  $permissions  Directory permissions (default: 0755)
  * @return PromiseInterface Promise that resolves with creation status
  */
 function mkdir_recursive_async(string $path, int $permissions = 0755): PromiseInterface
-
 {
     return AsyncFile::createDirectory($path, ['recursive' => true, 'mode' => $permissions]);
 }
@@ -207,11 +204,10 @@ function mkdir_recursive_async(string $path, int $permissions = 0755): PromiseIn
  * Retrieves just the file size without blocking the event loop.
  * This is a convenience function that extracts size from file stats.
  *
- * @param string $path The file path to get size for
+ * @param  string  $path  The file path to get size for
  * @return PromiseInterface Promise that resolves with file size in bytes
  */
 function get_file_size_async(string $path): PromiseInterface
-
 {
     return AsyncFile::stats($path)->then(function ($stats) {
         return $stats['size'] ?? 0;
@@ -224,7 +220,7 @@ function get_file_size_async(string $path): PromiseInterface
  * Retrieves the last modification time without blocking the event loop.
  * This is a convenience function that extracts mtime from file stats.
  *
- * @param string $path The file path to get modification time for
+ * @param  string  $path  The file path to get modification time for
  * @return PromiseInterface Promise that resolves with Unix timestamp
  */
 function get_file_mtime_async(string $path): PromiseInterface

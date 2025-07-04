@@ -2,11 +2,9 @@
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Promise;
-use GuzzleHttp\Exception\RequestException;
 use Rcalicdan\FiberAsync\Facades\Async;
 use Rcalicdan\FiberAsync\Facades\AsyncHttp;
 use Rcalicdan\FiberAsync\Facades\AsyncLoop;
-
 
 function runFiberAsyncDemo($apis)
 {
@@ -24,7 +22,7 @@ function runFiberAsyncDemo($apis)
                     $response = await(AsyncHttp::fetch($url, [
                         'timeout' => 30,
                         'headers' => [
-                            'User-Agent' => 'Fiber-Async-PHP/1.0'
+                            'User-Agent' => 'Fiber-Async-PHP/1.0',
                         ],
                         'verify_ssl' => false,
                     ]));
@@ -37,7 +35,7 @@ function runFiberAsyncDemo($apis)
                         'url' => $url,
                         'data' => $response,
                         'status' => 'success',
-                        'request_time' => $requestTime
+                        'request_time' => $requestTime,
                     ];
                 } catch (Exception $e) {
                     $endTime = microtime(true);
@@ -49,7 +47,7 @@ function runFiberAsyncDemo($apis)
                         'data' => null,
                         'status' => 'error',
                         'error' => $e->getMessage(),
-                        'request_time' => $requestTime
+                        'request_time' => $requestTime,
                     ];
                 }
             });
@@ -60,15 +58,16 @@ function runFiberAsyncDemo($apis)
             foreach ($asyncTasks as $name => $task) {
                 $promises[] = $task();
             }
+
             return await(all($promises));
         });
 
         displayResults($result['result'], $result['benchmark'], 'Fiber Async');
     } catch (Exception $e) {
         echo "<div class='error'>";
-        echo "<h3>❌ Error occurred:</h3>";
-        echo "<p>" . htmlspecialchars($e->getMessage()) . "</p>";
-        echo "</div>";
+        echo '<h3>❌ Error occurred:</h3>';
+        echo '<p>'.htmlspecialchars($e->getMessage()).'</p>';
+        echo '</div>';
     }
 }
 
@@ -82,8 +81,8 @@ function runGuzzleAsyncDemo($apis)
             'timeout' => 30,
             'verify' => false,
             'headers' => [
-                'User-Agent' => 'Guzzle-Async-PHP/1.0'
-            ]
+                'User-Agent' => 'Guzzle-Async-PHP/1.0',
+            ],
         ]);
 
         $promises = [];
@@ -106,7 +105,7 @@ function runGuzzleAsyncDemo($apis)
                         'data' => ['body' => $response->getBody()->getContents()],
                         'status' => 'success',
                         'request_time' => $requestTime,
-                        'http_code' => $response->getStatusCode()
+                        'http_code' => $response->getStatusCode(),
                     ];
                 },
                 function ($exception) use ($name, $url, $requestStart) {
@@ -119,7 +118,7 @@ function runGuzzleAsyncDemo($apis)
                         'data' => null,
                         'status' => 'error',
                         'error' => $exception->getMessage(),
-                        'request_time' => $requestTime
+                        'request_time' => $requestTime,
                     ];
                 }
             );
@@ -138,7 +137,7 @@ function runGuzzleAsyncDemo($apis)
                     'data' => null,
                     'status' => 'error',
                     'error' => $result['reason']->getMessage(),
-                    'request_time' => 0
+                    'request_time' => 0,
                 ];
             }
         }
@@ -149,15 +148,15 @@ function runGuzzleAsyncDemo($apis)
         $benchmark = [
             'execution_time' => $endTime - $startTime,
             'memory_used' => $endMemory - $startMemory,
-            'peak_memory' => memory_get_peak_usage() - $startMemory
+            'peak_memory' => memory_get_peak_usage() - $startMemory,
         ];
 
         displayResults($processedResults, $benchmark, 'Guzzle Promises');
     } catch (Exception $e) {
         echo "<div class='error'>";
-        echo "<h3>❌ Error occurred:</h3>";
-        echo "<p>" . htmlspecialchars($e->getMessage()) . "</p>";
-        echo "</div>";
+        echo '<h3>❌ Error occurred:</h3>';
+        echo '<p>'.htmlspecialchars($e->getMessage()).'</p>';
+        echo '</div>';
     }
 }
 
@@ -179,8 +178,8 @@ function runSyncDemo($apis)
                 'http' => [
                     'timeout' => 10,
                     'user_agent' => 'Sync PHP Demo/1.0',
-                    'ignore_errors' => true
-                ]
+                    'ignore_errors' => true,
+                ],
             ]);
 
             $response = file_get_contents($url, false, $context);
@@ -193,7 +192,7 @@ function runSyncDemo($apis)
                     'url' => $url,
                     'data' => ['body' => $response],
                     'status' => 'success',
-                    'request_time' => $requestTime
+                    'request_time' => $requestTime,
                 ];
             } else {
                 $results[] = [
@@ -202,7 +201,7 @@ function runSyncDemo($apis)
                     'data' => null,
                     'status' => 'error',
                     'error' => 'HTTP request failed',
-                    'request_time' => $requestTime
+                    'request_time' => $requestTime,
                 ];
             }
         }
@@ -213,15 +212,15 @@ function runSyncDemo($apis)
         $benchmark = [
             'execution_time' => $endTime - $startTime,
             'memory_used' => $endMemory - $startMemory,
-            'peak_memory' => memory_get_peak_usage() - $startMemory
+            'peak_memory' => memory_get_peak_usage() - $startMemory,
         ];
 
         displayResults($results, $benchmark, 'PHP Synchronous');
     } catch (Exception $e) {
         echo "<div class='error'>";
-        echo "<h3>❌ Error occurred:</h3>";
-        echo "<p>" . htmlspecialchars($e->getMessage()) . "</p>";
-        echo "</div>";
+        echo '<h3>❌ Error occurred:</h3>';
+        echo '<p>'.htmlspecialchars($e->getMessage()).'</p>';
+        echo '</div>';
     }
 }
 
@@ -246,33 +245,33 @@ function displayResults($results, $benchmark, $type)
     $successCount = count($successfulRequests);
     $failCount = count($failedRequests);
 
-    $avgTime = !empty($requestTimes) ? array_sum($requestTimes) / count($requestTimes) : 0;
-    $avgSuccessTime = !empty($successTimes) ? array_sum($successTimes) / count($successTimes) : 0;
-    $maxTime = !empty($requestTimes) ? max($requestTimes) : 0;
-    $minTime = !empty($requestTimes) ? min($requestTimes) : 0;
+    $avgTime = ! empty($requestTimes) ? array_sum($requestTimes) / count($requestTimes) : 0;
+    $avgSuccessTime = ! empty($successTimes) ? array_sum($successTimes) / count($successTimes) : 0;
+    $maxTime = ! empty($requestTimes) ? max($requestTimes) : 0;
+    $minTime = ! empty($requestTimes) ? min($requestTimes) : 0;
 
     // Display benchmark information
     echo "<div class='benchmark'>";
     echo "<h3>📊 {$type} Performance Metrics</h3>";
-    echo "<p><strong>⏱️ Time to Complete all requests:</strong> " . number_format($benchmark['execution_time'], 4) . " seconds</p>";
-    echo "<p><strong>🧠 Memory Used:</strong> " . formatBytes($benchmark['memory_used']) . "</p>";
+    echo '<p><strong>⏱️ Time to Complete all requests:</strong> '.number_format($benchmark['execution_time'], 4).' seconds</p>';
+    echo '<p><strong>🧠 Memory Used:</strong> '.formatBytes($benchmark['memory_used']).'</p>';
     if (isset($benchmark['peak_memory'])) {
-        echo "<p><strong>📈 Peak Memory:</strong> " . formatBytes($benchmark['peak_memory']) . "</p>";
+        echo '<p><strong>📈 Peak Memory:</strong> '.formatBytes($benchmark['peak_memory']).'</p>';
     }
-    echo "</div>";
+    echo '</div>';
 
     // Display timing summary
     echo "<div class='timing-summary'>";
-    echo "<h3>🕒 Individual Request Timing Analysis</h3>";
+    echo '<h3>🕒 Individual Request Timing Analysis</h3>';
     echo "<div class='timing-stats'>";
     echo "<div class='stat-item'><strong>Total Requests</strong><br>{$totalRequests}</div>";
     echo "<div class='stat-item'><strong>✅ Successful</strong><br>{$successCount}</div>";
     echo "<div class='stat-item'><strong>❌ Failed</strong><br>{$failCount}</div>";
-    echo "<div class='stat-item'><strong>📊 Avg Time</strong><br>" . number_format($avgTime, 3) . "s</div>";
-    echo "<div class='stat-item'><strong>📊 Avg Success Time</strong><br>" . number_format($avgSuccessTime, 3) . "s</div>";
-    echo "<div class='stat-item'><strong>⚡ Fastest</strong><br>" . number_format($minTime, 3) . "s</div>";
-    echo "<div class='stat-item'><strong>🐌 Slowest</strong><br>" . number_format($maxTime, 3) . "s</div>";
-    echo "</div>";
+    echo "<div class='stat-item'><strong>📊 Avg Time</strong><br>".number_format($avgTime, 3).'s</div>';
+    echo "<div class='stat-item'><strong>📊 Avg Success Time</strong><br>".number_format($avgSuccessTime, 3).'s</div>';
+    echo "<div class='stat-item'><strong>⚡ Fastest</strong><br>".number_format($minTime, 3).'s</div>';
+    echo "<div class='stat-item'><strong>🐌 Slowest</strong><br>".number_format($maxTime, 3).'s</div>';
+    echo '</div>';
 
     // Calculate time savings for async methods
     if (strpos($type, 'Async') !== false || strpos($type, 'Promises') !== false) {
@@ -281,48 +280,48 @@ function displayResults($results, $benchmark, $type)
         $percentSaved = $totalSyncTime > 0 ? ($timeSaved / $totalSyncTime) * 100 : 0;
 
         echo "<div style='margin-top: 15px; padding: 10px; background: #d1ecf1; border-radius: 5px;'>";
-        echo "<strong>🚀 Async Benefits:</strong><br>";
-        echo "If run synchronously: " . number_format($totalSyncTime, 3) . "s<br>";
-        echo "Time saved: " . number_format($timeSaved, 3) . "s (" . number_format($percentSaved, 1) . "% faster)";
-        echo "</div>";
+        echo '<strong>🚀 Async Benefits:</strong><br>';
+        echo 'If run synchronously: '.number_format($totalSyncTime, 3).'s<br>';
+        echo 'Time saved: '.number_format($timeSaved, 3).'s ('.number_format($percentSaved, 1).'% faster)';
+        echo '</div>';
     }
 
-    echo "</div>";
+    echo '</div>';
 
     // Display API results with individual timing
     foreach ($results as $result) {
         $timingClass = getTimingClass($result['request_time']);
 
         echo "<div class='api-result'>";
-        echo "<h4>🌐 " . ucfirst(str_replace('_', ' ', $result['name'])) . "</h4>";
-        echo "<p><strong>URL:</strong> " . htmlspecialchars($result['url']) . "</p>";
-        echo "<p><strong>Status:</strong> " . ($result['status'] === 'success' ? '✅ Success' : '❌ Failed') . "</p>";
+        echo '<h4>🌐 '.ucfirst(str_replace('_', ' ', $result['name'])).'</h4>';
+        echo '<p><strong>URL:</strong> '.htmlspecialchars($result['url']).'</p>';
+        echo '<p><strong>Status:</strong> '.($result['status'] === 'success' ? '✅ Success' : '❌ Failed').'</p>';
 
         // Individual timing information
         echo "<div class='timing-info {$timingClass}'>";
-        echo "<strong>⏱️ Request Time:</strong> " . number_format($result['request_time'], 4) . " seconds";
+        echo '<strong>⏱️ Request Time:</strong> '.number_format($result['request_time'], 4).' seconds';
         if ($result['status'] === 'error' && isset($result['error'])) {
-            echo " - <strong>Error:</strong> " . htmlspecialchars($result['error']);
+            echo ' - <strong>Error:</strong> '.htmlspecialchars($result['error']);
         }
-        echo "</div>";
+        echo '</div>';
 
         // Show HTTP status code for successful requests
         if ($result['status'] === 'success' && isset($result['http_code'])) {
-            echo "<p><strong>HTTP Status:</strong> " . $result['http_code'] . "</p>";
+            echo '<p><strong>HTTP Status:</strong> '.$result['http_code'].'</p>';
         }
 
-        echo "</div>";
+        echo '</div>';
     }
 
     // Add JavaScript to store PHP results for comparison
-    echo "<script>";
-    echo "performanceResults['" . strtolower(str_replace([' ', '-'], '_', $type)) . "'] = {";
-    echo "execution_time: " . $benchmark['execution_time'] . ",";
-    echo "successful_requests: " . $successCount . ",";
-    echo "failed_requests: " . $failCount . ",";
-    echo "avg_request_time: " . $avgTime;
-    echo "};";
-    echo "</script>";
+    echo '<script>';
+    echo "performanceResults['".strtolower(str_replace([' ', '-'], '_', $type))."'] = {";
+    echo 'execution_time: '.$benchmark['execution_time'].',';
+    echo 'successful_requests: '.$successCount.',';
+    echo 'failed_requests: '.$failCount.',';
+    echo 'avg_request_time: '.$avgTime;
+    echo '};';
+    echo '</script>';
 }
 
 function getTimingClass($time)
@@ -338,11 +337,11 @@ function getTimingClass($time)
 
 function formatBytes($bytes, $precision = 2)
 {
-    $units = array('B', 'KB', 'MB', 'GB', 'TB');
+    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
 
     for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
         $bytes /= 1024;
     }
 
-    return round($bytes, $precision) . ' ' . $units[$i];
+    return round($bytes, $precision).' '.$units[$i];
 }

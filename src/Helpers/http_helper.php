@@ -5,7 +5,7 @@ use Rcalicdan\FiberAsync\Facades\AsyncHttp;
 use Rcalicdan\FiberAsync\Http\Request;
 use Src\Handlers\FetchWithRetry\RetryHelperHandler;
 
-if (!function_exists('http')) {
+if (! function_exists('http')) {
     /**
      * Get HTTP request builder instance
      */
@@ -15,7 +15,7 @@ if (!function_exists('http')) {
     }
 }
 
-if (!function_exists('http_get')) {
+if (! function_exists('http_get')) {
     /**
      * Perform async GET request
      */
@@ -25,7 +25,7 @@ if (!function_exists('http_get')) {
     }
 }
 
-if (!function_exists('http_post')) {
+if (! function_exists('http_post')) {
     /**
      * Perform async POST request
      */
@@ -35,7 +35,7 @@ if (!function_exists('http_post')) {
     }
 }
 
-if (!function_exists('http_put')) {
+if (! function_exists('http_put')) {
     /**
      * Perform async PUT request
      */
@@ -45,7 +45,7 @@ if (!function_exists('http_put')) {
     }
 }
 
-if (!function_exists('http_delete')) {
+if (! function_exists('http_delete')) {
     /**
      * Perform async DELETE request
      */
@@ -55,7 +55,7 @@ if (!function_exists('http_delete')) {
     }
 }
 
-if (!function_exists('fetch')) {
+if (! function_exists('fetch')) {
     /**
      * Fetch data from URL (JavaScript-like fetch API)
      */
@@ -65,7 +65,7 @@ if (!function_exists('fetch')) {
     }
 }
 
-if (!function_exists('fetch_with_retry')) {
+if (! function_exists('fetch_with_retry')) {
     /**
      * Fetch data with retry logic
      */
@@ -73,6 +73,7 @@ if (!function_exists('fetch_with_retry')) {
     {
         $request = AsyncHttp::request()->retry($maxRetries, $baseDelay);
         $response = RetryHelperHandler::getRetryLogic($request, $url, $options);
+
         return $response;
     }
 }

@@ -32,6 +32,7 @@ class Request
     public function headers(array $headers): self
     {
         $this->headers = array_merge($this->headers, $headers);
+
         return $this;
     }
 
@@ -41,6 +42,7 @@ class Request
     public function header(string $name, string $value): self
     {
         $this->headers[$name] = $value;
+
         return $this;
     }
 
@@ -74,6 +76,7 @@ class Request
     public function basicAuth(string $username, string $password): self
     {
         $this->auth = ['basic', $username, $password];
+
         return $this;
     }
 
@@ -83,6 +86,7 @@ class Request
     public function timeout(int $seconds): self
     {
         $this->timeout = $seconds;
+
         return $this;
     }
 
@@ -92,6 +96,7 @@ class Request
     public function connectTimeout(int $seconds): self
     {
         $this->connectTimeout = $seconds;
+
         return $this;
     }
 
@@ -102,6 +107,7 @@ class Request
     {
         $this->followRedirects = $follow;
         $this->maxRedirects = $max;
+
         return $this;
     }
 
@@ -115,6 +121,7 @@ class Request
             baseDelay: $baseDelay,
             backoffMultiplier: $backoffMultiplier
         );
+
         return $this;
     }
 
@@ -124,6 +131,7 @@ class Request
     public function retryWith(RetryConfig $config): self
     {
         $this->retryConfig = $config;
+
         return $this;
     }
 
@@ -133,6 +141,7 @@ class Request
     public function noRetry(): self
     {
         $this->retryConfig = null;
+
         return $this;
     }
 
@@ -142,6 +151,7 @@ class Request
     public function verifySSL(bool $verify = true): self
     {
         $this->verifySSL = $verify;
+
         return $this;
     }
 
@@ -151,6 +161,7 @@ class Request
     public function userAgent(string $userAgent): self
     {
         $this->userAgent = $userAgent;
+
         return $this;
     }
 
@@ -160,6 +171,7 @@ class Request
     public function body(string $content): self
     {
         $this->body = $content;
+
         return $this;
     }
 
@@ -170,6 +182,7 @@ class Request
     {
         $this->body = json_encode($data);
         $this->contentType('application/json');
+
         return $this;
     }
 
@@ -180,6 +193,7 @@ class Request
     {
         $this->body = http_build_query($data);
         $this->contentType('application/x-www-form-urlencoded');
+
         return $this;
     }
 
@@ -189,6 +203,7 @@ class Request
     public function multipart(array $data): self
     {
         $this->options['multipart'] = $data;
+
         return $this;
     }
 
@@ -198,8 +213,9 @@ class Request
     public function get(string $url, array $query = []): PromiseInterface
     {
         if ($query) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
         }
+
         return $this->send('GET', $url);
     }
 
@@ -208,9 +224,10 @@ class Request
      */
     public function post(string $url, array $data = []): PromiseInterface
     {
-        if ($data && !$this->body) {
+        if ($data && ! $this->body) {
             $this->json($data);
         }
+
         return $this->send('POST', $url);
     }
 
@@ -219,9 +236,10 @@ class Request
      */
     public function put(string $url, array $data = []): PromiseInterface
     {
-        if ($data && !$this->body) {
+        if ($data && ! $this->body) {
             $this->json($data);
         }
+
         return $this->send('PUT', $url);
     }
 
@@ -233,17 +251,17 @@ class Request
         return $this->send('DELETE', $url);
     }
 
- /**
+    /**
      * Send the request with specified method
      */
     public function send(string $method, string $url): PromiseInterface
     {
         $options = $this->buildCurlOptions($method, $url);
-        
+
         if ($this->retryConfig) {
             return $this->handler->fetchWithRetry($url, $options, $this->retryConfig);
         }
-        
+
         return $this->handler->fetch($url, $options);
     }
 

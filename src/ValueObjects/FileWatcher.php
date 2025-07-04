@@ -1,4 +1,5 @@
 <?php
+
 // src/ValueObjects/FileWatcher.php
 
 namespace Rcalicdan\FiberAsync\ValueObjects;
@@ -79,6 +80,7 @@ class FileWatcher
 
         if ($elapsed >= $this->getPollingInterval()) {
             $this->lastChecked = $now;
+
             return true;
         }
 
@@ -87,13 +89,15 @@ class FileWatcher
 
     public function checkForChanges(): bool
     {
-        if (!file_exists($this->path)) {
+        if (! file_exists($this->path)) {
             // File was deleted
             if ($this->lastModified > 0 || $this->lastSize > 0) {
                 $this->lastModified = 0;
                 $this->lastSize = 0;
+
                 return true;
             }
+
             return false;
         }
 
@@ -110,13 +114,14 @@ class FileWatcher
         }
 
         // Check file size if enabled
-        if (!$hasChanged && $this->options['watch_size'] && $currentSize !== $this->lastSize) {
+        if (! $hasChanged && $this->options['watch_size'] && $currentSize !== $this->lastSize) {
             $hasChanged = true;
         }
 
         if ($hasChanged) {
             $this->lastModified = $currentModified;
             $this->lastSize = $currentSize;
+
             return true;
         }
 
@@ -128,7 +133,7 @@ class FileWatcher
         try {
             ($this->callback)($event, $path);
         } catch (\Throwable $e) {
-            error_log('File watcher callback error: ' . $e->getMessage());
+            error_log('File watcher callback error: '.$e->getMessage());
         }
     }
 }

@@ -8,7 +8,7 @@ use Rcalicdan\FiberAsync\Http\Request;
 
 /**
  * HTTP Facade for clean, static access to HTTP operations
- * 
+ *
  * @method static Request request()
  * @method static PromiseInterface get(string $url, array $query = [])
  * @method static PromiseInterface post(string $url, array $data = [])
@@ -29,7 +29,7 @@ class AsyncHttp
     private static function getInstance(): HttpHandler
     {
         if (self::$instance === null) {
-            self::$instance = new HttpHandler();
+            self::$instance = new HttpHandler;
         }
 
         return self::$instance;

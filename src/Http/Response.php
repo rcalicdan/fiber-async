@@ -54,7 +54,7 @@ class Response
 
     public function failed(): bool
     {
-        return !$this->successful();
+        return ! $this->successful();
     }
 
     public function clientError(): bool

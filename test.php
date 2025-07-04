@@ -28,46 +28,46 @@ $inspectionTest = async(function () {
     echo "Making a sample request to test response methods...\n";
     $response = await(http_get('https://jsonplaceholder.typicode.com/posts/1'));
 
-    echo "Response class: " . get_class($response) . "\n";
+    echo 'Response class: '.get_class($response)."\n";
     echo "Testing response methods:\n";
 
     try {
         $status = $response->status();
         echo "  - status(): $status\n";
     } catch (Exception $e) {
-        echo "  - status(): Error - " . $e->getMessage() . "\n";
+        echo '  - status(): Error - '.$e->getMessage()."\n";
     }
 
     try {
         $body = $response->body();
-        echo "  - body(): " . strlen($body) . " characters\n";
-        echo "  - body preview: " . substr($body, 0, 100) . "...\n";
+        echo '  - body(): '.strlen($body)." characters\n";
+        echo '  - body preview: '.substr($body, 0, 100)."...\n";
     } catch (Exception $e) {
-        echo "  - body(): Error - " . $e->getMessage() . "\n";
+        echo '  - body(): Error - '.$e->getMessage()."\n";
     }
 
     try {
         $json = $response->json();
-        echo "  - json(): " . (is_array($json) ? "Array with " . count($json) . " keys" : "Not an array") . "\n";
+        echo '  - json(): '.(is_array($json) ? 'Array with '.count($json).' keys' : 'Not an array')."\n";
         if (is_array($json) && isset($json['title'])) {
-            echo "  - JSON title: " . $json['title'] . "\n";
+            echo '  - JSON title: '.$json['title']."\n";
         }
     } catch (Exception $e) {
-        echo "  - json(): Error - " . $e->getMessage() . "\n";
+        echo '  - json(): Error - '.$e->getMessage()."\n";
     }
 
     try {
         $ok = $response->ok();
-        echo "  - ok(): " . ($ok ? "true" : "false") . "\n";
+        echo '  - ok(): '.($ok ? 'true' : 'false')."\n";
     } catch (Exception $e) {
-        echo "  - ok(): Error - " . $e->getMessage() . "\n";
+        echo '  - ok(): Error - '.$e->getMessage()."\n";
     }
 
     try {
         $successful = $response->successful();
-        echo "  - successful(): " . ($successful ? "true" : "false") . "\n";
+        echo '  - successful(): '.($successful ? 'true' : 'false')."\n";
     } catch (Exception $e) {
-        echo "  - successful(): Error - " . $e->getMessage() . "\n";
+        echo '  - successful(): Error - '.$e->getMessage()."\n";
     }
 
     echo "\n";
@@ -116,7 +116,7 @@ run(async(function () use ($shortUrls, &$sequentialResults) {
         try {
             $response = await(fetch($url, [
                 'timeout' => 10,
-                'headers' => ['User-Agent' => 'PHP-Fiber-Sequential-Test/1.0']
+                'headers' => ['User-Agent' => 'PHP-Fiber-Sequential-Test/1.0'],
             ]));
 
             $info = getResponseInfo($response);
@@ -126,7 +126,7 @@ run(async(function () use ($shortUrls, &$sequentialResults) {
                 'success' => $info['success'],
                 'status' => $info['status'],
                 'body_length' => $info['body_length'],
-                'time' => round($requestEnd - $requestStart, 2)
+                'time' => round($requestEnd - $requestStart, 2),
             ];
 
             echo "  ✓ HTTP {$info['status']}, {$info['body_length']} bytes, {$results[$index]['time']}s\n";
@@ -135,7 +135,7 @@ run(async(function () use ($shortUrls, &$sequentialResults) {
             $results[$index] = [
                 'success' => false,
                 'error' => $e->getMessage(),
-                'time' => round($requestEnd - $requestStart, 2)
+                'time' => round($requestEnd - $requestStart, 2),
             ];
             echo "  ✗ Error: {$e->getMessage()}\n";
         }
@@ -146,8 +146,8 @@ run(async(function () use ($shortUrls, &$sequentialResults) {
 
     echo "\nSequential Results:\n";
     echo "Total time: {$totalTime} seconds\n";
-    echo "Average per request: " . round($totalTime / count($shortUrls), 2) . " seconds\n";
-    echo "Successful requests: " . count(array_filter($results, fn($r) => $r['success'])) . "/" . count($results) . "\n\n";
+    echo 'Average per request: '.round($totalTime / count($shortUrls), 2)." seconds\n";
+    echo 'Successful requests: '.count(array_filter($results, fn ($r) => $r['success'])).'/'.count($results)."\n\n";
 
     $sequentialResults = ['total_time' => $totalTime, 'results' => $results];
 }));
@@ -166,7 +166,7 @@ run(async(function () use ($shortUrls, &$concurrentResults) {
         echo "Queuing request $index: $url\n";
         $promises[$index] = fetch($url, [
             'timeout' => 10,
-            'headers' => ['User-Agent' => 'PHP-Fiber-Concurrent-Test/1.0']
+            'headers' => ['User-Agent' => 'PHP-Fiber-Concurrent-Test/1.0'],
         ]);
     }
 
@@ -182,7 +182,7 @@ run(async(function () use ($shortUrls, &$concurrentResults) {
             $results[$index] = [
                 'success' => $info['success'],
                 'status' => $info['status'],
-                'body_length' => $info['body_length']
+                'body_length' => $info['body_length'],
             ];
         }
 
@@ -200,14 +200,14 @@ run(async(function () use ($shortUrls, &$concurrentResults) {
 
         echo "\nConcurrent Summary:\n";
         echo "Total time: {$totalTime} seconds\n";
-        echo "Average per request: " . round($totalTime / count($shortUrls), 2) . " seconds\n";
-        echo "Successful requests: " . count(array_filter($results, fn($r) => $r['success'])) . "/" . count($results) . "\n\n";
+        echo 'Average per request: '.round($totalTime / count($shortUrls), 2)." seconds\n";
+        echo 'Successful requests: '.count(array_filter($results, fn ($r) => $r['success'])).'/'.count($results)."\n\n";
 
         $concurrentResults = ['total_time' => $totalTime, 'results' => $results];
     } catch (Exception $e) {
         $endTime = microtime(true);
         $totalTime = round($endTime - $startTime, 2);
-        echo "Concurrent execution failed: " . $e->getMessage() . "\n";
+        echo 'Concurrent execution failed: '.$e->getMessage()."\n";
         echo "Time before failure: {$totalTime} seconds\n\n";
         $concurrentResults = ['total_time' => $totalTime, 'results' => [], 'error' => $e->getMessage()];
     }
@@ -229,7 +229,7 @@ if (isset($concurrentResults['error'])) {
     echo "Concurrent time: {$concurrentResults['total_time']} seconds\n";
     echo "Time saved: {$timeSaved} seconds\n";
     echo "Speedup: {$speedup}x faster\n";
-    echo "Performance improvement: " . round((($sequentialResults['total_time'] - $concurrentResults['total_time']) / $sequentialResults['total_time']) * 100, 1) . "%\n\n";
+    echo 'Performance improvement: '.round((($sequentialResults['total_time'] - $concurrentResults['total_time']) / $sequentialResults['total_time']) * 100, 1)."%\n\n";
 }
 
 // Test 2: Testing Different HTTP Methods
@@ -240,41 +240,44 @@ $methodTest = run(async(function () {
     $startTime = microtime(true);
 
     echo "Testing GET request...\n";
+
     try {
         $getResponse = await(http_get('https://jsonplaceholder.typicode.com/posts/1'));
         $getInfo = getResponseInfo($getResponse);
         echo "✓ GET: HTTP {$getInfo['status']}, {$getInfo['body_length']} bytes\n";
         if ($getResponse->successful()) {
             $json = $getResponse->json();
-            echo "  Title: " . ($json['title'] ?? 'No title') . "\n";
+            echo '  Title: '.($json['title'] ?? 'No title')."\n";
         }
     } catch (Exception $e) {
         echo "✗ GET: {$e->getMessage()}\n";
     }
 
     echo "\nTesting POST request...\n";
+
     try {
         $postResponse = await(http_post('https://jsonplaceholder.typicode.com/posts', [
             'title' => 'Test Post',
             'body' => 'Testing POST method with PHP Fiber Async',
-            'userId' => 1
+            'userId' => 1,
         ]));
         $postInfo = getResponseInfo($postResponse);
         echo "✓ POST: HTTP {$postInfo['status']}, {$postInfo['body_length']} bytes\n";
         if ($postResponse->successful()) {
             $json = $postResponse->json();
-            echo "  Created post ID: " . ($json['id'] ?? 'Unknown') . "\n";
+            echo '  Created post ID: '.($json['id'] ?? 'Unknown')."\n";
         }
     } catch (Exception $e) {
         echo "✗ POST: {$e->getMessage()}\n";
     }
 
     echo "\nTesting PUT request...\n";
+
     try {
         $putResponse = await(http_put('https://jsonplaceholder.typicode.com/posts/1', [
             'title' => 'Updated Post',
             'body' => 'Testing PUT method with PHP Fiber Async',
-            'userId' => 1
+            'userId' => 1,
         ]));
         $putInfo = getResponseInfo($putResponse);
         echo "✓ PUT: HTTP {$putInfo['status']}, {$putInfo['body_length']} bytes\n";
@@ -283,6 +286,7 @@ $methodTest = run(async(function () {
     }
 
     echo "\nTesting DELETE request...\n";
+
     try {
         $deleteResponse = await(http_delete('https://jsonplaceholder.typicode.com/posts/1'));
         $deleteInfo = getResponseInfo($deleteResponse);
@@ -292,7 +296,7 @@ $methodTest = run(async(function () {
     }
 
     $endTime = microtime(true);
-    echo "\nAll HTTP methods tested in " . round($endTime - $startTime, 2) . " seconds\n";
+    echo "\nAll HTTP methods tested in ".round($endTime - $startTime, 2)." seconds\n";
 }));
 
 // Test 3: Large scale concurrent test
@@ -309,13 +313,13 @@ $largeScaleTest = run(async(function () use ($testUrls) {
         'https://httpbin.org/headers',
     ]);
 
-    echo "Testing with " . count($allUrls) . " concurrent requests...\n";
+    echo 'Testing with '.count($allUrls)." concurrent requests...\n";
 
     $promises = [];
     foreach ($allUrls as $index => $url) {
         $promises[] = fetch($url, [
             'timeout' => 15,
-            'headers' => ['User-Agent' => 'PHP-Fiber-LargeScale-Test/1.0']
+            'headers' => ['User-Agent' => 'PHP-Fiber-LargeScale-Test/1.0'],
         ]);
     }
 
@@ -340,15 +344,15 @@ $largeScaleTest = run(async(function () use ($testUrls) {
         }
 
         echo "\nLarge Scale Summary:\n";
-        echo "Total requests: " . count($responses) . "\n";
+        echo 'Total requests: '.count($responses)."\n";
         echo "Successful: $successful\n";
         echo "Failed: $failed\n";
         echo "Total time: {$totalTime} seconds\n";
-        echo "Average time per request: " . round($totalTime / count($responses), 2) . " seconds\n";
+        echo 'Average time per request: '.round($totalTime / count($responses), 2)." seconds\n";
     } catch (Exception $e) {
         $endTime = microtime(true);
         $totalTime = round($endTime - $startTime, 2);
-        echo "Large scale test failed: " . $e->getMessage() . "\n";
+        echo 'Large scale test failed: '.$e->getMessage()."\n";
         echo "Time before failure: {$totalTime} seconds\n";
     }
 }));

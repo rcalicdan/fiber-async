@@ -218,7 +218,7 @@ describe('Async Performance Benchmarks', function () {
                 $tasks[$taskName] = function () use ($i) {
                     if ($i % 2 === 0) {
                         await(delay(0.1));
-                        $response = await(fetch('https://jsonplaceholder.typicode.com/posts/' . ($i % 10 + 1)));
+                        $response = await(fetch('https://jsonplaceholder.typicode.com/posts/'.($i % 10 + 1)));
 
                         return ['task' => $i, 'type' => 'http', 'status' => $response->status()];
                     } else {
@@ -317,7 +317,7 @@ describe('Concurrency Limit Analysis', function () {
                     $tasks[$taskName] = function () use ($i) {
                         switch ($i % 3) {
                             case 0:
-                                $response = await(fetch('https://jsonplaceholder.typicode.com/posts/' . ($i % 5 + 1)));
+                                $response = await(fetch('https://jsonplaceholder.typicode.com/posts/'.($i % 5 + 1)));
 
                                 return ['task' => $i, 'type' => 'http', 'status' => $response->status()];
                             case 1:
@@ -382,7 +382,7 @@ describe('Concurrency Limit Analysis', function () {
                     $taskName = "task_$i";
                     $tasks[$taskName] = function () use ($i) {
                         if ($i % 2 === 0) {
-                            $response = await(fetch('https://jsonplaceholder.typicode.com/posts/' . ($i % 10 + 1)));
+                            $response = await(fetch('https://jsonplaceholder.typicode.com/posts/'.($i % 10 + 1)));
 
                             return ['task' => $i, 'type' => 'http', 'status' => $response->status()];
                         } else {
@@ -439,9 +439,9 @@ describe('Memory and Resource Management', function () {
         expect($results)->toHaveCount(50);
 
         echo "\n💾 Memory Usage Analysis:\n";
-        echo '  • Initial: ' . round($initialMemory / 1024 / 1024, 2) . " MB\n";
-        echo '  • Final: ' . round($finalMemory / 1024 / 1024, 2) . " MB\n";
-        echo '  • Increase: ' . round($memoryIncrease / 1024 / 1024, 2) . " MB\n";
+        echo '  • Initial: '.round($initialMemory / 1024 / 1024, 2)." MB\n";
+        echo '  • Final: '.round($finalMemory / 1024 / 1024, 2)." MB\n";
+        echo '  • Increase: '.round($memoryIncrease / 1024 / 1024, 2)." MB\n";
 
         // Memory increase should be reasonable (less than 10MB for 50 tasks)
         expect($memoryIncrease)->toBeLessThan(10 * 1024 * 1024);
@@ -481,7 +481,7 @@ describe('Memory and Resource Management', function () {
         echo "  • Total operations: $totalOperations\n";
         echo "  • Batch size: $batchSize\n";
         echo "  • Total time: {$duration}s\n";
-        echo '  • Operations/sec: ' . round($totalOperations / $duration, 2) . "\n";
+        echo '  • Operations/sec: '.round($totalOperations / $duration, 2)."\n";
 
         // Should complete efficiently
         expect($duration)->toBeLessThan(5.0);

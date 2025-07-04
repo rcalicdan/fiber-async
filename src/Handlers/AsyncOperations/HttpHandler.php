@@ -89,7 +89,7 @@ final readonly class HttpHandler
      */
     public function fetchWithRetry(string $url, array $options, RetryConfig $retryConfig): PromiseInterface
     {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $attempt = 0;
         $requestId = null;
 
@@ -99,7 +99,7 @@ final readonly class HttpHandler
             $requestId = AsyncEventLoop::getInstance()->addHttpRequest(
                 $url,
                 $options,
-                function ($error, $response, $httpCode, $headers = []) use ($retryConfig, $promise, $attempt, $url, $options, &$executeRequest) {
+                function ($error, $response, $httpCode, $headers = []) use ($retryConfig, $promise, $attempt, &$executeRequest) {
                     if ($promise->isCancelled()) {
                         return;
                     }
@@ -113,6 +113,7 @@ final readonly class HttpHandler
                         AsyncEventLoop::getInstance()->addTimer($delay, function () use ($executeRequest) {
                             $executeRequest();
                         });
+
                         return;
                     }
 
@@ -123,6 +124,7 @@ final readonly class HttpHandler
                         AsyncEventLoop::getInstance()->addTimer($delay, function () use ($executeRequest) {
                             $executeRequest();
                         });
+
                         return;
                     }
 
@@ -216,6 +218,7 @@ final readonly class HttpHandler
                 return true; // cURL options are positive integers
             }
         }
+
         return false;
     }
 }

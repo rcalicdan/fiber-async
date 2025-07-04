@@ -1,4 +1,5 @@
 <?php
+
 // src/Managers/FileManager.php
 
 namespace Rcalicdan\FiberAsync\Managers;
@@ -12,13 +13,13 @@ class FileManager
 {
     /** @var FileOperation[] */
     private array $pendingOperations = [];
-    
+
     /** @var array<string, FileOperation> */
     private array $operationsById = [];
-    
+
     /** @var FileWatcher[] */
     private array $watchers = [];
-    
+
     /** @var array<string, FileWatcher> */
     private array $watchersById = [];
 
@@ -27,8 +28,8 @@ class FileManager
 
     public function __construct()
     {
-        $this->operationHandler = new FileOperationHandler();
-        $this->watcherHandler = new FileWatcherHandler();
+        $this->operationHandler = new FileOperationHandler;
+        $this->watcherHandler = new FileWatcherHandler;
     }
 
     /**
@@ -42,7 +43,7 @@ class FileManager
         array $options = []
     ): string {
         $operation = $this->operationHandler->createOperation($type, $path, $data, $callback, $options);
-        
+
         $this->pendingOperations[] = $operation;
         $this->operationsById[$operation->getId()] = $operation;
 
@@ -54,7 +55,7 @@ class FileManager
      */
     public function cancelFileOperation(string $operationId): bool
     {
-        if (!isset($this->operationsById[$operationId])) {
+        if (! isset($this->operationsById[$operationId])) {
             return false;
         }
 
@@ -81,7 +82,7 @@ class FileManager
     public function addFileWatcher(string $path, callable $callback, array $options = []): string
     {
         $watcher = $this->watcherHandler->createWatcher($path, $callback, $options);
-        
+
         $this->watchers[] = $watcher;
         $this->watchersById[$watcher->getId()] = $watcher;
 
@@ -93,11 +94,12 @@ class FileManager
      */
     public function removeFileWatcher(string $watcherId): bool
     {
-        if (!isset($this->watchersById[$watcherId])) {
+        if (! isset($this->watchersById[$watcherId])) {
             return false;
         }
 
         unset($this->watchersById[$watcherId]);
+
         return $this->watcherHandler->removeWatcher($this->watchers, $watcherId);
     }
 
@@ -135,7 +137,7 @@ class FileManager
             if ($this->operationHandler->executeOperation($operation)) {
                 $processed = true;
             }
-            
+
             // Clean up from ID map
             unset($this->operationsById[$operation->getId()]);
         }
@@ -150,16 +152,16 @@ class FileManager
 
     public function hasWork(): bool
     {
-        return !empty($this->pendingOperations) || !empty($this->watchers);
+        return ! empty($this->pendingOperations) || ! empty($this->watchers);
     }
 
     public function hasPendingOperations(): bool
     {
-        return !empty($this->pendingOperations);
+        return ! empty($this->pendingOperations);
     }
 
     public function hasWatchers(): bool
     {
-        return !empty($this->watchers);
+        return ! empty($this->watchers);
     }
 }
