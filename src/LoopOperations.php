@@ -6,11 +6,9 @@ use Rcalicdan\FiberAsync\Contracts\LoopOperationsInterface;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\Handlers\LoopOperations\BenchmarkHandler;
 use Rcalicdan\FiberAsync\Handlers\LoopOperations\ConcurrentExecutionHandler;
-use Rcalicdan\FiberAsync\Handlers\LoopOperations\HttpExecutionHandler;
 use Rcalicdan\FiberAsync\Handlers\LoopOperations\LoopExecutionHandler;
 use Rcalicdan\FiberAsync\Handlers\LoopOperations\TaskExecutionHandler;
 use Rcalicdan\FiberAsync\Handlers\LoopOperations\TimeoutHandler;
-use Rcalicdan\FiberAsync\Http\Response;
 
 /**
  * High-level operations that manage the event loop lifecycle automatically.
