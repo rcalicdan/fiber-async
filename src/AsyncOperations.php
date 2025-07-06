@@ -8,8 +8,6 @@ use Rcalicdan\FiberAsync\Handlers\AsyncOperations\AsyncExecutionHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\AwaitHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\ConcurrencyHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\FiberContextHandler;
-use Rcalicdan\FiberAsync\Handlers\AsyncOperations\FileHandler;
-use Rcalicdan\FiberAsync\Handlers\AsyncOperations\HttpHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\PromiseCollectionHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\PromiseHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\TimerHandler;
@@ -52,11 +50,6 @@ class AsyncOperations implements AsyncOperationsInterface
     private TimerHandler $timerHandler;
 
     /**
-     * @var HttpHandler Handles HTTP request operations
-     */
-    private HttpHandler $httpHandler;
-
-    /**
      * @var PromiseCollectionHandler Manages collections of promises (all, race)
      */
     private PromiseCollectionHandler $collectionHandler;
@@ -65,11 +58,6 @@ class AsyncOperations implements AsyncOperationsInterface
      * @var ConcurrencyHandler Manages concurrent execution with limits
      */
     private ConcurrencyHandler $concurrencyHandler;
-
-    /**
-     * @var FileHandler Handles asynchronous file operations
-     */
-    private FileHandler $fileHandler;
 
     /**
      * Initialize the async operations system with all required handlers.
@@ -84,10 +72,8 @@ class AsyncOperations implements AsyncOperationsInterface
         $this->executionHandler = new AsyncExecutionHandler;
         $this->awaitHandler = new AwaitHandler($this->contextHandler);
         $this->timerHandler = new TimerHandler;
-        $this->httpHandler = new HttpHandler;
         $this->collectionHandler = new PromiseCollectionHandler;
         $this->concurrencyHandler = new ConcurrencyHandler($this->executionHandler);
-        $this->fileHandler = new FileHandler();
     }
 
     /**
@@ -195,55 +181,6 @@ class AsyncOperations implements AsyncOperationsInterface
     }
 
     /**
-     * Perform an HTTP request and return a promise.
-     *
-     * @param  string  $url  The URL to request
-     * @param  array  $options  Request options (method, headers, body, etc.)
-     * @return PromiseInterface A promise that resolves with the response
-     */
-    public function fetch(string $url, array $options = []): PromiseInterface
-    {
-        return $this->httpHandler->fetch($url, $options);
-    }
-
-    /**
-     * Perform an HTTP request using Guzzle HTTP client.
-     *
-     * @param  string  $method  HTTP method (GET, POST, etc.)
-     * @param  string  $url  The URL to request
-     * @param  array  $options  Guzzle-specific request options
-     * @return PromiseInterface A promise that resolves with the response
-     */
-    public function guzzle(string $method, string $url, array $options = []): PromiseInterface
-    {
-        return $this->httpHandler->guzzle($method, $url, $options);
-    }
-
-    /**
-     * Get the HTTP handler for advanced HTTP operations.
-     *
-     * @return mixed The HTTP handler instance for direct access
-     */
-    public function http()
-    {
-        return $this->httpHandler->http();
-    }
-
-    /**
-     * Wrap a synchronous operation in a promise.
-     *
-     * This is useful for integrating blocking operations into
-     * async workflows without blocking the event loop.
-     *
-     * @param  callable  $syncCall  The synchronous operation to wrap
-     * @return PromiseInterface A promise that resolves with the operation result
-     */
-    public function wrapSync(callable $syncCall): PromiseInterface
-    {
-        return $this->httpHandler->wrapSync($syncCall);
-    }
-
-    /**
      * Wait for all promises to resolve and return their results.
      *
      * If any promise rejects, the returned promise will reject with
@@ -284,114 +221,5 @@ class AsyncOperations implements AsyncOperationsInterface
     public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {
         return $this->concurrencyHandler->concurrent($tasks, $concurrency);
-    }
-
-    /**
-     * Read a file asynchronously.
-     *
-     * @param string $path The file path to read
-     * @param array $options
-     * @return PromiseInterface Promise that resolves with file contents
-     */
-    public function readFile(string $path, array $options = []): PromiseInterface
-    {
-        return $this->fileHandler->readFile($path, $options);
-    }
-
-    /**
-     * Write to a file asynchronously.
-     *
-     * @param string $path The file path to write to
-     * @param string $data The data to write
-     * @param bool $append Whether to append or overwrite
-     * @return PromiseInterface Promise that resolves with bytes written
-     */
-    public function writeFile(string $path, string $data, array $options = []): PromiseInterface
-    {
-        return $this->fileHandler->writeFile($path, $data, $options);
-    }
-
-    /**
-     * Append to a file asynchronously.
-     * 
-     * @param string $path The file path to append to
-     * @param string $data The data to append
-     * @return PromiseInterface Promise that resolves with bytes written
-     */
-    public function appendFile(string $path, string $data): PromiseInterface
-    {
-        return $this->fileHandler->appendFile($path, $data);
-    }
-
-    /**
-     * Check if file exists asynchronously.
-     */
-    public function fileExists(string $path): PromiseInterface
-    {
-        return $this->fileHandler->fileExists($path);
-    }
-
-    /**
-     * Get file information asynchronously.
-     */
-    public function getFileStats(string $path): PromiseInterface
-    {
-        return $this->fileHandler->getFileStats($path);
-    }
-
-    /**
-     * Delete a file asynchronously.
-     */
-    public function deleteFile(string $path): PromiseInterface
-    {
-        return $this->fileHandler->deleteFile($path);
-    }
-
-    /**
-     * Create a directory asynchronously.
-     */
-    public function createDirectory(string $path, array $options = []): PromiseInterface
-    {
-        return $this->fileHandler->createDirectory($path, $options);
-    }
-
-    /**
-     * Remove a directory asynchronously.
-     */
-    public function removeDirectory(string $path): PromiseInterface
-    {
-        return $this->fileHandler->removeDirectory($path);
-    }
-
-    /**
-     * Copy a file asynchronously.
-     */
-    public function copyFile(string $source, string $destination): PromiseInterface
-    {
-        return $this->fileHandler->copyFile($source, $destination);
-    }
-
-    /**
-     * Rename a file asynchronously.
-     */
-    public function renameFile(string $oldPath, string $newPath): PromiseInterface
-    {
-        return $this->fileHandler->renameFile($oldPath, $newPath);
-    }
-
-    /**
-     * Watch a file for changes asynchronously.
-     */
-    public function watchFile(string $path, callable $callback, array $options = []): string
-    {
-        return $this->fileHandler->watchFile($path, $callback, $options);
-    }
-
-    /**
-     * Unwatch a file for changes asynchronously.
-     */
-    public function unwatchFile(string $watcherId): bool
-    {
-        return $this->fileHandler->unwatchFile($watcherId);
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use Rcalicdan\FiberAsync\Facades\Async;
+use Rcalicdan\FiberAsync\Facades\AsyncLoop;
 
 beforeEach(function () {
     resetEventLoop();
@@ -30,8 +31,8 @@ test('Async Facade can call async operations', function () {
     expect($result)->toBe(10);
 });
 
-test('Async Facade can call loop operations', function () {
-    $result = Async::task(function () {
+test('Async Loop Facade can call loop operations', function () {
+    $result = AsyncLoop::task(function () {
         return 'facade task result';
     });
 

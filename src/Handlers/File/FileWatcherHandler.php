@@ -1,4 +1,5 @@
 <?php
+
 // src/Handlers/File/FileWatcherHandler.php
 
 namespace Rcalicdan\FiberAsync\Handlers\File;
@@ -28,11 +29,11 @@ final readonly class FileWatcherHandler
     private function checkWatcher(FileWatcher $watcher): bool
     {
         // Check if enough time has passed for polling
-        if (!$watcher->shouldCheck()) {
+        if (! $watcher->shouldCheck()) {
             return false;
         }
 
-        if (!$watcher->checkForChanges()) {
+        if (! $watcher->checkForChanges()) {
             return false;
         }
 
@@ -47,6 +48,7 @@ final readonly class FileWatcherHandler
         foreach ($watchers as $key => $watcher) {
             if ($watcher->getId() === $watcherId) {
                 unset($watchers[$key]);
+
                 return true;
             }
         }

@@ -1,4 +1,5 @@
 <?php
+
 // src/ValueObjects/FileOperation.php
 
 namespace Rcalicdan\FiberAsync\ValueObjects;
@@ -70,7 +71,7 @@ class FileOperation
         try {
             ($this->callback)($error, $result);
         } catch (\Throwable $e) {
-            error_log('File operation callback error: ' . $e->getMessage());
+            error_log('File operation callback error: '.$e->getMessage());
         }
     }
 }

@@ -21,7 +21,7 @@ describe('Async Performance Benchmarks', function () {
             $results = [];
             foreach ($urls as $index => $url) {
                 $response = await(fetch($url));
-                $results[] = ['index' => $index, 'status' => $response['status'], 'url' => $url];
+                $results[] = ['index' => $index, 'status' => $response->status(), 'url' => $url];
             }
 
             return $results;
@@ -36,7 +36,7 @@ describe('Async Performance Benchmarks', function () {
                 $tasks[] = function () use ($url, $index) {
                     $response = await(fetch($url));
 
-                    return ['index' => $index, 'status' => $response['status'], 'url' => $url];
+                    return ['index' => $index, 'status' => $response->status(), 'url' => $url];
                 };
             }
 
@@ -69,13 +69,13 @@ describe('Async Performance Benchmarks', function () {
             $results[] = ['type' => 'delay', 'duration' => 0.2];
 
             $response = await(fetch('https://jsonplaceholder.typicode.com/posts/1'));
-            $results[] = ['type' => 'http', 'status' => $response['status']];
+            $results[] = ['type' => 'http', 'status' => $response->status()];
 
             await(delay(0.1));
             $results[] = ['type' => 'delay', 'duration' => 0.1];
 
             $response = await(fetch('https://jsonplaceholder.typicode.com/users/1'));
-            $results[] = ['type' => 'http', 'status' => $response['status']];
+            $results[] = ['type' => 'http', 'status' => $response->status()];
 
             return $results;
         });
@@ -93,7 +93,7 @@ describe('Async Performance Benchmarks', function () {
                 'http1' => function () {
                     $response = await(fetch('https://jsonplaceholder.typicode.com/posts/1'));
 
-                    return ['type' => 'http', 'status' => $response['status']];
+                    return ['type' => 'http', 'status' => $response->status()];
                 },
                 'delay2' => function () {
                     await(delay(0.1));
@@ -103,7 +103,7 @@ describe('Async Performance Benchmarks', function () {
                 'http2' => function () {
                     $response = await(fetch('https://jsonplaceholder.typicode.com/users/1'));
 
-                    return ['type' => 'http', 'status' => $response['status']];
+                    return ['type' => 'http', 'status' => $response->status()];
                 },
             ];
 
@@ -176,17 +176,17 @@ describe('Async Performance Benchmarks', function () {
                 'posts' => function () {
                     $response = await(fetch('https://jsonplaceholder.typicode.com/posts/1'));
 
-                    return ['type' => 'posts', 'status' => $response['status']];
+                    return ['type' => 'posts', 'status' => $response->status()];
                 },
                 'users' => function () {
                     $response = await(fetch('https://jsonplaceholder.typicode.com/users/1'));
 
-                    return ['type' => 'users', 'status' => $response['status']];
+                    return ['type' => 'users', 'status' => $response->status()];
                 },
                 'albums' => function () {
                     $response = await(fetch('https://jsonplaceholder.typicode.com/albums/1'));
 
-                    return ['type' => 'albums', 'status' => $response['status']];
+                    return ['type' => 'albums', 'status' => $response->status()];
                 },
             ];
 
@@ -220,7 +220,7 @@ describe('Async Performance Benchmarks', function () {
                         await(delay(0.1));
                         $response = await(fetch('https://jsonplaceholder.typicode.com/posts/'.($i % 10 + 1)));
 
-                        return ['task' => $i, 'type' => 'http', 'status' => $response['status']];
+                        return ['task' => $i, 'type' => 'http', 'status' => $response->status()];
                     } else {
                         await(delay(0.2));
 
@@ -248,13 +248,13 @@ describe('Async Performance Benchmarks', function () {
                 'valid_request' => function () {
                     $response = await(fetch('https://jsonplaceholder.typicode.com/posts/1'));
 
-                    return ['type' => 'valid', 'status' => $response['status']];
+                    return ['type' => 'valid', 'status' => $response->status()];
                 },
                 'invalid_request' => function () {
                     try {
                         $response = await(fetch('https://invalid-domain-12345.com/api/test'));
 
-                        return ['type' => 'invalid', 'status' => $response['status']];
+                        return ['type' => 'invalid', 'status' => $response->status()];
                     } catch (Exception $e) {
                         return ['type' => 'invalid', 'error' => 'handled'];
                     }
@@ -262,7 +262,7 @@ describe('Async Performance Benchmarks', function () {
                 'another_valid' => function () {
                     $response = await(fetch('https://jsonplaceholder.typicode.com/users/1'));
 
-                    return ['type' => 'valid2', 'status' => $response['status']];
+                    return ['type' => 'valid2', 'status' => $response->status()];
                 },
             ];
 
@@ -285,7 +285,7 @@ describe('Async Performance Benchmarks', function () {
                     await(delay(0.05));
                     $response = await(fetch('https://jsonplaceholder.typicode.com/users/1'));
 
-                    return ['type' => 'async_function', 'status' => $response['status']];
+                    return ['type' => 'async_function', 'status' => $response->status()];
                 },
                 'simple_delay' => delay(0.1),
             ];
@@ -319,7 +319,7 @@ describe('Concurrency Limit Analysis', function () {
                             case 0:
                                 $response = await(fetch('https://jsonplaceholder.typicode.com/posts/'.($i % 5 + 1)));
 
-                                return ['task' => $i, 'type' => 'http', 'status' => $response['status']];
+                                return ['task' => $i, 'type' => 'http', 'status' => $response->status()];
                             case 1:
                                 await(delay(0.1));
 
@@ -384,7 +384,7 @@ describe('Concurrency Limit Analysis', function () {
                         if ($i % 2 === 0) {
                             $response = await(fetch('https://jsonplaceholder.typicode.com/posts/'.($i % 10 + 1)));
 
-                            return ['task' => $i, 'type' => 'http', 'status' => $response['status']];
+                            return ['task' => $i, 'type' => 'http', 'status' => $response->status()];
                         } else {
                             await(delay(0.1));
 

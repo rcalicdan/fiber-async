@@ -1,7 +1,6 @@
 <?php
-// src/Handlers/AsyncOperations/FileHandler.php
 
-namespace Rcalicdan\FiberAsync\Handlers\AsyncOperations;
+namespace Rcalicdan\FiberAsync\Handlers\File;
 
 use Rcalicdan\FiberAsync\AsyncEventLoop;
 use Rcalicdan\FiberAsync\AsyncPromise;

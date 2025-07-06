@@ -1,7 +1,7 @@
 <?php
 
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
-use Rcalicdan\FiberAsync\Facades\Async;
+use Rcalicdan\FiberAsync\Facades\AsyncLoop;
 
 /**
  * Run an async operation with automatic event loop management.
@@ -15,7 +15,7 @@ use Rcalicdan\FiberAsync\Facades\Async;
  */
 function run(callable|PromiseInterface $asyncOperation): mixed
 {
-    return Async::run($asyncOperation);
+    return AsyncLoop::run($asyncOperation);
 }
 
 /**
@@ -30,7 +30,7 @@ function run(callable|PromiseInterface $asyncOperation): mixed
  */
 function run_all(array $asyncOperations): array
 {
-    return Async::runAll($asyncOperations);
+    return AsyncLoop::runAll($asyncOperations);
 }
 
 /**
@@ -46,7 +46,7 @@ function run_all(array $asyncOperations): array
  */
 function run_concurrent(array $asyncOperations, int $concurrency = 10): array
 {
-    return Async::runConcurrent($asyncOperations, $concurrency);
+    return AsyncLoop::runConcurrent($asyncOperations, $concurrency);
 }
 
 /**
@@ -61,23 +61,7 @@ function run_concurrent(array $asyncOperations, int $concurrency = 10): array
  */
 function task(callable $asyncFunction): mixed
 {
-    return Async::task($asyncFunction);
-}
-
-/**
- * Perform an HTTP fetch with automatic event loop management.
- *
- * Handles the complete HTTP request lifecycle including starting the event
- * loop, making the request, waiting for the response, and cleaning up.
- * Returns the raw response data directly.
- *
- * @param  string  $url  The URL to fetch
- * @param  array  $options  HTTP request options
- * @return array The HTTP response data
- */
-function quick_fetch(string $url, array $options = []): array
-{
-    return Async::quickFetch($url, $options);
+    return AsyncLoop::task($asyncFunction);
 }
 
 /**
@@ -91,7 +75,7 @@ function quick_fetch(string $url, array $options = []): array
  */
 function async_sleep(float $seconds): void
 {
-    Async::asyncSleep($seconds);
+    AsyncLoop::asyncSleep($seconds);
 }
 
 /**
@@ -109,7 +93,7 @@ function async_sleep(float $seconds): void
  */
 function run_with_timeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
 {
-    return Async::runWithTimeout($asyncOperation, $timeout);
+    return AsyncLoop::runWithTimeout($asyncOperation, $timeout);
 }
 
 /**
@@ -124,5 +108,5 @@ function run_with_timeout(callable|PromiseInterface $asyncOperation, float $time
  */
 function benchmark(callable|PromiseInterface $asyncOperation): array
 {
-    return Async::benchmark($asyncOperation);
+    return AsyncLoop::benchmark($asyncOperation);
 }

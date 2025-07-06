@@ -3,8 +3,8 @@
 namespace Rcalicdan\FiberAsync\Facades;
 
 use Rcalicdan\FiberAsync\AsyncOperations;
-use Rcalicdan\FiberAsync\LoopOperations;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
+use Rcalicdan\FiberAsync\LoopOperations;
 
 /**
  * Static facade for event loop management and high-level async execution.
@@ -109,18 +109,6 @@ final class AsyncLoop
     }
 
     /**
-     * Perform an HTTP fetch with automatic event loop management.
-     *
-     * @param  string  $url  The URL to fetch
-     * @param  array  $options  HTTP request options
-     * @return array The HTTP response data
-     */
-    public static function quickFetch(string $url, array $options = []): array
-    {
-        return self::getLoopOperations()->quickFetch($url, $options);
-    }
-
-    /**
      * Perform an async delay with automatic event loop management.
      *
      * @param  float  $seconds  Number of seconds to delay
@@ -136,11 +124,26 @@ final class AsyncLoop
      * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
      * @param  float  $timeout  Maximum time to wait in seconds
      * @return mixed The result of the operation if completed within timeout
+     *
      * @throws \Exception If the operation times out
      */
     public static function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
     {
         return self::getLoopOperations()->runWithTimeout($asyncOperation, $timeout);
+    }
+
+    /**
+     * Perform an async delay with automatic event loop management.
+     *
+     * Creates a delay without blocking the current thread, with the event loop
+     * managed automatically. This is useful for simple timing operations that
+     * don't require manual loop control.
+     *
+     * @param  float  $seconds  Number of seconds to delay
+     */
+    public static function asyncSleep(float $seconds): void
+    {
+        self::getLoopOperations()->asyncSleep($seconds);
     }
 
     /**

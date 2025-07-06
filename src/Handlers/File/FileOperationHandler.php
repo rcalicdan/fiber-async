@@ -1,5 +1,4 @@
 <?php
-// src/Handlers/File/FileOperationHandler.php
 
 namespace Rcalicdan\FiberAsync\Handlers\File;
 
@@ -23,40 +22,52 @@ final readonly class FileOperationHandler
             switch ($operation->getType()) {
                 case 'read':
                     $this->handleRead($operation);
+
                     break;
                 case 'write':
                     $this->handleWrite($operation);
+
                     break;
                 case 'append':
                     $this->handleAppend($operation);
+
                     break;
                 case 'delete':
                     $this->handleDelete($operation);
+
                     break;
                 case 'exists':
                     $this->handleExists($operation);
+
                     break;
                 case 'stat':
                     $this->handleStat($operation);
+
                     break;
                 case 'mkdir':
                     $this->handleMkdir($operation);
+
                     break;
                 case 'rmdir':
                     $this->handleRmdir($operation);
+
                     break;
                 case 'copy':
                     $this->handleCopy($operation);
+
                     break;
                 case 'rename':
                     $this->handleRename($operation);
+
                     break;
                 default:
                     throw new \InvalidArgumentException("Unknown operation type: {$operation->getType()}");
             }
+
             return true;
         } catch (\Throwable $e) {
             $operation->executeCallback($e->getMessage());
+
             return false;
         }
     }
@@ -66,11 +77,11 @@ final readonly class FileOperationHandler
         $path = $operation->getPath();
         $options = $operation->getOptions();
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             throw new \RuntimeException("File does not exist: $path");
         }
 
-        if (!is_readable($path)) {
+        if (! is_readable($path)) {
             throw new \RuntimeException("File is not readable: $path");
         }
 
@@ -100,7 +111,7 @@ final readonly class FileOperationHandler
 
         if (isset($options['create_directories']) && $options['create_directories']) {
             $dir = dirname($path);
-            if (!is_dir($dir)) {
+            if (! is_dir($dir)) {
                 mkdir($dir, 0755, true);
             }
         }
@@ -132,14 +143,15 @@ final readonly class FileOperationHandler
     {
         $path = $operation->getPath();
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             $operation->executeCallback(null, true);
+
             return;
         }
 
         $result = unlink($path);
 
-        if (!$result) {
+        if (! $result) {
             throw new \RuntimeException("Failed to delete file: $path");
         }
 
@@ -157,7 +169,7 @@ final readonly class FileOperationHandler
     {
         $path = $operation->getPath();
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             throw new \RuntimeException("File does not exist: $path");
         }
 
@@ -180,12 +192,13 @@ final readonly class FileOperationHandler
 
         if (is_dir($path)) {
             $operation->executeCallback(null, true);
+
             return;
         }
 
         $result = mkdir($path, $mode, $recursive);
 
-        if (!$result) {
+        if (! $result) {
             throw new \RuntimeException("Failed to create directory: $path");
         }
 
@@ -196,21 +209,22 @@ final readonly class FileOperationHandler
     {
         $path = $operation->getPath();
 
-        if (!is_dir($path)) {
+        if (! is_dir($path)) {
             $operation->executeCallback(null, true);
+
             return;
         }
 
         // Check if directory is empty
         $files = array_diff(scandir($path), ['.', '..']);
 
-        if (!empty($files)) {
+        if (! empty($files)) {
             // Directory is not empty, remove recursively
             $this->removeDirectoryRecursive($path);
         } else {
             // Directory is empty, use regular rmdir
             $result = rmdir($path);
-            if (!$result) {
+            if (! $result) {
                 throw new \RuntimeException("Failed to remove directory: $path");
             }
         }
@@ -220,13 +234,13 @@ final readonly class FileOperationHandler
 
     private function removeDirectoryRecursive(string $dir): void
     {
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             return;
         }
 
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
-            $path = $dir . DIRECTORY_SEPARATOR . $file;
+            $path = $dir.DIRECTORY_SEPARATOR.$file;
             if (is_dir($path)) {
                 $this->removeDirectoryRecursive($path);
             } else {
@@ -241,13 +255,13 @@ final readonly class FileOperationHandler
         $sourcePath = $operation->getPath();
         $destinationPath = $operation->getData();
 
-        if (!file_exists($sourcePath)) {
+        if (! file_exists($sourcePath)) {
             throw new \RuntimeException("Source file does not exist: $sourcePath");
         }
 
         $result = copy($sourcePath, $destinationPath);
 
-        if (!$result) {
+        if (! $result) {
             throw new \RuntimeException("Failed to copy file from $sourcePath to $destinationPath");
         }
 
@@ -259,13 +273,13 @@ final readonly class FileOperationHandler
         $oldPath = $operation->getPath();
         $newPath = $operation->getData();
 
-        if (!file_exists($oldPath)) {
+        if (! file_exists($oldPath)) {
             throw new \RuntimeException("Source file does not exist: $oldPath");
         }
 
         $result = rename($oldPath, $newPath);
 
-        if (!$result) {
+        if (! $result) {
             throw new \RuntimeException("Failed to rename file from $oldPath to $newPath");
         }
 
