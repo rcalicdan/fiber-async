@@ -62,75 +62,112 @@ class AsyncDatabaseBenchmark
         return $data;
     }
 
+    /**
+     * MODIFIED: Added a pause before the final cleanup.
+     */
     public function run(): void
     {
         echo "=== ASYNC DATABASE BENCHMARK ===\n\n";
 
         $this->setupDatabaseSchema();
 
-        // --- INSERT TESTS ---
-        $this->testStressInsertTransactional();
-        $this->testStressInsertNaive(); //
+        // --- RUN SELF-CONTAINED TESTS FIRST ---
+        $this->testStressInsertNaive();
 
-        // --- READ & MIXED TESTS ---
-        $this->setupTestData(); // Set up a consistent dataset for read tests
+        // --- RUN READ TESTS ON A CONTROLLED DATASET ---
+        $this->setupTestData();
         $this->testHighConcurrencyReads();
         $this->testHighConcurrencyReadsWithLimit();
         $this->testMixedOperationsWithDelays();
 
-        $this->cleanup(true); 
+        // --- RUN THE SPECIAL TRANSACTIONAL TEST LAST ---
+        $this->testStressInsertTransactional();
+
+        // --- PAUSE SCRIPT TO ALLOW FOR MANUAL VERIFICATION ---
+        echo "\n\n-------------------------------------------------------------\n";
+        echo "PAUSED: The database now contains the final test data.\n";
+        echo "Check your MySQL client to verify the 'Sync:' and 'Async:' posts.\n";
+        readline("Press [Enter] to continue and clear the database...");
+        echo "-------------------------------------------------------------\n\n";
+
+        // The final cleanup will now run only after the user presses Enter.
+        $this->cleanup(true, "Data from all tests has been removed.");
     }
 
     /**
-     * Test: The CORRECT way to do bulk inserts with both PDO and AsyncDB.
+     * This test now runs last, verifies inserts, and does NOT clean up internally.
      */
     private function testStressInsertTransactional(): void
     {
         $data = $this->prepareStressTestData();
-        echo "--- Testing Bulk Inserts ({$this->stressTestRecordCount} records) inside a TRANSACTION ---\n";
-        echo "(This is the correct and most efficient pattern for bulk inserts)\n";
+        $expectedCount = count($data);
 
-        // PDO Transactional Insert
+        echo "\n--- Testing Bulk Inserts ({$expectedCount} records) inside a TRANSACTION ---\n";
+        echo "NOTE: Data from this test will be left in the database until the script finishes.\n";
+
+        $this->cleanup();
+
+        // --- PDO Transactional Insert with "Sync:" prefix and verification ---
+        $pdoData = array_map(function ($row) {
+            $row['title'] = "Sync: " . $row['title'];
+            return $row;
+        }, $data);
+
         $pdoStart = hrtime(true);
         $this->pdo->beginTransaction();
         $stmt = $this->pdo->prepare("INSERT INTO posts (title, content, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)");
-        foreach ($data as $row) {
+        foreach ($pdoData as $row) {
             $stmt->execute(array_values($row));
         }
         $this->pdo->commit();
-        $pdoTime = (hrtime(true) - $pdoStart) / 1e9;
-        $this->cleanup();
 
-        // AsyncDB Transactional Insert
+        $insertedCount = (int) $this->pdo->query("SELECT COUNT(*) FROM posts")->fetchColumn();
+        if ($insertedCount !== $expectedCount) {
+            throw new Exception("PDO insert verification failed! Expected {$expectedCount}, but found {$insertedCount}.");
+        }
+        echo "   -> PDO Verification: OK ({$insertedCount} records inserted with 'Sync:' prefix)\n";
+        $pdoTime = (hrtime(true) - $pdoStart) / 1e9;
+
+        // --- AsyncDB Transactional Insert with "Async:" prefix and verification ---
         $asyncStart = hrtime(true);
-        run(async(function () use ($data) {
+        run(async(function () use ($data, $expectedCount) {
+            $asyncData = array_map(function ($row) {
+                $row['title'] = "Async: " . $row['title'];
+                return $row;
+            }, $data);
+
             AsyncDB::beginTransaction();
             $promises = [];
-            foreach ($data as $row) {
+            foreach ($asyncData as $row) {
                 $promises[] = AsyncDB::table('posts')->create($row);
             }
             await(all($promises));
             AsyncDB::commit();
+
+            $totalExpectedCount = $expectedCount * 2;
+            $totalInsertedCount = await(AsyncDB::table('posts')->count());
+            if ($totalInsertedCount !== $totalExpectedCount) {
+                throw new Exception("AsyncDB insert verification failed! Expected total {$totalExpectedCount}, but found {$totalInsertedCount}.");
+            }
+            echo "   -> AsyncDB Verification: OK (Total records now {$totalInsertedCount})\n";
         }));
         $asyncTime = (hrtime(true) - $asyncStart) / 1e9;
-        $this->cleanup();
+
+        echo "\n   -> You can now manually check the 'posts' table for 'Sync:' and 'Async:' prefixed titles.\n";
 
         $this->printComparison("Transactional Insert", $pdoTime, $asyncTime);
     }
+    
+    // ... all other methods remain exactly the same ...
 
-    /**
-     * Test: The NAIVE way to do bulk inserts (one query per record).
-     * This test now includes PDO for a direct comparison of the anti-pattern.
-     */
     private function testStressInsertNaive(): void
     {
-        $naiveRecordCount = 200; // Using a smaller count because this is extremely slow.
+        $naiveRecordCount = 200;
         $data = array_slice($this->prepareStressTestData(), 0, $naiveRecordCount);
 
         echo "\n--- Testing Bulk Inserts ({$naiveRecordCount} records) with NAIVE individual queries ---\n";
         echo "(This is an anti-pattern and demonstrates the high cost of network round-trips)\n";
 
-        // PDO Naive Insert (one query per record)
         $pdoStart = hrtime(true);
         $stmt = $this->pdo->prepare("INSERT INTO posts (title, content, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)");
         foreach ($data as $row) {
@@ -139,7 +176,6 @@ class AsyncDatabaseBenchmark
         $pdoTime = (hrtime(true) - $pdoStart) / 1e9;
         $this->cleanup();
 
-        // AsyncDB Naive Insert (one query per record)
         $asyncStart = hrtime(true);
         run(async(function () use ($data) {
             $promises = [];
@@ -154,16 +190,12 @@ class AsyncDatabaseBenchmark
         $this->printComparison("Naive Individual Inserts", $pdoTime, $asyncTime);
     }
 
-    /**
-     * Test: High concurrency reads where all queries are sent at once.
-     */
     private function testHighConcurrencyReads(): void
     {
         $queryCount = 100;
         echo "\n--- Testing High Concurrency Reads ({$queryCount} simultaneous queries) ---\n";
         echo "(This scenario is where async I/O provides the most benefit)\n";
 
-        // PDO Sequential Reads
         $pdoStart = hrtime(true);
         for ($i = 0; $i < $queryCount; $i++) {
             $stmt = $this->pdo->query("SELECT COUNT(*) FROM posts WHERE status = 'published'");
@@ -171,7 +203,6 @@ class AsyncDatabaseBenchmark
         }
         $pdoTime = (hrtime(true) - $pdoStart) / 1e9;
 
-        // AsyncDB Concurrent Reads
         $asyncStart = hrtime(true);
         run(async(function () use ($queryCount) {
             $promises = [];
@@ -185,9 +216,6 @@ class AsyncDatabaseBenchmark
         $this->printComparison("High Concurrency Reads", $pdoTime, $asyncTime);
     }
 
-    /**
-     * Test: Realistic concurrency with a limit to avoid overwhelming the system.
-     */
     private function testHighConcurrencyReadsWithLimit(): void
     {
         $queryCount = 100;
@@ -195,14 +223,12 @@ class AsyncDatabaseBenchmark
         echo "\n--- Testing Reads with a Concurrency Limit of {$concurrencyLimit} ---\n";
         echo "(A practical use case for processing many tasks safely)\n";
 
-        // PDO Sequential baseline
         $pdoStart = hrtime(true);
         for ($i = 0; $i < $queryCount; $i++) {
             $this->pdo->query("SELECT COUNT(*) FROM posts")->fetchAll();
         }
         $pdoTime = (hrtime(true) - $pdoStart) / 1e9;
 
-        // AsyncDB Concurrent Reads with a limit
         $asyncStart = hrtime(true);
         $tasks = [];
         for ($i = 0; $i < $queryCount; $i++) {
@@ -214,14 +240,10 @@ class AsyncDatabaseBenchmark
         $this->printComparison("Limited Concurrency Reads", $pdoTime, $asyncTime);
     }
 
-    /**
-     * Test: A mix of different queries with simulated application logic delay.
-     */
     private function testMixedOperationsWithDelays(): void
     {
         echo "\n--- Testing mixed operations with simulated 1ms delays ---\n";
 
-        // PDO with delays
         $pdoStart = hrtime(true);
         usleep(1000);
         $this->pdo->query('SELECT COUNT(*) FROM posts')->fetchAll();
@@ -231,22 +253,12 @@ class AsyncDatabaseBenchmark
         $this->pdo->query('SELECT AVG(CHAR_LENGTH(content)) FROM posts')->fetchAll();
         $pdoTime = (hrtime(true) - $pdoStart) / 1e9;
 
-        // AsyncDB with delays
         $asyncStart = hrtime(true);
         run(async(function () {
             await(all([
-                async(function () {
-                    await(delay(0.001));
-                    return await(AsyncDB::table('posts')->count());
-                })(),
-                async(function () {
-                    await(delay(0.001));
-                    return await(AsyncDB::table('posts')->orderBy('created_at', 'DESC')->limit(5)->get());
-                })(),
-                async(function () {
-                    await(delay(0.001));
-                    return await(AsyncDB::table('posts')->select(['AVG(CHAR_LENGTH(content))'])->get());
-                })(),
+                async(function () { await(delay(0.001)); return await(AsyncDB::table('posts')->count()); })(),
+                async(function () { await(delay(0.001)); return await(AsyncDB::table('posts')->orderBy('created_at', 'DESC')->limit(5)->get()); })(),
+                async(function () { await(delay(0.001)); return await(AsyncDB::table('posts')->select(['AVG(CHAR_LENGTH(content))'])->get()); })(),
             ]));
         }));
         $asyncTime = (hrtime(true) - $asyncStart) / 1e9;
@@ -285,11 +297,11 @@ class AsyncDatabaseBenchmark
         echo "✓ Inserted {$this->recordCount} test records for read tests.\n";
     }
 
-    private function cleanup(bool $final = false): void
+    private function cleanup(bool $final = false, string $message = ''): void
     {
         $this->pdo->exec("DELETE FROM posts");
         if ($final) {
-            echo "✓ Final cleanup complete.\n";
+            echo "✓ " . ($message ?: "Final cleanup complete.") . "\n";
         }
     }
 
