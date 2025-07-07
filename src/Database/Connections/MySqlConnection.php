@@ -3,6 +3,7 @@
 
 namespace Rcalicdan\FiberAsync\Database\Connections;
 
+use Rcalicdan\FiberAsync\AsyncEventLoop;
 use Rcalicdan\FiberAsync\Config\DatabaseConfig;
 use Rcalicdan\FiberAsync\Contracts\DatabaseConnectionInterface;
 
@@ -11,7 +12,9 @@ final class MySQLConnection implements DatabaseConnectionInterface
     private $connection = null;
     private bool $connected = false;
 
-    public function __construct(private readonly DatabaseConfig $config) {}
+    public function __construct(private readonly DatabaseConfig $config)
+    {
+    }
 
     public function connect(): bool
     {
@@ -64,6 +67,48 @@ final class MySQLConnection implements DatabaseConnectionInterface
         return $this->execute($stmt, $bindings);
     }
 
+    public function asyncQuery(string $sql, array $bindings, callable $onSuccess, callable $onFailure): void
+    {
+        if (!$this->isConnected()) {
+            try {
+                $this->connect();
+            } catch (\Throwable $e) {
+                $onFailure($e);
+                return;
+            }
+        }
+
+        // ** CRITICAL NOTE **
+        // The mysqli extension only supports true async queries via `mysqli_query` with the MYSQLI_ASYNC flag.
+        // It does NOT support asynchronous prepared statements (`mysqli_stmt_execute` is always blocking).
+        // Therefore, we can only perform true non-blocking queries when no bindings are present.
+        // For queries with bindings, we fall back to a blocking call inside a `nextTick`
+        // to prevent blocking the calling code, but it will still block the event loop momentarily.
+        if (empty($bindings)) {
+            // True non-blocking path
+            if (mysqli_query($this->connection, $sql, MYSQLI_ASYNC)) {
+                AsyncEventLoop::getInstance()->getDatabaseManager()->addMysqlQuery(
+                    $this->connection,
+                    $onSuccess,
+                    $onFailure
+                );
+            } else {
+                $onFailure(new \RuntimeException('Failed to send async query: ' . mysqli_error($this->connection)));
+            }
+        } else {
+            // Pseudo-async fallback for prepared statements
+            AsyncEventLoop::getInstance()->nextTick(function () use ($sql, $bindings, $onSuccess, $onFailure) {
+                try {
+                    $stmt = $this->prepare($sql);
+                    $result = $this->execute($stmt, $bindings);
+                    $onSuccess($result);
+                } catch (\Throwable $e) {
+                    $onFailure($e);
+                }
+            });
+        }
+    }
+
     public function prepare(string $sql): mixed
     {
         if (!$this->isConnected()) {
@@ -71,7 +116,7 @@ final class MySQLConnection implements DatabaseConnectionInterface
         }
 
         $stmt = mysqli_prepare($this->connection, $sql);
-        
+
         if (!$stmt) {
             throw new \RuntimeException('Failed to prepare statement: ' . mysqli_error($this->connection));
         }

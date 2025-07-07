@@ -7,7 +7,8 @@ interface DatabaseConnectionInterface
     public function connect(): bool;
     public function disconnect(): void;
     public function isConnected(): bool;
-    public function query(string $sql, array $bindings = []): mixed;
+    // public function query(string $sql, array $bindings = []): mixed;
+    public function asyncQuery(string $sql, array $bindings, callable $onSuccess, callable $onFailure): void;
     public function prepare(string $sql): mixed;
     public function execute(mixed $statement, array $bindings = []): mixed;
     public function fetchAll(mixed $result): array;

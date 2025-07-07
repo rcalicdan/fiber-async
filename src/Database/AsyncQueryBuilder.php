@@ -3,7 +3,6 @@
 
 namespace Rcalicdan\FiberAsync\Database;
 
-use Rcalicdan\FiberAsync\AsyncEventLoop;
 use Rcalicdan\FiberAsync\Contracts\DatabaseConnectionInterface;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\AsyncPromise;
@@ -20,6 +19,8 @@ final class AsyncQueryBuilder
         $this->handler = new QueryBuilderHandler($connection);
         $this->handler->setTable($table);
     }
+    
+    // --- Builder methods (unchanged) ---
 
     public function select(array $columns = ['*']): self
     {
@@ -32,7 +33,9 @@ final class AsyncQueryBuilder
         $this->handler->addWhere($column, $operator, $value);
         return $this;
     }
-
+    
+    // ... other builder methods like orWhere, join, orderBy, etc. are unchanged ...
+    
     public function orWhere(string $column, string $operator, mixed $value): self
     {
         $this->handler->addOrWhere($column, $operator, $value);
@@ -81,140 +84,127 @@ final class AsyncQueryBuilder
         return $this;
     }
 
+    // --- Action methods (refactored) ---
+
     public function get(): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) {
-            AsyncEventLoop::getInstance()->nextTick(function () use ($resolve, $reject) {
-                try {
-                    $sql = $this->handler->buildSelectQuery();
-                    $bindings = $this->handler->getBindings();
-                    
-                    $result = $this->connection->query($sql, $bindings);
-                    $data = $this->connection->fetchAll($result);
-                    
-                    $resolve($data);
-                } catch (\Throwable $e) {
-                    $reject($e);
-                }
-            });
+        return $this->createPromiseForQuery(function (callable $resolve, callable $reject) {
+            $this->connection->asyncQuery(
+                $this->handler->buildSelectQuery(),
+                $this->handler->getBindings(),
+                onSuccess: fn ($result) => $resolve($this->connection->fetchAll($result)),
+                onFailure: $reject
+            );
         });
     }
 
     public function first(): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) {
-            AsyncEventLoop::getInstance()->nextTick(function () use ($resolve, $reject) {
-                try {
-                    $this->handler->setLimit(1);
-                    $sql = $this->handler->buildSelectQuery();
-                    $bindings = $this->handler->getBindings();
-                    
-                    $result = $this->connection->query($sql, $bindings);
-                    $data = $this->connection->fetchOne($result);
-                    
-                    $resolve($data);
-                } catch (\Throwable $e) {
-                    $reject($e);
-                }
-            });
+        return $this->createPromiseForQuery(function (callable $resolve, callable $reject) {
+            $this->handler->setLimit(1);
+            $this->connection->asyncQuery(
+                $this->handler->buildSelectQuery(),
+                $this->handler->getBindings(),
+                onSuccess: fn ($result) => $resolve($this->connection->fetchOne($result)),
+                onFailure: $reject
+            );
         });
     }
 
     public function create(array $data): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($data) {
-            AsyncEventLoop::getInstance()->nextTick(function () use ($data, $resolve, $reject) {
-                try {
-                    $sql = $this->handler->buildInsertQuery($data);
-                    $bindings = $this->handler->getBindings();
-                    
-                    $this->connection->query($sql, $bindings);
-                    $insertId = $this->connection->getLastInsertId();
-                    
-                    $resolve($insertId);
-                } catch (\Throwable $e) {
-                    $reject($e);
-                }
-            });
+        return $this->createPromiseForQuery(function (callable $resolve, callable $reject) use ($data) {
+            $this->connection->asyncQuery(
+                $this->handler->buildInsertQuery($data),
+                $this->handler->getBindings(),
+                onSuccess: fn () => $resolve($this->connection->getLastInsertId()),
+                onFailure: $reject
+            );
         });
     }
 
     public function update(array $data): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($data) {
-            AsyncEventLoop::getInstance()->nextTick(function () use ($data, $resolve, $reject) {
-                try {
-                    $sql = $this->handler->buildUpdateQuery($data);
-                    $bindings = $this->handler->getBindings();
-                    
-                    $this->connection->query($sql, $bindings);
-                    $affectedRows = $this->connection->getAffectedRows();
-                    
-                    $resolve($affectedRows);
-                } catch (\Throwable $e) {
-                    $reject($e);
-                }
-            });
+        return $this->createPromiseForQuery(function (callable $resolve, callable $reject) use ($data) {
+            $this->connection->asyncQuery(
+                $this->handler->buildUpdateQuery($data),
+                $this->handler->getBindings(),
+                onSuccess: fn () => $resolve($this->connection->getAffectedRows()),
+                onFailure: $reject
+            );
         });
     }
 
     public function delete(): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) {
-            AsyncEventLoop::getInstance()->nextTick(function () use ($resolve, $reject) {
-                try {
-                    $sql = $this->handler->buildDeleteQuery();
-                    $bindings = $this->handler->getBindings();
-                    
-                    $this->connection->query($sql, $bindings);
-                    $affectedRows = $this->connection->getAffectedRows();
-                    
-                    $resolve($affectedRows);
-                } catch (\Throwable $e) {
-                    $reject($e);
-                }
-            });
+        return $this->createPromiseForQuery(function (callable $resolve, callable $reject) {
+            $this->connection->asyncQuery(
+                $this->handler->buildDeleteQuery(),
+                $this->handler->getBindings(),
+                onSuccess: fn () => $resolve($this->connection->getAffectedRows()),
+                onFailure: $reject
+            );
         });
     }
 
     public function count(): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) {
-            AsyncEventLoop::getInstance()->nextTick(function () use ($resolve, $reject) {
-                try {
-                    $this->handler->addSelect(['COUNT(*) as count']);
-                    $sql = $this->handler->buildSelectQuery();
-                    $bindings = $this->handler->getBindings();
-                    
-                    $result = $this->connection->query($sql, $bindings);
+        return $this->createPromiseForQuery(function (callable $resolve, callable $reject) {
+            $this->handler->addSelect(['COUNT(*) as count']);
+            $this->connection->asyncQuery(
+                $this->handler->buildSelectQuery(),
+                $this->handler->getBindings(),
+                onSuccess: function ($result) use ($resolve) {
                     $data = $this->connection->fetchOne($result);
-                    
-                    $resolve((int) $data['count']);
-                } catch (\Throwable $e) {
-                    $reject($e);
-                }
-            });
+                    $resolve((int)($data['count'] ?? 0));
+                },
+                onFailure: $reject
+            );
         });
     }
 
     public function exists(): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) {
-            AsyncEventLoop::getInstance()->nextTick(function () use ($resolve, $reject) {
-                try {
-                    $this->handler->addSelect(['1']);
-                    $this->handler->setLimit(1);
-                    $sql = $this->handler->buildSelectQuery();
-                    $bindings = $this->handler->getBindings();
-                    
-                    $result = $this->connection->query($sql, $bindings);
+        return $this->createPromiseForQuery(function (callable $resolve, callable $reject) {
+            $this->handler->addSelect(['1']);
+            $this->handler->setLimit(1);
+            $this->connection->asyncQuery(
+                $this->handler->buildSelectQuery(),
+                $this->handler->getBindings(),
+                onSuccess: function ($result) use ($resolve) {
                     $data = $this->connection->fetchOne($result);
-                    
                     $resolve($data !== null);
-                } catch (\Throwable $e) {
-                    $reject($e);
-                }
-            });
+                },
+                onFailure: $reject
+            );
         });
+    }
+
+    /**
+     * Private helper to encapsulate promise creation and error handling.
+     * This eliminates boilerplate from all public action methods.
+     */
+    private function createPromiseForQuery(callable $queryExecutor): PromiseInterface
+    {
+        try {
+            // We still need the AsyncPromise constructor for its resolve/reject callbacks,
+            // but the outer try/catch is now handled here.
+            return new AsyncPromise(function ($resolve, $reject) use ($queryExecutor) {
+                // The onSuccess callbacks can also throw, so we wrap the executor.
+                $wrappedResolve = function (...$args) use ($resolve, $reject) {
+                    try {
+                        $resolve(...$args);
+                    } catch (\Throwable $e) {
+                        $reject($e);
+                    }
+                };
+                
+                $queryExecutor($wrappedResolve, $reject);
+            });
+        } catch (\Throwable $e) {
+            // If building the query fails, immediately return a rejected promise
+            // using the global helper function.
+            return reject($e);
+        }
     }
 }
