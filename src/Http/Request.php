@@ -26,9 +26,6 @@ class Request
         $this->userAgent = 'FiberAsync-HTTP/1.0';
     }
 
-    /**
-     * Set request headers
-     */
     public function headers(array $headers): self
     {
         $this->headers = array_merge($this->headers, $headers);
@@ -36,9 +33,6 @@ class Request
         return $this;
     }
 
-    /**
-     * Set a single header
-     */
     public function header(string $name, string $value): self
     {
         $this->headers[$name] = $value;
@@ -46,33 +40,21 @@ class Request
         return $this;
     }
 
-    /**
-     * Set Content-Type header
-     */
     public function contentType(string $type): self
     {
         return $this->header('Content-Type', $type);
     }
 
-    /**
-     * Set Accept header
-     */
     public function accept(string $type): self
     {
         return $this->header('Accept', $type);
     }
 
-    /**
-     * Set Authorization header
-     */
     public function bearerToken(string $token): self
     {
         return $this->header('Authorization', "Bearer {$token}");
     }
 
-    /**
-     * Set basic authentication
-     */
     public function basicAuth(string $username, string $password): self
     {
         $this->auth = ['basic', $username, $password];
@@ -80,9 +62,6 @@ class Request
         return $this;
     }
 
-    /**
-     * Set request timeout
-     */
     public function timeout(int $seconds): self
     {
         $this->timeout = $seconds;
@@ -90,9 +69,6 @@ class Request
         return $this;
     }
 
-    /**
-     * Set connection timeout
-     */
     public function connectTimeout(int $seconds): self
     {
         $this->connectTimeout = $seconds;
@@ -100,9 +76,6 @@ class Request
         return $this;
     }
 
-    /**
-     * Configure redirect behavior
-     */
     public function redirects(bool $follow = true, int $max = 5): self
     {
         $this->followRedirects = $follow;
@@ -111,9 +84,6 @@ class Request
         return $this;
     }
 
-    /**
-     * Configure retry behavior
-     */
     public function retry(int $maxRetries = 3, float $baseDelay = 1.0, float $backoffMultiplier = 2.0): self
     {
         $this->retryConfig = new RetryConfig(
@@ -125,9 +95,6 @@ class Request
         return $this;
     }
 
-    /**
-     * Configure advanced retry behavior
-     */
     public function retryWith(RetryConfig $config): self
     {
         $this->retryConfig = $config;
@@ -135,9 +102,6 @@ class Request
         return $this;
     }
 
-    /**
-     * Disable retry behavior
-     */
     public function noRetry(): self
     {
         $this->retryConfig = null;
@@ -145,9 +109,6 @@ class Request
         return $this;
     }
 
-    /**
-     * Configure SSL verification
-     */
     public function verifySSL(bool $verify = true): self
     {
         $this->verifySSL = $verify;
@@ -155,9 +116,6 @@ class Request
         return $this;
     }
 
-    /**
-     * Set User-Agent
-     */
     public function userAgent(string $userAgent): self
     {
         $this->userAgent = $userAgent;
@@ -165,9 +123,6 @@ class Request
         return $this;
     }
 
-    /**
-     * Set raw body content
-     */
     public function body(string $content): self
     {
         $this->body = $content;
@@ -175,9 +130,6 @@ class Request
         return $this;
     }
 
-    /**
-     * Set JSON body
-     */
     public function json(array $data): self
     {
         $this->body = json_encode($data);
@@ -186,9 +138,6 @@ class Request
         return $this;
     }
 
-    /**
-     * Set form data
-     */
     public function form(array $data): self
     {
         $this->body = http_build_query($data);
@@ -197,63 +146,46 @@ class Request
         return $this;
     }
 
-    /**
-     * Set multipart form data
-     */
     public function multipart(array $data): self
     {
         $this->options['multipart'] = $data;
+        $this->body = null;
 
         return $this;
     }
 
-    /**
-     * Perform GET request
-     */
     public function get(string $url, array $query = []): PromiseInterface
     {
         if ($query) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
         }
 
         return $this->send('GET', $url);
     }
 
-    /**
-     * Perform POST request
-     */
     public function post(string $url, array $data = []): PromiseInterface
     {
-        if ($data && ! $this->body) {
+        if ($data && !$this->body && !isset($this->options['multipart'])) {
             $this->json($data);
         }
 
         return $this->send('POST', $url);
     }
 
-    /**
-     * Perform PUT request
-     */
     public function put(string $url, array $data = []): PromiseInterface
     {
-        if ($data && ! $this->body) {
+        if ($data && !$this->body && !isset($this->options['multipart'])) {
             $this->json($data);
         }
 
         return $this->send('PUT', $url);
     }
 
-    /**
-     * Perform DELETE request
-     */
     public function delete(string $url): PromiseInterface
     {
         return $this->send('DELETE', $url);
     }
 
-    /**
-     * Send the request with specified method
-     */
     public function send(string $method, string $url): PromiseInterface
     {
         $options = $this->buildCurlOptions($method, $url);
@@ -265,9 +197,6 @@ class Request
         return $this->handler->fetch($url, $options);
     }
 
-    /**
-     * Build cURL options array
-     */
     private function buildCurlOptions(string $method, string $url): array
     {
         $options = [
@@ -285,12 +214,25 @@ class Request
             CURLOPT_NOBODY => false,
         ];
 
+        if (strtoupper($method) === 'HEAD') {
+            $options[CURLOPT_NOBODY] = true;
+        }
+
         $this->addHeaderOptions($options);
         $this->addBodyOptions($options);
         $this->addAuthenticationOptions($options);
-
-        // Merge with custom options
-        return array_merge($options, $this->options);
+        
+        // --- FIX IS HERE ---
+        // Instead of merging, we only add known custom cURL options from $this->options.
+        // This prevents internal keys like 'multipart' from being passed to curl_setopt_array.
+        foreach ($this->options as $key => $value) {
+            // Only add integer keys, which correspond to CURLOPT_* constants
+            if (is_int($key)) {
+                $options[$key] = $value;
+            }
+        }
+        
+        return $options;
     }
 
     private function addHeaderOptions(array &$options): void
@@ -306,7 +248,9 @@ class Request
 
     private function addBodyOptions(array &$options): void
     {
-        if ($this->body) {
+        if (isset($this->options['multipart'])) {
+            $options[CURLOPT_POSTFIELDS] = $this->options['multipart'];
+        } elseif ($this->body !== null) {
             $options[CURLOPT_POSTFIELDS] = $this->body;
         }
     }
