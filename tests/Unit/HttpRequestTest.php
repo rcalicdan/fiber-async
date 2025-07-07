@@ -18,7 +18,13 @@ test('http request manager can add and process requests', function () {
 });
 
 test('http request object creates proper curl handle', function () {
-    $request = new HttpRequest('https://example.com', ['timeout' => 10], function () {});
+    $options = [
+        CURLOPT_URL => 'https://example.com',
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_RETURNTRANSFER => true,
+    ];
+    
+    $request = new HttpRequest('https://example.com', $options, function () {});
 
     expect($request->getUrl())->toBe('https://example.com');
     expect($request->getHandle())->toBeInstanceOf(CurlHandle::class);
