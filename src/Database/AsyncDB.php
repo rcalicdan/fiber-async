@@ -1,5 +1,4 @@
 <?php
-// src/Database/AsyncDB.php
 
 namespace Rcalicdan\FiberAsync\Database;
 
@@ -20,12 +19,17 @@ final class AsyncDB
     public static function getConnection(): DatabaseConnectionInterface
     {
         if (self::$connection === null) {
-            $config = new DatabaseConfig();
-            self::$connectionHandler = new ConnectionHandler($config);
-            self::$connection = self::$connectionHandler->createConnection();
+            self::initializeConnection();
         }
 
         return self::$connection;
+    }
+
+    private static function initializeConnection(): void
+    {
+        $config = new DatabaseConfig(); 
+        self::$connectionHandler = new ConnectionHandler($config);
+        self::$connection = self::$connectionHandler->createConnection();
     }
 
     public static function disconnect(): void
