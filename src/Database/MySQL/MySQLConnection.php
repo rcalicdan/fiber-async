@@ -12,7 +12,7 @@ use Rcalicdan\FiberAsync\Database\Exceptions\ConnectionException;
 
 class MySQLConnection implements ConnectionInterface
 {
-    private $socket;
+    private $stream;
     private bool $connected = false;
     private DatabaseConfig $config;
     private MySQLProtocol $protocol;
@@ -31,24 +31,27 @@ class MySQLConnection implements ConnectionInterface
     {
         return new AsyncPromise(function ($resolve, $reject) {
             try {
-                $this->socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-                
-                if ($this->socket === false) {
-                    throw new ConnectionException('Failed to create socket: ' . socket_strerror(socket_last_error()));
+                $context = stream_context_create([
+                    'socket' => [
+                        'tcp_nodelay' => true,
+                        'so_reuseport' => true,
+                    ],
+                ]);
+
+                $this->stream = stream_socket_client(
+                    "tcp://{$this->config->host}:{$this->config->port}",
+                    $errno,
+                    $errstr,
+                    $this->config->timeout,
+                    STREAM_CLIENT_CONNECT | STREAM_CLIENT_ASYNC_CONNECT,
+                    $context
+                );
+
+                if (!$this->stream) {
+                    throw new ConnectionException("Failed to connect: $errstr ($errno)");
                 }
-                
-                socket_set_nonblock($this->socket);
-                socket_set_option($this->socket, SOL_SOCKET, SO_REUSEADDR, 1);
-                socket_set_option($this->socket, SOL_SOCKET, SO_KEEPALIVE, 1);
-                
-                $result = socket_connect($this->socket, $this->config->host, $this->config->port);
-                
-                if ($result === false) {
-                    $error = socket_last_error($this->socket);
-                    if ($error !== SOCKET_EINPROGRESS && $error !== SOCKET_EALREADY && $error !== SOCKET_EWOULDBLOCK) {
-                        throw new ConnectionException('Failed to connect: ' . socket_strerror($error));
-                    }
-                }
+
+                stream_set_blocking($this->stream, false);
                 
                 $this->waitForConnection($resolve, $reject);
                 
@@ -71,15 +74,16 @@ class MySQLConnection implements ConnectionInterface
                 $dataLength = strlen($data);
                 
                 while ($totalSent < $dataLength) {
-                    $sent = socket_write($this->socket, substr($data, $totalSent));
+                    $sent = fwrite($this->stream, substr($data, $totalSent));
                     
                     if ($sent === false) {
-                        $error = socket_last_error($this->socket);
-                        if ($error === SOCKET_EWOULDBLOCK || $error === SOCKET_EAGAIN) {
-                            $this->waitForWriteable($data, $totalSent, $resolve, $reject);
-                            return;
-                        }
-                        throw new ConnectionException('Failed to send data: ' . socket_strerror($error));
+                        throw new ConnectionException('Failed to send data');
+                    }
+                    
+                    if ($sent === 0) {
+                        // Would block, wait for stream to be writable
+                        $this->waitForWriteable($data, $totalSent, $resolve, $reject);
+                        return;
                     }
                     
                     $totalSent += $sent;
@@ -107,30 +111,31 @@ class MySQLConnection implements ConnectionInterface
 
     public function close(): void
     {
-        if ($this->socket) {
-            socket_close($this->socket);
-            $this->socket = null;
+        if ($this->stream) {
+            fclose($this->stream);
+            $this->stream = null;
         }
         $this->connected = false;
     }
 
     public function isConnected(): bool
     {
-        return $this->connected;
+        return $this->connected && $this->stream && !feof($this->stream);
     }
 
     public function getSocket()
     {
-        return $this->socket;
+        return $this->stream;
     }
 
     private function waitForConnection(callable $resolve, callable $reject): void
     {
-        $this->eventLoop->addStreamWatcher($this->socket, function () use ($resolve, $reject) {
-            $error = socket_last_error($this->socket);
+        $this->eventLoop->addStreamWatcher($this->stream, function () use ($resolve, $reject) {
+            // Check if connection is established
+            $socketName = stream_socket_get_name($this->stream, true);
             
-            if ($error !== 0) {
-                $reject(new ConnectionException('Connection failed: ' . socket_strerror($error)));
+            if ($socketName === false) {
+                $reject(new ConnectionException('Connection failed'));
                 return;
             }
             
@@ -172,21 +177,21 @@ class MySQLConnection implements ConnectionInterface
 
     private function waitForReadable(callable $resolve, callable $reject): void
     {
-        $this->eventLoop->addStreamWatcher($this->socket, function () use ($resolve, $reject) {
+        $this->eventLoop->addStreamWatcher($this->stream, function () use ($resolve, $reject) {
             try {
-                $data = socket_read($this->socket, 4096);
+                $data = fread($this->stream, 4096);
                 
                 if ($data === false) {
-                    $error = socket_last_error($this->socket);
-                    if ($error === SOCKET_EWOULDBLOCK || $error === SOCKET_EAGAIN) {
-                        $this->waitForReadable($resolve, $reject);
-                        return;
-                    }
-                    throw new ConnectionException('Failed to read data: ' . socket_strerror($error));
+                    throw new ConnectionException('Failed to read data');
                 }
                 
                 if ($data === '') {
-                    throw new ConnectionException('Connection closed by server');
+                    if (feof($this->stream)) {
+                        throw new ConnectionException('Connection closed by server');
+                    }
+                    // No data available, wait again
+                    $this->waitForReadable($resolve, $reject);
+                    return;
                 }
                 
                 $this->readBuffer[] = $data;
@@ -206,17 +211,12 @@ class MySQLConnection implements ConnectionInterface
 
     private function waitForWriteable(string $data, int $offset, callable $resolve, callable $reject): void
     {
-        $this->eventLoop->addStreamWatcher($this->socket, function () use ($data, $offset, $resolve, $reject) {
+        $this->eventLoop->addStreamWatcher($this->stream, function () use ($data, $offset, $resolve, $reject) {
             try {
-                $sent = socket_write($this->socket, substr($data, $offset));
+                $sent = fwrite($this->stream, substr($data, $offset));
                 
                 if ($sent === false) {
-                    $error = socket_last_error($this->socket);
-                    if ($error === SOCKET_EWOULDBLOCK || $error === SOCKET_EAGAIN) {
-                        $this->waitForWriteable($data, $offset, $resolve, $reject);
-                        return;
-                    }
-                    throw new ConnectionException('Failed to send data: ' . socket_strerror($error));
+                    throw new ConnectionException('Failed to send data');
                 }
                 
                 $newOffset = $offset + $sent;
