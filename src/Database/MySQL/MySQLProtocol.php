@@ -216,10 +216,11 @@ class MySQLProtocol implements ProtocolInterface
         }
 
         // Calculate the actual payload length from the packet header
-        $payloadLength = unpack('V', substr($data, 0, 3) . "\0")[1];
+        $lengthBytes = substr($data, 0, 3);
+        $payloadLength = ord($lengthBytes[0]) | (ord($lengthBytes[1]) << 8) | (ord($lengthBytes[2]) << 16);
 
-        // Check minimum length (should be at least 12 bytes for COM_STMT_PREPARE_OK)
-        if ($payloadLength < 12) {
+        // Handle different response lengths - some servers send shorter responses
+        if ($payloadLength < 5) {
             return [
                 'type' => 'error',
                 'code' => 0,
@@ -230,12 +231,29 @@ class MySQLProtocol implements ProtocolInterface
         $offset++; // Skip 0x00 status byte
         $statementId = unpack('V', substr($data, $offset, 4))[1];
         $offset += 4;
-        $numColumns = unpack('v', substr($data, $offset, 2))[1];
-        $offset += 2;
-        $numParams = unpack('v', substr($data, $offset, 2))[1];
-        $offset += 2;
-        $offset++; // Skip reserved byte
-        $warningCount = unpack('v', substr($data, $offset, 2))[1];
+
+        // Initialize defaults
+        $numColumns = 0;
+        $numParams = 0;
+        $warningCount = 0;
+
+        // Only read these fields if we have enough data
+        if ($payloadLength >= 9) { // At least 5 + 2 + 2 = 9 bytes
+            $numColumns = unpack('v', substr($data, $offset, 2))[1];
+            $offset += 2;
+            $numParams = unpack('v', substr($data, $offset, 2))[1];
+            $offset += 2;
+
+            // Skip reserved byte if present
+            if ($payloadLength >= 10) {
+                $offset++;
+            }
+
+            // Read warning count if present
+            if ($payloadLength >= 12) {
+                $warningCount = unpack('v', substr($data, $offset, 2))[1];
+            }
+        }
 
         return [
             'type' => 'prepare_ok',
