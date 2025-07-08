@@ -1,7 +1,7 @@
 <?php
 // src/Database/Contracts/ProtocolInterface.php
 
-namespace Rcalicdan\FiberAsync\Database\Contracts;
+namespace Rcalicdan\FiberAsync\Contracts\Database;
 
 interface ProtocolInterface
 {

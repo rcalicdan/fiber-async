@@ -3,7 +3,7 @@
 namespace Rcalicdan\FiberAsync\Database;
 
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
-use Rcalicdan\FiberAsync\Database\Contracts\DatabaseClientInterface;
+use Rcalicdan\FiberAsync\Contracts\Database\DatabaseClientInterface;
 
 class QueryBuilder
 {

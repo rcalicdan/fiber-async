@@ -3,7 +3,7 @@
 namespace Rcalicdan\FiberAsync\Database;
 
 use Rcalicdan\FiberAsync\Database\Config\DatabaseConfig;
-use Rcalicdan\FiberAsync\Database\Contracts\DatabaseClientInterface;
+use Rcalicdan\FiberAsync\Contracts\Database\DatabaseClientInterface;
 use Rcalicdan\FiberAsync\Database\MySQL\MySQLClient;
 
 class DatabaseFactory

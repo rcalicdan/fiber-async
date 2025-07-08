@@ -7,7 +7,7 @@ use Rcalicdan\FiberAsync\AsyncEventLoop;
 use Rcalicdan\FiberAsync\AsyncPromise;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\Database\Config\DatabaseConfig;
-use Rcalicdan\FiberAsync\Database\Contracts\ConnectionInterface;
+use Rcalicdan\FiberAsync\Contracts\Database\ConnectionInterface;
 use Rcalicdan\FiberAsync\Database\Exceptions\ConnectionException;
 
 class MySQLConnection implements ConnectionInterface

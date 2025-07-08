@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\Database\Contracts;
+namespace Rcalicdan\FiberAsync\Contracts\Database;
 
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 

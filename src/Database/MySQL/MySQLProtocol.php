@@ -3,7 +3,7 @@
 
 namespace Rcalicdan\FiberAsync\Database\MySQL;
 
-use Rcalicdan\FiberAsync\Database\Contracts\ProtocolInterface;
+use Rcalicdan\FiberAsync\Contracts\Database\ProtocolInterface;
 
 class MySQLProtocol implements ProtocolInterface
 {
