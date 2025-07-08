@@ -113,8 +113,8 @@ class QueryBuilder
     {
         $this->limit(1);
         return $this->get()->then(function ($result) {
-            // SAFER CHECK: Ensure 'rows' key exists and is not empty.
-            if (isset($result['rows']) && !empty($result['rows'])) {
+            // FIX: Better null checking with proper array verification
+            if (isset($result['rows']) && is_array($result['rows']) && !empty($result['rows'])) {
                 return $result['rows'][0];
             }
             return null;
@@ -222,9 +222,6 @@ class QueryBuilder
         return $sql;
     }
 
-    /**
-     * MAJOR FIX: Rewritten to be more robust and readable.
-     */
     private function buildWhereClause(): string
     {
         $sqlParts = [];
@@ -246,14 +243,14 @@ class QueryBuilder
     private function buildJoins(): string
     {
         return implode(' ', array_map(function ($join) {
-            return "{$join['type']} JOIN `{$join['table']}` ON `{$join['first']}` {$join['operator']} `{$join['second']}`";
+            return strtoupper($join['type']) . " JOIN `{$join['table']}` ON `{$join['first']}` {$join['operator']} `{$join['second']}`";
         }, $this->joins));
     }
 
     private function buildOrderBy(): string
     {
         return implode(', ', array_map(function ($order) {
-            return "`{$order['column']}` {$order['direction']}";
+            return "`{$order['column']}` " . strtoupper($order['direction']);
         }, $this->orderBy));
     }
 }

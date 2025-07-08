@@ -1,4 +1,5 @@
 <?php
+// src/Database/MySQL/MySQLClient.php
 
 namespace Rcalicdan\FiberAsync\Database\MySQL;
 
@@ -288,10 +289,11 @@ class MySQLClient implements DatabaseClientInterface
                 return $this->readAllRows($connection, $rows, $columns);
             })
             ->then(function () use (&$rows, &$columns, $connection, $releaseConnection) {
+                // FIX: Always ensure 'rows' key exists
                 $finalResult = [
                     'type' => 'select',
                     'columns' => array_map(fn($col) => $col['name'], $columns),
-                    'rows' => $rows,
+                    'rows' => $rows ?? [], // Ensure rows is always an array
                 ];
 
                 if ($releaseConnection) {
