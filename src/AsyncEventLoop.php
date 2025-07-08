@@ -84,11 +84,6 @@ class AsyncEventLoop implements EventLoopInterface
     private FileManager $fileManager;
 
     /**
-     * @var DatabaseManager Manages database operations
-     */
-    private DatabaseManager $databaseManager;
-
-    /**
      * Initialize the event loop with all required managers and handlers.
      *
      * Private constructor to enforce singleton pattern. Sets up all managers
@@ -104,7 +99,6 @@ class AsyncEventLoop implements EventLoopInterface
         $this->activityHandler = new ActivityHandler;
         $this->stateHandler = new StateHandler;
         $this->fileManager = new FileManager;
-        $this->databaseManager = new DatabaseManager;
 
         // Initialize handlers that depend on managers
         $this->workHandler = new WorkHandler(
@@ -114,18 +108,12 @@ class AsyncEventLoop implements EventLoopInterface
             fiberManager: $this->fiberManager,
             tickHandler: $this->tickHandler,
             fileManager: $this->fileManager,
-            databaseManager: $this->databaseManager,
         );
 
         $this->sleepHandler = new SleepHandler(
             $this->timerManager,
             $this->fiberManager
         );
-    }
-
-    public function getDatabaseManager(): DatabaseManager
-    {
-        return $this->databaseManager;
     }
 
     /**
