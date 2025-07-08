@@ -108,14 +108,18 @@ class MySQLClient implements DatabaseClientInterface
         }
 
         return $this->connectionPool->getConnection()->then(function (MySQLConnection $connection) {
-            $this->inTransaction = true;
             $this->transactionConnection = $connection;
 
-            return $this->query('START TRANSACTION')->catch(function ($error) {
-                $this->inTransaction = false;
-                $this->releaseTransactionConnection();
-                throw $error;
-            });
+            return $this->executeQuery($connection, 'START TRANSACTION', microtime(true), false)
+                ->then(function ($result) {
+                    $this->inTransaction = true;
+                    return $result;
+                })
+                ->catch(function ($error) {
+                    $this->inTransaction = false;
+                    $this->releaseTransactionConnection();
+                    throw $error;
+                });
         });
     }
 
@@ -278,7 +282,7 @@ class MySQLClient implements DatabaseClientInterface
     {
         $columnCount = $initialResult['column_count'];
         $columns = [];
-        $rows = []; // Initialize as empty array
+        $rows = []; // Properly initialize as empty array
 
         return $this->readNPackets($connection, $columnCount, $columns)
             ->then(function () use ($connection) {
@@ -289,11 +293,11 @@ class MySQLClient implements DatabaseClientInterface
                 return $this->readAllRows($connection, $rows, $columns);
             })
             ->then(function () use (&$rows, &$columns, $connection, $releaseConnection) {
-                // FIXED: Always ensure proper result structure
+                // FIXED: Ensure proper result structure
                 $finalResult = [
                     'type' => 'select',
                     'columns' => array_map(fn($col) => $col['name'], $columns),
-                    'rows' => is_array($rows) ? $rows : [], // Ensure rows is always an array
+                    'rows' => $rows, // $rows is already properly structured
                 ];
 
                 if ($releaseConnection) {
@@ -321,7 +325,10 @@ class MySQLClient implements DatabaseClientInterface
                             return;
                         }
 
-                        $rows[] = $this->protocol->parseRowData($packetData, $columns);
+                        $row = $this->protocol->parseRowData($packetData, $columns);
+                        if ($row !== null) {
+                            $rows[] = $row;
+                        }
                         $readNextRow();
                     },
                     $reject

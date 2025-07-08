@@ -522,24 +522,30 @@ class MySQLProtocol implements ProtocolInterface
         if ($offset >= strlen($data)) {
             return 0;
         }
+
         $firstByte = ord($data[$offset++]);
+
         if ($firstByte < 0xFB) {
             return $firstByte;
         } elseif ($firstByte === 0xFB) {
             return null;
         } elseif ($firstByte === 0xFC) {
+            if ($offset + 1 >= strlen($data)) return 0;
             $result = unpack('v', substr($data, $offset, 2))[1];
             $offset += 2;
             return $result;
         } elseif ($firstByte === 0xFD) {
+            if ($offset + 2 >= strlen($data)) return 0;
             $result = unpack('V', substr($data, $offset, 3) . "\0")[1];
             $offset += 3;
             return $result;
         } elseif ($firstByte === 0xFE) {
+            if ($offset + 7 >= strlen($data)) return 0;
             $result = unpack('P', substr($data, $offset, 8))[1];
             $offset += 8;
             return $result;
         }
+
         return 0;
     }
 
