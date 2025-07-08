@@ -35,66 +35,93 @@ class MySQLClient implements DatabaseClientInterface
     {
         $startTime = microtime(true);
 
-        return new AsyncPromise(function ($resolve, $reject) use ($sql, $params, $startTime) {
-            $this->getConnection()->then(function (MySQLConnection $connection) use ($sql, $params, $resolve, $reject, $startTime) {
-                try {
-                    if (empty($params)) {
-                        $this->executeQuery($connection, $sql, $resolve, $reject, $startTime);
-                    } else {
-                        $this->executeParameterizedQuery($connection, $sql, $params, $resolve, $reject, $startTime);
-                    }
-                } catch (\Throwable $e) {
-                    $this->handleError($e, $reject);
-                    $this->releaseConnection($connection);
-                }
-            }, $reject);
+        return $this->getConnection()->then(function (MySQLConnection $connection) use ($sql, $params, $startTime) {
+            $releaseConnection = !$this->inTransaction;
+
+            if (empty($params)) {
+                return $this->executeQuery($connection, $sql, $startTime, $releaseConnection);
+            } else {
+                return $this->executeParameterizedQuery($connection, $sql, $params, $startTime, $releaseConnection);
+            }
         });
     }
 
     public function prepare(string $sql): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($sql) {
-            $this->getConnection()->then(function (MySQLConnection $connection) use ($sql, $resolve, $reject) {
-                try {
-                    $preparePacket = $this->protocol->createPreparePacket($sql);
+        $trimmedSql = trim(strtoupper($sql));
+        $nonPreparableStatements = ['SHOW', 'USE', 'SET', 'DESCRIBE', 'DESC', 'EXPLAIN'];
+        $firstWord = explode(' ', $trimmedSql)[0];
 
-                    $connection->sendPacket($preparePacket)->then(function () use ($connection, $sql, $resolve, $reject) {
-                        $connection->readPacket()->then(function ($response) use ($connection, $sql, $resolve, $reject) {
-                            $result = $this->protocol->parseResult($response);
+        if (in_array($firstWord, $nonPreparableStatements)) {
+            return reject(new DatabaseException("Statement cannot be prepared: {$sql}"));
+        }
 
-                            if ($result['type'] === 'error') {
-                                $reject(new DatabaseException("Prepare failed: {$result['message']}"));
-                            } else {
-                                $statement = new MySQLPreparedStatement($connection, $sql, $result, $this->protocol);
-                                $this->preparedStatements[] = $statement;
-                                $resolve($statement);
-                            }
-                        }, $reject);
-                    }, $reject);
-                } catch (\Throwable $e) {
-                    $this->handleError($e, $reject);
-                    $this->releaseConnection($connection);
-                }
-            }, $reject);
+        return $this->getConnection()->then(function (MySQLConnection $connection) use ($sql) {
+            return $connection->sendPacket($this->protocol->createPreparePacket($sql))
+                ->then(function () use ($connection) {
+                    return $connection->readPacket();
+                })
+                ->then(function ($response) use ($connection, $sql) {
+                    $prepareResult = $this->protocol->parsePrepareResponse($response);
+
+                    if ($prepareResult['type'] === 'error') {
+                        throw new DatabaseException("Prepare failed: {$prepareResult['message']}");
+                    }
+
+                    $paramCount = $prepareResult['param_count'];
+                    $columnCount = $prepareResult['column_count'];
+
+                    $promise = resolve(true);
+
+                    // Read parameter definition packets if any
+                    if ($paramCount > 0) {
+                        $promise = $promise->then(function () use ($connection, $paramCount) {
+                            return $this->readAndDiscardPackets($connection, $paramCount);
+                        })->then(function () use ($connection) {
+                            return $connection->readPacket(); // EOF packet
+                        });
+                    }
+
+                    // Read column definition packets if any
+                    if ($columnCount > 0) {
+                        $promise = $promise->then(function () use ($connection, $columnCount) {
+                            return $this->readAndDiscardPackets($connection, $columnCount);
+                        })->then(function () use ($connection) {
+                            return $connection->readPacket(); // EOF packet
+                        });
+                    }
+
+                    return $promise->then(function () use ($connection, $sql, $prepareResult) {
+                        $statement = new MySQLPreparedStatement($connection, $sql, $prepareResult, $this->protocol);
+                        $this->preparedStatements[spl_object_hash($statement)] = $connection;
+                        return $statement;
+                    });
+                });
         });
     }
 
     public function beginTransaction(): PromiseInterface
     {
         if ($this->inTransaction) {
-            reject(new DatabaseException('Transaction already in progress'));
+            return reject(new DatabaseException('Transaction already in progress'));
         }
 
-        return $this->query('START TRANSACTION')->then(function ($result) {
+        return $this->connectionPool->getConnection()->then(function (MySQLConnection $connection) {
             $this->inTransaction = true;
-            return $result;
+            $this->transactionConnection = $connection;
+
+            return $this->query('START TRANSACTION')->catch(function ($error) {
+                $this->inTransaction = false;
+                $this->releaseTransactionConnection();
+                throw $error;
+            });
         });
     }
 
     public function commit(): PromiseInterface
     {
         if (!$this->inTransaction) {
-            reject(new DatabaseException('No transaction in progress'));
+            return reject(new DatabaseException('No transaction in progress'));
         }
 
         return $this->query('COMMIT')->then(function ($result) {
@@ -107,7 +134,7 @@ class MySQLClient implements DatabaseClientInterface
     public function rollback(): PromiseInterface
     {
         if (!$this->inTransaction) {
-            reject(new DatabaseException('No transaction in progress'));
+            return reject(new DatabaseException('No transaction in progress'));
         }
 
         return $this->query('ROLLBACK')->then(function ($result) {
@@ -145,22 +172,21 @@ class MySQLClient implements DatabaseClientInterface
     private function getConnection(): PromiseInterface
     {
         if ($this->inTransaction && $this->transactionConnection) {
-            resolve($this->transactionConnection);
+            return resolve($this->transactionConnection);
         }
 
-        return $this->connectionPool->getConnection()->then(function (MySQLConnection $connection) {
-            if ($this->inTransaction) {
-                $this->transactionConnection = $connection;
-            }
-            return $connection;
-        });
+        return $this->connectionPool->getConnection();
     }
 
     private function releaseConnection(MySQLConnection $connection): void
     {
-        if (!$this->inTransaction || $connection !== $this->transactionConnection) {
-            $this->connectionPool->releaseConnection($connection);
+        if ($this->inTransaction && $connection === $this->transactionConnection) {
+            return;
         }
+        if (in_array($connection, $this->preparedStatements, true)) {
+            return;
+        }
+        $this->connectionPool->releaseConnection($connection);
     }
 
     private function releaseTransactionConnection(): void
@@ -171,95 +197,181 @@ class MySQLClient implements DatabaseClientInterface
         }
     }
 
-    private function executeQuery(MySQLConnection $connection, string $sql, callable $resolve, callable $reject, float $startTime): void
+    private function executeQuery(MySQLConnection $connection, string $sql, float $startTime, bool $releaseConnection): PromiseInterface
     {
         $queryPacket = $this->protocol->createQueryPacket($sql);
 
-        $connection->sendPacket($queryPacket)->then(function () use ($connection, $resolve, $reject, $startTime) {
-            $connection->readPacket()->then(function ($response) use ($connection, $resolve, $reject, $startTime) {
+        return $connection->sendPacket($queryPacket)
+            ->then(function () use ($connection) {
+                return $connection->readPacket();
+            })
+            ->then(function ($response) use ($connection, $sql, $startTime, $releaseConnection) {
                 $result = $this->protocol->parseResult($response);
 
                 if ($result['type'] === 'error') {
-                    $this->handleError(new DatabaseException("Query failed: {$result['message']}"), $reject);
-                } else {
-                    $this->stats['queries_executed']++;
-                    $this->stats['total_time'] += microtime(true) - $startTime;
+                    throw new DatabaseException("Query failed: {$result['message']}");
+                }
 
-                    if ($result['type'] === 'resultset') {
-                        $this->fetchResultSet($connection, $result, $resolve, $reject);
-                    } else {
-                        $resolve($result);
+                $this->stats['queries_executed']++;
+                $this->stats['total_time'] += microtime(true) - $startTime;
+
+                if ($result['type'] === 'resultset') {
+                    return $this->fetchFullResultSet($connection, $result, $releaseConnection);
+                } else {
+                    // This is an OK packet (INSERT, UPDATE, DELETE, etc.)
+                    if ($releaseConnection) {
+                        $this->releaseConnection($connection);
                     }
+                    return $result;
                 }
+            })
+            ->catch(function ($error) use ($connection, $releaseConnection) {
+                if ($releaseConnection) {
+                    $this->releaseConnection($connection);
+                }
+                $this->stats['errors']++;
+                throw $error;
+            });
+    }
 
+    private function executeParameterizedQuery(MySQLConnection $connection, string $sql, array $params, float $startTime, bool $releaseConnection): PromiseInterface
+    {
+        try {
+            $finalSql = $this->interpolateQuery($sql, $params);
+            return $this->executeQuery($connection, $finalSql, $startTime, $releaseConnection);
+        } catch (\Throwable $e) {
+            if ($releaseConnection) {
                 $this->releaseConnection($connection);
-            }, $reject);
-        }, $reject);
+            }
+            return reject($e);
+        }
     }
 
-    private function executeParameterizedQuery(MySQLConnection $connection, string $sql, array $params, callable $resolve, callable $reject, float $startTime): void
+    private function interpolateQuery(string $sql, array $params): string
     {
-        $preparePacket = $this->protocol->createPreparePacket($sql);
+        $i = 0;
+        $sql = preg_replace_callback('/\?/', function ($matches) use ($params, &$i) {
+            if (!isset($params[$i])) {
+                throw new DatabaseException("Not enough parameters for query");
+            }
+            $param = $params[$i++];
+            return $this->escapeAndQuote($param);
+        }, $sql);
 
-        $connection->sendPacket($preparePacket)->then(function () use ($connection, $params, $resolve, $reject, $startTime) {
-            $connection->readPacket()->then(function ($response) use ($connection, $params, $resolve, $reject, $startTime) {
-                $result = $this->protocol->parseResult($response);
+        return $sql;
+    }
 
-                if ($result['type'] === 'error') {
-                    $this->handleError(new DatabaseException("Prepare failed: {$result['message']}"), $reject);
-                } else {
-                    $this->executeStatement($connection, $result, $params, $resolve, $reject, $startTime);
+    private function escapeAndQuote($param): string
+    {
+        if ($param === null) {
+            return 'NULL';
+        }
+        if (is_int($param) || is_float($param)) {
+            return (string)$param;
+        }
+        $escaped = addslashes((string)$param);
+        return "'{$escaped}'";
+    }
+
+    private function fetchFullResultSet(MySQLConnection $connection, array $initialResult, bool $releaseConnection): PromiseInterface
+    {
+        $columnCount = $initialResult['column_count'];
+        $columns = [];
+        $rows = [];
+
+        return $this->readNPackets($connection, $columnCount, $columns)
+            ->then(function () use ($connection) {
+                // Read the EOF packet after column definitions
+                return $connection->readPacket();
+            })
+            ->then(function () use ($connection, &$rows, &$columns, $releaseConnection) {
+                return $this->readAllRows($connection, $rows, $columns);
+            })
+            ->then(function () use (&$rows, &$columns, $connection, $releaseConnection) {
+                $finalResult = [
+                    'type' => 'select',
+                    'columns' => array_map(fn($col) => $col['name'], $columns),
+                    'rows' => $rows,
+                ];
+
+                if ($releaseConnection) {
+                    $this->releaseConnection($connection);
                 }
-            }, $reject);
-        }, $reject);
+
+                return $finalResult;
+            })
+            ->catch(function ($error) use ($connection, $releaseConnection) {
+                if ($releaseConnection) {
+                    $this->releaseConnection($connection);
+                }
+                throw $error;
+            });
     }
 
-    private function executeStatement(MySQLConnection $connection, array $prepareResult, array $params, callable $resolve, callable $reject, float $startTime): void
+    private function readAllRows(MySQLConnection $connection, array &$rows, array &$columns): PromiseInterface
     {
-        $executePacket = $this->protocol->createExecutePacket($prepareResult['statement_id'], $params);
+        return new AsyncPromise(function ($resolve, $reject) use ($connection, &$rows, &$columns) {
+            $readNextRow = function () use (&$readNextRow, $connection, &$rows, &$columns, $resolve, $reject) {
+                $connection->readPacket()->then(
+                    function ($packetData) use (&$readNextRow, &$rows, &$columns, $resolve) {
+                        if ($this->protocol->isEofPacket($packetData)) {
+                            $resolve(true);
+                            return;
+                        }
 
-        $connection->sendPacket($executePacket)->then(function () use ($connection, $resolve, $reject, $startTime) {
-            $connection->readPacket()->then(function ($response) use ($connection, $resolve, $reject, $startTime) {
-                $result = $this->protocol->parseResult($response);
+                        $rows[] = $this->protocol->parseRowData($packetData, $columns);
+                        $readNextRow();
+                    },
+                    $reject
+                );
+            };
+            $readNextRow();
+        });
+    }
 
-                if ($result['type'] === 'error') {
-                    $this->handleError(new DatabaseException("Execute failed: {$result['message']}"), $reject);
-                } else {
-                    $this->stats['queries_executed']++;
-                    $this->stats['total_time'] += microtime(true) - $startTime;
+    private function readNPackets(MySQLConnection $connection, int $count, array &$results = []): PromiseInterface
+    {
+        if ($count <= 0) {
+            return resolve(true);
+        }
 
-                    if ($result['type'] === 'resultset') {
-                        $this->fetchResultSet($connection, $result, $resolve, $reject);
-                    } else {
-                        $resolve($result);
-                    }
+        return new AsyncPromise(function ($resolve, $reject) use ($connection, $count, &$results) {
+            $readNext = function () use (&$readNext, $connection, $count, &$results, $resolve, $reject) {
+                if (count($results) >= $count) {
+                    $resolve(true);
+                    return;
                 }
 
-                $this->releaseConnection($connection);
-            }, $reject);
-        }, $reject);
+                $connection->readPacket()->then(function ($packetData) use (&$readNext, &$results) {
+                    $results[] = $this->protocol->parseColumnDefinition($packetData);
+                    $readNext();
+                }, $reject);
+            };
+            $readNext();
+        });
     }
 
-    private function fetchResultSet(MySQLConnection $connection, array $result, callable $resolve, callable $reject): void
+    private function readAndDiscardPackets(MySQLConnection $connection, int $count): PromiseInterface
     {
-        // This is a simplified implementation
-        // In a complete implementation, you'd need to:
-        // 1. Read column definition packets
-        // 2. Read row data packets
-        // 3. Handle different data types properly
+        if ($count <= 0) {
+            return resolve(true);
+        }
 
-        $resolve([
-            'type' => 'select',
-            'columns' => [],
-            'rows' => [],
-            'affected_rows' => 0,
-            'insert_id' => 0,
-        ]);
-    }
+        return new AsyncPromise(function ($resolve, $reject) use ($connection, $count) {
+            $readCount = 0;
+            $readNext = function () use (&$readNext, $connection, $count, &$readCount, $resolve, $reject) {
+                if ($readCount >= $count) {
+                    $resolve(true);
+                    return;
+                }
 
-    private function handleError(\Throwable $e, callable $reject): void
-    {
-        $this->stats['errors']++;
-        $reject($e);
+                $connection->readPacket()->then(function ($packet) use (&$readNext, &$readCount) {
+                    $readCount++;
+                    $readNext();
+                }, $reject);
+            };
+
+            $readNext();
+        });
     }
 }

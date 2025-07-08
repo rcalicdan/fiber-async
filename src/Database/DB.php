@@ -18,6 +18,7 @@ class DB
     public static function getClient(): DatabaseClientInterface
     {
         if (self::$client === null) {
+            // This assumes you have a factory setup.
             self::$client = DatabaseFactory::createFromEnv();
         }
         
@@ -29,9 +30,13 @@ class DB
         return self::getClient()->query($sql, $params);
     }
 
+    /**
+     * FINAL FIX: This method now correctly creates AND configures the QueryBuilder instance.
+     */
     public static function table(string $table): QueryBuilder
     {
-        return new QueryBuilder(self::getClient());
+        // Create a new builder and immediately call its table() method to set the table name.
+        return (new QueryBuilder(self::getClient()))->table($table);
     }
 
     public static function beginTransaction(): PromiseInterface

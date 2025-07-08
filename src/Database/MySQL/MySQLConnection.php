@@ -1,5 +1,4 @@
 <?php
-// src/Database/MySQL/MySQLConnection.php
 
 namespace Rcalicdan\FiberAsync\Database\MySQL;
 
@@ -52,9 +51,15 @@ class MySQLConnection implements ConnectionInterface
                 }
 
                 stream_set_blocking($this->stream, false);
-                
-                $this->waitForConnection($resolve, $reject);
-                
+
+                $this->waitForConnection()
+                    ->then(function () {
+                        return $this->performHandshake();
+                    })
+                    ->then(function () {
+                        return $this;
+                    })
+                    ->then($resolve, $reject);
             } catch (\Throwable $e) {
                 $reject($e);
             }
@@ -68,29 +73,12 @@ class MySQLConnection implements ConnectionInterface
                 $reject(new ConnectionException('Not connected'));
                 return;
             }
-            
+
             try {
-                $totalSent = 0;
-                $dataLength = strlen($data);
-                
-                while ($totalSent < $dataLength) {
-                    $sent = fwrite($this->stream, substr($data, $totalSent));
-                    
-                    if ($sent === false) {
-                        throw new ConnectionException('Failed to send data');
-                    }
-                    
-                    if ($sent === 0) {
-                        // Would block, wait for stream to be writable
-                        $this->waitForWriteable($data, $totalSent, $resolve, $reject);
-                        return;
-                    }
-                    
-                    $totalSent += $sent;
-                }
-                
-                $resolve($totalSent);
-                
+                $this->writeData($data, 0)
+                    ->then(function ($totalSent) use ($resolve) {
+                        $resolve($totalSent);
+                    }, $reject);
             } catch (\Throwable $e) {
                 $reject($e);
             }
@@ -104,8 +92,9 @@ class MySQLConnection implements ConnectionInterface
                 $reject(new ConnectionException('Not connected'));
                 return;
             }
-            
-            $this->waitForReadable($resolve, $reject);
+
+            $this->waitForReadable()
+                ->then($resolve, $reject);
         });
     }
 
@@ -128,108 +117,136 @@ class MySQLConnection implements ConnectionInterface
         return $this->stream;
     }
 
-    private function waitForConnection(callable $resolve, callable $reject): void
+    private function waitForConnection(): PromiseInterface
     {
-        $this->eventLoop->addStreamWatcher($this->stream, function () use ($resolve, $reject) {
-            // Check if connection is established
-            $socketName = stream_socket_get_name($this->stream, true);
-            
-            if ($socketName === false) {
-                $reject(new ConnectionException('Connection failed'));
-                return;
-            }
-            
-            $this->connected = true;
-            $this->performHandshake($resolve, $reject);
+        return new AsyncPromise(function ($resolve, $reject) {
+            $this->eventLoop->addStreamWatcher($this->stream, function () use ($resolve, $reject) {
+                $socketName = stream_socket_get_name($this->stream, true);
+
+                if ($socketName === false) {
+                    $reject(new ConnectionException('Connection failed'));
+                    return;
+                }
+
+                $this->connected = true;
+                $resolve(true);
+            });
         });
     }
 
-    private function performHandshake(callable $resolve, callable $reject): void
+    private function performHandshake(): PromiseInterface
     {
-        $this->readPacket()->then(function ($handshakeData) use ($resolve, $reject) {
-            try {
+        return $this->readPacket()
+            ->then(function ($handshakeData) {
                 $handshake = $this->protocol->parseHandshake($handshakeData);
-                
+
                 $authPacket = $this->protocol->createAuthPacket(
                     $this->config->username,
                     $this->config->password,
                     $this->config->database,
                     $handshake
                 );
-                
-                $this->sendPacket($authPacket)->then(function () use ($resolve, $reject) {
-                    $this->readPacket()->then(function ($authResponse) use ($resolve, $reject) {
-                        $result = $this->protocol->parseResult($authResponse);
-                        
-                        if ($result['type'] === 'error') {
-                            $reject(new ConnectionException("Authentication failed: {$result['message']}"));
-                        } else {
-                            $resolve($this);
-                        }
-                    }, $reject);
-                }, $reject);
-                
-            } catch (\Throwable $e) {
-                $reject($e);
-            }
-        }, $reject);
+
+                return $this->sendPacket($authPacket);
+            })
+            ->then(function () {
+                return $this->readPacket();
+            })
+            ->then(function ($authResponse) {
+                $result = $this->protocol->parseResult($authResponse);
+
+                if ($result['type'] === 'error') {
+                    throw new ConnectionException("Authentication failed: {$result['message']}");
+                }
+
+                return true;
+            });
     }
 
-    private function waitForReadable(callable $resolve, callable $reject): void
+    private function writeData(string $data, int $offset): PromiseInterface
     {
-        $this->eventLoop->addStreamWatcher($this->stream, function () use ($resolve, $reject) {
-            try {
-                $data = fread($this->stream, 4096);
-                
-                if ($data === false) {
-                    throw new ConnectionException('Failed to read data');
-                }
-                
-                if ($data === '') {
-                    if (feof($this->stream)) {
-                        throw new ConnectionException('Connection closed by server');
-                    }
-                    // No data available, wait again
-                    $this->waitForReadable($resolve, $reject);
-                    return;
-                }
-                
-                $this->readBuffer[] = $data;
-                $completePacket = $this->tryParsePacket();
-                
-                if ($completePacket !== null) {
-                    $resolve($completePacket);
-                } else {
-                    $this->waitForReadable($resolve, $reject);
-                }
-                
-            } catch (\Throwable $e) {
-                $reject($e);
+        return new AsyncPromise(function ($resolve, $reject) use ($data, $offset) {
+            $dataLength = strlen($data);
+            
+            if ($offset >= $dataLength) {
+                $resolve($dataLength);
+                return;
+            }
+
+            $sent = fwrite($this->stream, substr($data, $offset));
+
+            if ($sent === false) {
+                $reject(new ConnectionException('Failed to send data'));
+                return;
+            }
+
+            if ($sent === 0) {
+                $this->waitForWriteable()
+                    ->then(function () use ($data, $offset, $resolve, $reject) {
+                        $this->writeData($data, $offset)
+                            ->then($resolve, $reject);
+                    }, $reject);
+                return;
+            }
+
+            $newOffset = $offset + $sent;
+            
+            if ($newOffset < $dataLength) {
+                $this->writeData($data, $newOffset)
+                    ->then($resolve, $reject);
+            } else {
+                $resolve($dataLength);
             }
         });
     }
 
-    private function waitForWriteable(string $data, int $offset, callable $resolve, callable $reject): void
+    private function waitForWriteable(): PromiseInterface
     {
-        $this->eventLoop->addStreamWatcher($this->stream, function () use ($data, $offset, $resolve, $reject) {
-            try {
-                $sent = fwrite($this->stream, substr($data, $offset));
-                
-                if ($sent === false) {
-                    throw new ConnectionException('Failed to send data');
+        return new AsyncPromise(function ($resolve, $reject) {
+            $this->eventLoop->addStreamWatcher($this->stream, function () use ($resolve, $reject) {
+                try {
+                    $resolve(true);
+                } catch (\Throwable $e) {
+                    $reject($e);
                 }
-                
-                $newOffset = $offset + $sent;
-                
-                if ($newOffset < strlen($data)) {
-                    $this->waitForWriteable($data, $newOffset, $resolve, $reject);
-                } else {
-                    $resolve(strlen($data));
+            });
+        });
+    }
+
+    private function waitForReadable(): PromiseInterface
+    {
+        return new AsyncPromise(function ($resolve, $reject) {
+            $this->eventLoop->addStreamWatcher($this->stream, function () use ($resolve, $reject) {
+                try {
+                    $data = fread($this->stream, 4096);
+
+                    if ($data === false) {
+                        throw new ConnectionException('Failed to read data');
+                    }
+
+                    if ($data === '') {
+                        if (feof($this->stream)) {
+                            throw new ConnectionException('Connection closed by server');
+                        }
+                        // No data available, wait again
+                        $this->waitForReadable()
+                            ->then($resolve, $reject);
+                        return;
+                    }
+
+                    $this->readBuffer[] = $data;
+                    $completePacket = $this->tryParsePacket();
+
+                    if ($completePacket !== null) {
+                        $resolve($completePacket);
+                    } else {
+                        $this->waitForReadable()
+                            ->then($resolve, $reject);
+                    }
+                } catch (\Throwable $e) {
+                    $reject($e);
                 }
-                
-            } catch (\Throwable $e) {
-                $reject($e);
-            }
+            });
         });
     }
 
@@ -238,27 +255,30 @@ class MySQLConnection implements ConnectionInterface
         if (empty($this->readBuffer)) {
             return null;
         }
-        
+
         $buffer = implode('', $this->readBuffer);
-        
+
         if (strlen($buffer) < 4) {
             return null;
         }
-        
+
         if ($this->expectedPacketLength === 0) {
-            $this->expectedPacketLength = unpack('V', $buffer . "\0")[1] & 0xFFFFFF;
+            $lengthBytes = substr($buffer, 0, 3);
+            $this->expectedPacketLength = unpack('V', $lengthBytes . "\0")[1];
         }
-        
+
         $totalPacketLength = $this->expectedPacketLength + 4;
-        
+
         if (strlen($buffer) >= $totalPacketLength) {
             $packet = substr($buffer, 0, $totalPacketLength);
-            $this->readBuffer = [substr($buffer, $totalPacketLength)];
+            $remaining = substr($buffer, $totalPacketLength);
+
+            $this->readBuffer = $remaining ? [$remaining] : [];
             $this->expectedPacketLength = 0;
-            
+
             return $packet;
         }
-        
+
         return null;
     }
 }
