@@ -278,7 +278,7 @@ class MySQLClient implements DatabaseClientInterface
     {
         $columnCount = $initialResult['column_count'];
         $columns = [];
-        $rows = [];
+        $rows = []; // Initialize as empty array
 
         return $this->readNPackets($connection, $columnCount, $columns)
             ->then(function () use ($connection) {
@@ -289,11 +289,11 @@ class MySQLClient implements DatabaseClientInterface
                 return $this->readAllRows($connection, $rows, $columns);
             })
             ->then(function () use (&$rows, &$columns, $connection, $releaseConnection) {
-                // FIX: Always ensure 'rows' key exists
+                // FIXED: Always ensure proper result structure
                 $finalResult = [
                     'type' => 'select',
                     'columns' => array_map(fn($col) => $col['name'], $columns),
-                    'rows' => $rows ?? [], // Ensure rows is always an array
+                    'rows' => is_array($rows) ? $rows : [], // Ensure rows is always an array
                 ];
 
                 if ($releaseConnection) {

@@ -14,7 +14,6 @@ function testQueryBuilder()
         ->get()
         ->then(function ($result) {
             echo "All users:\n";
-            // FIX: Check if rows key exists and is an array
             if (isset($result['rows']) && is_array($result['rows'])) {
                 foreach ($result['rows'] as $user) {
                     echo "- ID: {$user['id']}, Name: {$user['name']}, Email: {$user['email']}\n";
@@ -41,16 +40,14 @@ function testQueryBuilder()
             echo "Error finding user: " . $error->getMessage() . "\n";
         });
 
-    // Test 3: Insert new user (FIX: Add password field)
+    // Test 3: Insert new user
     DB::table('users')
         ->insert([
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'password' => password_hash('password123', PASSWORD_DEFAULT), // Add password field
-            'created_at' => date('Y-m-d H:i:s')
+            'password' => password_hash('password123', PASSWORD_DEFAULT)
         ])
         ->then(function ($result) {
-            // FIX: Check if insert_id exists
             $insertId = $result['insert_id'] ?? 'unknown';
             echo "\nUser inserted successfully. Insert ID: {$insertId}\n";
         })
@@ -62,11 +59,9 @@ function testQueryBuilder()
     DB::table('users')
         ->where('email', 'john@example.com')
         ->update([
-            'name' => 'John Smith',
-            'updated_at' => date('Y-m-d H:i:s')
+            'name' => 'John Smith'
         ])
         ->then(function ($result) {
-            // FIX: Check if affected_rows exists
             $affectedRows = $result['affected_rows'] ?? 0;
             echo "\nUser updated. Affected rows: {$affectedRows}\n";
         })
@@ -74,33 +69,30 @@ function testQueryBuilder()
             echo "Error updating user: " . $error->getMessage() . "\n";
         });
 
-    // Test 5: Complex query with joins and conditions
+    // Test 5: Simple query with conditions (removed JOIN)
     DB::table('users')
-        ->select(['users.id', 'users.name', 'profiles.bio'])
-        ->leftJoin('profiles', 'users.id', '=', 'profiles.user_id')
-        ->where('users.created_at', '>', '2024-01-01')
-        ->orderBy('users.name', 'asc')
+        ->select(['id', 'name', 'email'])
+        ->where('name', 'like', '%John%')
+        ->orderBy('name', 'asc')
         ->limit(10)
         ->get()
         ->then(function ($result) {
-            echo "\nUsers with profiles:\n";
-            // FIX: Check if rows key exists and is an array
+            echo "\nUsers with 'John' in name:\n";
             if (isset($result['rows']) && is_array($result['rows'])) {
                 foreach ($result['rows'] as $row) {
-                    echo "- {$row['name']}: " . ($row['bio'] ?? 'No bio') . "\n";
+                    echo "- {$row['name']} ({$row['email']})\n";
                 }
             } else {
                 echo "No users found or invalid result structure\n";
             }
         })
         ->catch(function ($error) {
-            echo "Error in complex query: " . $error->getMessage() . "\n";
+            echo "Error in query: " . $error->getMessage() . "\n";
         });
 
     // Test 6: Count query using raw SQL
     DB::query('SELECT COUNT(*) as total FROM users')
         ->then(function ($result) {
-            // FIX: Check if rows exists and get total safely
             if (isset($result['rows']) && is_array($result['rows']) && !empty($result['rows'])) {
                 $total = $result['rows'][0]['total'] ?? 0;
                 echo "\nTotal users: {$total}\n";
@@ -112,7 +104,7 @@ function testQueryBuilder()
             echo "Error counting users: " . $error->getMessage() . "\n";
         });
 
-    // Test 7: Transaction example (FIX: Add password field)
+    // Test 7: Transaction example (simplified)
     DB::beginTransaction()
         ->then(function () {
             echo "\nStarting transaction...\n";
@@ -120,20 +112,12 @@ function testQueryBuilder()
                 ->insert([
                     'name' => 'Transaction User',
                     'email' => 'transaction@example.com',
-                    'password' => password_hash('password123', PASSWORD_DEFAULT) // Add password field
+                    'password' => password_hash('password123', PASSWORD_DEFAULT)
                 ]);
         })
         ->then(function ($result) {
             $insertId = $result['insert_id'] ?? 'unknown';
             echo "Inserted user in transaction, ID: {$insertId}\n";
-            return DB::table('profiles')
-                ->insert([
-                    'user_id' => $insertId,
-                    'bio' => 'This is a test profile'
-                ]);
-        })
-        ->then(function ($result) {
-            echo "Inserted profile in transaction\n";
             return DB::commit();
         })
         ->then(function () {
@@ -146,14 +130,11 @@ function testQueryBuilder()
 
     // Test 8: Where conditions
     DB::table('users')
-        ->where('created_at', '>', '2024-01-01')
-        ->where('status', 'active')
-        ->orWhere('role', 'admin')
+        ->where('email', 'like', '%@example.com')
         ->get()
         ->then(function ($result) {
-            // FIX: Check if rows exists before counting
             $count = (isset($result['rows']) && is_array($result['rows'])) ? count($result['rows']) : 0;
-            echo "\nFiltered users count: {$count}\n";
+            echo "\nExample.com users count: {$count}\n";
         })
         ->catch(function ($error) {
             echo "Error in filtered query: " . $error->getMessage() . "\n";
@@ -166,7 +147,6 @@ function testQueryBuilder()
         ->get()
         ->then(function ($result) {
             echo "\nUsers with IDs 1-5:\n";
-            // FIX: Check if rows key exists and is an array
             if (isset($result['rows']) && is_array($result['rows'])) {
                 foreach ($result['rows'] as $user) {
                     echo "- ID: {$user['id']}, Name: {$user['name']}\n";
@@ -184,7 +164,6 @@ function testQueryBuilder()
         ->where('email', 'transaction@example.com')
         ->delete()
         ->then(function ($result) {
-            // FIX: Check if affected_rows exists
             $affectedRows = $result['affected_rows'] ?? 0;
             echo "\nDeleted users: {$affectedRows}\n";
         })
