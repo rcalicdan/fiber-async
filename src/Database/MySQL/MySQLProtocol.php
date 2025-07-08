@@ -62,6 +62,10 @@ class MySQLProtocol implements ProtocolInterface
     private const COM_SET_OPTION = 0x1b;
     private const COM_STMT_FETCH = 0x1c;
 
+    // Authentication response codes
+    private const AUTH_SWITCH_REQUEST = 0xFE;
+    private const AUTH_MORE_DATA = 0x01;
+
     private int $sequenceId = 0;
 
     public function parseHandshake(string $data): array
@@ -118,6 +122,11 @@ class MySQLProtocol implements ProtocolInterface
         $authData2 = substr($data, $offset, $authData2Length);
         $offset += $authData2Length;
         
+        // Skip null terminator if present
+        if ($offset < strlen($data) && $data[$offset] === "\0") {
+            $offset++;
+        }
+        
         // Auth plugin name (null-terminated string)
         $authPluginName = '';
         while ($offset < strlen($data) && $data[$offset] !== "\0") {
@@ -128,11 +137,11 @@ class MySQLProtocol implements ProtocolInterface
             'protocol_version' => $protocolVersion,
             'server_version' => $serverVersion,
             'connection_id' => $connectionId,
-            'auth_data' => $authData1 . $authData2,
+            'auth_data' => $authData1 . rtrim($authData2, "\0"),
             'capability_flags' => $capabilityFlags,
             'charset' => $charset,
             'status_flags' => $statusFlags,
-            'auth_plugin_name' => $authPluginName,
+            'auth_plugin_name' => $authPluginName ?: 'mysql_native_password',
         ];
     }
 
@@ -142,7 +151,8 @@ class MySQLProtocol implements ProtocolInterface
         
         $capabilities = self::CLIENT_PROTOCOL_41 | self::CLIENT_SECURE_CONNECTION | 
                        self::CLIENT_LONG_PASSWORD | self::CLIENT_TRANSACTIONS |
-                       self::CLIENT_MULTI_STATEMENTS | self::CLIENT_MULTI_RESULTS;
+                       self::CLIENT_MULTI_STATEMENTS | self::CLIENT_MULTI_RESULTS |
+                       self::CLIENT_PLUGIN_AUTH | self::CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA;
         
         if (!empty($database)) {
             $capabilities |= self::CLIENT_CONNECT_WITH_DB;
@@ -165,10 +175,17 @@ class MySQLProtocol implements ProtocolInterface
         // Username (null-terminated string)
         $packet .= $username . "\0";
         
-        // Password
+        // Password authentication data
         if (!empty($password)) {
-            $scramble = $this->scramblePassword($password, $handshake['auth_data']);
-            $packet .= chr(strlen($scramble)) . $scramble;
+            $authPlugin = $handshake['auth_plugin_name'];
+            $authData = $this->generateAuthResponse($password, $handshake['auth_data'], $authPlugin);
+            
+            if ($authPlugin === 'mysql_native_password') {
+                $packet .= chr(strlen($authData)) . $authData;
+            } else {
+                // For caching_sha2_password and others, use length-encoded string
+                $packet .= $this->encodeLengthEncodedString($authData);
+            }
         } else {
             $packet .= "\0";
         }
@@ -178,7 +195,19 @@ class MySQLProtocol implements ProtocolInterface
             $packet .= $database . "\0";
         }
         
+        // Auth plugin name (null-terminated string)
+        $packet .= $handshake['auth_plugin_name'] . "\0";
+        
         return $this->createPacket($packet);
+    }
+
+    public function createAuthSwitchResponse(string $password, string $authData, string $authPlugin): string
+    {
+        $this->sequenceId++;
+        
+        $authResponse = $this->generateAuthResponse($password, $authData, $authPlugin);
+        
+        return $this->createPacket($authResponse);
     }
 
     public function createQueryPacket(string $sql): string
@@ -251,6 +280,12 @@ class MySQLProtocol implements ProtocolInterface
         } elseif ($firstByte === 0xFF) {
             // Error packet
             return $this->parseError($data);
+        } elseif ($firstByte === self::AUTH_SWITCH_REQUEST) {
+            // Auth switch request
+            return $this->parseAuthSwitchRequest($data, $offset);
+        } elseif ($firstByte === self::AUTH_MORE_DATA) {
+            // Auth more data
+            return $this->parseAuthMoreData($data, $offset);
         } else {
             // Result set
             return $this->parseResultSet($data, $offset);
@@ -265,7 +300,7 @@ class MySQLProtocol implements ProtocolInterface
         $offset += 2;
         
         $sqlState = '';
-        if ($data[$offset] === '#') {
+        if ($offset < strlen($data) && $data[$offset] === '#') {
             $offset++;
             $sqlState = substr($data, $offset, 5);
             $offset += 5;
@@ -281,14 +316,59 @@ class MySQLProtocol implements ProtocolInterface
         ];
     }
 
-    private function createPacket(string $payload): string
+    private function parseAuthSwitchRequest(string $data, int $offset): array
     {
-        $length = strlen($payload);
-        $header = pack('V', $length)[0] . pack('V', $length)[1] . pack('V', $length)[2];
-        $header .= chr($this->sequenceId);
-        $this->sequenceId++;
+        $offset++; // Skip auth switch marker
         
-        return $header . $payload;
+        // Plugin name (null-terminated string)
+        $pluginName = '';
+        while ($offset < strlen($data) && $data[$offset] !== "\0") {
+            $pluginName .= $data[$offset++];
+        }
+        $offset++; // skip null terminator
+        
+        // Auth plugin data
+        $authData = substr($data, $offset, strlen($data) - $offset - 1); // Remove trailing null
+        
+        return [
+            'type' => 'auth_switch_request',
+            'plugin_name' => $pluginName,
+            'auth_data' => $authData,
+        ];
+    }
+
+    private function parseAuthMoreData(string $data, int $offset): array
+    {
+        $offset++; // Skip auth more data marker
+        
+        $authData = substr($data, $offset);
+        
+        return [
+            'type' => 'auth_more_data',
+            'data' => $authData,
+        ];
+    }
+
+    private function generateAuthResponse(string $password, string $authData, string $authPlugin): string
+    {
+        if (empty($password)) {
+            return '';
+        }
+        
+        switch ($authPlugin) {
+            case 'mysql_native_password':
+                return $this->scramblePassword($password, $authData);
+                
+            case 'caching_sha2_password':
+                return $this->scrambleCachingSha2Password($password, $authData);
+                
+            case 'sha256_password':
+                return $this->scrambleSha256Password($password, $authData);
+                
+            default:
+                // Default to mysql_native_password for unknown plugins
+                return $this->scramblePassword($password, $authData);
+        }
     }
 
     private function scramblePassword(string $password, string $scramble): string
@@ -307,6 +387,52 @@ class MySQLProtocol implements ProtocolInterface
         }
         
         return $result;
+    }
+
+    private function scrambleCachingSha2Password(string $password, string $scramble): string
+    {
+        if (empty($password)) {
+            return '';
+        }
+        
+        // Stage 1: SHA256(password)
+        $hash1 = hash('sha256', $password, true);
+        
+        // Stage 2: SHA256(SHA256(password))
+        $hash2 = hash('sha256', $hash1, true);
+        
+        // Stage 3: SHA256(SHA256(SHA256(password)), scramble)
+        $hash3 = hash('sha256', $hash2 . $scramble, true);
+        
+        // XOR hash1 with hash3
+        $result = '';
+        for ($i = 0; $i < strlen($hash1); $i++) {
+            $result .= chr(ord($hash1[$i]) ^ ord($hash3[$i]));
+        }
+        
+        return $result;
+    }
+
+    private function scrambleSha256Password(string $password, string $scramble): string
+    {
+        // Similar to caching_sha2_password but without caching
+        return $this->scrambleCachingSha2Password($password, $scramble);
+    }
+
+    private function createPacket(string $payload): string
+    {
+        $length = strlen($payload);
+        
+        // Handle packets larger than 16MB
+        if ($length >= 0xFFFFFF) {
+            throw new \InvalidArgumentException('Packet too large');
+        }
+        
+        $header = pack('V', $length)[0] . pack('V', $length)[1] . pack('V', $length)[2];
+        $header .= chr($this->sequenceId);
+        $this->sequenceId++;
+        
+        return $header . $payload;
     }
 
     private function parseOkPacket(string $data, int $offset): array
@@ -351,19 +477,32 @@ class MySQLProtocol implements ProtocolInterface
 
     private function readLengthEncodedInteger(string $data, int &$offset): int
     {
+        if ($offset >= strlen($data)) {
+            return 0;
+        }
+        
         $firstByte = ord($data[$offset++]);
         
         if ($firstByte < 0xFB) {
             return $firstByte;
         } elseif ($firstByte === 0xFC) {
+            if ($offset + 2 > strlen($data)) {
+                return 0;
+            }
             $result = unpack('v', substr($data, $offset, 2))[1];
             $offset += 2;
             return $result;
         } elseif ($firstByte === 0xFD) {
+            if ($offset + 3 > strlen($data)) {
+                return 0;
+            }
             $result = unpack('V', substr($data, $offset, 3) . "\0")[1];
             $offset += 3;
             return $result;
         } elseif ($firstByte === 0xFE) {
+            if ($offset + 8 > strlen($data)) {
+                return 0;
+            }
             $result = unpack('P', substr($data, $offset, 8))[1];
             $offset += 8;
             return $result;
