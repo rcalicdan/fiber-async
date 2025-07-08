@@ -159,52 +159,57 @@ class Connection
     {
         $ctx = $this->currentCommandContext;
 
-        if ($ctx->state === 'awaiting_prepare_ok') {
-            $ctx->result = $this->protocol->parsePrepareOk($packet);
-            $ctx->state = ($ctx->result->paramCount > 0) ? 'awaiting_param_defs' : 'awaiting_column_defs';
-            if ($ctx->result->paramCount == 0 && $ctx->result->columnCount == 0) {
-                $cmd->promise->resolve(new PreparedStatement($this->pool, $ctx->result->statementId, $ctx->result->paramCount, $ctx->result->columnCount));
-                $this->finishCurrentCommand();
-            }
-            return;
-        }
-
-        if ($ctx->state === 'awaiting_param_defs' && count($ctx->params) < $ctx->result->paramCount) {
-            if (!isset($response->warningCount)) $ctx->params[] = $this->protocol->parseFieldPacket($packet);
-            if (count($ctx->params) == $ctx->result->paramCount) {
-                $ctx->state = 'awaiting_column_defs';
-                if ($ctx->result->columnCount == 0) {
-                    $cmd->promise->resolve(new PreparedStatement($this->pool, $ctx->result->statementId, $ctx->result->paramCount, $ctx->result->columnCount));
+        if ($cmd->type === PendingCommand::TYPE_PREPARE) {
+            if ($ctx->state === 'awaiting_prepare_ok') {
+                $ctx->result = $this->protocol->parsePrepareOk($packet);
+                $ctx->state = ($ctx->result->paramCount > 0) ? 'awaiting_param_defs' : 'awaiting_column_defs';
+                if ($ctx->result->paramCount === 0 && $ctx->result->columnCount === 0) {
+                    $cmd->promise->resolve(new PreparedStatement($this->pool, $ctx->result->statementId, 0, 0));
                     $this->finishCurrentCommand();
                 }
+                return;
             }
-            return;
+
+            if ($ctx->state === 'awaiting_param_defs') {
+                if (isset($response->warningCount)) {
+                    $ctx->state = 'awaiting_column_defs';
+                    if ($ctx->result->columnCount === 0) {
+                        $cmd->promise->resolve(new PreparedStatement($this->pool, $ctx->result->statementId, $ctx->result->paramCount, 0));
+                        $this->finishCurrentCommand();
+                    }
+                } else {
+                    $ctx->params[] = $this->protocol->parseFieldPacket($packet);
+                }
+                return;
+            }
+
+            if ($ctx->state === 'awaiting_column_defs') {
+                if (isset($response->warningCount)) {
+                    $cmd->promise->resolve(new PreparedStatement($this->pool, $ctx->result->statementId, $ctx->result->paramCount, $ctx->result->columnCount));
+                    $this->finishCurrentCommand();
+                } else {
+                    $ctx->columns[] = $this->protocol->parseFieldPacket($packet);
+                }
+                return;
+            }
         }
 
-        if ($ctx->state === 'awaiting_column_defs' && $ctx->result->columnCount > 0 && count($ctx->columns) < $ctx->result->columnCount) {
-            if (!isset($response->warningCount)) $ctx->columns[] = $this->protocol->parseFieldPacket($packet);
-            if (count($ctx->columns) == $ctx->result->columnCount) {
-                $cmd->promise->resolve(new PreparedStatement($this->pool, $ctx->result->statementId, $ctx->result->paramCount, $ctx->result->columnCount));
-                $this->finishCurrentCommand();
-            }
-            return;
-        }
 
         if ($cmd->type === PendingCommand::TYPE_QUERY || ($cmd->type === PendingCommand::TYPE_EXECUTE && $cmd->data['hasRows'])) {
             if ($ctx->state === 'new') {
                 if (isset($response['column_count'])) {
                     $ctx->state = 'awaiting_fields';
                     $ctx->columnCount = $response['column_count'];
-                    $this->protocol->fields = [];
+                    $ctx->columns = [];
                 } else {
                     $cmd->promise->resolve(new StatementResult(null, $response->affectedRows, $response->lastInsertId));
                     $this->finishCurrentCommand();
                 }
             } elseif ($ctx->state === 'awaiting_fields') {
-                if (isset($response->warningCount) || count($this->protocol->fields) === $ctx->columnCount) {
+                if (isset($response->warningCount)) {
                     $ctx->state = 'awaiting_rows';
                 } else {
-                    $this->protocol->fields[] = $this->protocol->parseFieldPacket($packet);
+                    $ctx->columns[] = $this->protocol->parseFieldPacket($packet);
                 }
             } elseif ($ctx->state === 'awaiting_rows') {
                 if (isset($response->warningCount)) {
@@ -212,8 +217,8 @@ class Connection
                     $this->finishCurrentCommand();
                 } else {
                     $ctx->rows[] = $cmd->type === PendingCommand::TYPE_QUERY
-                        ? $this->protocol->parseRowDataPacket($packet, $this->protocol->fields)
-                        : $this->protocol->parseBinaryRowDataPacket($packet, $this->protocol->fields);
+                        ? $this->protocol->parseRowDataPacket($packet, $ctx->columns)
+                        : $this->protocol->parseBinaryRowDataPacket($packet, $ctx->columns);
                 }
             }
         } else {
