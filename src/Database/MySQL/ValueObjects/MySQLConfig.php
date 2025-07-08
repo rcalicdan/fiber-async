@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Database\MySQL\ValueObjects;
 
 use Dotenv\Dotenv;
 
-final readonly class MysqlConfig
+final class MysqlConfig
 {
     public string $host;
     public int $port;
@@ -17,7 +17,7 @@ final readonly class MysqlConfig
     public ?string $sslCa;
     public bool $sslVerifyPeer;
 
-    private static bool $isEnvLoaded = false;
+    private static bool $envLoaded = false;
 
     public function __construct(
         string $host,
@@ -45,11 +45,7 @@ final readonly class MysqlConfig
 
     public static function fromEnv(): self
     {
-        if (!self::$isEnvLoaded) {
-            $dotenv = Dotenv::createImmutable(getcwd());
-            $dotenv->load();
-            self::$isEnvLoaded = true;
-        }
+        self::loadEnv();
 
         return new self(
             $_ENV['DB_HOST'] ?? '127.0.0.1',
@@ -92,5 +88,41 @@ final readonly class MysqlConfig
         }
 
         return ['ssl' => $context];
+    }
+    
+    private static function loadEnv(): void
+    {
+        if (self::$envLoaded) {
+            return;
+        }
+
+        $envPath = self::findEnvFile();
+        
+        if ($envPath && file_exists($envPath . '/.env')) {
+            $dotenv = Dotenv::createImmutable($envPath);
+            $dotenv->safeLoad(); 
+        }
+        
+        self::$envLoaded = true;
+    }
+
+    private static function findEnvFile(): ?string
+    {
+        $currentDir = __DIR__;
+        $paths = [
+            getcwd(),
+            dirname($currentDir, 4),
+            dirname($currentDir, 5),
+            dirname($currentDir, 6),
+            $_SERVER['DOCUMENT_ROOT'] ?? '',
+        ];
+
+        foreach (array_unique($paths) as $path) {
+            if ($path && is_dir($path) && file_exists($path . '/.env')) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 }
