@@ -1,5 +1,4 @@
 <?php
-// src/Database/MySQL/MySQLClient.php
 
 namespace Rcalicdan\FiberAsync\Database\MySQL;
 
@@ -83,7 +82,7 @@ class MySQLClient implements DatabaseClientInterface
     public function beginTransaction(): PromiseInterface
     {
         if ($this->inTransaction) {
-            return AsyncPromise::reject(new DatabaseException('Transaction already in progress'));
+            reject(new DatabaseException('Transaction already in progress'));
         }
 
         return $this->query('START TRANSACTION')->then(function ($result) {
@@ -95,7 +94,7 @@ class MySQLClient implements DatabaseClientInterface
     public function commit(): PromiseInterface
     {
         if (!$this->inTransaction) {
-            return AsyncPromise::reject(new DatabaseException('No transaction in progress'));
+            reject(new DatabaseException('No transaction in progress'));
         }
 
         return $this->query('COMMIT')->then(function ($result) {
@@ -108,7 +107,7 @@ class MySQLClient implements DatabaseClientInterface
     public function rollback(): PromiseInterface
     {
         if (!$this->inTransaction) {
-            return AsyncPromise::reject(new DatabaseException('No transaction in progress'));
+            reject(new DatabaseException('No transaction in progress'));
         }
 
         return $this->query('ROLLBACK')->then(function ($result) {
@@ -146,7 +145,7 @@ class MySQLClient implements DatabaseClientInterface
     private function getConnection(): PromiseInterface
     {
         if ($this->inTransaction && $this->transactionConnection) {
-            return AsyncPromise::resolve($this->transactionConnection);
+            resolve($this->transactionConnection);
         }
 
         return $this->connectionPool->getConnection()->then(function (MySQLConnection $connection) {

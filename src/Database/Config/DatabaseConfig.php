@@ -3,6 +3,8 @@
 
 namespace Rcalicdan\FiberAsync\Database\Config;
 
+use Dotenv\Dotenv;
+
 class DatabaseConfig
 {
     public readonly string $host;
@@ -16,8 +18,12 @@ class DatabaseConfig
     public readonly int $minConnections;
     public readonly array $options;
 
+    private static bool $envLoaded = false;
+
     public function __construct(array $config = [])
     {
+        $this->loadEnv();
+        
         $this->host = $config['host'] ?? $this->getEnv('DB_HOST', 'localhost');
         $this->port = (int) ($config['port'] ?? $this->getEnv('DB_PORT', 3306));
         $this->database = $config['database'] ?? $this->getEnv('DB_DATABASE', '');
@@ -28,6 +34,40 @@ class DatabaseConfig
         $this->maxConnections = (int) ($config['max_connections'] ?? $this->getEnv('DB_MAX_CONNECTIONS', 10));
         $this->minConnections = (int) ($config['min_connections'] ?? $this->getEnv('DB_MIN_CONNECTIONS', 1));
         $this->options = $config['options'] ?? [];
+    }
+
+    private function loadEnv(): void
+    {
+        if (self::$envLoaded) {
+            return;
+        }
+
+        $envPath = $this->findEnvFile();
+        
+        if ($envPath && file_exists($envPath . '/.env')) {
+            $dotenv = Dotenv::createImmutable($envPath);
+            $dotenv->safeLoad(); 
+        }
+        
+        self::$envLoaded = true;
+    }
+
+    private function findEnvFile(): ?string
+    {
+        $paths = [
+            getcwd(),                      
+            dirname(__DIR__, 3),            
+            dirname(__DIR__, 4),          
+            $_SERVER['DOCUMENT_ROOT'] ?? '',    
+        ];
+
+        foreach ($paths as $path) {
+            if ($path && file_exists($path . '/.env')) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 
     public function getEnv(string $key, mixed $default = null): mixed

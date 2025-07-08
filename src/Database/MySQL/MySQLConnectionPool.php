@@ -33,11 +33,11 @@ class MySQLConnectionPool
             $this->busyConnections[] = $connection;
             $this->stats['connections_reused']++;
             $this->stats['pool_hits']++;
-            return AsyncPromise::resolve($connection);
+            return resolve($connection);
         }
         
         if (count($this->busyConnections) >= $this->config->maxConnections) {
-            return AsyncPromise::reject(new ConnectionException('Maximum connections reached'));
+            return reject(new ConnectionException('Maximum connections reached'));
         }
         
         $this->stats['pool_misses']++;
