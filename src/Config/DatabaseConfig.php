@@ -1,96 +1,58 @@
 <?php
-// src/Config/DatabaseConfig.php
+// src/Database/Config/DatabaseConfig.php
 
-namespace Rcalicdan\FiberAsync\Config;
+namespace Rcalicdan\FiberAsync\Database\Config;
 
-use Dotenv\Dotenv;
-
-final readonly class DatabaseConfig
+class DatabaseConfig
 {
-    public string $driver;
-    public string $host;
-    public int $port;
-    public string $database;
-    public string $username;
-    public string $password;
-    public string $charset;
+    public readonly string $host;
+    public readonly int $port;
+    public readonly string $database;
+    public readonly string $username;
+    public readonly string $password;
+    public readonly string $charset;
+    public readonly int $timeout;
+    public readonly int $maxConnections;
+    public readonly int $minConnections;
+    public readonly array $options;
 
-    public function __construct()
+    public function __construct(array $config = [])
     {
-        $this->loadEnv();
-
-        $this->driver = $_ENV['DB_DRIVER'] ?? 'mysql';
-        $this->host = $_ENV['DB_HOST'] ?? 'localhost';
-        $this->port = (int) ($_ENV['DB_PORT'] ?? $this->getDefaultPort());
-        $this->database = $_ENV['DB_DATABASE'] ?? '';
-        $this->username = $_ENV['DB_USERNAME'] ?? '';
-        $this->password = $_ENV['DB_PASSWORD'] ?? '';
-        $this->charset = $_ENV['DB_CHARSET'] ?? 'utf8mb4';
-
-        $this->validate();
+        $this->host = $config['host'] ?? $this->getEnv('DB_HOST', 'localhost');
+        $this->port = (int) ($config['port'] ?? $this->getEnv('DB_PORT', 3306));
+        $this->database = $config['database'] ?? $this->getEnv('DB_DATABASE', '');
+        $this->username = $config['username'] ?? $this->getEnv('DB_USERNAME', '');
+        $this->password = $config['password'] ?? $this->getEnv('DB_PASSWORD', '');
+        $this->charset = $config['charset'] ?? $this->getEnv('DB_CHARSET', 'utf8mb4');
+        $this->timeout = (int) ($config['timeout'] ?? $this->getEnv('DB_TIMEOUT', 30));
+        $this->maxConnections = (int) ($config['max_connections'] ?? $this->getEnv('DB_MAX_CONNECTIONS', 10));
+        $this->minConnections = (int) ($config['min_connections'] ?? $this->getEnv('DB_MIN_CONNECTIONS', 1));
+        $this->options = $config['options'] ?? [];
     }
 
-    private function loadEnv(): void
+    public function getEnv(string $key, mixed $default = null): mixed
     {
-        static $loaded = false;
-
-        if ($loaded) {
-            return;
-        }
-
-        $rootPath = $this->findProjectRoot();
-
-        if (file_exists($rootPath . '/.env')) {
-            $dotenv = Dotenv::createImmutable($rootPath);
-            $dotenv->load();
-        }
-
-        $loaded = true;
+        return $_ENV[$key] ?? getenv($key) ?: $default;
     }
 
-    private function findProjectRoot(): string
+    public static function fromEnv(): self
     {
-        $currentDir = __DIR__;
-
-        while ($currentDir !== '/') {
-            if (file_exists($currentDir . '/composer.json') || file_exists($currentDir . '/.env')) {
-                return $currentDir;
-            }
-            $currentDir = dirname($currentDir);
-        }
-
-        return getcwd();
+        return new self();
     }
 
-    private function getDefaultPort(): int
+    public function toArray(): array
     {
-        return match ($this->driver) {
-            'mysql' => 3306,
-            'pgsql' => 5432,
-            default => 3306
-        };
-    }
-
-    private function validate(): void
-    {
-        if (empty($this->driver)) {
-            throw new \InvalidArgumentException('Database driver is required');
-        }
-
-        if (empty($this->host)) {
-            throw new \InvalidArgumentException('Database host is required');
-        }
-
-        if (empty($this->database)) {
-            throw new \InvalidArgumentException('Database name is required');
-        }
-
-        if (empty($this->username)) {
-            throw new \InvalidArgumentException('Database username is required');
-        }
-
-        if (!in_array($this->driver, ['mysql', 'pgsql'])) {
-            throw new \InvalidArgumentException("Unsupported database driver: {$this->driver}");
-        }
+        return [
+            'host' => $this->host,
+            'port' => $this->port,
+            'database' => $this->database,
+            'username' => $this->username,
+            'password' => $this->password,
+            'charset' => $this->charset,
+            'timeout' => $this->timeout,
+            'max_connections' => $this->maxConnections,
+            'min_connections' => $this->minConnections,
+            'options' => $this->options,
+        ];
     }
 }
