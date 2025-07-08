@@ -26,27 +26,26 @@ final readonly class PromiseCollectionHandler
      * @param  array  $promises  Array of Promise instances
      * @return PromiseInterface Promise that resolves with array of all results
      */
-    public function all(array $promises): PromiseInterface
+  public function all(array $promises): PromiseInterface
     {
         return new AsyncPromise(function ($resolve, $reject) use ($promises) {
             if (empty($promises)) {
                 $resolve([]);
-
                 return;
             }
-
             $results = [];
             $completed = 0;
             $total = count($promises);
-
             foreach ($promises as $index => $promise) {
                 $promise
                     ->then(function ($value) use (&$results, &$completed, $total, $index, $resolve) {
                         $results[$index] = $value;
                         $completed++;
                         if ($completed === $total) {
-                            ksort($results); // Maintain order
-                            $resolve(array_values($results));
+                            ksort($results);
+                            // --- THE FIX IS HERE ---
+                            // Remove array_values() to preserve associative keys
+                            $resolve($results); 
                         }
                     })
                     ->catch(function ($reason) use ($reject) {

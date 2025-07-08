@@ -12,8 +12,10 @@ use Rcalicdan\FiberAsync\Managers\DatabaseManager;
 use Rcalicdan\FiberAsync\Managers\FiberManager;
 use Rcalicdan\FiberAsync\Managers\FileManager;
 use Rcalicdan\FiberAsync\Managers\HttpRequestManager;
+use Rcalicdan\FiberAsync\Managers\SocketManager;
 use Rcalicdan\FiberAsync\Managers\StreamManager;
 use Rcalicdan\FiberAsync\Managers\TimerManager;
+use Rcalicdan\FiberAsync\ValueObjects\StreamWatcher;
 
 /**
  * Main event loop implementation for asynchronous operations using PHP Fibers.
@@ -82,6 +84,7 @@ class AsyncEventLoop implements EventLoopInterface
      * @var FileManager Manages file operations
      */
     private FileManager $fileManager;
+    private SocketManager $socketManager;
 
     /**
      * Initialize the event loop with all required managers and handlers.
@@ -99,6 +102,7 @@ class AsyncEventLoop implements EventLoopInterface
         $this->activityHandler = new ActivityHandler;
         $this->stateHandler = new StateHandler;
         $this->fileManager = new FileManager;
+        $this->socketManager = new SocketManager;
 
         // Initialize handlers that depend on managers
         $this->workHandler = new WorkHandler(
@@ -108,12 +112,18 @@ class AsyncEventLoop implements EventLoopInterface
             fiberManager: $this->fiberManager,
             tickHandler: $this->tickHandler,
             fileManager: $this->fileManager,
+            socketManager: $this->socketManager,
         );
 
         $this->sleepHandler = new SleepHandler(
             $this->timerManager,
             $this->fiberManager
         );
+    }
+
+    public function getSocketManager(): SocketManager
+    {
+        return $this->socketManager;
     }
 
     /**
@@ -185,9 +195,14 @@ class AsyncEventLoop implements EventLoopInterface
      * @param  resource  $stream  The stream resource to watch
      * @param  callable  $callback  Function to execute when stream has data
      */
-    public function addStreamWatcher($stream, callable $callback): void
+    public function addStreamWatcher($stream, callable $callback, string $type = StreamWatcher::TYPE_READ): string
     {
-        $this->streamManager->addStreamWatcher($stream, $callback);
+        return $this->streamManager->addStreamWatcher($stream, $callback, $type);
+    }
+
+    public function removeStreamWatcher(string $watcherId): bool
+    {
+        return $this->streamManager->removeStreamWatcher($watcherId);
     }
 
     /**

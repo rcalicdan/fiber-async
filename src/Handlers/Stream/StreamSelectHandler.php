@@ -1,60 +1,50 @@
 <?php
-
 namespace Rcalicdan\FiberAsync\Handlers\Stream;
-
 use Rcalicdan\FiberAsync\ValueObjects\StreamWatcher;
 
-/**
- * Handles stream selection and readiness detection.
- *
- * This class uses PHP's stream_select() function to monitor multiple
- * streams for readiness and process those that are ready for I/O.
- */
 final readonly class StreamSelectHandler
 {
-    /**
-     * Select streams that are ready for reading.
-     *
-     * Uses stream_select() to check which streams in the watcher array
-     * are ready for reading without blocking.
-     *
-     * @param  StreamWatcher[]  $watchers  Array of stream watchers to check
-     * @return resource[] Array of streams that are ready for reading
-     */
     public function selectStreams(array $watchers): array
     {
         if (empty($watchers)) {
             return [];
         }
-
         $read = $write = $except = [];
-
         foreach ($watchers as $watcher) {
-            $read[] = $watcher->getStream();
+            // Ensure we only add valid resources to the select arrays
+            if (is_resource($watcher->getStream())) {
+                if ($watcher->getType() === StreamWatcher::TYPE_READ) {
+                    $read[] = $watcher->getStream();
+                } elseif ($watcher->getType() === StreamWatcher::TYPE_WRITE) {
+                    $write[] = $watcher->getStream();
+                }
+            }
         }
 
-        $result = stream_select($read, $write, $except, 0);
+        if (empty($read) && empty($write) && empty($except)) {
+            return [];
+        }
 
-        return $result > 0 ? $read : [];
+        @stream_select($read, $write, $except, 0);
+        return array_merge($read, $write);
     }
 
-    /**
-     * Process streams that are ready for I/O.
-     *
-     * Finds the watchers corresponding to ready streams, executes their
-     * callbacks, and removes them from the watchers array.
-     *
-     * @param  resource[]  $readyStreams  Array of ready streams
-     * @param  StreamWatcher[]  &$watchers  Reference to watchers array
-     */
     public function processReadyStreams(array $readyStreams, array &$watchers): void
     {
         foreach ($readyStreams as $stream) {
             foreach ($watchers as $key => $watcher) {
-                if ($watcher->getStream() === $stream) {
+                if (is_resource($watcher->getStream()) && $watcher->getStream() === $stream) {
                     $watcher->execute();
-                    unset($watchers[$key]);
 
+                    // --- THE FIX IS HERE ---
+                    // ONLY remove one-shot (WRITE) watchers automatically.
+                    // READ watchers must be persistent for a connection and
+                    // must be cleaned up manually (e.g., in Connection::close()).
+                    if ($watcher->getType() === StreamWatcher::TYPE_WRITE) {
+                        unset($watchers[$key]);
+                    }
+
+                    // We found the watcher for this stream, so we can stop searching.
                     break;
                 }
             }
