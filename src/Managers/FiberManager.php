@@ -88,20 +88,9 @@ class FiberManager
         return $processed;
     }
 
-     public function hasFibers(): bool
+    public function hasFibers(): bool
     {
-        // --- THE FIX IS HERE ---
-        // A suspended fiber is still "work" that the loop needs to tend to.
-        // It's waiting for an external event (like I/O) to be resumed.
-        // The loop must continue to run to check for these events.
-        foreach($this->fibers as $fiber) {
-            if (!$fiber->isTerminated()) return true;
-        }
-        foreach($this->suspendedFibers as $fiber) {
-            if (!$fiber->isTerminated()) return true;
-        }
-        
-        return false;
+        return ! empty($this->fibers) || ! empty($this->suspendedFibers);
     }
 
     public function hasActiveFibers(): bool
