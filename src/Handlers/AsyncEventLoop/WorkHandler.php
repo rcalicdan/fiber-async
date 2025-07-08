@@ -2,7 +2,6 @@
 
 namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop;
 
-use Rcalicdan\FiberAsync\Managers\DatabaseManager;
 use Rcalicdan\FiberAsync\Managers\FiberManager;
 use Rcalicdan\FiberAsync\Managers\FileManager;
 use Rcalicdan\FiberAsync\Managers\HttpRequestManager;
@@ -24,7 +23,6 @@ final readonly class WorkHandler
     private FiberManager $fiberManager;
     private TickHandler $tickHandler;
     private FileManager $fileManager;
-    private DatabaseManager $databaseManager;
 
     /**
      * @param  TimerManager  $timerManager  Handles timer-based operations
@@ -33,7 +31,6 @@ final readonly class WorkHandler
      * @param  FiberManager  $fiberManager  Handles fiber execution and management
      * @param  TickHandler  $tickHandler  Handles next-tick and deferred callbacks
      * @param  FileManager  $fileManager  Handles file operations
-     * @param  DatabaseManager  $databaseManager  Handles database operations
      */
     public function __construct(
         TimerManager $timerManager,
@@ -42,7 +39,6 @@ final readonly class WorkHandler
         FiberManager $fiberManager,
         TickHandler $tickHandler,
         FileManager $fileManager,
-        DatabaseManager $databaseManager
     ) {
         $this->timerManager = $timerManager;
         $this->httpRequestManager = $httpRequestManager;
@@ -50,7 +46,6 @@ final readonly class WorkHandler
         $this->fiberManager = $fiberManager;
         $this->tickHandler = $tickHandler;
         $this->fileManager = $fileManager;
-        $this->databaseManager = $databaseManager;
     }
 
     /**
@@ -69,7 +64,6 @@ final readonly class WorkHandler
             $this->httpRequestManager->hasRequests() ||
             $this->fileManager->hasWork() ||
             $this->streamManager->hasWatchers() ||
-            $this->databaseManager->hasPendingQueries() ||
             $this->fiberManager->hasFibers();
     }
 
@@ -93,10 +87,6 @@ final readonly class WorkHandler
         $workDone = false;
 
         if ($this->tickHandler->processNextTickCallbacks()) {
-            $workDone = true;
-        }
-
-        if ($this->databaseManager->processPendingQueries()) {
             $workDone = true;
         }
 
