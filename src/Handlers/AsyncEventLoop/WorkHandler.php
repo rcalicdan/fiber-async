@@ -1,11 +1,14 @@
 <?php
+
 namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop;
+
 use Rcalicdan\FiberAsync\Managers\FiberManager;
 use Rcalicdan\FiberAsync\Managers\FileManager;
 use Rcalicdan\FiberAsync\Managers\HttpRequestManager;
+use Rcalicdan\FiberAsync\Managers\SocketManager;
 use Rcalicdan\FiberAsync\Managers\StreamManager;
-use Rcalicdan\FiberAsync\Managers\TimerManager;
-use Rcalicdan\FiberAsync\Managers\SocketManager; // Add this
+use Rcalicdan\FiberAsync\Managers\TimerManager; // Add this
+
 final readonly class WorkHandler
 {
     private TimerManager $timerManager;
@@ -15,6 +18,7 @@ final readonly class WorkHandler
     private TickHandler $tickHandler;
     private FileManager $fileManager;
     private SocketManager $socketManager; // Add this
+
     public function __construct(
         TimerManager $timerManager,
         HttpRequestManager $httpRequestManager,
@@ -32,6 +36,7 @@ final readonly class WorkHandler
         $this->fileManager = $fileManager;
         $this->socketManager = $socketManager; // Add this
     }
+
     public function hasWork(): bool
     {
         return $this->tickHandler->hasTickCallbacks() ||
@@ -43,6 +48,7 @@ final readonly class WorkHandler
             $this->socketManager->hasWatchers() || // Add this
             $this->fiberManager->hasFibers();
     }
+
     public function processWork(): bool
     {
         $workDone = false;
@@ -74,6 +80,7 @@ final readonly class WorkHandler
         if ($this->tickHandler->processDeferredCallbacks()) {
             $workDone = true;
         }
+
         return $workDone;
     }
 }

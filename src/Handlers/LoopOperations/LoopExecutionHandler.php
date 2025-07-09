@@ -11,6 +11,7 @@ use Throwable;
 final readonly class LoopExecutionHandler
 {
     private AsyncOperations $asyncOps;
+
     public function __construct(AsyncOperations $asyncOps)
     {
         $this->asyncOps = $asyncOps;
@@ -40,7 +41,7 @@ final readonly class LoopExecutionHandler
 
         while (! $completed) {
             $loop->run();
-            
+
             if (! $completed) {
                 usleep(100);
             }
@@ -49,6 +50,7 @@ final readonly class LoopExecutionHandler
         if ($error !== null) {
             throw $error instanceof Throwable ? $error : new Exception((string) $error);
         }
+
         return $result;
     }
 

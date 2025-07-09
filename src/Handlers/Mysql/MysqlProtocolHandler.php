@@ -64,27 +64,27 @@ class MysqlProtocolHandler
     const MYSQL_TYPE_TIMESTAMP = 0x07;
     const MYSQL_TYPE_LONGLONG = 0x08;
     const MYSQL_TYPE_INT24 = 0x09;
-    const MYSQL_TYPE_DATE = 0x0a;
-    const MYSQL_TYPE_TIME = 0x0b;
-    const MYSQL_TYPE_DATETIME = 0x0c;
-    const MYSQL_TYPE_YEAR = 0x0d;
-    const MYSQL_TYPE_NEWDATE = 0x0e;
-    const MYSQL_TYPE_VARCHAR = 0x0f;
+    const MYSQL_TYPE_DATE = 0x0A;
+    const MYSQL_TYPE_TIME = 0x0B;
+    const MYSQL_TYPE_DATETIME = 0x0C;
+    const MYSQL_TYPE_YEAR = 0x0D;
+    const MYSQL_TYPE_NEWDATE = 0x0E;
+    const MYSQL_TYPE_VARCHAR = 0x0F;
     const MYSQL_TYPE_BIT = 0x10;
     const MYSQL_TYPE_TIMESTAMP2 = 0x11;
     const MYSQL_TYPE_DATETIME2 = 0x12;
     const MYSQL_TYPE_TIME2 = 0x13;
-    const MYSQL_TYPE_JSON = 0xf5;
-    const MYSQL_TYPE_NEWDECIMAL = 0xf6;
-    const MYSQL_TYPE_ENUM = 0xf7;
-    const MYSQL_TYPE_SET = 0xf8;
-    const MYSQL_TYPE_TINY_BLOB = 0xf9;
-    const MYSQL_TYPE_MEDIUM_BLOB = 0xfa;
-    const MYSQL_TYPE_LONG_BLOB = 0xfb;
-    const MYSQL_TYPE_BLOB = 0xfc;
-    const MYSQL_TYPE_VAR_STRING = 0xfd;
-    const MYSQL_TYPE_STRING = 0xfe;
-    const MYSQL_TYPE_GEOMETRY = 0xff;
+    const MYSQL_TYPE_JSON = 0xF5;
+    const MYSQL_TYPE_NEWDECIMAL = 0xF6;
+    const MYSQL_TYPE_ENUM = 0xF7;
+    const MYSQL_TYPE_SET = 0xF8;
+    const MYSQL_TYPE_TINY_BLOB = 0xF9;
+    const MYSQL_TYPE_MEDIUM_BLOB = 0xFA;
+    const MYSQL_TYPE_LONG_BLOB = 0xFB;
+    const MYSQL_TYPE_BLOB = 0xFC;
+    const MYSQL_TYPE_VAR_STRING = 0xFD;
+    const MYSQL_TYPE_STRING = 0xFE;
+    const MYSQL_TYPE_GEOMETRY = 0xFF;
 
     public int $sequenceId = 0;
     public ?object $handshake = null;
@@ -94,20 +94,21 @@ class MysqlProtocolHandler
 
     public function createSslRequestPacket(int $clientFlags): string
     {
-        $data = pack('V', $clientFlags) . pack('V', 0x01000000) . pack('C', 33) . str_repeat("\0", 23);
+        $data = pack('V', $clientFlags).pack('V', 0x01000000).pack('C', 33).str_repeat("\0", 23);
+
         return $this->buildPacket($data, 1);
     }
-    
+
     public function parseHandshakePacket(string $packet): void
     {
-        $this->handshake = (object)[];
+        $this->handshake = (object) [];
         $this->handshake->protocolVersion = BinaryUtils::readInt1($packet);
         $this->handshake->serverVersion = BinaryUtils::readNullTerminatedString($packet);
         $this->handshake->connectionId = unpack('V', BinaryUtils::readBytes($packet, 4))[1];
         $this->handshake->authPluginDataPart1 = BinaryUtils::readBytes($packet, 8);
         BinaryUtils::readBytes($packet, 1);
         $capabilityFlagsLower = unpack('v', BinaryUtils::readBytes($packet, 2))[1];
-        
+
         $this->handshake->characterSet = BinaryUtils::readInt1($packet);
         $this->handshake->statusFlags = unpack('v', BinaryUtils::readBytes($packet, 2))[1];
         $capabilityFlagsUpper = unpack('v', BinaryUtils::readBytes($packet, 2))[1];
@@ -122,7 +123,7 @@ class MysqlProtocolHandler
         $len = max(13, $authPluginDataLen - 8);
         $this->handshake->authPluginDataPart2 = BinaryUtils::readBytes($packet, $len);
         if ($this->handshake->capabilityFlags & self::CLIENT_PLUGIN_AUTH) {
-             $this->handshake->authPluginName = BinaryUtils::readNullTerminatedString($packet);
+            $this->handshake->authPluginName = BinaryUtils::readNullTerminatedString($packet);
         }
         $this->useDeprecateEof = ($this->handshake->capabilityFlags & self::CLIENT_DEPRECATE_EOF) > 0;
     }
@@ -134,16 +135,16 @@ class MysqlProtocolHandler
         $database = $config->database;
 
         $pluginName = $this->handshake->authPluginName ?? 'mysql_native_password';
-        $authResponse = $this->getAuthResponse($pluginName, $password, $this->handshake->authPluginDataPart1 . $this->handshake->authPluginDataPart2);
+        $authResponse = $this->getAuthResponse($pluginName, $password, $this->handshake->authPluginDataPart1.$this->handshake->authPluginDataPart2);
 
         $data = pack('V', $clientFlags)
-            . pack('V', 0x01000000)
-            . pack('C', 33)
-            . str_repeat("\0", 23)
-            . $user . "\0"
-            . BinaryUtils::writeLengthEncodedInteger(strlen($authResponse)) . $authResponse
-            . ($database ? $database . "\0" : "\0")
-            . ($this->handshake->capabilityFlags & self::CLIENT_PLUGIN_AUTH ? $pluginName . "\0" : '');
+            .pack('V', 0x01000000)
+            .pack('C', 33)
+            .str_repeat("\0", 23)
+            .$user."\0"
+            .BinaryUtils::writeLengthEncodedInteger(strlen($authResponse)).$authResponse
+            .($database ? $database."\0" : "\0")
+            .($this->handshake->capabilityFlags & self::CLIENT_PLUGIN_AUTH ? $pluginName."\0" : '');
 
         return $this->buildPacket($data);
     }
@@ -151,49 +152,59 @@ class MysqlProtocolHandler
     public function createAuthSwitchResponsePacket(string $password, string $authData): string
     {
         $authResponse = $this->getAuthResponse('caching_sha2_password', $password, $authData);
+
         return $this->buildPacket($authResponse);
     }
-    
+
     private function getAuthResponse(string $plugin, string $password, string $scramble): string
     {
         if ($plugin === 'mysql_native_password') {
-            if ($password === '') return '';
+            if ($password === '') {
+                return '';
+            }
             $stage1 = sha1($password, true);
             $stage2 = sha1($stage1, true);
-            $stage3 = sha1($scramble . $stage2, true);
+            $stage3 = sha1($scramble.$stage2, true);
+
             return $stage1 ^ $stage3;
         }
         if ($plugin === 'caching_sha2_password') {
-            if ($password === '') return "\0";
+            if ($password === '') {
+                return "\0";
+            }
             $hash1 = hash('sha256', $password, true);
             $hash2 = hash('sha256', $hash1, true);
-            $hash3 = hash('sha256', $hash2 . $scramble, true);
+            $hash3 = hash('sha256', $hash2.$scramble, true);
+
             return $hash1 ^ $hash3;
         }
+
         throw new Exception("Unsupported auth plugin: {$plugin}");
     }
-    
+
     public function createQueryPacket(string $sql): string
     {
-        $data = pack('C', self::COM_QUERY) . $sql;
+        $data = pack('C', self::COM_QUERY).$sql;
+
         return $this->buildPacket($data);
     }
 
     public function createPreparePacket(string $sql): string
     {
-        $data = pack('C', self::COM_STMT_PREPARE) . $sql;
+        $data = pack('C', self::COM_STMT_PREPARE).$sql;
+
         return $this->buildPacket($data);
     }
-    
+
     public function createStatementExecutePacket(int $statementId, array $params): string
     {
-        $data = pack('V', $statementId) . pack('C', 0x00) . pack('V', 1);
+        $data = pack('V', $statementId).pack('C', 0x00).pack('V', 1);
 
-        if (!empty($params)) {
+        if (! empty($params)) {
             $types = '';
             $values = '';
             $nullBitmap = str_repeat("\0", (int) ((\count($params) + 7) / 8));
-            
+
             foreach ($params as $i => $param) {
                 if ($param === null) {
                     $nullBitmap[$i >> 3] = $nullBitmap[$i >> 3] | (1 << ($i & 7));
@@ -206,20 +217,20 @@ class MysqlProtocolHandler
                     $values .= pack('d', $param);
                 } else {
                     $types .= 's';
-                    $values .= BinaryUtils::writeLengthEncodedString((string)$param);
+                    $values .= BinaryUtils::writeLengthEncodedString((string) $param);
                 }
             }
-            $data .= $nullBitmap . pack('C', 1) . $types . $values;
+            $data .= $nullBitmap.pack('C', 1).$types.$values;
         }
-        
-        return $this->buildPacket(pack('C', self::COM_STMT_EXECUTE) . $data);
+
+        return $this->buildPacket(pack('C', self::COM_STMT_EXECUTE).$data);
     }
 
     public function createStatementClosePacket(int $statementId): string
     {
-        return $this->buildPacket(pack('C', self::COM_STMT_CLOSE) . pack('V', $statementId));
+        return $this->buildPacket(pack('C', self::COM_STMT_CLOSE).pack('V', $statementId));
     }
-    
+
     public function createQuitPacket(): string
     {
         return $this->buildPacket(pack('C', self::COM_QUIT));
@@ -235,7 +246,10 @@ class MysqlProtocolHandler
             return $this->parseErrorPacket($packet);
         }
         if ($firstByte === 0xFE && strlen($packet) < 9) {
-            if ($this->useDeprecateEof) return $this->parseOkPacket($packet, true);
+            if ($this->useDeprecateEof) {
+                return $this->parseOkPacket($packet, true);
+            }
+
             return $this->parseEofPacket($packet);
         }
         if ($firstByte === 0xFE && strlen($packet) > 9) {
@@ -244,7 +258,8 @@ class MysqlProtocolHandler
         if ($firstByte < 0xFB) {
             return ['column_count' => BinaryUtils::readLengthEncodedInteger($packet)];
         }
-        throw new Exception("Unknown response packet: " . bin2hex($packet));
+
+        throw new Exception('Unknown response packet: '.bin2hex($packet));
     }
 
     public function parseOkPacket(string $packet, bool $isEof = false): object
@@ -273,7 +288,7 @@ class MysqlProtocolHandler
         BinaryUtils::readInt1($packet);
         $warningCount = unpack('v', BinaryUtils::readBytes($packet, 2))[1];
         $this->serverstatus = unpack('v', BinaryUtils::readBytes($packet, 2))[1];
-        
+
         return (object) compact('warningCount');
     }
 
@@ -282,6 +297,7 @@ class MysqlProtocolHandler
         BinaryUtils::readInt1($packet);
         $pluginName = BinaryUtils::readNullTerminatedString($packet);
         $authData = $packet;
+
         return (object) compact('pluginName', 'authData');
     }
 
@@ -291,7 +307,7 @@ class MysqlProtocolHandler
         $statementId = unpack('V', BinaryUtils::readBytes($packet, 4))[1];
         $columnCount = unpack('v', BinaryUtils::readBytes($packet, 2))[1];
         $paramCount = unpack('v', BinaryUtils::readBytes($packet, 2))[1];
-        
+
         return (object) compact('statementId', 'columnCount', 'paramCount');
     }
 
@@ -307,7 +323,7 @@ class MysqlProtocolHandler
         BinaryUtils::readBytes($packet, 2);
         BinaryUtils::readBytes($packet, 4);
         $type = BinaryUtils::readInt1($packet);
-        
+
         return (object) compact('name', 'type');
     }
 
@@ -317,6 +333,7 @@ class MysqlProtocolHandler
         foreach ($fields as $field) {
             $row[$field->name] = BinaryUtils::readLengthEncodedString($packet);
         }
+
         return $row;
     }
 
@@ -325,7 +342,7 @@ class MysqlProtocolHandler
         BinaryUtils::readInt1($packet);
         $nullBitmapLen = (count($fields) + 7 + 2) >> 3;
         $nullBitmap = BinaryUtils::readBytes($packet, $nullBitmapLen);
-        
+
         $row = [];
         foreach ($fields as $i => $field) {
             $offset = $i + 2;
@@ -335,9 +352,10 @@ class MysqlProtocolHandler
                 $row[$field->name] = $this->parseColumnValue($packet, $field->type);
             }
         }
+
         return $row;
     }
-    
+
     private function parseColumnValue(string &$packet, int $type)
     {
         switch ($type) {
@@ -358,7 +376,8 @@ class MysqlProtocolHandler
         }
         $header = pack('V', strlen($data));
         $header[3] = pack('C', $this->sequenceId++);
-        return substr($header, 0, 4) . $data;
+
+        return substr($header, 0, 4).$data;
     }
 
     public function resetSequence(): void

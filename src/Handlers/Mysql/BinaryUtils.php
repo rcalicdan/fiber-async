@@ -105,7 +105,7 @@ final class BinaryUtils
 
         return null;
     }
-    
+
     public static function writeLengthEncodedInteger(int $n): string
     {
         if ($n < 251) {
@@ -126,6 +126,7 @@ final class BinaryUtils
         if ($s === null) {
             return "\xFB";
         }
-        return self::writeLengthEncodedInteger(strlen($s)) . $s;
+
+        return self::writeLengthEncodedInteger(strlen($s)).$s;
     }
 }

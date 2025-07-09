@@ -1,5 +1,7 @@
 <?php
+
 namespace Rcalicdan\FiberAsync\Handlers\Stream;
+
 use Rcalicdan\FiberAsync\ValueObjects\StreamWatcher;
 
 final readonly class StreamSelectHandler
@@ -26,6 +28,7 @@ final readonly class StreamSelectHandler
         }
 
         @stream_select($read, $write, $except, 0);
+
         return array_merge($read, $write);
     }
 

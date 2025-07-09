@@ -11,25 +11,32 @@ class StreamManager
     private array $watchers = [];
     private StreamWatcherHandler $watcherHandler;
     private StreamSelectHandler $selectHandler;
+
     public function __construct()
     {
         $this->watcherHandler = new StreamWatcherHandler;
         $this->selectHandler = new StreamSelectHandler;
     }
+
     public function addStreamWatcher($stream, callable $callback, string $type = StreamWatcher::TYPE_READ): string
     {
         $watcher = $this->watcherHandler->createWatcher($stream, $callback, $type);
         $this->watchers[$watcher->getId()] = $watcher;
+
         return $watcher->getId();
     }
+
     public function removeStreamWatcher(string $watcherId): bool
     {
         if (isset($this->watchers[$watcherId])) {
             unset($this->watchers[$watcherId]);
+
             return true;
         }
+
         return false;
     }
+
     public function processStreams(): void
     {
         // Pass array_values because stream_select needs a numerically indexed array
@@ -38,6 +45,7 @@ class StreamManager
             $this->selectHandler->processReadyStreams($readyStreams, $this->watchers);
         }
     }
+
     public function hasWatchers(): bool
     {
         return ! empty($this->watchers);

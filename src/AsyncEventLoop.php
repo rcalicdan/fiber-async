@@ -8,7 +8,6 @@ use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\SleepHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\StateHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\TickHandler;
 use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\WorkHandler;
-use Rcalicdan\FiberAsync\Managers\DatabaseManager;
 use Rcalicdan\FiberAsync\Managers\FiberManager;
 use Rcalicdan\FiberAsync\Managers\FileManager;
 use Rcalicdan\FiberAsync\Managers\HttpRequestManager;

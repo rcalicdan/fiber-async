@@ -6,24 +6,29 @@ class SocketManager
 {
     private array $readWatchers = [];
     private array $writeWatchers = [];
+
     public function addReadWatcher($socket, callable $callback): void
     {
         $socketId = (int) $socket;
         $this->readWatchers[$socketId] = ['socket' => $socket, 'callback' => $callback];
     }
+
     public function addWriteWatcher($socket, callable $callback): void
     {
         $socketId = (int) $socket;
         $this->writeWatchers[$socketId] = ['socket' => $socket, 'callback' => $callback];
     }
+
     public function removeReadWatcher($socket): void
     {
         unset($this->readWatchers[(int) $socket]);
     }
+
     public function removeWriteWatcher($socket): void
     {
         unset($this->writeWatchers[(int) $socket]);
     }
+
     public function processSockets(): bool
     {
         if (empty($this->readWatchers) && empty($this->writeWatchers)) {
@@ -57,12 +62,15 @@ class SocketManager
                 }
             }
         }
+
         return true;
     }
+
     public function hasWatchers(): bool
     {
         return ! empty($this->readWatchers) || ! empty($this->writeWatchers);
     }
+
     public function clearAllWatchersForSocket($socket): void
     {
         $this->removeReadWatcher($socket);
