@@ -25,6 +25,7 @@ class Socket
         }
 
         $readLength = $length ?? 8192; // Default to 8192 if not specified
+
         return $this->operations->read($this, $readLength, $timeout);
     }
 

@@ -1,4 +1,5 @@
 <?php
+
 namespace Rcalicdan\FiberAsync\Database\Protocol;
 
 use Rcalicdan\MySQLBinaryProtocol\Packet\PayloadReader;
@@ -19,7 +20,7 @@ final class ColumnDefinition
 
     public static function fromPayload(PayloadReader $reader): self
     {
-        $col = new self();
+        $col = new self;
         $col->catalog = $reader->readLengthEncodedStringOrNull();
         $col->schema = $reader->readLengthEncodedStringOrNull();
         $col->table = $reader->readLengthEncodedStringOrNull();

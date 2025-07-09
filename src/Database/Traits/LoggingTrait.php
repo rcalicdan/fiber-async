@@ -24,7 +24,7 @@ trait LoggingTrait
     public function debug(string $message): void
     {
         if ($this->debugEnabled) {
-            echo $message . "\n";
+            echo $message."\n";
         }
     }
 

@@ -1,5 +1,4 @@
 <?php
-// src/Database/Protocol/ResultSetParser.php
 
 namespace Rcalicdan\FiberAsync\Database\Protocol;
 
@@ -18,7 +17,7 @@ class ResultSetParser
 
     public function processPayload(string $rawPayload): void
     {
-        $factory = new \Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory();
+        $factory = new \Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
         $reader = $factory->createFromString($rawPayload);
         $firstByte = ord($rawPayload[0]);
 
@@ -26,6 +25,7 @@ class ResultSetParser
         if ($this->state === self::STATE_ROWS && $firstByte === 0xFE && strlen($rawPayload) < 9) {
             $this->finalResult = $this->rows;
             $this->isComplete = true;
+
             return;
         }
 
@@ -33,15 +33,18 @@ class ResultSetParser
             case self::STATE_INIT:
                 $this->columnCount = $reader->readLengthEncodedIntegerOrNull();
                 $this->state = self::STATE_COLUMNS;
+
                 break;
 
             case self::STATE_COLUMNS:
                 // An EOF packet follows the column definitions.
                 if ($firstByte === 0xFE && strlen($rawPayload) < 9) {
                     $this->state = self::STATE_ROWS;
+
                     break;
                 }
                 $this->columns[] = ColumnDefinition::fromPayload($reader);
+
                 break;
 
             case self::STATE_ROWS:
@@ -50,6 +53,7 @@ class ResultSetParser
                     $row[$column->name] = $reader->readLengthEncodedStringOrNull();
                 }
                 $this->rows[] = $row;
+
                 break;
         }
     }

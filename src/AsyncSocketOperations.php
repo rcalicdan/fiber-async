@@ -6,7 +6,6 @@ use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\Exceptions\ConnectionException;
 use Rcalicdan\FiberAsync\Exceptions\SocketException;
 use Rcalicdan\FiberAsync\Exceptions\TimeoutException;
-use Rcalicdan\FiberAsync\Facades\Async;
 use Rcalicdan\FiberAsync\ValueObjects\Socket;
 
 class AsyncSocketOperations
@@ -27,12 +26,12 @@ class AsyncSocketOperations
 
     public function connect(string $address, ?float $timeout = 10.0, array $contextOptions = []): PromiseInterface
     {
-        // This method already uses the correct timer cancellation pattern. It is OK.
         return new AsyncPromise(function ($resolve, $reject) use ($address, $timeout, $contextOptions) {
             $context = stream_context_create($contextOptions);
             $socket = @stream_socket_client($address, $errno, $errstr, 0, STREAM_CLIENT_ASYNC_CONNECT, $context);
             if ($socket === false) {
                 $reject(new ConnectionException("Failed to create socket: {$errstr}", $errno));
+
                 return;
             }
 
@@ -131,7 +130,7 @@ class AsyncSocketOperations
 
     public function close(Socket $client): void
     {
-        if ($client->getResource() && !$client->isClosed()) {
+        if ($client->getResource() && ! $client->isClosed()) {
             $this->loop->getSocketManager()->clearAllWatchersForSocket($client->getResource());
             @fclose($client->getResource());
         }

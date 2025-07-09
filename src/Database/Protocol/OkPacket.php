@@ -1,4 +1,5 @@
 <?php
+
 namespace Rcalicdan\FiberAsync\Database\Protocol;
 
 use Rcalicdan\MySQLBinaryProtocol\Packet\PayloadReader;
@@ -27,15 +28,16 @@ final class OkPacket
         $lastInsertId = $reader->readLengthEncodedIntegerOrNull() ?? 0;
         $statusFlags = $reader->readFixedInteger(2);
         $warnings = $reader->readFixedInteger(2);
-        
+
         // Read info string if available
         $info = '';
+
         try {
             $info = $reader->readRestOfPacketString();
         } catch (\Exception $e) {
             // Info string is optional
         }
-        
+
         return new self($affectedRows, $lastInsertId, $statusFlags, $warnings, $info);
     }
 }

@@ -1,80 +1,101 @@
 <?php
 
+// src/Managers/SocketManager.php
+
 namespace Rcalicdan\FiberAsync\Managers;
 
 class SocketManager
 {
-    private array $readWatchers = [];
-    private array $writeWatchers = [];
+    private array $readQueues = [];
+    private array $writeQueues = [];
 
     public function addReadWatcher($socket, callable $callback): void
     {
         $socketId = (int) $socket;
-        $this->readWatchers[$socketId] = ['socket' => $socket, 'callback' => $callback];
+        // Ensure a queue exists for this socket
+        if (! isset($this->readQueues[$socketId])) {
+            $this->readQueues[$socketId] = [
+                'socket' => $socket,
+                'callbacks' => [],
+            ];
+        }
+        // Add the new callback to the queue for this socket
+        $this->readQueues[$socketId]['callbacks'][] = $callback;
     }
 
     public function addWriteWatcher($socket, callable $callback): void
     {
         $socketId = (int) $socket;
-        $this->writeWatchers[$socketId] = ['socket' => $socket, 'callback' => $callback];
+        // Ensure a queue exists for this socket
+        if (! isset($this->writeQueues[$socketId])) {
+            $this->writeQueues[$socketId] = [
+                'socket' => $socket,
+                'callbacks' => [],
+            ];
+        }
+        // Add the new callback to the queue for this socket
+        $this->writeQueues[$socketId]['callbacks'][] = $callback;
     }
 
     public function removeReadWatcher($socket): void
     {
-        unset($this->readWatchers[(int) $socket]);
+        unset($this->readQueues[(int) $socket]);
     }
 
     public function removeWriteWatcher($socket): void
     {
-        unset($this->writeWatchers[(int) $socket]);
+        unset($this->writeQueues[(int) $socket]);
     }
 
     public function processSockets(): bool
     {
-        if (empty($this->readWatchers) && empty($this->writeWatchers)) {
+        if (empty($this->readQueues) && empty($this->writeQueues)) {
             return false;
         }
 
-        $read = [];
-        foreach ($this->readWatchers as $socketId => $watcher) {
-            $read[$socketId] = $watcher['socket'];
-        }
+        $readSockets = array_column($this->readQueues, 'socket');
+        $writeSockets = array_column($this->writeQueues, 'socket');
 
-        $write = [];
-        foreach ($this->writeWatchers as $socketId => $watcher) {
-            $write[$socketId] = $watcher['socket'];
+        if (! $readSockets && ! $writeSockets) {
+            return false;
         }
 
         $except = null;
-
-        if (empty($read) && empty($write)) {
-            return false;
-        }
-
-        $numChanged = @stream_select($read, $write, $except, 0, 0);
+        // Use a small timeout to prevent busy-looping on the CPU
+        $numChanged = @stream_select($readSockets, $writeSockets, $except, 0, 1000);
 
         if ($numChanged === false || $numChanged === 0) {
             return false;
         }
 
-        // $write now contains only the ready sockets, with keys preserved.
-        foreach ($write as $socketId => $socket) {
-            if (isset($this->writeWatchers[$socketId])) {
-                $watcher = $this->writeWatchers[$socketId];
-                unset($this->writeWatchers[$socketId]);
-                ($watcher['callback'])();
+        // --- THE CRITICAL FIX ---
+        // For each socket that is ready, execute ALL pending callbacks in its queue.
+
+        foreach ($writeSockets as $socket) {
+            $socketId = (int) $socket;
+            if (isset($this->writeQueues[$socketId])) {
+                $queue = $this->writeQueues[$socketId]['callbacks'];
+                unset($this->writeQueues[$socketId]); // The entire queue is processed now
+                foreach ($queue as $callback) {
+                    try {
+                        $callback();
+                    } catch (\Throwable $e) { /* Log error if necessary */
+                    }
+                }
             }
         }
 
-        // $read now contains only the ready sockets, with keys preserved.
-        foreach ($read as $socketId => $socket) {
-            if (isset($this->readWatchers[$socketId])) {
-                $watcher = $this->readWatchers[$socketId];
-                // Do NOT unset the read watcher here unless it's a one-off read.
-                // The read() operation in AsyncSocketOperations is one-shot, so it's
-                // expecting its watcher to be removed.
-                unset($this->readWatchers[$socketId]);
-                ($watcher['callback'])();
+        foreach ($readSockets as $socket) {
+            $socketId = (int) $socket;
+            if (isset($this->readQueues[$socketId])) {
+                $queue = $this->readQueues[$socketId]['callbacks'];
+                unset($this->readQueues[$socketId]); // The entire queue is processed now
+                foreach ($queue as $callback) {
+                    try {
+                        $callback();
+                    } catch (\Throwable $e) { /* Log error if necessary */
+                    }
+                }
             }
         }
 
@@ -83,7 +104,7 @@ class SocketManager
 
     public function hasWatchers(): bool
     {
-        return ! empty($this->readWatchers) || ! empty($this->writeWatchers);
+        return ! empty($this->readQueues) || ! empty($this->writeQueues);
     }
 
     public function clearAllWatchersForSocket($socket): void

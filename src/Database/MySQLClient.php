@@ -2,16 +2,17 @@
 
 namespace Rcalicdan\FiberAsync\Database;
 
+use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\Database\Handlers\ConnectionHandler;
 use Rcalicdan\FiberAsync\Database\Handlers\QueryHandler;
 use Rcalicdan\FiberAsync\Database\Protocol\PacketBuilder;
+use Rcalicdan\FiberAsync\Database\Traits\LoggingTrait;
+use Rcalicdan\FiberAsync\Mutex;
 use Rcalicdan\FiberAsync\ValueObjects\Socket;
-use Rcalicdan\MySQLBinaryProtocol\Packet\UncompressedPacketReader;
+use Rcalicdan\MySQLBinaryProtocol\Constants\CapabilityFlags;
 use Rcalicdan\MySQLBinaryProtocol\Factory\DefaultPacketReaderFactory;
 use Rcalicdan\MySQLBinaryProtocol\Frame\Handshake\HandshakeV10;
-use Rcalicdan\MySQLBinaryProtocol\Constants\CapabilityFlags;
-use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
-use Rcalicdan\FiberAsync\Database\Traits\LoggingTrait;
+use Rcalicdan\MySQLBinaryProtocol\Packet\UncompressedPacketReader;
 
 class MySQLClient
 {
@@ -23,6 +24,7 @@ class MySQLClient
     private ?PacketBuilder $packetBuilder = null;
     private UncompressedPacketReader $packetReader;
     private int $sequenceId = 0;
+    private ?Mutex $mutex = null;
 
     private ConnectionHandler $connectionHandler;
     private QueryHandler $queryHandler;
@@ -30,11 +32,13 @@ class MySQLClient
     public function __construct(array $connectionParams)
     {
         $this->connectionParams = $connectionParams;
-        $this->packetReader = (new DefaultPacketReaderFactory())->createWithDefaultSettings();
+        $this->packetReader = (new DefaultPacketReaderFactory)->createWithDefaultSettings();
 
         if (isset($connectionParams['debug']) && $connectionParams['debug']) {
             $this->enableDebug();
         }
+
+        $this->mutex = new Mutex;
 
         $this->connectionHandler = new ConnectionHandler($this);
         $this->queryHandler = new QueryHandler($this);
@@ -53,6 +57,21 @@ class MySQLClient
     public function close(): PromiseInterface
     {
         return $this->connectionHandler->close();
+    }
+
+    public function getQueryHandler(): QueryHandler
+    {
+        return $this->queryHandler;
+    }
+
+    public function getMutex(): Mutex
+    {
+        return $this->mutex;
+    }
+
+    public function prepare(string $sql): PromiseInterface
+    {
+        return $this->queryHandler->prepare($sql);
     }
 
     public function getSocket(): ?Socket

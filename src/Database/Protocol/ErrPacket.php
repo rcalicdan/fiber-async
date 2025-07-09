@@ -1,4 +1,5 @@
 <?php
+
 namespace Rcalicdan\FiberAsync\Database\Protocol;
 
 use Rcalicdan\MySQLBinaryProtocol\Packet\PayloadReader;
@@ -16,7 +17,7 @@ final class ErrPacket extends \Exception
         $reader->readFixedString(1); // Skip SQL state marker '#'
         $sqlState = $reader->readFixedString(5);
         $errorMessage = $reader->readRestOfPacketString();
-        
+
         $packet = new self($errorMessage, $errorCode);
         $packet->errorCode = $errorCode;
         $packet->sqlState = $sqlState;
