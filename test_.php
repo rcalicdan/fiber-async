@@ -20,7 +20,7 @@ AsyncLoop::run(function() {
         echo "Connected successfully!\n\n";
 
         echo "Testing basic query...\n";
-        $result = Async::await($client->query("SELECT * from users"));
+        $result = Async::await($client->query("SELECT 1 as test"));
         print_r($result);
 
     } catch (\Throwable $e) {

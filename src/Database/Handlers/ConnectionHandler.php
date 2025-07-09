@@ -37,10 +37,7 @@ class ConnectionHandler
             $this->client->setSocket($socket);
             $this->client->setSequenceId(0);
 
-            // Handle handshake
             Async::await($this->handleHandshake());
-
-            // Handle authentication
             Async::await($this->authHandler->authenticate());
 
             echo "Authentication successful!\n";
