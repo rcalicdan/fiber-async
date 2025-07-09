@@ -18,13 +18,14 @@ class Socket
         stream_set_blocking($this->resource, false);
     }
 
-    public function read(int $length = 8192, ?float $timeout = 10.0): PromiseInterface
+    public function read(?int $length = null, ?float $timeout = 10.0): PromiseInterface
     {
         if ($this->isClosed) {
             return $this->operations->getAsyncOps()->reject(new \Rcalicdan\FiberAsync\Exceptions\SocketException('Socket is closed.'));
         }
 
-        return $this->operations->read($this, $length, $timeout);
+        $readLength = $length ?? 8192; // Default to 8192 if not specified
+        return $this->operations->read($this, $readLength, $timeout);
     }
 
     public function write(string $data, ?float $timeout = 10.0): PromiseInterface
