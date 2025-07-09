@@ -10,7 +10,7 @@ use Rcalicdan\FiberAsync\Facades\AsyncLoop;
 
 // --- Main Configuration ---
 const NUM_OPERATIONS = 500;
-const POOL_SIZE = 120; // The number of "lanes on our bridge"
+const POOL_SIZE = 50; // The number of "lanes on our bridge"
 const READ_QUERY = 'SELECT SLEEP(0.05)'; // Use a query with latency to see the benefit
 const TEST_TABLE = 'benchmark_table';
 const DB_CONFIG = [

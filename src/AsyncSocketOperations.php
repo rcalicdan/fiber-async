@@ -96,35 +96,40 @@ class AsyncSocketOperations
     public function write(Socket $client, string $data, ?float $timeout = 10.0): PromiseInterface
     {
         return new AsyncPromise(function ($resolve, $reject) use ($client, $data, $timeout) {
-            $socketResource = $client->getResource();
             $timerId = null;
 
-            $writeCallback = function () use ($client, $data, $resolve, $reject, &$timerId) {
-                if ($timerId) {
-                    $this->loop->cancelTimer($timerId);
-                    $timerId = null;
-                }
-                // Watcher is one-shot, so it's already removed by the manager.
-
-                $bytesWritten = @fwrite($client->getResource(), $data);
-                if ($bytesWritten === false) {
-                    $reject(new SocketException('Failed to write to socket.'));
-                } else {
-                    // This assumes a full write, which is usually true for non-blocking sockets
-                    // with reasonable buffer sizes. A more robust implementation would loop here,
-                    // but for this library's use case, this is sufficient and correct.
-                    $resolve($bytesWritten);
-                }
-            };
-
-            $this->loop->getSocketManager()->addWriteWatcher($socketResource, $writeCallback);
+            // Start the robust, recursive write operation.
+            $this->performWrite($client, $data, $resolve, $reject, $timerId);
 
             if ($timeout > 0) {
-                $timerId = $this->loop->addTimer($timeout, function () use ($reject, $socketResource, $timeout) {
-                    $this->loop->getSocketManager()->removeWriteWatcher($socketResource);
-                    $reject(new TimeoutException("Write operation timed out after {$timeout} seconds."));
+                $timerId = $this->loop->addTimer($timeout, function () use ($client, $reject) {
+                    // On timeout, clear any pending watchers for this socket.
+                    $this->loop->getSocketManager()->removeWriteWatcher($client->getResource());
+                    $reject(new TimeoutException("Write operation timed out."));
                 });
             }
+        });
+    }
+
+    private function performWrite(Socket $client, string $data, callable $resolve, callable $reject, ?string &$timerId): void
+    {
+        $this->loop->getSocketManager()->addWriteWatcher($client->getResource(), function () use ($client, $data, $resolve, $reject, &$timerId) {
+            $bytesWritten = @fwrite($client->getResource(), $data);
+
+            if ($bytesWritten === false) {
+                if ($timerId) $this->loop->cancelTimer($timerId);
+                $reject(new SocketException('Failed to write to socket.'));
+                return;
+            }
+
+            if ($bytesWritten === strlen($data)) {
+                if ($timerId) $this->loop->cancelTimer($timerId);
+                $resolve($bytesWritten);
+                return;
+            }
+
+            $remainingData = substr($data, $bytesWritten);
+            $this->performWrite($client, $remainingData, $resolve, $reject, $timerId);
         });
     }
 
