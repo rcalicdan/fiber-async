@@ -31,7 +31,7 @@ class PacketHandler
                         return;
                     }
                 } catch (IncompleteBufferException $e) {
-                    echo "Incomplete buffer, need more data...\n";
+                    $this->client->debug("Incomplete buffer, need more data...\n");
                 }
 
                 $data = Async::await($socket->read(8192));
@@ -39,12 +39,12 @@ class PacketHandler
                     if ($retryCount === 0) {
                         throw new \RuntimeException("Connection closed by server or no data received");
                     }
-                    echo "No more data available, retries: {$retryCount}\n";
+                    $this->client->debug("No more data available, retries: {$retryCount}\n");
                     break;
                 }
 
-                echo "Read " . strlen($data) . " bytes from socket (attempt " . ($retryCount + 1) . ")\n";
-                echo "Data hex: " . bin2hex(substr($data, 0, min(50, strlen($data)))) . "\n";
+                $this->client->debug("Read " . strlen($data) . " bytes from socket (attempt " . ($retryCount + 1) . ")\n");
+                $this->client->debug("Data hex: " . bin2hex(substr($data, 0, min(50, strlen($data)))) . "\n");
 
                 $packetReader->append($data);
                 $retryCount++;
@@ -58,7 +58,7 @@ class PacketHandler
     {
         $length = strlen($payload);
         $header = pack('V', $length)[0] . pack('V', $length)[1] . pack('V', $length)[2] . chr($sequenceId);
-        echo "Sending packet - Length: {$length}, Sequence ID: {$sequenceId}\n";
+        $this->client->debug("Sending packet - Length: {$length}, Sequence ID: {$sequenceId}\n");
 
         $socket = $this->client->getSocket();
         return $socket->write($header . $payload);
@@ -80,7 +80,7 @@ class PacketHandler
                 }
 
                 $buffer .= $data;
-                echo "Read " . strlen($data) . " bytes, buffer size: " . strlen($buffer) . "\n";
+                $this->client->debug("Read " . strlen($data) . " bytes, buffer size: " . strlen($buffer) . "\n");
 
                 if (!$headerRead && strlen($buffer) >= 4) {
                     $payloadLength = ord($buffer[0]) | (ord($buffer[1]) << 8) | (ord($buffer[2]) << 16);
@@ -88,13 +88,13 @@ class PacketHandler
                     $totalBytesNeeded = 4 + $payloadLength;
                     $headerRead = true;
 
-                    echo "Packet header: length={$payloadLength}, sequenceId={$sequenceId}\n";
+                    $this->client->debug("Packet header: length={$payloadLength}, sequenceId={$sequenceId}\n");
                 }
 
                 if ($headerRead && strlen($buffer) >= $totalBytesNeeded) {
                     $payload = substr($buffer, 4, $payloadLength);
-                    echo "Extracted payload length: " . strlen($payload) . "\n";
-                    echo "Payload hex: " . bin2hex(substr($payload, 0, min(40, strlen($payload)))) . "\n";
+                    $this->client->debug("Extracted payload length: " . strlen($payload) . "\n");
+                    $this->client->debug("Payload hex: " . bin2hex(substr($payload, 0, min(40, strlen($payload)))) . "\n");
 
                     $this->client->incrementSequenceId();
                     return $payload;

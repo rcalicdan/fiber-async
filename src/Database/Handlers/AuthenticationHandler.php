@@ -28,10 +28,11 @@ class AuthenticationHandler
             
             $responsePacket = $packetBuilder->buildHandshakeResponse($handshake->authData);
 
-            echo "Sending auth packet...\n";
+            $this->client->debug("Sending auth packet...");
+
             Async::await($this->packetHandler->sendPacket($responsePacket, 1));
 
-            echo "Reading auth response...\n";
+            $this->client->debug("Reading auth response...");
             $authResult = Async::await($this->readAuthResponse());
 
             if (!($authResult instanceof OkPacket)) {
@@ -57,19 +58,19 @@ class AuthenticationHandler
             try {
                 Async::await($this->packetHandler->processPacket($parser));
             } catch (\Exception $e) {
-                echo "Error processing auth response packet: " . $e->getMessage() . "\n";
+                $this->client->debug("Error processing auth response packet: " . $e->getMessage());
                 throw $e;
             }
 
-            echo "Auth response payload length: " . strlen($payload) . "\n";
+            $this->client->debug("Auth response payload length: " . strlen($payload) . "\n");
 
             if ($payload === '') {
                 throw new \RuntimeException("Authentication response payload is empty");
             }
 
-            if (strlen($payload) > 0) {
-                echo "First byte: 0x" . sprintf('%02x', ord($payload[0])) . "\n";
-                echo "Payload hex: " . bin2hex(substr($payload, 0, min(20, strlen($payload)))) . "\n";
+            if ($this->client->isDebugEnabled() && strlen($payload) > 0) {
+                $this->client->debug("First byte: 0x" . sprintf('%02x', ord($payload[0])) . "\n");
+                $this->client->debugHex("Payload hex: ", substr($payload, 0, min(20, strlen($payload))));
             }
 
             $firstByte = ord($payload[0]);
@@ -77,19 +78,19 @@ class AuthenticationHandler
             $reader = $factory->createFromString($payload);
 
             if ($firstByte === 0x00) {
-                echo "Received OK packet\n";
+                $this->client->debug("Received OK packet\n");
                 return OkPacket::fromPayload($reader);
             }
             if ($firstByte === 0xFF) {
-                echo "Received ERROR packet\n";
+                $this->client->debug("Received ERROR packet\n");
                 throw ErrPacket::fromPayload($reader);
             }
             if ($firstByte === 0xFE) {
-                echo "Received auth switch packet\n";
+                $this->client->debug("Received auth switch packet\n");
                 throw new \RuntimeException("Auth method switch not implemented");
             }
             if ($firstByte === 0x01) {
-                echo "Received auth more data packet\n";
+                $this->client->debug("Received auth more data packet\n");
                 return Async::await($this->handleCachingSha2PasswordAuth($payload));
             }
 
@@ -105,15 +106,15 @@ class AuthenticationHandler
             }
 
             $authFlag = ord($payload[1]);
-            echo "Auth flag: 0x" . sprintf('%02x', $authFlag) . "\n";
+            $this->client->debug("Auth flag: 0x" . sprintf('%02x', $authFlag) . "\n");
 
             if ($authFlag === 0x03) {
-                echo "Fast auth success\n";
+                $this->client->debug("Fast auth success\n");
                 return new OkPacket(0, 0, 0, 0, '');
             }
 
             if ($authFlag === 0x04) {
-                echo "Full authentication required\n";
+                $this->client->debug("Full authentication required\n");
                 return Async::await($this->handleFullAuthentication());
             }
 
@@ -129,7 +130,7 @@ class AuthenticationHandler
 
             $response = $password === '' ? "\x00" : "\x02"; // Request public key
 
-            echo "Sending auth continuation packet\n";
+            $this->client->debug("Sending auth continuation packet\n");
             $sequenceId = $this->client->getSequenceId();
             Async::await($this->packetHandler->sendPacket($response, $sequenceId + 1));
             $this->client->incrementSequenceId();
@@ -141,12 +142,12 @@ class AuthenticationHandler
             };
             Async::await($this->packetHandler->processPacket($keyParser));
 
-            echo "Received public key, length: " . strlen($keyPayload) . "\n";
+            $this->client->debug("Received public key, length: " . strlen($keyPayload) . "\n");
 
             // Encrypt password
             $encryptedPassword = $this->encryptPasswordWithPublicKey($password, $keyPayload);
 
-            echo "Sending encrypted password, length: " . strlen($encryptedPassword) . "\n";
+            $this->client->debug("Sending encrypted password, length: " . strlen($encryptedPassword) . "\n");
             $sequenceId = $this->client->getSequenceId();
             Async::await($this->packetHandler->sendPacket($encryptedPassword, $sequenceId + 1));
             $this->client->incrementSequenceId();
@@ -157,8 +158,8 @@ class AuthenticationHandler
 
     private function encryptPasswordWithPublicKey(string $password, string $publicKeyData): string
     {
-        echo "Raw public key data length: " . strlen($publicKeyData) . "\n";
-        echo "First 50 bytes: " . bin2hex(substr($publicKeyData, 0, 50)) . "\n";
+        $this->client->debug("Raw public key data length: " . strlen($publicKeyData) . "\n");
+        $this->client->debug("First 50 bytes: " . bin2hex(substr($publicKeyData, 0, 50)) . "\n");
 
         if (ord($publicKeyData[0]) !== 0x01) {
             throw new \RuntimeException("Expected public key packet to start with 0x01, got: 0x" . sprintf('%02x', ord($publicKeyData[0])));
@@ -174,7 +175,7 @@ class AuthenticationHandler
             throw new \RuntimeException("Invalid public key format. Expected PEM format.");
         }
 
-        echo "Public key received (first 100 chars): " . substr($publicKeyPem, 0, 100) . "...\n";
+        $this->client->debug("Public key received (first 100 chars): " . substr($publicKeyPem, 0, 100) . "...\n");
 
         // Create XOR'd password
         $passwordBytes = $password . "\x00";
@@ -242,11 +243,11 @@ class AuthenticationHandler
             $reader = $factory->createFromString($payload);
 
             if ($firstByte === 0x00) {
-                echo "Final authentication successful!\n";
+                $this->client->debug("Final authentication successful!\n");
                 return OkPacket::fromPayload($reader);
             }
             if ($firstByte === 0xFF) {
-                echo "Final authentication failed\n";
+                $this->client->debug("Final authentication failed\n");
                 throw ErrPacket::fromPayload($reader);
             }
 

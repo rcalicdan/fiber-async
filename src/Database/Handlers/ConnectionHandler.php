@@ -40,7 +40,7 @@ class ConnectionHandler
             Async::await($this->handleHandshake());
             Async::await($this->authHandler->authenticate());
 
-            echo "Authentication successful!\n";
+            $this->client->debug("Authentication successful!\n");
 
             // Reset packet reader and sequence ID after successful auth
             $this->client->setPacketReader((new DefaultPacketReaderFactory())->createWithDefaultSettings());
@@ -73,7 +73,7 @@ class ConnectionHandler
     private function handleHandshake(): PromiseInterface
     {
         return Async::async(function () {
-            echo "Reading handshake...\n";
+            $this->client->debug("Reading handshake...\n");
             
             $handshakeParser = new HandshakeParser(
                 new HandshakeV10Builder(), 
@@ -83,8 +83,9 @@ class ConnectionHandler
             Async::await($this->packetHandler->processPacket($handshakeParser));
 
             $handshake = $this->client->getHandshake();
-            echo "Handshake received. Server version: " . $handshake->serverVersion . "\n";
-            echo "Auth plugin: " . $handshake->authPlugin . "\n";
+            
+            $this->client->debug("Handshake received. Server version: " . $handshake->serverVersion . "\n");
+            $this->client->debug("Auth plugin: " . $handshake->authPlugin . "\n");
 
             // Create packet builder
             $clientCapabilities = $this->client->getClientCapabilities();

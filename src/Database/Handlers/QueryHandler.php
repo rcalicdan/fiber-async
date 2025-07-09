@@ -24,7 +24,7 @@ class QueryHandler
     public function query(string $sql): PromiseInterface
     {
         return Async::async(function () use ($sql) {
-            echo "Executing query: {$sql}\n";
+            $this->client->debug("Executing query: {$sql}\n");
 
             $packetBuilder = $this->client->getPacketBuilder();
             $queryPacket = $packetBuilder->buildQueryPacket($sql);
@@ -44,21 +44,21 @@ class QueryHandler
             }
 
             $firstByte = ord($payload[0]);
-            echo "First byte: 0x" . sprintf('%02x', $firstByte) . "\n";
+            $this->client->debug("First byte: 0x" . sprintf('%02x', $firstByte) . "\n");
 
             $factory = new \Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory();
             $reader = $factory->createFromString($payload);
 
             if ($firstByte === 0x00) {
-                echo "Received OK packet\n";
+                $this->client->debug("Received OK packet\n");
                 return OkPacket::fromPayload($reader);
             }
             if ($firstByte === 0xFF) {
-                echo "Received ERROR packet\n";
+                $this->client->debug("Received ERROR packet\n");
                 throw ErrPacket::fromPayload($reader);
             }
 
-            echo "Received result set with {$firstByte} columns\n";
+            $this->client->debug("Received result set with {$firstByte} columns\n");
             return Async::await($this->parseResultSetBody($reader));
         })();
     }
@@ -68,16 +68,16 @@ class QueryHandler
         return Async::async(function () use ($initialReader) {
             $columnCount = $initialReader->readLengthEncodedIntegerOrNull();
             if ($columnCount === null) {
-                echo "No columns in result set\n";
+                $this->client->debug("No columns in result set\n");
                 return [];
             }
 
-            echo "Result set has {$columnCount} columns\n";
+            $this->client->debug("Result set has {$columnCount} columns\n");
 
             // Read column definitions
             $columns = [];
             for ($i = 0; $i < $columnCount; $i++) {
-                echo "Reading column definition " . ($i + 1) . " of {$columnCount}\n";
+                $this->client->debug("Reading column definition " . ($i + 1) . " of {$columnCount}\n");
 
                 $columnDefinition = null;
                 $columnParser = function (PayloadReader $r) use (&$columnDefinition) {
@@ -88,17 +88,17 @@ class QueryHandler
                     Async::await($this->packetHandler->processPacket($columnParser));
                     if ($columnDefinition !== null) {
                         $columns[] = $columnDefinition;
-                        echo "Column " . ($i + 1) . " name: " . $columnDefinition->name . "\n";
+                        $this->client->debug("Column " . ($i + 1) . " name: " . $columnDefinition->name . "\n");
                     } else {
-                        echo "Failed to read column definition " . ($i + 1) . "\n";
+                        $this->client->debug("Failed to read column definition " . ($i + 1) . "\n");
                     }
                 } catch (\Exception $e) {
-                    echo "Error reading column " . ($i + 1) . ": " . $e->getMessage() . "\n";
+                    $this->client->debug("Error reading column " . ($i + 1) . ": " . $e->getMessage() . "\n");
                     throw $e;
                 }
             }
 
-            echo "Read " . count($columns) . " column definitions\n";
+            $this->client->debug("Read " . count($columns) . " column definitions\n");
 
             // Read EOF packet after column definitions
             $this->readEofPacket();
@@ -118,9 +118,9 @@ class QueryHandler
 
             try {
                 Async::await($this->packetHandler->processPacket($eofParser));
-                echo "EOF packet after columns, length: " . strlen($eofPayload) . "\n";
+                $this->client->debug("EOF packet after columns, length: " . strlen($eofPayload) . "\n");
             } catch (\Exception $e) {
-                echo "Error reading EOF packet: " . $e->getMessage() . "\n";
+                $this->client->debug("Error reading EOF packet: " . $e->getMessage() . "\n");
             }
         })();
     }
@@ -140,26 +140,26 @@ class QueryHandler
                 try {
                     Async::await($this->packetHandler->processPacket($rowParser));
                 } catch (\Exception $e) {
-                    echo "Error or end of data reading row: " . $e->getMessage() . "\n";
+                    $this->client->debug("Error or end of data reading row: " . $e->getMessage() . "\n");
                     break;
                 }
 
                 if (strlen($rowPayload) === 0) {
-                    echo "Empty row packet, breaking\n";
+                    $this->client->debug("Empty row packet, breaking\n");
                     break;
                 }
 
-                echo "Row packet length: " . strlen($rowPayload) . ", first byte: 0x" . sprintf('%02x', ord($rowPayload[0])) . "\n";
+                $this->client->debug("Row packet length: " . strlen($rowPayload) . ", first byte: 0x" . sprintf('%02x', ord($rowPayload[0])) . "\n");
 
                 // Check for EOF packet
                 if (ord($rowPayload[0]) === 0xfe && strlen($rowPayload) < 9) {
-                    echo "EOF packet received, end of result set\n";
+                    $this->client->debug("EOF packet received, end of result set\n");
                     break;
                 }
 
                 // Check for error packet
                 if (ord($rowPayload[0]) === 0xff) {
-                    echo "ERROR packet received in row data\n";
+                    $this->client->debug("ERROR packet received in row data\n");
                     $factory = new \Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory();
                     $errorReader = $factory->createFromString($rowPayload);
                     $errorPacket = ErrPacket::fromPayload($errorReader);
@@ -169,10 +169,10 @@ class QueryHandler
                 $row = $this->parseRow($rowPayload, $columns);
                 $rows[] = $row;
                 $rowCount++;
-                echo "Row {$rowCount} parsed successfully\n";
+                $this->client->debug("Row {$rowCount} parsed successfully\n");
             }
 
-            echo "Read {$rowCount} rows total\n";
+            $this->client->debug("Read {$rowCount} rows total\n");
             return $rows;
         })();
     }
@@ -187,9 +187,9 @@ class QueryHandler
                 try {
                     $value = $rowReader->readLengthEncodedStringOrNull();
                     $row[$column->name] = $value;
-                    echo "  Column '{$column->name}' = " . var_export($value, true) . "\n";
+                    $this->client->debug("  Column '{$column->name}' = " . var_export($value, true) . "\n");
                 } catch (\Exception $e) {
-                    echo "  Error reading column '{$column->name}': " . $e->getMessage() . "\n";
+                    $this->client->debug("  Error reading column '{$column->name}': " . $e->getMessage() . "\n");
                     $row[$column->name] = null;
                 }
             }

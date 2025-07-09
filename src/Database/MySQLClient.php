@@ -11,9 +11,12 @@ use Rcalicdan\MySQLBinaryProtocol\Factory\DefaultPacketReaderFactory;
 use Rcalicdan\MySQLBinaryProtocol\Frame\Handshake\HandshakeV10;
 use Rcalicdan\MySQLBinaryProtocol\Constants\CapabilityFlags;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
+use Rcalicdan\FiberAsync\Database\Traits\LoggingTrait;
 
 class MySQLClient
 {
+    use LoggingTrait;
+
     private ?Socket $socket = null;
     private array $connectionParams;
     private ?HandshakeV10 $handshake = null;
@@ -28,6 +31,10 @@ class MySQLClient
     {
         $this->connectionParams = $connectionParams;
         $this->packetReader = (new DefaultPacketReaderFactory())->createWithDefaultSettings();
+
+        if (isset($connectionParams['debug']) && $connectionParams['debug']) {
+            $this->enableDebug();
+        }
 
         $this->connectionHandler = new ConnectionHandler($this);
         $this->queryHandler = new QueryHandler($this);
@@ -48,7 +55,6 @@ class MySQLClient
         return $this->connectionHandler->close();
     }
 
-    // Getters for handlers to access private properties
     public function getSocket(): ?Socket
     {
         return $this->socket;
