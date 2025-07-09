@@ -34,32 +34,47 @@ class SocketManager
         if (empty($this->readWatchers) && empty($this->writeWatchers)) {
             return false;
         }
-        $readSockets = array_column($this->readWatchers, 'socket');
-        $writeSockets = array_column($this->writeWatchers, 'socket');
-        $exceptSockets = null;
-        // The select call will return immediately if there's no activity
-        $numChanged = @stream_select($readSockets, $writeSockets, $exceptSockets, 0);
-        if ($numChanged === 0) {
+
+        $read = [];
+        foreach ($this->readWatchers as $socketId => $watcher) {
+            $read[$socketId] = $watcher['socket'];
+        }
+
+        $write = [];
+        foreach ($this->writeWatchers as $socketId => $watcher) {
+            $write[$socketId] = $watcher['socket'];
+        }
+
+        $except = null;
+
+        if (empty($read) && empty($write)) {
             return false;
         }
-        if (! empty($writeSockets)) {
-            foreach ($writeSockets as $socket) {
-                $socketId = (int) $socket;
-                if (isset($this->writeWatchers[$socketId])) {
-                    $watcher = $this->writeWatchers[$socketId];
-                    unset($this->writeWatchers[$socketId]);
-                    ($watcher['callback'])();
-                }
+
+        $numChanged = @stream_select($read, $write, $except, 0, 0);
+
+        if ($numChanged === false || $numChanged === 0) {
+            return false;
+        }
+
+        // $write now contains only the ready sockets, with keys preserved.
+        foreach ($write as $socketId => $socket) {
+            if (isset($this->writeWatchers[$socketId])) {
+                $watcher = $this->writeWatchers[$socketId];
+                unset($this->writeWatchers[$socketId]);
+                ($watcher['callback'])();
             }
         }
-        if (! empty($readSockets)) {
-            foreach ($readSockets as $socket) {
-                $socketId = (int) $socket;
-                if (isset($this->readWatchers[$socketId])) {
-                    $watcher = $this->readWatchers[$socketId];
-                    unset($this->readWatchers[$socketId]);
-                    ($watcher['callback'])();
-                }
+
+        // $read now contains only the ready sockets, with keys preserved.
+        foreach ($read as $socketId => $socket) {
+            if (isset($this->readWatchers[$socketId])) {
+                $watcher = $this->readWatchers[$socketId];
+                // Do NOT unset the read watcher here unless it's a one-off read.
+                // The read() operation in AsyncSocketOperations is one-shot, so it's
+                // expecting its watcher to be removed.
+                unset($this->readWatchers[$socketId]);
+                ($watcher['callback'])();
             }
         }
 

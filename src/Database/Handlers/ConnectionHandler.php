@@ -1,4 +1,5 @@
 <?php
+// src/Database/Handlers/ConnectionHandler.php
 
 namespace Rcalicdan\FiberAsync\Database\Handlers;
 
@@ -74,20 +75,25 @@ class ConnectionHandler
     {
         return Async::async(function () {
             $this->client->debug("Reading handshake...\n");
-            
+
+            $handshakePayload = Async::await($this->packetHandler->readNextPacketPayload());
+
             $handshakeParser = new HandshakeParser(
-                new HandshakeV10Builder(), 
+                new HandshakeV10Builder(),
                 fn(HandshakeV10 $h) => $this->client->setHandshake($h)
             );
-            
-            Async::await($this->packetHandler->processPacket($handshakeParser));
+
+            $factory = new \Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory();
+            $reader = $factory->createFromString($handshakePayload);
+            $handshakeParser($reader);
 
             $handshake = $this->client->getHandshake();
-            
-            $this->client->debug("Handshake received. Server version: " . $handshake->serverVersion . "\n");
-            $this->client->debug("Auth plugin: " . $handshake->authPlugin . "\n");
+            if (!$handshake) {
+                throw new \RuntimeException("Failed to parse handshake packet.");
+            }
 
-            // Create packet builder
+            $this->client->debug("Handshake received. Server version: " . $handshake->serverVersion . "\n");
+
             $clientCapabilities = $this->client->getClientCapabilities();
             $packetBuilder = new PacketBuilder($this->client->getConnectionParams(), $clientCapabilities);
             $this->client->setPacketBuilder($packetBuilder);

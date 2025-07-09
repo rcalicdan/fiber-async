@@ -72,29 +72,23 @@ function runAsyncConcurrent(array $config, int $numQueries)
     $start = microtime(true);
 
     $tasks = [];
-    // 1. Prepare an array of tasks. Each task is a callable (a function).
     for ($i = 1; $i <= $numQueries; $i++) {
         $tasks[] = function () use ($config) {
             $client = null;
             try {
-                // Each concurrent task gets its own connection.
                 $client = new MySQLClient($config);
                 Async::await($client->connect());
                 $result = Async::await($client->query(TEST_QUERY));
                 return $result;
             } finally {
-                // Ensure the dedicated connection for this task is closed.
-
                 Async::await($client->close());
             }
         };
     }
 
     try {
-        // 2. Pass the entire array of tasks to AsyncLoop::runAll().
-        // It will manage the event loop and run all tasks concurrently.
         $allResults = AsyncLoop::runAll($tasks);
-        // print_r($allResults);
+        print_r($allResults);
 
     } catch (\Throwable $e) {
         echo "Async Concurrent Error: " . $e->getMessage() . "\n";
