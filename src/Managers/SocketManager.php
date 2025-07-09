@@ -1,7 +1,5 @@
 <?php
 
-// src/Managers/SocketManager.php
-
 namespace Rcalicdan\FiberAsync\Managers;
 
 class SocketManager

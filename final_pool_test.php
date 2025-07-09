@@ -1,3 +1,4 @@
+```php
 <?php
 
 // realistic_benchmark.php
@@ -10,16 +11,24 @@ use Rcalicdan\FiberAsync\Facades\AsyncLoop;
 
 // --- Main Configuration ---
 const NUM_OPERATIONS = 500;
-const POOL_SIZE = 50; // The number of "lanes on our bridge"
-const READ_QUERY = 'SELECT SLEEP(0.05)'; // Use a query with latency to see the benefit
-const TEST_TABLE = 'benchmark_table';
+const POOL_SIZE       = 100; // The number of "lanes on our bridge"
+
+// Latency Profiles (ms)
+$profiles = [
+    'Localhost (0.1ms)'    => 0.1,
+    'Same DC (1ms)'        => 1,
+    'AZ-cross (5ms)'       => 5,
+    'Cloud DB (20ms)'      => 20,
+    'Inter-region (100ms)' => 100,
+];
+
 const DB_CONFIG = [
-    'host' => '127.0.0.1',
-    'port' => 3309,
-    'user' => 'root',
+    'host'     => '127.0.0.1',
+    'port'     => 3309,
+    'user'     => 'root',
     'password' => 'Reymart1234',
     'database' => 'yo',
-    'debug' => false,
+    'debug'    => false,
 ];
 
 // --- Helper & Reporting Classes ---
@@ -34,16 +43,16 @@ class Reporter
         gc_collect_cycles();
 
         return [
-            'start_time' => hrtime(true),
+            'start_time'   => hrtime(true),
             'start_memory' => memory_get_usage(),
         ];
     }
 
     public static function finish(string $title, array $metrics): void
     {
-        $durationNs = hrtime(true) - $metrics['start_time'];
-        $durationMs = $durationNs / 1_000_000;
-        $peakMemory = memory_get_peak_usage(true);
+        $durationNs    = hrtime(true) - $metrics['start_time'];
+        $durationMs    = $durationNs / 1_000_000;
+        $peakMemory    = memory_get_peak_usage(true);
 
         self::$results[$title] = [
             'duration_ms' => $durationMs,
@@ -51,7 +60,7 @@ class Reporter
         ];
 
         echo sprintf("Duration: %.2f ms\n", $durationMs);
-        echo 'Peak Memory: '.self::formatBytes($peakMemory)."\n";
+        echo 'Peak Memory: ' . self::formatBytes($peakMemory) . "\n";
     }
 
     public static function summary(): void
@@ -63,13 +72,9 @@ class Reporter
             'Duration',
             'Peak Memory'
         );
-        echo str_repeat('-', 72)."\n";
+        echo str_repeat('-', 72) . "\n";
 
         foreach (self::$results as $title => $result) {
-            // Add a separator between different latency profiles
-            if (str_contains($title, 'PDO -')) {
-                echo str_repeat('-', 72)."\n";
-            }
             printf(
                 "| %-45s | %10.2f ms | %13s |\n",
                 $title,
@@ -77,15 +82,15 @@ class Reporter
                 self::formatBytes($result['peak_memory'])
             );
         }
-        echo str_repeat('-', 72)."\n";
+        echo str_repeat('-', 72) . "\n";
     }
 
     private static function formatBytes(int $bytes): string
     {
         $units = ['B', 'KB', 'MB', 'GB'];
-        $pow = $bytes > 0 ? floor(log($bytes, 1024)) : 0;
+        $pow   = $bytes > 0 ? floor(log($bytes, 1024)) : 0;
 
-        return round($bytes / (1024 ** $pow), 2).' '.$units[$pow];
+        return round($bytes / (1024 ** $pow), 2) . ' ' . $units[$pow];
     }
 }
 
@@ -96,19 +101,25 @@ class BenchmarkRunner
     public function runPdo(string $title, string $query): void
     {
         $metrics = Reporter::start("PDO Sequential - {$title}");
-        $pdo = new PDO('mysql:host='.DB_CONFIG['host'].';port='.DB_CONFIG['port'].';dbname='.DB_CONFIG['database'], DB_CONFIG['user'], DB_CONFIG['password']);
+        $pdo     = new PDO(
+            'mysql:host=' . DB_CONFIG['host'] . ';port=' . DB_CONFIG['port'] . ';dbname=' . DB_CONFIG['database'],
+            DB_CONFIG['user'],
+            DB_CONFIG['password']
+        );
+
         for ($i = 0; $i < NUM_OPERATIONS; $i++) {
             $pdo->query($query)->fetchAll();
         }
+
         Reporter::finish("PDO Sequential - {$title}", $metrics);
     }
 
     public function runAsyncWithPool(string $title, string $query): void
     {
         $metrics = Reporter::start("Async Concurrent w/ Pool - {$title}");
-        AsyncLoop::run(function () use ($query) {
 
-            // 1. Create our "Connection Pool" of connected clients
+        AsyncLoop::run(function () use ($query) {
+            // 1. Create connection pool
             $pool = [];
             for ($i = 0; $i < POOL_SIZE; $i++) {
                 $client = new MySQLClient(DB_CONFIG);
@@ -117,23 +128,22 @@ class BenchmarkRunner
             }
 
             try {
-                // 2. Distribute the work among the clients in the pool
+                // 2. Dispatch tasks
                 $tasks = [];
                 for ($i = 0; $i < NUM_OPERATIONS; $i++) {
-                    // Use the modulo operator to pick a client from the pool
-                    $clientForThisTask = $pool[$i % POOL_SIZE];
-                    $tasks[] = $clientForThisTask->query($query);
+                    $clientForTask = $pool[$i % POOL_SIZE];
+                    $tasks[]       = $clientForTask->query($query);
                 }
+
                 Async::await(Async::all($tasks));
             } finally {
-                // 3. Close all connections in the pool
+                // 3. Close pool
                 foreach ($pool as $client) {
-                    if ($client) {
-                        Async::await($client->close());
-                    }
+                    Async::await($client->close());
                 }
             }
         });
+
         Reporter::finish("Async Concurrent w/ Pool - {$title}", $metrics);
     }
 }
@@ -141,15 +151,24 @@ class BenchmarkRunner
 // --- Main Execution ---
 
 $runner = new BenchmarkRunner;
-$latencyTitle = '50ms Latency Query';
-$latencyQuery = READ_QUERY;
 
-echo 'Starting final benchmark. Comparing a single PDO connection against a pool of '.POOL_SIZE." async connections.\n";
+echo "Starting realistic benchmark with multiple latency profiles:\n";
 
-$runner->runPdo($latencyTitle, $latencyQuery);
-sleep(1);
-$runner->runAsyncWithPool($latencyTitle, $latencyQuery);
+foreach ($profiles as $label => $ms) {
+    // build the SLEEP query based on milliseconds
+    $query = sprintf('SELECT SLEEP(%.4f)', $ms / 1000);
 
+    // Run sequential PDO
+    $runner->runPdo($label, $query);
+    sleep(1);
+
+    // Run async with pool
+    $runner->runAsyncWithPool($label, $query);
+    sleep(1);
+}
+
+// Output summary
 Reporter::summary();
 
 echo "\nBenchmark Complete.\n";
+
