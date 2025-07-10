@@ -1,13 +1,10 @@
 <?php
 
-// src/Database/Handlers/ConnectionHandler.php
-
 namespace Rcalicdan\FiberAsync\Database\Handlers;
 
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\Database\MySQLClient;
 use Rcalicdan\FiberAsync\Database\Protocol\PacketBuilder;
-use Rcalicdan\FiberAsync\Facades\Async;
 use Rcalicdan\FiberAsync\Facades\AsyncSocket;
 use Rcalicdan\MySQLBinaryProtocol\Factory\DefaultPacketReaderFactory;
 use Rcalicdan\MySQLBinaryProtocol\Frame\Handshake\HandshakeParser;
@@ -32,7 +29,7 @@ class ConnectionHandler
 
     public function connect(): PromiseInterface
     {
-        return Async::async(function () {
+        return async(function () {
             $this->establishSocketConnection();
             $this->initializeConnection();
             $this->performHandshake();
@@ -45,7 +42,7 @@ class ConnectionHandler
 
     public function close(): PromiseInterface
     {
-        return Async::async(function () {
+        return async(function () {
             $socket = $this->client->getSocket();
             
             if ($this->shouldCloseSocket($socket)) {
@@ -61,7 +58,7 @@ class ConnectionHandler
         $connectionString = "tcp://{$params['host']}:{$params['port']}";
         $timeout = $params['timeout'] ?? 10.0;
         
-        $socket = Async::await(AsyncSocket::connect($connectionString, $timeout));
+        $socket = await(AsyncSocket::connect($connectionString, $timeout));
         $this->client->setSocket($socket);
     }
 
@@ -74,7 +71,7 @@ class ConnectionHandler
     {
         $this->client->debug("Reading handshake...\n");
         
-        $handshakePayload = Async::await($this->packetHandler->readNextPacketPayload());
+        $handshakePayload = await($this->packetHandler->readNextPacketPayload());
         $handshake = $this->parseHandshake($handshakePayload);
         
         $this->validateHandshake($handshake);
@@ -84,7 +81,7 @@ class ConnectionHandler
 
     private function authenticateConnection(): void
     {
-        Async::await($this->authHandler->authenticate());
+        await($this->authHandler->authenticate());
     }
 
     private function finalizeConnection(): void
@@ -140,7 +137,7 @@ class ConnectionHandler
         if ($packetBuilder) {
             try {
                 $quitPacket = $packetBuilder->buildQuitPacket();
-                Async::await($this->packetHandler->sendPacket($quitPacket, 0));
+                await($this->packetHandler->sendPacket($quitPacket, 0));
             } catch (\Throwable $e) {
                 // Ignore errors during graceful shutdown
             }

@@ -6,7 +6,6 @@ use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\Database\MySQLClient;
 use Rcalicdan\FiberAsync\Database\Protocol\ErrPacket;
 use Rcalicdan\FiberAsync\Database\Protocol\OkPacket;
-use Rcalicdan\FiberAsync\Facades\Async;
 use Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
 
 class AuthenticationHandler
@@ -24,13 +23,13 @@ class AuthenticationHandler
 
     public function authenticate(): PromiseInterface
     {
-        return Async::async(function () {
+        return async(function () {
             $handshake = $this->client->getHandshake();
             $packetBuilder = $this->client->getPacketBuilder();
             $responsePacket = $packetBuilder->buildHandshakeResponse($handshake->authData);
 
             $this->client->debug('Sending auth packet...');
-            Async::await($this->packetHandler->sendPacket($responsePacket, 1));
+            await($this->packetHandler->sendPacket($responsePacket, 1));
 
             $this->client->debug('Reading auth response...');
             $authResult = $this->processAuthResponse();
@@ -43,7 +42,7 @@ class AuthenticationHandler
 
     private function processAuthResponse()
     {
-        $payload = Async::await($this->packetHandler->readNextPacketPayload());
+        $payload = await($this->packetHandler->readNextPacketPayload());
         $firstByte = ord($payload[0]);
         $reader = $this->readerFactory->createFromString($payload);
 
@@ -83,12 +82,12 @@ class AuthenticationHandler
         $payload = "\x02"; // Request public key
         $sequenceId = 3; // Handshake was 0, response was 1, server response was 2. This is 3.
         
-        Async::await($this->packetHandler->sendPacket($payload, $sequenceId));
+        await($this->packetHandler->sendPacket($payload, $sequenceId));
     }
 
     private function receivePublicKey(): string
     {
-        return Async::await($this->packetHandler->readNextPacketPayload());
+        return await($this->packetHandler->readNextPacketPayload());
     }
 
     private function prepareEncryptedPassword(string $keyPayload): string
@@ -102,12 +101,12 @@ class AuthenticationHandler
     private function sendEncryptedPassword(string $encryptedPassword): void
     {
         $sequenceId = 5; // Previous server response was 4. This is 5.
-        Async::await($this->packetHandler->sendPacket($encryptedPassword, $sequenceId));
+        await($this->packetHandler->sendPacket($encryptedPassword, $sequenceId));
     }
 
     private function readFinalAuthResponse()
     {
-        $payload = Async::await($this->packetHandler->readNextPacketPayload());
+        $payload = await($this->packetHandler->readNextPacketPayload());
         $firstByte = ord($payload[0]);
         $reader = $this->readerFactory->createFromString($payload);
         

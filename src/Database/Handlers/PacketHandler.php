@@ -4,7 +4,6 @@ namespace Rcalicdan\FiberAsync\Database\Handlers;
 
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\Database\MySQLClient;
-use Rcalicdan\FiberAsync\Facades\Async;
 
 class PacketHandler
 {
@@ -17,7 +16,7 @@ class PacketHandler
 
     public function readNextPacketPayload(): PromiseInterface
     {
-        return Async::async(function () {
+        return async(function () {
             $packetReader = $this->client->getPacketReader();
             $socket = $this->client->getSocket();
 
@@ -64,12 +63,12 @@ class PacketHandler
     {
         while (true) {
             $this->client->debug("Incomplete buffer, reading from socket...\n");
-            $data = Async::await($socket->read(8192));
+            $data = await($socket->read(8192));
 
             $this->validateSocketData($data);
 
             if ($data === '') {
-                Async::await(Async::delay(0));
+                await(delay(0));
                 continue;
             }
 

@@ -12,7 +12,6 @@ use Rcalicdan\FiberAsync\Database\Protocol\ErrPacket;
 use Rcalicdan\FiberAsync\Database\Protocol\OkPacket;
 use Rcalicdan\FiberAsync\Database\Protocol\ResultSetParser;
 use Rcalicdan\FiberAsync\Database\Protocol\StmtPrepareOkPacket;
-use Rcalicdan\FiberAsync\Facades\Async;
 use Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
 
 class QueryHandler
@@ -30,11 +29,11 @@ class QueryHandler
 
     public function query(string $sql): PromiseInterface
     {
-        return Async::async(function () use ($sql) {
+        return async(function () use ($sql) {
             $lock = $this->client->getMutex();
 
             try {
-                Async::await($lock->acquire());
+                await($lock->acquire());
                 return $this->executeQuery($sql);
             } finally {
                 $lock->release();
@@ -44,11 +43,11 @@ class QueryHandler
 
     public function prepare(string $sql): PromiseInterface
     {
-        return Async::async(function () use ($sql) {
+        return async(function () use ($sql) {
             $lock = $this->client->getMutex();
 
             try {
-                Async::await($lock->acquire());
+                await($lock->acquire());
                 return $this->executePrepare($sql);
             } finally {
                 $lock->release();
@@ -58,11 +57,11 @@ class QueryHandler
 
     public function executeStatement(int $statementId, array $params): PromiseInterface
     {
-        return Async::async(function () use ($statementId, $params) {
+        return async(function () use ($statementId, $params) {
             $lock = $this->client->getMutex();
 
             try {
-                Async::await($lock->acquire());
+                await($lock->acquire());
                 return $this->executeStatementInternal($statementId, $params);
             } finally {
                 $lock->release();
@@ -72,11 +71,11 @@ class QueryHandler
 
     public function closeStatement(int $statementId): PromiseInterface
     {
-        return Async::async(function () use ($statementId) {
+        return async(function () use ($statementId) {
             $lock = $this->client->getMutex();
 
             try {
-                Async::await($lock->acquire());
+                await($lock->acquire());
                 return $this->closeStatementInternal($statementId);
             } finally {
                 $lock->release();
@@ -91,7 +90,7 @@ class QueryHandler
         $queryPacket = $this->client->getPacketBuilder()->buildQueryPacket($sql);
         $this->sendPacketWithReset($queryPacket);
         
-        $firstPayload = Async::await($this->packetHandler->readNextPacketPayload());
+        $firstPayload = await($this->packetHandler->readNextPacketPayload());
         $responseType = $this->determineResponseType($firstPayload);
         
         return $this->handleQueryResponse($firstPayload, $responseType);
@@ -104,7 +103,7 @@ class QueryHandler
         $preparePacket = $this->client->getPacketBuilder()->buildStmtPreparePacket($sql);
         $this->sendPacketWithReset($preparePacket);
         
-        $responsePayload = Async::await($this->packetHandler->readNextPacketPayload());
+        $responsePayload = await($this->packetHandler->readNextPacketPayload());
         $this->validateResponseNotError($responsePayload);
         
         $reader = $this->readerFactory->createFromString($responsePayload);
@@ -123,7 +122,7 @@ class QueryHandler
         $executePacket = $this->client->getPacketBuilder()->buildStmtExecutePacket($statementId, $params);
         $this->sendPacketWithReset($executePacket);
         
-        $firstPayload = Async::await($this->packetHandler->readNextPacketPayload());
+        $firstPayload = await($this->packetHandler->readNextPacketPayload());
         $responseType = $this->determineResponseType($firstPayload);
         
         return $this->handleStatementResponse($firstPayload, $responseType);
@@ -136,13 +135,13 @@ class QueryHandler
         $closePacket = $this->client->getPacketBuilder()->buildStmtClosePacket($statementId);
         $this->sendPacketWithReset($closePacket);
         
-        return Async::await($this->packetHandler->sendPacket($closePacket, $this->client->getSequenceId()));
+        return await($this->packetHandler->sendPacket($closePacket, $this->client->getSequenceId()));
     }
 
     private function sendPacketWithReset(string $packet): void
     {
         $this->client->setSequenceId(0);
-        Async::await($this->packetHandler->sendPacket($packet, $this->client->getSequenceId()));
+        await($this->packetHandler->sendPacket($packet, $this->client->getSequenceId()));
     }
 
     private function determineResponseType(string $payload): string
@@ -192,7 +191,7 @@ class QueryHandler
         $parser->processPayload($firstPayload);
         
         while (!$parser->isComplete()) {
-            $nextPayload = Async::await($this->packetHandler->readNextPacketPayload());
+            $nextPayload = await($this->packetHandler->readNextPacketPayload());
             $parser->processPayload($nextPayload);
         }
         
@@ -211,22 +210,22 @@ class QueryHandler
     private function consumeParameterDefinitions(int $numParams): void
     {
         for ($i = 0; $i < $numParams; $i++) {
-            Async::await($this->packetHandler->readNextPacketPayload());
+            await($this->packetHandler->readNextPacketPayload());
         }
         
         if ($numParams > 0) {
-            Async::await($this->packetHandler->readNextPacketPayload());
+            await($this->packetHandler->readNextPacketPayload());
         }
     }
 
     private function consumeColumnDefinitions(int $numColumns): void
     {
         for ($i = 0; $i < $numColumns; $i++) {
-            Async::await($this->packetHandler->readNextPacketPayload());
+            await($this->packetHandler->readNextPacketPayload());
         }
         
         if ($numColumns > 0) {
-            Async::await($this->packetHandler->readNextPacketPayload());
+            await($this->packetHandler->readNextPacketPayload());
         }
     }
 }
