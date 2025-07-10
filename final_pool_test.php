@@ -23,7 +23,7 @@ const DB_CONFIG = [
     'host'     => '127.0.0.1',
     'port'     => 3309,
     'user'     => 'root',
-    'password' => 'Reymart1234',
+    'password' => 'Reymart12345',
     'database' => 'yo',
     'debug'    => false,
 ];

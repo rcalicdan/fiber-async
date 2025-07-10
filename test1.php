@@ -3,64 +3,76 @@
 require_once __DIR__ . '/vendor/autoload.php';
 
 use Rcalicdan\FiberAsync\Database\MySQLClient;
+use Rcalicdan\FiberAsync\Database\PreparedStatement;
 
-// The `run` function starts the event loop and executes our async code.
 run(function () {
-    // Your database connection parameters
     $connectionParams = [
         'host'     => '127.0.0.1',
-        'port'     => 3309,
+        'port'     => 3306,
         'user'     => 'root',
-        'password' => 'Reymart1234',
-        'database' => 'yo',
-        'debug'    => false, // Set to true for verbose logging
+        'password' => '',
+        'database' => 'yos',
+        'debug'    => true,
     ];
 
     $client = new MySQLClient($connectionParams);
+    $selectStmt = null;
+    $insertStmt = null;
 
     try {
-        // 1. Connect to the database
         echo "Connecting...\n";
+        echo "host: " . $connectionParams['host'] . "\n";
+        echo "port: " . $connectionParams['port'] . "\n";
+        echo "user: " . $connectionParams['user'] . "\n";
+        echo "password: " . $connectionParams['password'] . "\n";
+        echo "database: " . $connectionParams['database'] . "\n";
+        echo "debug: " . $connectionParams['debug'] . "\n";
         await($client->connect());
         echo "Connection successful.\n\n";
 
-        // 2. Define the SQL to fetch all users
-        // It's good practice to list columns instead of using SELECT *
-        $sql = 'SELECT id, name, email FROM users';
-        echo "Executing query: {$sql}\n";
+        $selectSql = 'SELECT id, name, email FROM users WHERE id = ? OR id = ?';
+        echo "Preparing: {$selectSql}\n";
+        $selectStmt = await($client->prepare($selectSql));
+
+        $userIds = [1, 3];
+        echo "Executing with params: " . json_encode($userIds) . "\n";
+        $users = await($selectStmt->execute($userIds));
         
-        // 3. Execute the query using the simpler `query()` method
-        // This is ideal for queries without parameters.
-        $users = await($client->query($sql));
+        echo "Query Result:\n";
+        print_r($users);
+        echo "\n";
+
+        // --- FIX IS HERE ---
+        // 1. Added 'password' to the column list
+        $insertSql = 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)';
+        echo "Preparing: {$insertSql}\n";
+        $insertStmt = await($client->prepare($insertSql));
+
+        // 2. Added a value for the password parameter
+        // In a real app, this should be a securely hashed password.
+        $hashedPassword = password_hash('supersecret123', PASSWORD_DEFAULT);
+        $newUser = ['Jane Doe', 'jane.doe@example.com', $hashedPassword];
+        echo "Executing with params: " . json_encode(['Jane Doe', 'jane.doe@example.com', '...hashed_password...']) . "\n";
         
-        // 4. Check if any users were found and display them
-        if (empty($users)) {
-            echo "\nNo users found in the 'users' table.\n";
-        } else {
-            echo "\nFound " . count($users) . " user(s):\n";
-            echo "----------------------------------------\n";
-            
-            // Loop through the results and echo each one
-            foreach ($users as $user) {
-                // Use sprintf for clean, formatted output
-                echo sprintf(
-                    "ID: %-3d | Name: %-20s | Email: %s\n",
-                    $user['id'],
-                    $user['name'],
-                    $user['email']
-                );
-            }
-            
-            echo "----------------------------------------\n";
-        }
+        $insertResult = await($insertStmt->execute($newUser));
+        
+        echo "Insert Result:\n";
+        echo "  - Affected Rows: {$insertResult->affectedRows}\n";
+        echo "  - Last Insert ID: {$insertResult->lastInsertId}\n\n";
 
     } catch (Throwable $e) {
-        // Catch and display any errors that occur
-        echo "\n[ERROR] An error occurred: " . $e->getMessage() . "\n";
+        echo "[ERROR] " . $e->getMessage() . "\n";
     } finally {
-        // 5. Always ensure the connection is closed
+        if ($selectStmt) {
+            echo "Closing SELECT statement...\n";
+            await($selectStmt->close());
+        }
+        if ($insertStmt) {
+            echo "Closing INSERT statement...\n";
+            await($insertStmt->close());
+        }
         if ($client->getSocket() && !$client->getSocket()->isClosed()) {
-            echo "\nClosing database connection...\n";
+            echo "Closing database connection...\n";
             await($client->close());
         }
         echo "Done.\n";
