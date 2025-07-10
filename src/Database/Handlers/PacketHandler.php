@@ -1,7 +1,5 @@
 <?php
 
-// src/Database/Handlers/PacketHandler.php
-
 namespace Rcalicdan\FiberAsync\Database\Handlers;
 
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
@@ -23,69 +21,99 @@ class PacketHandler
             $packetReader = $this->client->getPacketReader();
             $socket = $this->client->getSocket();
 
-            // First, try to process a packet from any data that might already
-            // be in the buffer from a previous, larger network read.
-            $payload = '';
-            $parser = function ($reader) use (&$payload) {
-                $payload = $reader->readRestOfPacketString();
-            };
-
-            if ($packetReader->hasPacket() && $packetReader->readPayload($parser)) {
-                $this->client->debug("Processed packet from existing buffer.\n");
-                $this->client->incrementSequenceId();
-
+            // Try to process packet from existing buffer first
+            $payload = $this->tryProcessExistingBuffer($packetReader);
+            if ($payload !== null) {
                 return $payload;
             }
 
-            // If the above failed, it means the buffer is empty or contains
-            // an incomplete packet. We must now loop and read from the network
-            // until we have enough data for the parser to succeed.
-            while (true) {
-                $this->client->debug("Incomplete buffer, reading from socket...\n");
-                $data = Async::await($socket->read(8192));
-
-                if ($data === null) {
-                    throw new \RuntimeException('Connection closed by server while waiting for packet.');
-                }
-
-                if ($data === '') {
-                    // Yield to the event loop to prevent a CPU-spinning busy-wait
-                    // and allow other Fibers to run.
-                    Async::await(Async::delay(0));
-
-                    continue;
-                }
-
-                $this->client->debug('Read '.strlen($data)." bytes from socket. Appending to reader.\n");
-                $packetReader->append($data);
-
-                // IMPORTANT: Now that we've added data, try to parse again.
-                // The dependency's readPayload() method will internally catch the
-                // IncompleteBufferException and return `false` if the packet is
-                // still not complete. If it returns `true`, we have our packet.
-                if ($packetReader->readPayload($parser)) {
-                    $this->client->debug("Successfully parsed packet after network read.\n");
-                    $this->client->incrementSequenceId();
-
-                    return $payload; // Success, exit the loop.
-                }
-
-                // If we're here, the packet is STILL incomplete. The loop will continue,
-                // reading more data from the network.
-            }
+            // Read from network until we have a complete packet
+            return $this->readFromNetworkUntilComplete($socket, $packetReader);
         })();
     }
 
-    // Note: The old processPacket method is no longer needed as no other
-    // classes rely on it. This class is now fully self-contained.
-
     public function sendPacket(string $payload, int $sequenceId): PromiseInterface
     {
-        $length = strlen($payload);
-        $header = pack('C3C', $length & 0xFF, ($length >> 8) & 0xFF, ($length >> 16) & 0xFF, $sequenceId);
-        $this->client->debug("Sending packet - Length: {$length}, Sequence ID: {$sequenceId}\n");
-        $socket = $this->client->getSocket();
+        $header = $this->buildPacketHeader($payload, $sequenceId);
+        $this->client->debug("Sending packet - Length: " . strlen($payload) . ", Sequence ID: {$sequenceId}\n");
+        
+        return $this->client->getSocket()->write($header . $payload);
+    }
 
-        return $socket->write($header.$payload);
+    private function tryProcessExistingBuffer($packetReader): ?string
+    {
+        if (!$packetReader->hasPacket()) {
+            return null;
+        }
+
+        $payload = '';
+        $parser = function ($reader) use (&$payload) {
+            $payload = $reader->readRestOfPacketString();
+        };
+
+        if ($packetReader->readPayload($parser)) {
+            $this->client->debug("Processed packet from existing buffer.\n");
+            $this->client->incrementSequenceId();
+            return $payload;
+        }
+
+        return null;
+    }
+
+    private function readFromNetworkUntilComplete($socket, $packetReader): string
+    {
+        while (true) {
+            $this->client->debug("Incomplete buffer, reading from socket...\n");
+            $data = Async::await($socket->read(8192));
+
+            $this->validateSocketData($data);
+
+            if ($data === '') {
+                Async::await(Async::delay(0));
+                continue;
+            }
+
+            $this->client->debug('Read ' . strlen($data) . " bytes from socket. Appending to reader.\n");
+            $packetReader->append($data);
+
+            $payload = $this->tryParsePacket($packetReader);
+            if ($payload !== null) {
+                return $payload;
+            }
+        }
+    }
+
+    private function validateSocketData($data): void
+    {
+        if ($data === null) {
+            throw new \RuntimeException('Connection closed by server while waiting for packet.');
+        }
+    }
+
+    private function tryParsePacket($packetReader): ?string
+    {
+        $payload = '';
+        $parser = function ($reader) use (&$payload) {
+            $payload = $reader->readRestOfPacketString();
+        };
+
+        if ($packetReader->readPayload($parser)) {
+            $this->client->debug("Successfully parsed packet after network read.\n");
+            $this->client->incrementSequenceId();
+            return $payload;
+        }
+
+        return null;
+    }
+
+    private function buildPacketHeader(string $payload, int $sequenceId): string
+    {
+        $length = strlen($payload);
+        return pack('C3C', 
+            $length & 0xFF, 
+            ($length >> 8) & 0xFF, 
+            ($length >> 16) & 0xFF, 
+            $sequenceId
+        );
     }
 }

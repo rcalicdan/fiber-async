@@ -7,16 +7,16 @@ use Rcalicdan\FiberAsync\Facades\Async;
 use Rcalicdan\FiberAsync\Facades\AsyncLoop;
 
 // --- Main Configuration ---
-const NUM_OPERATIONS = 500;
+const NUM_OPERATIONS = 1000;
 const POOL_SIZE       = 50; // The number of "lanes on our bridge"
 
 // Latency Profiles (ms)
 $profiles = [
-    'Localhost (0.1ms)'    => 0.1,
-    'Same DC (1ms)'        => 1,
-    'AZ-cross (5ms)'       => 5,
-    'Cloud DB (20ms)'      => 20,
-    'Inter-region (100ms)' => 100,
+    // 'Localhost (0.1ms)'    => 0.1,
+    // 'Same DC (1ms)'        => 1,
+    // 'AZ-cross (5ms)'       => 5,
+    'Local Machine (0.01ms)'      => 0.1,
+    // 'Inter-region (100ms)' => 100,
 ];
 
 const DB_CONFIG = [
@@ -213,20 +213,20 @@ foreach ($profiles as $label => $ms) {
     sleep(1);
 }
 
-Reporter::summary();
+// Reporter::summary();
 
-// Option 2: Run isolated tests for specific comparisons
-echo "\n\n==== ISOLATED TESTS (More Accurate Memory Measurements) ====\n";
+// // Option 2: Run isolated tests for specific comparisons
+// echo "\n\n==== ISOLATED TESTS (More Accurate Memory Measurements) ====\n";
 
-// Test a few key scenarios in isolation
-$testScenarios = [
-    'Localhost (0.1ms)' => 0.1,
-    'Inter-region (100ms)' => 100,
-];
+// // Test a few key scenarios in isolation
+// $testScenarios = [
+//     'Localhost (0.1ms)' => 0.1,
+//     'Inter-region (100ms)' => 100,
+// ];
 
-foreach ($testScenarios as $label => $ms) {
-    $runner->runIsolatedTest('PDO', $label, $ms);
-    $runner->runIsolatedTest('Async', $label, $ms);
-}
+// foreach ($testScenarios as $label => $ms) {
+//     $runner->runIsolatedTest('PDO', $label, $ms);
+//     $runner->runIsolatedTest('Async', $label, $ms);
+// }
 
-echo "\nBenchmark Complete.\n";
+// echo "\nBenchmark Complete.\n";

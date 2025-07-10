@@ -13,16 +13,19 @@ use Rcalicdan\FiberAsync\Database\Protocol\OkPacket;
 use Rcalicdan\FiberAsync\Database\Protocol\ResultSetParser;
 use Rcalicdan\FiberAsync\Database\Protocol\StmtPrepareOkPacket;
 use Rcalicdan\FiberAsync\Facades\Async;
+use Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
 
 class QueryHandler
 {
     private MySQLClient $client;
     private PacketHandler $packetHandler;
+    private BufferPayloadReaderFactory $readerFactory;
 
     public function __construct(MySQLClient $client)
     {
         $this->client = $client;
         $this->packetHandler = new PacketHandler($client);
+        $this->readerFactory = new BufferPayloadReaderFactory();
     }
 
     public function query(string $sql): PromiseInterface
@@ -32,39 +35,7 @@ class QueryHandler
 
             try {
                 Async::await($lock->acquire());
-
-                // --- Start of Locked Region ---
-                $this->client->debug("Executing query: {$sql}\n");
-                $packetBuilder = $this->client->getPacketBuilder();
-                $queryPacket = $packetBuilder->buildQueryPacket($sql);
-
-                $this->client->setSequenceId(0);
-                Async::await($this->packetHandler->sendPacket($queryPacket, $this->client->getSequenceId()));
-
-                $firstPayload = Async::await($this->packetHandler->readNextPacketPayload());
-                $firstByte = ord($firstPayload[0]);
-
-                $factory = new \Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
-                $reader = $factory->createFromString($firstPayload);
-
-                if ($firstByte === 0x00) {
-                    return OkPacket::fromPayload($reader);
-                }
-                if ($firstByte === 0xFF) {
-                    throw ErrPacket::fromPayload($reader);
-                }
-
-                $resultSetParser = new ResultSetParser;
-                $resultSetParser->processPayload($firstPayload);
-
-                while (! $resultSetParser->isComplete()) {
-                    $nextPayload = Async::await($this->packetHandler->readNextPacketPayload());
-                    $resultSetParser->processPayload($nextPayload);
-                }
-
-                return $resultSetParser->getResult();
-                // --- End of Locked Region ---
-
+                return $this->executeQuery($sql);
             } finally {
                 $lock->release();
             }
@@ -78,42 +49,7 @@ class QueryHandler
 
             try {
                 Async::await($lock->acquire());
-
-                // --- Start of Locked Region ---
-                $this->client->debug("Preparing statement: {$sql}\n");
-                $packetBuilder = $this->client->getPacketBuilder();
-                $preparePacket = $packetBuilder->buildStmtPreparePacket($sql);
-
-                $this->client->setSequenceId(0);
-                Async::await($this->packetHandler->sendPacket($preparePacket, $this->client->getSequenceId()));
-
-                $responsePayload = Async::await($this->packetHandler->readNextPacketPayload());
-                $factory = new \Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
-                $reader = $factory->createFromString($responsePayload);
-
-                $firstByte = ord($responsePayload[0]);
-                if ($firstByte === 0xFF) {
-                    throw ErrPacket::fromPayload($reader);
-                }
-
-                $prepareOk = StmtPrepareOkPacket::fromPayload($reader);
-
-                for ($i = 0; $i < $prepareOk->numParams; $i++) {
-                    Async::await($this->packetHandler->readNextPacketPayload());
-                }
-                if ($prepareOk->numParams > 0) {
-                    Async::await($this->packetHandler->readNextPacketPayload());
-                }
-                for ($i = 0; $i < $prepareOk->numColumns; $i++) {
-                    Async::await($this->packetHandler->readNextPacketPayload());
-                }
-                if ($prepareOk->numColumns > 0) {
-                    Async::await($this->packetHandler->readNextPacketPayload());
-                }
-
-                return new PreparedStatement($this->client, $prepareOk->statementId, $prepareOk->numParams);
-                // --- End of Locked Region ---
-
+                return $this->executePrepare($sql);
             } finally {
                 $lock->release();
             }
@@ -127,38 +63,7 @@ class QueryHandler
 
             try {
                 Async::await($lock->acquire());
-
-                // --- Start of Locked Region ---
-                $this->client->debug("Executing statement {$statementId}\n");
-                $packetBuilder = $this->client->getPacketBuilder();
-                $executePacket = $packetBuilder->buildStmtExecutePacket($statementId, $params);
-
-                $this->client->setSequenceId(0);
-                Async::await($this->packetHandler->sendPacket($executePacket, $this->client->getSequenceId()));
-
-                $firstPayload = Async::await($this->packetHandler->readNextPacketPayload());
-                $firstByte = ord($firstPayload[0]);
-
-                $factory = new \Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
-                $reader = $factory->createFromString($firstPayload);
-
-                if ($firstByte === 0x00) {
-                    return OkPacket::fromPayload($reader);
-                }
-                if ($firstByte === 0xFF) {
-                    throw ErrPacket::fromPayload($reader);
-                }
-
-                $resultSetParser = new BinaryResultSetParser;
-                $resultSetParser->processPayload($firstPayload);
-                while (! $resultSetParser->isComplete()) {
-                    $nextPayload = Async::await($this->packetHandler->readNextPacketPayload());
-                    $resultSetParser->processPayload($nextPayload);
-                }
-
-                return $resultSetParser->getResult();
-                // --- End of Locked Region ---
-
+                return $this->executeStatementInternal($statementId, $params);
             } finally {
                 $lock->release();
             }
@@ -172,20 +77,156 @@ class QueryHandler
 
             try {
                 Async::await($lock->acquire());
-
-                // --- Start of Locked Region ---
-                $this->client->debug("Closing statement {$statementId}\n");
-                $packetBuilder = $this->client->getPacketBuilder();
-                $closePacket = $packetBuilder->buildStmtClosePacket($statementId);
-
-                $this->client->setSequenceId(0);
-
-                return Async::await($this->packetHandler->sendPacket($closePacket, $this->client->getSequenceId()));
-                // --- End of Locked Region ---
-
+                return $this->closeStatementInternal($statementId);
             } finally {
                 $lock->release();
             }
         })();
+    }
+
+    private function executeQuery(string $sql)
+    {
+        $this->client->debug("Executing query: {$sql}\n");
+        
+        $queryPacket = $this->client->getPacketBuilder()->buildQueryPacket($sql);
+        $this->sendPacketWithReset($queryPacket);
+        
+        $firstPayload = Async::await($this->packetHandler->readNextPacketPayload());
+        $responseType = $this->determineResponseType($firstPayload);
+        
+        return $this->handleQueryResponse($firstPayload, $responseType);
+    }
+
+    private function executePrepare(string $sql): PreparedStatement
+    {
+        $this->client->debug("Preparing statement: {$sql}\n");
+        
+        $preparePacket = $this->client->getPacketBuilder()->buildStmtPreparePacket($sql);
+        $this->sendPacketWithReset($preparePacket);
+        
+        $responsePayload = Async::await($this->packetHandler->readNextPacketPayload());
+        $this->validateResponseNotError($responsePayload);
+        
+        $reader = $this->readerFactory->createFromString($responsePayload);
+        $prepareOk = StmtPrepareOkPacket::fromPayload($reader);
+        
+        $this->consumeParameterDefinitions($prepareOk->numParams);
+        $this->consumeColumnDefinitions($prepareOk->numColumns);
+        
+        return new PreparedStatement($this->client, $prepareOk->statementId, $prepareOk->numParams);
+    }
+
+    private function executeStatementInternal(int $statementId, array $params)
+    {
+        $this->client->debug("Executing statement {$statementId}\n");
+        
+        $executePacket = $this->client->getPacketBuilder()->buildStmtExecutePacket($statementId, $params);
+        $this->sendPacketWithReset($executePacket);
+        
+        $firstPayload = Async::await($this->packetHandler->readNextPacketPayload());
+        $responseType = $this->determineResponseType($firstPayload);
+        
+        return $this->handleStatementResponse($firstPayload, $responseType);
+    }
+
+    private function closeStatementInternal(int $statementId)
+    {
+        $this->client->debug("Closing statement {$statementId}\n");
+        
+        $closePacket = $this->client->getPacketBuilder()->buildStmtClosePacket($statementId);
+        $this->sendPacketWithReset($closePacket);
+        
+        return Async::await($this->packetHandler->sendPacket($closePacket, $this->client->getSequenceId()));
+    }
+
+    private function sendPacketWithReset(string $packet): void
+    {
+        $this->client->setSequenceId(0);
+        Async::await($this->packetHandler->sendPacket($packet, $this->client->getSequenceId()));
+    }
+
+    private function determineResponseType(string $payload): string
+    {
+        $firstByte = ord($payload[0]);
+        
+        if ($firstByte === 0x00) {
+            return 'ok';
+        }
+        if ($firstByte === 0xFF) {
+            return 'error';
+        }
+        
+        return 'resultset';
+    }
+
+    private function handleQueryResponse(string $firstPayload, string $responseType)
+    {
+        $reader = $this->readerFactory->createFromString($firstPayload);
+        
+        switch ($responseType) {
+            case 'ok':
+                return OkPacket::fromPayload($reader);
+            case 'error':
+                throw ErrPacket::fromPayload($reader);
+            case 'resultset':
+                return $this->processResultSet($firstPayload, new ResultSetParser());
+        }
+    }
+
+    private function handleStatementResponse(string $firstPayload, string $responseType)
+    {
+        $reader = $this->readerFactory->createFromString($firstPayload);
+        
+        switch ($responseType) {
+            case 'ok':
+                return OkPacket::fromPayload($reader);
+            case 'error':
+                throw ErrPacket::fromPayload($reader);
+            case 'resultset':
+                return $this->processResultSet($firstPayload, new BinaryResultSetParser());
+        }
+    }
+
+    private function processResultSet(string $firstPayload, $parser)
+    {
+        $parser->processPayload($firstPayload);
+        
+        while (!$parser->isComplete()) {
+            $nextPayload = Async::await($this->packetHandler->readNextPacketPayload());
+            $parser->processPayload($nextPayload);
+        }
+        
+        return $parser->getResult();
+    }
+
+    private function validateResponseNotError(string $payload): void
+    {
+        $firstByte = ord($payload[0]);
+        if ($firstByte === 0xFF) {
+            $reader = $this->readerFactory->createFromString($payload);
+            throw ErrPacket::fromPayload($reader);
+        }
+    }
+
+    private function consumeParameterDefinitions(int $numParams): void
+    {
+        for ($i = 0; $i < $numParams; $i++) {
+            Async::await($this->packetHandler->readNextPacketPayload());
+        }
+        
+        if ($numParams > 0) {
+            Async::await($this->packetHandler->readNextPacketPayload());
+        }
+    }
+
+    private function consumeColumnDefinitions(int $numColumns): void
+    {
+        for ($i = 0; $i < $numColumns; $i++) {
+            Async::await($this->packetHandler->readNextPacketPayload());
+        }
+        
+        if ($numColumns > 0) {
+            Async::await($this->packetHandler->readNextPacketPayload());
+        }
     }
 }

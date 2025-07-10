@@ -13,34 +13,32 @@ use Rcalicdan\MySQLBinaryProtocol\Factory\DefaultPacketReaderFactory;
 use Rcalicdan\MySQLBinaryProtocol\Frame\Handshake\HandshakeParser;
 use Rcalicdan\MySQLBinaryProtocol\Frame\Handshake\HandshakeV10;
 use Rcalicdan\MySQLBinaryProtocol\Frame\Handshake\HandshakeV10Builder;
+use Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
 
 class ConnectionHandler
 {
     private MySQLClient $client;
     private AuthenticationHandler $authHandler;
     private PacketHandler $packetHandler;
+    private BufferPayloadReaderFactory $readerFactory;
 
     public function __construct(MySQLClient $client)
     {
         $this->client = $client;
         $this->authHandler = new AuthenticationHandler($client);
         $this->packetHandler = new PacketHandler($client);
+        $this->readerFactory = new BufferPayloadReaderFactory();
     }
 
     public function connect(): PromiseInterface
     {
         return Async::async(function () {
-            $params = $this->client->getConnectionParams();
-            $socket = Async::await(AsyncSocket::connect("tcp://{$params['host']}:{$params['port']}", $params['timeout'] ?? 10.0));
-            $this->client->setSocket($socket);
-            $this->client->setSequenceId(0);
-
-            Async::await($this->handleHandshake());
-            Async::await($this->authHandler->authenticate());
-
-            $this->client->setPacketReader((new DefaultPacketReaderFactory)->createWithDefaultSettings());
-            $this->client->setSequenceId(0);
-
+            $this->establishSocketConnection();
+            $this->initializeConnection();
+            $this->performHandshake();
+            $this->authenticateConnection();
+            $this->finalizeConnection();
+            
             return true;
         })();
     }
@@ -49,52 +47,109 @@ class ConnectionHandler
     {
         return Async::async(function () {
             $socket = $this->client->getSocket();
-            if ($socket && ! $socket->isClosed()) {
-                $packetBuilder = $this->client->getPacketBuilder();
-                if ($packetBuilder) {
-                    try {
-                        $quitPacket = $packetBuilder->buildQuitPacket();
-                        Async::await($this->packetHandler->sendPacket($quitPacket, 0));
-                    } catch (\Throwable $e) { /* Ignore */
-                    }
-                }
-                $socket->close();
-                $this->client->setSocket(null);
+            
+            if ($this->shouldCloseSocket($socket)) {
+                $this->sendQuitPacketSafely();
+                $this->closeSocket($socket);
             }
         })();
     }
 
-    private function handleHandshake(): PromiseInterface
+    private function establishSocketConnection(): void
     {
-        return Async::async(function () {
-            $this->client->debug("Reading handshake...\n");
+        $params = $this->client->getConnectionParams();
+        $connectionString = "tcp://{$params['host']}:{$params['port']}";
+        $timeout = $params['timeout'] ?? 10.0;
+        
+        $socket = Async::await(AsyncSocket::connect($connectionString, $timeout));
+        $this->client->setSocket($socket);
+    }
 
-            // --- THIS IS THE FINAL, CORRECT LOGIC ---
-            // 1. Get the raw payload of the handshake packet using the robust handler.
-            $handshakePayload = Async::await($this->packetHandler->readNextPacketPayload());
+    private function initializeConnection(): void
+    {
+        $this->client->setSequenceId(0);
+    }
 
-            // 2. Create a parser that will populate the client's handshake property.
-            $handshakeParser = new HandshakeParser(
-                new HandshakeV10Builder,
-                fn (HandshakeV10 $h) => $this->client->setHandshake($h)
-            );
+    private function performHandshake(): void
+    {
+        $this->client->debug("Reading handshake...\n");
+        
+        $handshakePayload = Async::await($this->packetHandler->readNextPacketPayload());
+        $handshake = $this->parseHandshake($handshakePayload);
+        
+        $this->validateHandshake($handshake);
+        $this->logHandshakeInfo($handshake);
+        $this->setupPacketBuilder();
+    }
 
-            // 3. Manually invoke the parser on the complete payload.
-            $factory = new \Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
-            $reader = $factory->createFromString($handshakePayload);
-            $handshakeParser($reader);
-            // --- END OF FIX ---
+    private function authenticateConnection(): void
+    {
+        Async::await($this->authHandler->authenticate());
+    }
 
-            $handshake = $this->client->getHandshake();
-            if (! $handshake) {
-                throw new \RuntimeException('Failed to parse handshake packet.');
+    private function finalizeConnection(): void
+    {
+        $this->client->setPacketReader((new DefaultPacketReaderFactory)->createWithDefaultSettings());
+        $this->client->setSequenceId(0);
+    }
+
+    private function parseHandshake(string $handshakePayload): HandshakeV10
+    {
+        $reader = $this->readerFactory->createFromString($handshakePayload);
+        
+        $handshakeParser = new HandshakeParser(
+            new HandshakeV10Builder(),
+            fn (HandshakeV10 $h) => $this->client->setHandshake($h)
+        );
+        
+        $handshakeParser($reader);
+        
+        return $this->client->getHandshake();
+    }
+
+    private function validateHandshake(?HandshakeV10 $handshake): void
+    {
+        if (!$handshake) {
+            throw new \RuntimeException('Failed to parse handshake packet.');
+        }
+    }
+
+    private function logHandshakeInfo(HandshakeV10 $handshake): void
+    {
+        $this->client->debug('Handshake received. Server version: ' . $handshake->serverVersion . "\n");
+    }
+
+    private function setupPacketBuilder(): void
+    {
+        $clientCapabilities = $this->client->getClientCapabilities();
+        $connectionParams = $this->client->getConnectionParams();
+        $packetBuilder = new PacketBuilder($connectionParams, $clientCapabilities);
+        
+        $this->client->setPacketBuilder($packetBuilder);
+    }
+
+    private function shouldCloseSocket($socket): bool
+    {
+        return $socket && !$socket->isClosed();
+    }
+
+    private function sendQuitPacketSafely(): void
+    {
+        $packetBuilder = $this->client->getPacketBuilder();
+        
+        if ($packetBuilder) {
+            try {
+                $quitPacket = $packetBuilder->buildQuitPacket();
+                Async::await($this->packetHandler->sendPacket($quitPacket, 0));
+            } catch (\Throwable $e) {
+                // Ignore errors during graceful shutdown
             }
+        }
+    }
 
-            $this->client->debug('Handshake received. Server version: '.$handshake->serverVersion."\n");
-
-            $clientCapabilities = $this->client->getClientCapabilities();
-            $packetBuilder = new PacketBuilder($this->client->getConnectionParams(), $clientCapabilities);
-            $this->client->setPacketBuilder($packetBuilder);
-        })();
+    private function closeSocket($socket): void
+    {
+        $socket->close();
+        $this->client->setSocket(null);
     }
 }
