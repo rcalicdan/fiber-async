@@ -4,6 +4,7 @@ namespace Rcalicdan\FiberAsync\Database\Protocol;
 
 use Rcalicdan\MySQLBinaryProtocol\Packet\PayloadReader;
 use Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
+use Rcalicdan\FiberAsync\Database\Result;
 
 /**
  * Parses a result set that is returned in the Binary Row Protocol format.
@@ -98,7 +99,7 @@ final class BinaryResultSetParser
 
     private function handleRowsState(PayloadReader $reader): void
     {
-        $reader->readFixedInteger(1); // Skip 0x00 packet header
+        $reader->readFixedInteger(1); 
 
         $nullBitmap = $this->readNullBitmap($reader);
         $row = $this->parseRow($reader, $nullBitmap);
@@ -228,9 +229,9 @@ final class BinaryResultSetParser
         return $this->isComplete;
     }
 
-    public function getResult(): array
+    public function getResult(): Result
     {
-        return $this->rows;
+        return new Result($this->rows);
     }
 
     /**

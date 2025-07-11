@@ -3,12 +3,16 @@
 namespace Rcalicdan\FiberAsync\Database;
 
 /**
- * Represents the result of a successful database query that returned rows.
+ * Represents the result of a database query that returns rows.
+ *
+ * This object is iterable and can be used directly in a foreach loop,
+ * ensuring backward compatibility.
  */
 class Result implements \IteratorAggregate
 {
     private int $position = 0;
-    private int $rowCount;
+    private readonly int $rowCount;
+    private readonly int $columnCount;
 
     /**
      * @param array $rows An array of associative arrays representing the result set.
@@ -17,6 +21,7 @@ class Result implements \IteratorAggregate
         private readonly array $rows
     ) {
         $this->rowCount = count($this->rows);
+        $this->columnCount = $this->rowCount > 0 ? count($this->rows[0]) : 0;
     }
 
     /**
@@ -63,5 +68,15 @@ class Result implements \IteratorAggregate
     public function getRowCount(): int
     {
         return $this->rowCount;
+    }
+
+    /**
+     * Gets the number of columns in the result set.
+     *
+     * @return int
+     */
+    public function getColumnCount(): int
+    {
+        return $this->columnCount;
     }
 }

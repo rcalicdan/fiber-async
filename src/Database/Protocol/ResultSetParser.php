@@ -3,13 +3,14 @@
 namespace Rcalicdan\FiberAsync\Database\Protocol;
 
 use Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
+use Rcalicdan\FiberAsync\Database\Result;
 
 final class ResultSetParser
 {
     private const STATE_INIT = 0;
     private const STATE_COLUMNS = 1;
     private const STATE_ROWS = 2;
-    
+
     private const EOF_PACKET_MARKER = 0xFE;
     private const EOF_PACKET_MAX_LENGTH = 9;
 
@@ -35,7 +36,6 @@ final class ResultSetParser
         $reader = $this->readerFactory->createFromString($rawPayload);
         $firstByte = ord($rawPayload[0]);
 
-        // Handle EOF packet during row processing
         if ($this->isEofPacketDuringRows($firstByte, $rawPayload)) {
             $this->completeResultSet();
             return;
@@ -56,19 +56,19 @@ final class ResultSetParser
 
     private function isEofPacketDuringRows(int $firstByte, string $rawPayload): bool
     {
-        return $this->state === self::STATE_ROWS && 
-               $this->isEofPacket($firstByte, $rawPayload);
+        return $this->state === self::STATE_ROWS &&
+            $this->isEofPacket($firstByte, $rawPayload);
     }
 
     private function isEofPacket(int $firstByte, string $rawPayload): bool
     {
-        return $firstByte === self::EOF_PACKET_MARKER && 
-               strlen($rawPayload) < self::EOF_PACKET_MAX_LENGTH;
+        return $firstByte === self::EOF_PACKET_MARKER &&
+            strlen($rawPayload) < self::EOF_PACKET_MAX_LENGTH;
     }
 
     private function completeResultSet(): void
     {
-        $this->finalResult = $this->rows;
+        $this->finalResult = new Result($this->rows);
         $this->isComplete = true;
     }
 
@@ -97,7 +97,6 @@ final class ResultSetParser
 
     private function processColumnPayload($reader, int $firstByte, string $rawPayload): void
     {
-        // Check for EOF packet that follows column definitions
         if ($this->isEofPacket($firstByte, $rawPayload)) {
             $this->transitionToRowsState();
             return;
@@ -125,11 +124,11 @@ final class ResultSetParser
     private function buildRowFromColumns($reader): array
     {
         $row = [];
-        
+
         foreach ($this->columns as $column) {
             $row[$column->name] = $reader->readLengthEncodedStringOrNull();
         }
-        
+
         return $row;
     }
 }
