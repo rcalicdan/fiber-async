@@ -35,7 +35,7 @@ class ConnectionHandler
             $this->performHandshake();
             $this->authenticateConnection();
             $this->finalizeConnection();
-            
+
             return true;
         })();
     }
@@ -44,11 +44,31 @@ class ConnectionHandler
     {
         return async(function () {
             $socket = $this->client->getSocket();
-            
+
             if ($this->shouldCloseSocket($socket)) {
                 $this->sendQuitPacketSafely();
                 $this->closeSocket($socket);
             }
+        })();
+    }
+
+    public function ensureConnection(): PromiseInterface
+    {
+        return async(function () {
+            $socket = $this->client->getSocket();
+
+            if (!$socket || $socket->isClosed()) {
+                $this->client->debug('Connection lost, reconnecting...');
+
+                if ($this->client->isInTransaction()) {
+                    $this->client->debug('Transaction was active during disconnection');
+                    $this->client->getTransactionHandler()->reset();
+                }
+
+                return await($this->connect());
+            }
+
+            return true;
         })();
     }
 
@@ -57,7 +77,7 @@ class ConnectionHandler
         $params = $this->client->getConnectionParams();
         $connectionString = "tcp://{$params['host']}:{$params['port']}";
         $timeout = $params['timeout'] ?? 10.0;
-        
+
         $socket = await(AsyncSocket::connect($connectionString, $timeout));
         $this->client->setSocket($socket);
     }
@@ -70,10 +90,10 @@ class ConnectionHandler
     private function performHandshake(): void
     {
         $this->client->debug("Reading handshake...\n");
-        
+
         $handshakePayload = await($this->packetHandler->readNextPacketPayload());
         $handshake = $this->parseHandshake($handshakePayload);
-        
+
         $this->validateHandshake($handshake);
         $this->logHandshakeInfo($handshake);
         $this->setupPacketBuilder();
@@ -93,14 +113,14 @@ class ConnectionHandler
     private function parseHandshake(string $handshakePayload): HandshakeV10
     {
         $reader = $this->readerFactory->createFromString($handshakePayload);
-        
+
         $handshakeParser = new HandshakeParser(
             new HandshakeV10Builder(),
-            fn (HandshakeV10 $h) => $this->client->setHandshake($h)
+            fn(HandshakeV10 $h) => $this->client->setHandshake($h)
         );
-        
+
         $handshakeParser($reader);
-        
+
         return $this->client->getHandshake();
     }
 
@@ -121,7 +141,7 @@ class ConnectionHandler
         $clientCapabilities = $this->client->getClientCapabilities();
         $connectionParams = $this->client->getConnectionParams();
         $packetBuilder = new PacketBuilder($connectionParams, $clientCapabilities);
-        
+
         $this->client->setPacketBuilder($packetBuilder);
     }
 
@@ -133,7 +153,7 @@ class ConnectionHandler
     private function sendQuitPacketSafely(): void
     {
         $packetBuilder = $this->client->getPacketBuilder();
-        
+
         if ($packetBuilder) {
             try {
                 $quitPacket = $packetBuilder->buildQuitPacket();

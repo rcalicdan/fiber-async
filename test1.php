@@ -1,80 +1,70 @@
 <?php
 
-require_once __DIR__ . '/vendor/autoload.php';
+require 'vendor/autoload.php';
 
 use Rcalicdan\FiberAsync\Database\MySQLClient;
-use Rcalicdan\FiberAsync\Database\PreparedStatement;
+use Rcalicdan\FiberAsync\Database\Transaction;
 
-run(function () {
-    $connectionParams = [
-        'host'     => '127.0.0.1',
-        'port'     => 3306,
-        'user'     => 'root',
-        'password' => '',
-        'database' => 'yos',
-        'debug'    => true,
-    ];
+$client = new MySQLClient([
+    'host' => '127.0.0.1',
+    'port' => 3309,
+    'user' => 'root',
+    'password' => 'Reymart1234',
+    'database' => 'yo',
+    'debug' => false,
+]);
 
-    $client = new MySQLClient($connectionParams);
-    $selectStmt = null;
-    $insertStmt = null;
+run(function () use ($client) {
+
+    /** @var ?Transaction $transaction */
+    $transaction = null;
 
     try {
-        echo "Connecting...\n";
-        echo "host: " . $connectionParams['host'] . "\n";
-        echo "port: " . $connectionParams['port'] . "\n";
-        echo "user: " . $connectionParams['user'] . "\n";
-        echo "password: " . $connectionParams['password'] . "\n";
-        echo "database: " . $connectionParams['database'] . "\n";
-        echo "debug: " . $connectionParams['debug'] . "\n";
         await($client->connect());
-        echo "Connection successful.\n\n";
+        echo "Successfully connected to the database.\n";
 
-        $selectSql = 'SELECT id, name, email FROM users WHERE id = ? OR id = ?';
-        echo "Preparing: {$selectSql}\n";
-        $selectStmt = await($client->prepare($selectSql));
+        await($client->query("
+            CREATE TABLE IF NOT EXISTS accounts (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                balance DECIMAL(10, 2) NOT NULL
+            )
+        "));
+        await($client->query("TRUNCATE TABLE accounts"));
+        await($client->query("INSERT INTO accounts (name, balance) VALUES ('Alice', 1000.00), ('Bob', 1000.00)"));
+        echo "Starting transaction...\n";
+        $transaction = await($client->beginTransaction());
 
-        $userIds = [1, 3];
-        echo "Executing with params: " . json_encode($userIds) . "\n";
-        $users = await($selectStmt->execute($userIds));
-        
-        echo "Query Result:\n";
-        print_r($users);
-        echo "\n";
+        echo "Deducting 100 from Alice...\n";
+        await($transaction->query("UPDATE accounts SET balance = balance - 200 WHERE name = 'Alice'"));
 
-        // --- FIX IS HERE ---
-        // 1. Added 'password' to the column list
-        $insertSql = 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)';
-        echo "Preparing: {$insertSql}\n";
-        $insertStmt = await($client->prepare($insertSql));
+        echo "Adding 100 to Bob...\n";
+        await($transaction->query("UPDATE accounts SET balance = balance + 200 WHERE name = 'Bob'"));
 
-        // 2. Added a value for the password parameter
-        // In a real app, this should be a securely hashed password.
-        $hashedPassword = password_hash('supersecret123', PASSWORD_DEFAULT);
-        $newUser = ['Jane Doe', 'jane.doe@example.com', $hashedPassword];
-        echo "Executing with params: " . json_encode(['Jane Doe', 'jane.doe@example.com', '...hashed_password...']) . "\n";
-        
-        $insertResult = await($insertStmt->execute($newUser));
-        
-        echo "Insert Result:\n";
-        echo "  - Affected Rows: {$insertResult->affectedRows}\n";
-        echo "  - Last Insert ID: {$insertResult->lastInsertId}\n\n";
+        // You can even uncomment this to test the rollback
+        throw new \Exception("Something went wrong!");
 
-    } catch (Throwable $e) {
-        echo "[ERROR] " . $e->getMessage() . "\n";
+        // ** COMMIT THE TRANSACTION **
+        echo "Committing transaction...\n";
+        await($transaction->commit());
+
+        echo "Transaction committed successfully!\n";
+    } catch (\Throwable $e) {
+        echo "An error occurred: " . $e->getMessage() . "\n";
+        if ($transaction && $transaction->isActive()) {
+            echo "Rolling back transaction...\n";
+            await($transaction->rollback());
+            echo "Transaction rolled back.\n";
+        }
     } finally {
-        if ($selectStmt) {
-            echo "Closing SELECT statement...\n";
-            await($selectStmt->close());
-        }
-        if ($insertStmt) {
-            echo "Closing INSERT statement...\n";
-            await($insertStmt->close());
-        }
-        if ($client->getSocket() && !$client->getSocket()->isClosed()) {
-            echo "Closing database connection...\n";
-            await($client->close());
-        }
-        echo "Done.\n";
+        echo "Closing connection.\n";
+        await($client->close());
     }
+
+    // You can reconnect to verify the final state
+    await($client->connect());
+    $finalState = await($client->query("SELECT * FROM accounts"));
+    echo "Final account balances:\n";
+    print_r($finalState);
+    await($client->close());
 });

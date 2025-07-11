@@ -1,7 +1,5 @@
 <?php
 
-// src/Database/PreparedStatement.php
-
 namespace Rcalicdan\FiberAsync\Database;
 
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;

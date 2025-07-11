@@ -5,6 +5,7 @@ namespace Rcalicdan\FiberAsync\Database;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\Database\Handlers\ConnectionHandler;
 use Rcalicdan\FiberAsync\Database\Handlers\QueryHandler;
+use Rcalicdan\FiberAsync\Database\Handlers\TransactionHandler;
 use Rcalicdan\FiberAsync\Database\Protocol\PacketBuilder;
 use Rcalicdan\FiberAsync\Database\Traits\LoggingTrait;
 use Rcalicdan\FiberAsync\Mutex;
@@ -28,6 +29,7 @@ class MySQLClient
 
     private ConnectionHandler $connectionHandler;
     private QueryHandler $queryHandler;
+    private TransactionHandler $transactionHandler;
 
     public function __construct(array $connectionParams)
     {
@@ -39,9 +41,9 @@ class MySQLClient
         }
 
         $this->mutex = new Mutex;
-
         $this->connectionHandler = new ConnectionHandler($this);
         $this->queryHandler = new QueryHandler($this);
+        $this->transactionHandler = new TransactionHandler($this);
     }
 
     public function connect(): PromiseInterface
@@ -77,6 +79,66 @@ class MySQLClient
     public function getSocket(): ?Socket
     {
         return $this->socket;
+    }
+
+    public function beginTransaction(TransactionIsolationLevel|string|null $isolationLevel = null): PromiseInterface
+    {
+        return $this->transactionHandler->beginTransaction($isolationLevel);
+    }
+
+    public function commit(): PromiseInterface
+    {
+        return $this->transactionHandler->commit();
+    }
+
+    public function rollback(): PromiseInterface
+    {
+        return $this->transactionHandler->rollback();
+    }
+
+    public function savepoint(string $name): PromiseInterface
+    {
+        return $this->transactionHandler->savepoint($name);
+    }
+
+    public function rollbackToSavepoint(string $name): PromiseInterface
+    {
+        return $this->transactionHandler->rollbackToSavepoint($name);
+    }
+
+    public function releaseSavepoint(string $name): PromiseInterface
+    {
+        return $this->transactionHandler->releaseSavepoint($name);
+    }
+
+    public function setAutoCommit(bool $autoCommit): PromiseInterface
+    {
+        return $this->transactionHandler->setAutoCommit($autoCommit);
+    }
+
+    public function getAutoCommit(): PromiseInterface
+    {
+        return $this->transactionHandler->getAutoCommit();
+    }
+
+    public function getTransactionHandler(): TransactionHandler
+    {
+        return $this->transactionHandler;
+    }
+
+    public function isInTransaction(): bool
+    {
+        return $this->transactionHandler->isInTransaction();
+    }
+
+    public function setTransactionIsolationLevel(TransactionIsolationLevel|string $level): void
+    {
+        $this->transactionHandler->setIsolationLevel($level);
+    }
+
+    public function getConnectionHandler(): ConnectionHandler
+    {
+        return $this->connectionHandler;
     }
 
     public function setSocket(?Socket $socket): void
