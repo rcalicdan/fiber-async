@@ -13,7 +13,7 @@ $client = new MySQLClient([
     'database' => 'yo',
     'debug' => false,
 ]);
-
+$start_time = microtime(true);
 run(async(function () use ($client) {
     try {
         await($client->connect());
@@ -76,3 +76,6 @@ run(async(function () use ($client) {
         }
     }
 }));
+
+$microtime = microtime(true) - $start_time;
+echo "Time taken: {$microtime} seconds\n";
