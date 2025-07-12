@@ -157,7 +157,7 @@ class Request
     public function get(string $url, array $query = []): PromiseInterface
     {
         if ($query) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
         }
 
         return $this->send('GET', $url);
@@ -165,7 +165,7 @@ class Request
 
     public function post(string $url, array $data = []): PromiseInterface
     {
-        if ($data && !$this->body && !isset($this->options['multipart'])) {
+        if ($data && ! $this->body && ! isset($this->options['multipart'])) {
             $this->json($data);
         }
 
@@ -174,7 +174,7 @@ class Request
 
     public function put(string $url, array $data = []): PromiseInterface
     {
-        if ($data && !$this->body && !isset($this->options['multipart'])) {
+        if ($data && ! $this->body && ! isset($this->options['multipart'])) {
             $this->json($data);
         }
 
@@ -221,7 +221,7 @@ class Request
         $this->addHeaderOptions($options);
         $this->addBodyOptions($options);
         $this->addAuthenticationOptions($options);
-        
+
         // --- FIX IS HERE ---
         // Instead of merging, we only add known custom cURL options from $this->options.
         // This prevents internal keys like 'multipart' from being passed to curl_setopt_array.
@@ -231,7 +231,7 @@ class Request
                 $options[$key] = $value;
             }
         }
-        
+
         return $options;
     }
 

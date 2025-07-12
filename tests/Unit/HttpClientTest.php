@@ -16,7 +16,7 @@ describe('HTTP Request Methods', function () {
         $response = run(function () {
             return await(http_get('https://httpbin.org/get', [
                 'param1' => 'value1',
-                'param2' => 'value2'
+                'param2' => 'value2',
             ]));
         });
 
@@ -33,7 +33,7 @@ describe('HTTP Request Methods', function () {
         $testData = [
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'age' => 30
+            'age' => 30,
         ];
 
         $response = run(function () use ($testData) {
@@ -54,7 +54,7 @@ describe('HTTP Request Methods', function () {
         $testData = [
             'id' => 123,
             'name' => 'Updated Name',
-            'status' => 'active'
+            'status' => 'active',
         ];
 
         $response = run(function () use ($testData) {
@@ -134,9 +134,9 @@ describe('Fetch API', function () {
             return await(fetch('https://httpbin.org/post', [
                 'method' => 'POST',
                 'headers' => [
-                    'Content-Type' => 'application/json'
+                    'Content-Type' => 'application/json',
                 ],
-                'body' => json_encode(['test' => 'data'])
+                'body' => json_encode(['test' => 'data']),
             ]));
         });
 
@@ -153,8 +153,8 @@ describe('Fetch API', function () {
             return await(fetch('https://httpbin.org/headers', [
                 'headers' => [
                     'X-Custom-Header' => 'custom-value',
-                    'User-Agent' => 'FiberAsync-Test/1.0'
-                ]
+                    'User-Agent' => 'FiberAsync-Test/1.0',
+                ],
             ]));
         });
 
@@ -169,7 +169,7 @@ describe('Fetch API', function () {
     test('fetch with timeout option', function () {
         $response = run(function () {
             return await(fetch('https://httpbin.org/delay/1', [
-                'timeout' => 5
+                'timeout' => 5,
             ]));
         });
 
@@ -216,7 +216,7 @@ describe('Request Builder', function () {
     test('request builder with form data', function () {
         $formData = [
             'field1' => 'value1',
-            'field2' => 'value2'
+            'field2' => 'value2',
         ];
 
         $response = run(function () use ($formData) {
@@ -314,7 +314,7 @@ describe('Response Handling', function () {
     test('response headers can be accessed', function () {
         $response = run(function () {
             return await(http_get('https://httpbin.org/response-headers', [
-                'X-Test-Header' => 'test-value'
+                'X-Test-Header' => 'test-value',
             ]));
         });
 
@@ -362,7 +362,7 @@ describe('Concurrent Requests', function () {
             $promises = [
                 http_get('https://httpbin.org/delay/1'),
                 http_get('https://httpbin.org/delay/1'),
-                http_get('https://httpbin.org/delay/1')
+                http_get('https://httpbin.org/delay/1'),
             ];
 
             return await(all($promises));
@@ -383,7 +383,7 @@ describe('Concurrent Requests', function () {
                 http_get('https://httpbin.org/get'),
                 http_post('https://httpbin.org/post', ['test' => 'data']),
                 http_put('https://httpbin.org/put', ['update' => 'data']),
-                http_delete('https://httpbin.org/delete')
+                http_delete('https://httpbin.org/delete'),
             ];
 
             return await(all($promises));

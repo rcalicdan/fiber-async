@@ -22,9 +22,9 @@ final readonly class StreamWatcherHandler
      * @param  callable  $callback  Callback to execute when stream is ready
      * @return StreamWatcher The created stream watcher
      */
-    public function createWatcher($stream, callable $callback): StreamWatcher
+    public function createWatcher($stream, callable $callback, string $type = StreamWatcher::TYPE_READ): StreamWatcher
     {
-        return new StreamWatcher($stream, $callback);
+        return new StreamWatcher($stream, $callback, $type);
     }
 
     /**

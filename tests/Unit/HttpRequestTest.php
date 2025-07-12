@@ -23,7 +23,7 @@ test('http request object creates proper curl handle', function () {
         CURLOPT_TIMEOUT => 10,
         CURLOPT_RETURNTRANSFER => true,
     ];
-    
+
     $request = new HttpRequest('https://example.com', $options, function () {});
 
     expect($request->getUrl())->toBe('https://example.com');
