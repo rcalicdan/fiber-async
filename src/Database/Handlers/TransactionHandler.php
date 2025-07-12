@@ -30,6 +30,7 @@ class TransactionHandler
     {
         if ($level instanceof TransactionIsolationLevel) {
             $this->isolationLevel = $level;
+
             return;
         }
 
@@ -38,9 +39,10 @@ class TransactionHandler
         try {
             $this->isolationLevel = TransactionIsolationLevel::from($normalizedLevel);
         } catch (\ValueError) {
-            $validLevels = array_map(fn($case) => $case->value, TransactionIsolationLevel::cases());
+            $validLevels = array_map(fn ($case) => $case->value, TransactionIsolationLevel::cases());
+
             throw new \InvalidArgumentException(
-                "Invalid transaction isolation level string '{$level}'. Must be one of: " . implode(', ', $validLevels)
+                "Invalid transaction isolation level string '{$level}'. Must be one of: ".implode(', ', $validLevels)
             );
         }
     }
@@ -63,6 +65,7 @@ class TransactionHandler
             await($this->queryHandler->query('START TRANSACTION'));
 
             $this->activeTransaction = new Transaction($this->client);
+
             return $this->activeTransaction;
         })();
     }
@@ -74,12 +77,14 @@ class TransactionHandler
                 $this->client->debug('Committing formal transaction');
                 $result = await($this->queryHandler->query('COMMIT'));
                 $this->activeTransaction = null;
+
                 return $result;
             }
 
             $autocommitState = await($this->getAutoCommit());
             if ($autocommitState == 0) {
                 $this->client->debug('Sending manual COMMIT (autocommit is OFF)');
+
                 return await($this->queryHandler->query('COMMIT'));
             }
 
@@ -94,26 +99,30 @@ class TransactionHandler
                 $this->client->debug('Rolling back formal transaction');
                 $result = await($this->queryHandler->query('ROLLBACK'));
                 $this->activeTransaction = null;
+
                 return $result;
             }
 
             $autocommitState = await($this->getAutoCommit());
             if ($autocommitState == 0) {
                 $this->client->debug('Sending manual ROLLBACK (autocommit is OFF)');
+
                 return await($this->queryHandler->query('ROLLBACK'));
             }
 
             throw new \RuntimeException('No active transaction to roll back');
         })();
     }
+
     public function savepoint(string $name): PromiseInterface
     {
         return async(function () use ($name) {
-            if (!$this->activeTransaction) {
+            if (! $this->activeTransaction) {
                 throw new \RuntimeException('No active transaction');
             }
 
             $this->client->debug("Creating savepoint: {$name}");
+
             return await($this->queryHandler->query("SAVEPOINT `{$name}`"));
         })();
     }
@@ -121,11 +130,12 @@ class TransactionHandler
     public function rollbackToSavepoint(string $name): PromiseInterface
     {
         return async(function () use ($name) {
-            if (!$this->activeTransaction) {
+            if (! $this->activeTransaction) {
                 throw new \RuntimeException('No active transaction');
             }
 
             $this->client->debug("Rolling back to savepoint: {$name}");
+
             return await($this->queryHandler->query("ROLLBACK TO SAVEPOINT `{$name}`"));
         })();
     }
@@ -133,11 +143,12 @@ class TransactionHandler
     public function releaseSavepoint(string $name): PromiseInterface
     {
         return async(function () use ($name) {
-            if (!$this->activeTransaction) {
+            if (! $this->activeTransaction) {
                 throw new \RuntimeException('No active transaction');
             }
 
             $this->client->debug("Releasing savepoint: {$name}");
+
             return await($this->queryHandler->query("RELEASE SAVEPOINT `{$name}`"));
         })();
     }
@@ -157,6 +168,7 @@ class TransactionHandler
         return async(function () use ($autoCommit) {
             $value = $autoCommit ? 1 : 0;
             $this->client->debug("Setting autocommit to: {$value}");
+
             return await($this->queryHandler->query("SET autocommit = {$value}"));
         })();
     }
@@ -164,7 +176,8 @@ class TransactionHandler
     public function getAutoCommit(): PromiseInterface
     {
         return async(function () {
-            $result = await($this->queryHandler->query("SELECT @@autocommit"));
+            $result = await($this->queryHandler->query('SELECT @@autocommit'));
+
             return $result[0]['@@autocommit'] ?? 1;
         })();
     }
@@ -186,9 +199,10 @@ class TransactionHandler
         try {
             return TransactionIsolationLevel::from($normalizedLevel);
         } catch (\ValueError) {
-            $validLevels = array_map(fn($case) => $case->value, TransactionIsolationLevel::cases());
+            $validLevels = array_map(fn ($case) => $case->value, TransactionIsolationLevel::cases());
+
             throw new \InvalidArgumentException(
-                "Invalid transaction isolation level string '{$level}'. Must be one of: " . implode(', ', $validLevels)
+                "Invalid transaction isolation level string '{$level}'. Must be one of: ".implode(', ', $validLevels)
             );
         }
     }

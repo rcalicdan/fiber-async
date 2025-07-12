@@ -23,6 +23,7 @@ class Transaction
     {
         return async(function () use ($sql) {
             $this->ensureTransactionActive();
+
             return await($this->client->query($sql));
         })();
     }
@@ -31,6 +32,7 @@ class Transaction
     {
         return async(function () use ($sql) {
             $this->ensureTransactionActive();
+
             return await($this->client->prepare($sql));
         })();
     }
@@ -43,15 +45,18 @@ class Transaction
             try {
                 $result = await($this->transactionHandler->commit());
                 $this->isCommitted = true;
+
                 return $result;
             } catch (\Throwable $e) {
                 $this->client->debug('Commit failed, attempting rollback');
+
                 try {
                     await($this->transactionHandler->rollback());
                     $this->isRolledBack = true;
                 } catch (\Throwable $rollbackError) {
-                    $this->client->debug('Rollback also failed: ' . $rollbackError->getMessage());
+                    $this->client->debug('Rollback also failed: '.$rollbackError->getMessage());
                 }
+
                 throw $e;
             }
         })();
@@ -64,6 +69,7 @@ class Transaction
 
             $result = await($this->transactionHandler->rollback());
             $this->isRolledBack = true;
+
             return $result;
         })();
     }
@@ -75,6 +81,7 @@ class Transaction
 
             $result = await($this->transactionHandler->savepoint($name));
             $this->savepoints[] = $name;
+
             return $result;
         })();
     }
@@ -84,7 +91,7 @@ class Transaction
         return async(function () use ($name) {
             $this->ensureTransactionActive();
 
-            if (!in_array($name, $this->savepoints)) {
+            if (! in_array($name, $this->savepoints)) {
                 throw new \InvalidArgumentException("Savepoint '{$name}' not found");
             }
 
@@ -97,12 +104,13 @@ class Transaction
         return async(function () use ($name) {
             $this->ensureTransactionActive();
 
-            if (!in_array($name, $this->savepoints)) {
+            if (! in_array($name, $this->savepoints)) {
                 throw new \InvalidArgumentException("Savepoint '{$name}' not found");
             }
 
             $result = await($this->transactionHandler->releaseSavepoint($name));
-            $this->savepoints = array_filter($this->savepoints, fn($sp) => $sp !== $name);
+            $this->savepoints = array_filter($this->savepoints, fn ($sp) => $sp !== $name);
+
             return $result;
         })();
     }
@@ -113,15 +121,17 @@ class Transaction
             try {
                 $result = await($callback($this));
                 await($this->commit());
+
                 return $result;
             } catch (\Throwable $e) {
-                if (!$this->isRolledBack) {
+                if (! $this->isRolledBack) {
                     try {
                         await($this->rollback());
                     } catch (\Throwable $rollbackError) {
-                        $this->client->debug('Rollback failed: ' . $rollbackError->getMessage());
+                        $this->client->debug('Rollback failed: '.$rollbackError->getMessage());
                     }
                 }
+
                 throw $e;
             }
         })();
@@ -129,7 +139,7 @@ class Transaction
 
     public function isActive(): bool
     {
-        return !$this->isCommitted && !$this->isRolledBack;
+        return ! $this->isCommitted && ! $this->isRolledBack;
     }
 
     public function isCommitted(): bool
@@ -144,7 +154,7 @@ class Transaction
 
     private function ensureTransactionActive(): void
     {
-        if (!$this->isActive()) {
+        if (! $this->isActive()) {
             throw new \RuntimeException('Transaction is not active');
         }
     }

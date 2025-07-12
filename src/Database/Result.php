@@ -15,7 +15,7 @@ class Result implements \IteratorAggregate
     private readonly int $columnCount;
 
     /**
-     * @param array $rows An array of associative arrays representing the result set.
+     * @param  array  $rows  An array of associative arrays representing the result set.
      */
     public function __construct(
         private readonly array $rows
@@ -27,8 +27,6 @@ class Result implements \IteratorAggregate
     /**
      * Fetches the next row from the result set as an associative array.
      * Returns null if there are no more rows.
-     *
-     * @return array|null
      */
     public function fetchAssoc(): ?array
     {
@@ -42,8 +40,6 @@ class Result implements \IteratorAggregate
 
     /**
      * Fetches all rows from the result set as an array of associative arrays.
-     *
-     * @return array
      */
     public function fetchAllAssoc(): array
     {
@@ -52,8 +48,6 @@ class Result implements \IteratorAggregate
 
     /**
      * Allows the Result object to be used directly in a foreach loop.
-     *
-     * @return \Traversable
      */
     public function getIterator(): \Traversable
     {
@@ -62,8 +56,6 @@ class Result implements \IteratorAggregate
 
     /**
      * Gets the number of rows in the result set.
-     *
-     * @return int
      */
     public function getRowCount(): int
     {
@@ -72,8 +64,6 @@ class Result implements \IteratorAggregate
 
     /**
      * Gets the number of columns in the result set.
-     *
-     * @return int
      */
     public function getColumnCount(): int
     {

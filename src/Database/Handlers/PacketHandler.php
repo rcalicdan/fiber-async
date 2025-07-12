@@ -34,14 +34,14 @@ class PacketHandler
     public function sendPacket(string $payload, int $sequenceId): PromiseInterface
     {
         $header = $this->buildPacketHeader($payload, $sequenceId);
-        $this->client->debug("Sending packet - Length: " . strlen($payload) . ", Sequence ID: {$sequenceId}\n");
-        
-        return $this->client->getSocket()->write($header . $payload);
+        $this->client->debug('Sending packet - Length: '.strlen($payload).", Sequence ID: {$sequenceId}\n");
+
+        return $this->client->getSocket()->write($header.$payload);
     }
 
     private function tryProcessExistingBuffer($packetReader): ?string
     {
-        if (!$packetReader->hasPacket()) {
+        if (! $packetReader->hasPacket()) {
             return null;
         }
 
@@ -53,6 +53,7 @@ class PacketHandler
         if ($packetReader->readPayload($parser)) {
             $this->client->debug("Processed packet from existing buffer.\n");
             $this->client->incrementSequenceId();
+
             return $payload;
         }
 
@@ -69,10 +70,11 @@ class PacketHandler
 
             if ($data === '') {
                 await(delay(0));
+
                 continue;
             }
 
-            $this->client->debug('Read ' . strlen($data) . " bytes from socket. Appending to reader.\n");
+            $this->client->debug('Read '.strlen($data)." bytes from socket. Appending to reader.\n");
             $packetReader->append($data);
 
             $payload = $this->tryParsePacket($packetReader);
@@ -99,6 +101,7 @@ class PacketHandler
         if ($packetReader->readPayload($parser)) {
             $this->client->debug("Successfully parsed packet after network read.\n");
             $this->client->incrementSequenceId();
+
             return $payload;
         }
 
@@ -108,10 +111,12 @@ class PacketHandler
     private function buildPacketHeader(string $payload, int $sequenceId): string
     {
         $length = strlen($payload);
-        return pack('C3C', 
-            $length & 0xFF, 
-            ($length >> 8) & 0xFF, 
-            ($length >> 16) & 0xFF, 
+
+        return pack(
+            'C3C',
+            $length & 0xFF,
+            ($length >> 8) & 0xFF,
+            ($length >> 16) & 0xFF,
             $sequenceId
         );
     }

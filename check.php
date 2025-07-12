@@ -6,7 +6,7 @@ $start_time = microtime(true);
 
 $promises = [];
 
-for ($i = 0; $i <= 100; $i++) {
+for ($i = 0; $i <= 1000; $i++) {
     $promises[] = delay(1)->then(function () use ($i) {
         echo "{$i}. Hello, world!\n";
     });

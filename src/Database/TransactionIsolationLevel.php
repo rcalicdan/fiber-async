@@ -1,4 +1,5 @@
 <?php
+
 namespace Rcalicdan\FiberAsync\Database;
 
 enum TransactionIsolationLevel: string

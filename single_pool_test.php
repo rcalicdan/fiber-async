@@ -8,24 +8,24 @@ use Rcalicdan\FiberAsync\Facades\AsyncLoop;
 
 // --- Main Configuration ---
 const NUM_OPERATIONS = 1000;
-const POOL_SIZE       = 50; // The number of "lanes on our bridge"
+const POOL_SIZE = 50; // The number of "lanes on our bridge"
 
 // Latency Profiles (ms)
 $profiles = [
     // 'Localhost (0.1ms)'    => 0.1,
     // 'Same DC (1ms)'        => 1,
     // 'AZ-cross (5ms)'       => 5,
-    'Local Machine (0.01ms)'      => 0.1,
+    'Local Machine (0.01ms)' => 0.1,
     // 'Inter-region (100ms)' => 100,
 ];
 
 const DB_CONFIG = [
-    'host'     => '127.0.0.1',
-    'port'     => 3309,
-    'user'     => 'root',
+    'host' => '127.0.0.1',
+    'port' => 3309,
+    'user' => 'root',
     'password' => 'Reymart1234',
     'database' => 'yo',
-    'debug'    => false,
+    'debug' => false,
 ];
 
 // --- Helper & Reporting Classes ---
@@ -46,9 +46,9 @@ class Reporter
         $baselineUsage = memory_get_usage(false); // actual usage, not system allocation
 
         return [
-            'start_time'      => hrtime(true),
+            'start_time' => hrtime(true),
             'baseline_memory' => $baselineMemory,
-            'baseline_usage'  => $baselineUsage,
+            'baseline_usage' => $baselineUsage,
         ];
     }
 
@@ -68,12 +68,11 @@ class Reporter
         $peakUsage = memory_get_peak_usage(false);
 
         echo sprintf("Duration: %.2f ms\n", $durationMs);
-        echo 'System Memory Allocated: ' . self::formatBytes($actualMemoryUsed) . "\n";
-        echo 'Actual Memory Used: ' . self::formatBytes($actualUsageIncrease) . "\n";
-        echo 'Peak System Memory: ' . self::formatBytes($peakMemory) . "\n";
-        echo 'Peak Usage: ' . self::formatBytes($peakUsage) . "\n";
+        echo 'System Memory Allocated: '.self::formatBytes($actualMemoryUsed)."\n";
+        echo 'Actual Memory Used: '.self::formatBytes($actualUsageIncrease)."\n";
+        echo 'Peak System Memory: '.self::formatBytes($peakMemory)."\n";
+        echo 'Peak Usage: '.self::formatBytes($peakUsage)."\n";
     }
-
 
     public static function summary(): void
     {
@@ -85,7 +84,7 @@ class Reporter
             'Actual Memory',
             'Peak Memory'
         );
-        echo str_repeat('-', 95) . "\n";
+        echo str_repeat('-', 95)."\n";
 
         foreach (self::$results as $title => $result) {
             printf(
@@ -96,17 +95,19 @@ class Reporter
                 self::formatBytes($result['peak_memory_used'])
             );
         }
-        echo str_repeat('-', 95) . "\n";
+        echo str_repeat('-', 95)."\n";
     }
 
     public static function formatBytes(int $bytes): string
     {
-        if ($bytes < 0) return '0 B';
+        if ($bytes < 0) {
+            return '0 B';
+        }
 
         $units = ['B', 'KB', 'MB', 'GB'];
-        $pow   = $bytes > 0 ? floor(log($bytes, 1024)) : 0;
+        $pow = $bytes > 0 ? floor(log($bytes, 1024)) : 0;
 
-        return round($bytes / (1024 ** $pow), 2) . ' ' . $units[$pow];
+        return round($bytes / (1024 ** $pow), 2).' '.$units[$pow];
     }
 }
 
@@ -119,7 +120,7 @@ class BenchmarkRunner
         $metrics = Reporter::start("PDO Sequential - {$title}");
 
         $pdo = new PDO(
-            'mysql:host=' . DB_CONFIG['host'] . ';port=' . DB_CONFIG['port'] . ';dbname=' . DB_CONFIG['database'],
+            'mysql:host='.DB_CONFIG['host'].';port='.DB_CONFIG['port'].';dbname='.DB_CONFIG['database'],
             DB_CONFIG['user'],
             DB_CONFIG['password']
         );
@@ -152,7 +153,7 @@ class BenchmarkRunner
                 $tasks = [];
                 for ($i = 0; $i < NUM_OPERATIONS; $i++) {
                     $clientForTask = $pool[$i % POOL_SIZE];
-                    $tasks[]       = $clientForTask->query($query);
+                    $tasks[] = $clientForTask->query($query);
                 }
 
                 Async::await(Async::all($tasks));
@@ -186,7 +187,7 @@ class BenchmarkRunner
         }
 
         $endMemory = memory_get_usage(true);
-        echo "Memory change: " . Reporter::formatBytes($endMemory - $startMemory) . "\n";
+        echo 'Memory change: '.Reporter::formatBytes($endMemory - $startMemory)."\n";
 
         // Wait and cleanup
         sleep(2);
@@ -199,7 +200,7 @@ class BenchmarkRunner
 
 $runner = new BenchmarkRunner;
 
-echo "Starting memory-accurate benchmark with multiple latency profiles: with " . NUM_OPERATIONS . " operations.\nTesting PDO against Async Mysql with " . POOL_SIZE . " concurrent connections pool.\n";
+echo 'Starting memory-accurate benchmark with multiple latency profiles: with '.NUM_OPERATIONS." operations.\nTesting PDO against Async Mysql with ".POOL_SIZE." concurrent connections pool.\n";
 
 // Option 1: Run all tests in sequence (original behavior)
 echo "\n==== SEQUENTIAL BENCHMARK ====\n";

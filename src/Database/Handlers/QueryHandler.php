@@ -24,7 +24,7 @@ class QueryHandler
     {
         $this->client = $client;
         $this->packetHandler = new PacketHandler($client);
-        $this->readerFactory = new BufferPayloadReaderFactory();
+        $this->readerFactory = new BufferPayloadReaderFactory;
     }
 
     public function query(string $sql): PromiseInterface
@@ -34,6 +34,7 @@ class QueryHandler
 
             try {
                 await($lock->acquire());
+
                 return $this->executeQuery($sql);
             } finally {
                 $lock->release();
@@ -48,6 +49,7 @@ class QueryHandler
 
             try {
                 await($lock->acquire());
+
                 return $this->executePrepare($sql);
             } finally {
                 $lock->release();
@@ -62,6 +64,7 @@ class QueryHandler
 
             try {
                 await($lock->acquire());
+
                 return $this->executeStatementInternal($statementId, $params);
             } finally {
                 $lock->release();
@@ -76,6 +79,7 @@ class QueryHandler
 
             try {
                 await($lock->acquire());
+
                 return $this->closeStatementInternal($statementId);
             } finally {
                 $lock->release();
@@ -90,7 +94,7 @@ class QueryHandler
         $this->client->debug("Executing query: {$sql}\n");
 
         if ($this->isTransactionControlStatement($sql)) {
-            $this->client->debug("Transaction control statement detected");
+            $this->client->debug('Transaction control statement detected');
         }
 
         $queryPacket = $this->client->getPacketBuilder()->buildQueryPacket($sql);
@@ -105,6 +109,7 @@ class QueryHandler
     private function isTransactionControlStatement(string $sql): bool
     {
         $sql = trim(strtoupper($sql));
+
         return preg_match('/^(START TRANSACTION|BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE SAVEPOINT)/i', $sql);
     }
 
@@ -180,7 +185,7 @@ class QueryHandler
             case 'error':
                 throw ErrPacket::fromPayload($reader);
             case 'resultset':
-                return $this->processResultSet($firstPayload, new ResultSetParser());
+                return $this->processResultSet($firstPayload, new ResultSetParser);
         }
     }
 
@@ -194,7 +199,7 @@ class QueryHandler
             case 'error':
                 throw ErrPacket::fromPayload($reader);
             case 'resultset':
-                return $this->processResultSet($firstPayload, new BinaryResultSetParser());
+                return $this->processResultSet($firstPayload, new BinaryResultSetParser);
         }
     }
 
@@ -202,7 +207,7 @@ class QueryHandler
     {
         $parser->processPayload($firstPayload);
 
-        while (!$parser->isComplete()) {
+        while (! $parser->isComplete()) {
             $nextPayload = await($this->packetHandler->readNextPacketPayload());
             $parser->processPayload($nextPayload);
         }
@@ -215,6 +220,7 @@ class QueryHandler
         $firstByte = ord($payload[0]);
         if ($firstByte === 0xFF) {
             $reader = $this->readerFactory->createFromString($payload);
+
             throw ErrPacket::fromPayload($reader);
         }
     }

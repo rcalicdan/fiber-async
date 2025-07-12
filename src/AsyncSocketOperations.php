@@ -105,7 +105,7 @@ class AsyncSocketOperations
                 $timerId = $this->loop->addTimer($timeout, function () use ($client, $reject) {
                     // On timeout, clear any pending watchers for this socket.
                     $this->loop->getSocketManager()->removeWriteWatcher($client->getResource());
-                    $reject(new TimeoutException("Write operation timed out."));
+                    $reject(new TimeoutException('Write operation timed out.'));
                 });
             }
         });
@@ -117,14 +117,20 @@ class AsyncSocketOperations
             $bytesWritten = @fwrite($client->getResource(), $data);
 
             if ($bytesWritten === false) {
-                if ($timerId) $this->loop->cancelTimer($timerId);
+                if ($timerId) {
+                    $this->loop->cancelTimer($timerId);
+                }
                 $reject(new SocketException('Failed to write to socket.'));
+
                 return;
             }
 
             if ($bytesWritten === strlen($data)) {
-                if ($timerId) $this->loop->cancelTimer($timerId);
+                if ($timerId) {
+                    $this->loop->cancelTimer($timerId);
+                }
                 $resolve($bytesWritten);
+
                 return;
             }
 

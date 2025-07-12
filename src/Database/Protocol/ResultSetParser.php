@@ -2,8 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\Database\Protocol;
 
-use Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
 use Rcalicdan\FiberAsync\Database\Result;
+use Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
 
 final class ResultSetParser
 {
@@ -24,7 +24,7 @@ final class ResultSetParser
 
     public function __construct()
     {
-        $this->readerFactory = new BufferPayloadReaderFactory();
+        $this->readerFactory = new BufferPayloadReaderFactory;
     }
 
     public function processPayload(string $rawPayload): void
@@ -38,6 +38,7 @@ final class ResultSetParser
 
         if ($this->isEofPacketDuringRows($firstByte, $rawPayload)) {
             $this->completeResultSet();
+
             return;
         }
 
@@ -77,14 +78,17 @@ final class ResultSetParser
         switch ($this->state) {
             case self::STATE_INIT:
                 $this->processInitialPayload($reader);
+
                 break;
 
             case self::STATE_COLUMNS:
                 $this->processColumnPayload($reader, $firstByte, $rawPayload);
+
                 break;
 
             case self::STATE_ROWS:
                 $this->processRowPayload($reader);
+
                 break;
         }
     }
@@ -99,6 +103,7 @@ final class ResultSetParser
     {
         if ($this->isEofPacket($firstByte, $rawPayload)) {
             $this->transitionToRowsState();
+
             return;
         }
 

@@ -68,7 +68,7 @@ class SocketManager
                     try {
                         $callback();
                     } catch (\Throwable $e) {
-                        error_log("Error in socket callback for ID {$socketId}: " . $e->getMessage());
+                        error_log("Error in socket callback for ID {$socketId}: ".$e->getMessage());
                     }
                 }
                 unset($watchers[$socketId]);

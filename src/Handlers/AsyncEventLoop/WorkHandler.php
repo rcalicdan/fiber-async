@@ -7,7 +7,7 @@ use Rcalicdan\FiberAsync\Managers\FileManager;
 use Rcalicdan\FiberAsync\Managers\HttpRequestManager;
 use Rcalicdan\FiberAsync\Managers\SocketManager;
 use Rcalicdan\FiberAsync\Managers\StreamManager;
-use Rcalicdan\FiberAsync\Managers\TimerManager; // Add this
+use Rcalicdan\FiberAsync\Managers\TimerManager;
 
 final readonly class WorkHandler
 {
@@ -17,7 +17,7 @@ final readonly class WorkHandler
     private FiberManager $fiberManager;
     private TickHandler $tickHandler;
     private FileManager $fileManager;
-    private SocketManager $socketManager; // Add this
+    private SocketManager $socketManager;
 
     public function __construct(
         TimerManager $timerManager,
@@ -26,7 +26,7 @@ final readonly class WorkHandler
         FiberManager $fiberManager,
         TickHandler $tickHandler,
         FileManager $fileManager,
-        SocketManager $socketManager, // Add this
+        SocketManager $socketManager,
     ) {
         $this->timerManager = $timerManager;
         $this->httpRequestManager = $httpRequestManager;
@@ -34,7 +34,7 @@ final readonly class WorkHandler
         $this->fiberManager = $fiberManager;
         $this->tickHandler = $tickHandler;
         $this->fileManager = $fileManager;
-        $this->socketManager = $socketManager; // Add this
+        $this->socketManager = $socketManager;
     }
 
     public function hasWork(): bool
@@ -45,7 +45,7 @@ final readonly class WorkHandler
             $this->httpRequestManager->hasRequests() ||
             $this->fileManager->hasWork() ||
             $this->streamManager->hasWatchers() ||
-            $this->socketManager->hasWatchers() || // Add this
+            $this->socketManager->hasWatchers() ||
             $this->fiberManager->hasFibers();
     }
 
@@ -58,8 +58,7 @@ final readonly class WorkHandler
         if ($this->httpRequestManager->processRequests()) {
             $workDone = true;
         }
-        // Socket processing should happen early, like HTTP requests
-        if ($this->socketManager->processSockets()) { // Add this block
+        if ($this->socketManager->processSockets()) {
             $workDone = true;
         }
         if ($this->fiberManager->processFibers()) {

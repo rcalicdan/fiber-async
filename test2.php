@@ -13,14 +13,13 @@ $client = new MySQLClient([
     'debug' => false,
 ]);
 
-
 run(async(function () use ($client) {
     try {
         await($client->connect());
         echo "Successfully connected.\n";
 
-        await($client->query("CREATE TABLE IF NOT EXISTS accounts (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, balance DECIMAL(10, 2) NOT NULL)"));
-        await($client->query("TRUNCATE TABLE accounts"));
+        await($client->query('CREATE TABLE IF NOT EXISTS accounts (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, balance DECIMAL(10, 2) NOT NULL)'));
+        await($client->query('TRUNCATE TABLE accounts'));
         await($client->query("INSERT INTO accounts (name, balance) VALUES ('Alice', 1000.00), ('Bob', 1000.00)"));
 
         $transaction = await($client->beginTransaction());
@@ -34,21 +33,21 @@ run(async(function () use ($client) {
             await($tx->query("UPDATE accounts SET balance = balance + 100 WHERE name = 'Bob'"));
             echo "Added 100 to Bob.\n";
 
-            throw new Exception("Simulated error in transaction");
+            throw new Exception('Simulated error in transaction');
 
-            return "Transfer completed.";
+            return 'Transfer completed.';
         })));
 
         echo "Transaction result: $result\n";
-    } catch (\Throwable $e) {
-        echo "A top-level error occurred: " . $e->getMessage() . "\n";
+    } catch (Throwable $e) {
+        echo 'A top-level error occurred: '.$e->getMessage()."\n";
     } finally {
         echo "Closing connection.\n";
         await($client->close());
     }
 
     await($client->connect());
-    $finalState = await($client->query("SELECT * FROM accounts"));
+    $finalState = await($client->query('SELECT * FROM accounts'));
     echo "Final account balances:\n";
     print_r($finalState);
     await($client->close());

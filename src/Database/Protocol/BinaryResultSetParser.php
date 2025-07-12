@@ -2,9 +2,9 @@
 
 namespace Rcalicdan\FiberAsync\Database\Protocol;
 
-use Rcalicdan\MySQLBinaryProtocol\Packet\PayloadReader;
-use Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
 use Rcalicdan\FiberAsync\Database\Result;
+use Rcalicdan\MySQLBinaryProtocol\Buffer\Reader\BufferPayloadReaderFactory;
+use Rcalicdan\MySQLBinaryProtocol\Packet\PayloadReader;
 
 /**
  * Parses a result set that is returned in the Binary Row Protocol format.
@@ -50,6 +50,7 @@ final class BinaryResultSetParser
 
         if ($this->isEndOfResultSet($firstByte, $rawPayload)) {
             $this->markComplete();
+
             return;
         }
 
@@ -62,14 +63,15 @@ final class BinaryResultSetParser
 
     private function getReader(string $rawPayload): PayloadReader
     {
-        $this->readerFactory ??= new BufferPayloadReaderFactory();
+        $this->readerFactory ??= new BufferPayloadReaderFactory;
+
         return $this->readerFactory->createFromString($rawPayload);
     }
 
     private function isEndOfResultSet(int $firstByte, string $rawPayload): bool
     {
-        return $this->state === self::STATE_ROWS 
-            && $firstByte === self::EOF_MARKER 
+        return $this->state === self::STATE_ROWS
+            && $firstByte === self::EOF_MARKER
             && strlen($rawPayload) < self::EOF_PACKET_MAX_LENGTH;
     }
 
@@ -91,6 +93,7 @@ final class BinaryResultSetParser
     {
         if ($firstByte === self::EOF_MARKER) {
             $this->state = self::STATE_ROWS;
+
             return;
         }
 
@@ -99,27 +102,29 @@ final class BinaryResultSetParser
 
     private function handleRowsState(PayloadReader $reader): void
     {
-        $reader->readFixedInteger(1); 
+        $reader->readFixedInteger(1);
 
         $nullBitmap = $this->readNullBitmap($reader);
         $row = $this->parseRow($reader, $nullBitmap);
-        
+
         $this->rows[] = $row;
     }
 
     private function readNullBitmap(PayloadReader $reader): string
     {
         $nullBitmapBytes = (int) floor(($this->columnCount + 7) / 8);
+
         return $reader->readFixedString($nullBitmapBytes);
     }
 
     private function parseRow(PayloadReader $reader, string $nullBitmap): array
     {
         $row = [];
-        
+
         foreach ($this->columns as $i => $column) {
             if ($this->isColumnNull($nullBitmap, $i)) {
                 $row[$column->name] = null;
+
                 continue;
             }
 
@@ -133,6 +138,7 @@ final class BinaryResultSetParser
     {
         $byte = ord($nullBitmap[$columnIndex >> 3]);
         $bit = 1 << ($columnIndex & 7);
+
         return ($byte & $bit) !== 0;
     }
 
@@ -146,8 +152,8 @@ final class BinaryResultSetParser
             self::FIELD_TYPE_MEDIUM => $this->parseMediumInt($reader),
             self::FIELD_TYPE_FLOAT => $this->parseFloat($reader),
             self::FIELD_TYPE_DOUBLE => $this->parseDouble($reader),
-            self::FIELD_TYPE_DATE, 
-            self::FIELD_TYPE_TIMESTAMP, 
+            self::FIELD_TYPE_DATE,
+            self::FIELD_TYPE_TIMESTAMP,
             self::FIELD_TYPE_DATETIME => $this->parseDateTimeBinary($reader),
             self::FIELD_TYPE_TIME => $this->parseTimeBinary($reader),
             default => $reader->readLengthEncodedStringOrNull(),
@@ -157,7 +163,8 @@ final class BinaryResultSetParser
     private function parseMediumInt(PayloadReader $reader): int
     {
         $bytes = $reader->readFixedString(3);
-        $val = unpack('V', $bytes . "\x00")[1];
+        $val = unpack('V', $bytes."\x00")[1];
+
         return ($val & 0x800000) ? ($val | ~0xFFFFFF) : $val;
     }
 
@@ -174,7 +181,7 @@ final class BinaryResultSetParser
     private function parseDateTimeBinary(PayloadReader $reader): string
     {
         $length = $reader->readFixedInteger(1);
-        
+
         if ($length === 0) {
             return '0000-00-00 00:00:00';
         }
@@ -196,13 +203,14 @@ final class BinaryResultSetParser
         }
 
         $microsecond = $reader->readFixedInteger(4);
+
         return sprintf('%04d-%02d-%02d %02d:%02d:%02d.%06d', $year, $month, $day, $hour, $minute, $second, $microsecond);
     }
 
     private function parseTimeBinary(PayloadReader $reader): string
     {
         $length = $reader->readFixedInteger(1);
-        
+
         if ($length === 0) {
             return '00:00:00';
         }
