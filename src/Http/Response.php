@@ -4,9 +4,9 @@ namespace Rcalicdan\FiberAsync\Http;
 
 class Response
 {
-    private string $body;
-    private int $status;
-    private array $headers;
+    protected string $body;
+    protected int $status;
+    protected array $headers;
     private array $parsedHeaders = [];
 
     public function __construct(string $body, int $status, array $headers = [])

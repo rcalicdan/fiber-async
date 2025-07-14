@@ -2,56 +2,55 @@
 
 namespace Rcalicdan\FiberAsync\Handlers\AsyncEventLoop;
 
-/**
- * Handles activity tracking for the event loop to determine idle states.
- *
- * This handler tracks the last activity time and provides methods to check
- * if the event loop has been idle for a certain period. This is useful for
- * optimization decisions like when to sleep or perform cleanup operations.
- */
 final class ActivityHandler
 {
-    /**
-     * @var int Unix timestamp of the last recorded activity
-     */
-    private int $lastActivity = 0;
+    private float $lastActivity = 0.0;
+    private int $idleThreshold = 5; // seconds
+    private int $activityCounter = 0;
+    private float $avgActivityInterval = 0.0;
 
-    /**
-     * Initialize the activity handler with current time.
-     */
     public function __construct()
     {
-        $this->lastActivity = time();
+        $this->lastActivity = microtime(true);
     }
 
-    /**
-     * Update the last activity timestamp to the current time.
-     *
-     * This should be called whenever significant work is performed
-     * in the event loop to maintain accurate idle detection.
-     */
     public function updateLastActivity(): void
     {
-        $this->lastActivity = time();
+        $now = microtime(true);
+
+        // Calculate average activity interval for adaptive behavior
+        if ($this->activityCounter > 0) {
+            $interval = $now - $this->lastActivity;
+            $this->avgActivityInterval = ($this->avgActivityInterval * 0.9) + ($interval * 0.1);
+        }
+
+        $this->lastActivity = $now;
+        $this->activityCounter++;
     }
 
-    /**
-     * Check if the event loop has been idle for more than 5 seconds.
-     *
-     * @return bool True if idle for more than 5 seconds, false otherwise
-     */
     public function isIdle(): bool
     {
-        return (time() - $this->lastActivity) > 5;
+        $idleTime = microtime(true) - $this->lastActivity;
+
+        // Adaptive idle threshold based on activity patterns
+        $adaptiveThreshold = $this->activityCounter > 100
+            ? max(1, $this->avgActivityInterval * 10)
+            : $this->idleThreshold;
+
+        return $idleTime > $adaptiveThreshold;
     }
 
-    /**
-     * Get the timestamp of the last recorded activity.
-     *
-     * @return int Unix timestamp of last activity
-     */
-    public function getLastActivity(): int
+    public function getLastActivity(): float
     {
         return $this->lastActivity;
+    }
+
+    public function getActivityStats(): array
+    {
+        return [
+            'counter' => $this->activityCounter,
+            'avg_interval' => $this->avgActivityInterval,
+            'idle_time' => microtime(true) - $this->lastActivity,
+        ];
     }
 }

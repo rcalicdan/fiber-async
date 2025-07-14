@@ -8,7 +8,8 @@ final readonly class HttpResponseHandler
 {
     public function handleSuccessfulResponse($handle, HttpRequest $request): void
     {
-        $fullResponse = curl_multi_getcontent($handle);
+        $fullResponse = curl_multi_getcontent($handle) ?? '';
+
         $httpCode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
         $headerSize = curl_getinfo($handle, CURLINFO_HEADER_SIZE);
 

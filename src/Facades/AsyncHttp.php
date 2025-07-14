@@ -84,6 +84,22 @@ class AsyncHttp
     }
 
     /**
+     * Stream a response with optional chunk handling
+     */
+    public static function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
+    {
+        return self::getInstance()->stream($url, $options, $onChunk);
+    }
+
+    /**
+     * Download a file
+     */
+    public static function download(string $url, string $destination, array $options = []): PromiseInterface
+    {
+        return self::getInstance()->download($url, $destination, $options);
+    }
+
+    /**
      * Reset the singleton instance (useful for testing)
      */
     public static function reset(): void

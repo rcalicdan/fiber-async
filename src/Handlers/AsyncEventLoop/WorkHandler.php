@@ -52,31 +52,51 @@ final readonly class WorkHandler
     public function processWork(): bool
     {
         $workDone = false;
+
+        // Process high-priority work first
         if ($this->tickHandler->processNextTickCallbacks()) {
             $workDone = true;
         }
+
+        // Batch process timers and fibers together for better cache locality
+        $timerWork = $this->timerManager->processTimers();
+        $fiberWork = $this->fiberManager->processFibers();
+
+        if ($timerWork || $fiberWork) {
+            $workDone = true;
+        }
+
+        // Process I/O operations
+        if ($this->processIOOperations()) {
+            $workDone = true;
+        }
+
+        // Process deferred callbacks last
+        if ($this->tickHandler->processDeferredCallbacks()) {
+            $workDone = true;
+        }
+
+        return $workDone;
+    }
+
+    private function processIOOperations(): bool
+    {
+        $workDone = false;
+
+        // Process all I/O in one batch to minimize system calls
         if ($this->httpRequestManager->processRequests()) {
             $workDone = true;
         }
+
         if ($this->socketManager->processSockets()) {
             $workDone = true;
         }
-        if ($this->fiberManager->processFibers()) {
-            $workDone = true;
-        }
-        if ($this->httpRequestManager->processRequests()) {
-            $workDone = true;
-        }
-        if ($this->fileManager->processFileOperations()) {
-            $workDone = true;
-        }
-        if ($this->timerManager->processTimers()) {
-            $workDone = true;
-        }
+
         if ($this->streamManager->processStreams()) {
             $workDone = true;
         }
-        if ($this->tickHandler->processDeferredCallbacks()) {
+
+        if ($this->fileManager->processFileOperations()) {
             $workDone = true;
         }
 
