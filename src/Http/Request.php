@@ -154,6 +154,32 @@ class Request
         return $this;
     }
 
+    public function stream(string $url, ?callable $onChunk = null): PromiseInterface
+    {
+        $options = $this->buildCurlOptions('GET', $url);
+
+        return $this->handler->stream($url, $options, $onChunk);
+    }
+
+    public function download(string $url, string $destination): PromiseInterface
+    {
+        $options = $this->buildCurlOptions('GET', $url);
+
+        return $this->handler->download($url, $destination, $options);
+    }
+
+    public function streamPost(string $url, $body = null, ?callable $onChunk = null): PromiseInterface
+    {
+        if ($body !== null) {
+            $this->body($body);
+        }
+
+        $options = $this->buildCurlOptions('POST', $url);
+        $options[CURLOPT_HEADER] = false;
+
+        return $this->handler->stream($url, $options, $onChunk);
+    }
+
     public function get(string $url, array $query = []): PromiseInterface
     {
         if ($query) {

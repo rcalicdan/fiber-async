@@ -85,6 +85,10 @@ class AsyncEventLoop implements EventLoopInterface
     private FileManager $fileManager;
     private SocketManager $socketManager;
 
+    private int $iterationCount = 0;
+    private float $lastOptimizationCheck = 0;
+    private const OPTIMIZATION_INTERVAL = 1.0;
+
     /**
      * Initialize the event loop with all required managers and handlers.
      *
@@ -250,12 +254,36 @@ class AsyncEventLoop implements EventLoopInterface
     public function run(): void
     {
         while ($this->stateHandler->isRunning() && $this->workHandler->hasWork()) {
+            $this->iterationCount++;
             $hasImmediateWork = $this->tick();
 
-            // Only sleep if there's no immediate work and no fibers waiting
+            // Adaptive optimization check
+            if ($this->shouldOptimize()) {
+                $this->optimizeLoop();
+            }
+
             if ($this->sleepHandler->shouldSleep($hasImmediateWork)) {
                 $sleepTime = $this->sleepHandler->calculateOptimalSleep();
                 $this->sleepHandler->sleep($sleepTime);
+            }
+        }
+    }
+
+    private function shouldOptimize(): bool
+    {
+        $now = microtime(true);
+
+        return ($now - $this->lastOptimizationCheck) > self::OPTIMIZATION_INTERVAL;
+    }
+
+    private function optimizeLoop(): void
+    {
+        $this->lastOptimizationCheck = microtime(true);
+
+        // Trigger garbage collection periodically to prevent memory buildup
+        if ($this->iterationCount % 1000 === 0) {
+            if (function_exists('gc_collect_cycles')) {
+                gc_collect_cycles();
             }
         }
     }

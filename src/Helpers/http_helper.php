@@ -35,6 +35,26 @@ if (! function_exists('http_post')) {
     }
 }
 
+if (! function_exists('http_stream')) {
+    /**
+     * Stream an HTTP request
+     */
+    function http_stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
+    {
+        return AsyncHttp::stream($url, $options, $onChunk);
+    }
+}
+
+if (! function_exists('http_download')) {
+    /**
+     * Download a file
+     */
+    function http_download(string $url, string $destination, array $options = []): PromiseInterface
+    {
+        return AsyncHttp::download($url, $destination, $options);
+    }
+}
+
 if (! function_exists('http_put')) {
     /**
      * Perform async PUT request

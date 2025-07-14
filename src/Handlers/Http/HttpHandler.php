@@ -9,9 +9,18 @@ use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
+use Rcalicdan\FiberAsync\Http\Stream;
+use RuntimeException;
 
 final readonly class HttpHandler
 {
+    private StreamingHandler $streamingHandler;
+
+    public function __construct()
+    {
+        $this->streamingHandler = new StreamingHandler;
+    }
+
     /**
      * Create a new HTTP request builder
      */
@@ -50,6 +59,53 @@ final readonly class HttpHandler
     public function delete(string $url): PromiseInterface
     {
         return $this->request()->delete($url);
+    }
+
+    /**
+     * Stream a request and get a streaming response
+     */
+    public function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
+    {
+        $curlOptions = $this->normalizeFetchOptions($url, $options);
+
+        return $this->streamingHandler->streamRequest($url, $curlOptions, $onChunk);
+    }
+
+    /**
+     * Download a file directly to disk
+     */
+    public function download(string $url, string $destination, array $options = []): PromiseInterface
+    {
+        $curlOptions = $this->normalizeFetchOptions($url, $options);
+
+        return $this->streamingHandler->downloadFile($url, $destination, $curlOptions);
+    }
+
+    /**
+     * Create a stream from a string
+     */
+    public function createStream(string $content = ''): Stream
+    {
+        $resource = fopen('php://temp', 'w+b');
+        if ($content !== '') {
+            fwrite($resource, $content);
+            rewind($resource);
+        }
+
+        return new Stream($resource);
+    }
+
+    /**
+     * Create a stream from a file
+     */
+    public function createStreamFromFile(string $path, string $mode = 'rb'): Stream
+    {
+        $resource = fopen($path, $mode);
+        if (! $resource) {
+            throw new RuntimeException("Cannot open file: {$path}");
+        }
+
+        return new Stream($resource, $path);
     }
 
     /**
