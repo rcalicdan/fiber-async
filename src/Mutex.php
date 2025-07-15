@@ -1,6 +1,5 @@
 <?php
 
-// src/Mutex.php
 
 namespace Rcalicdan\FiberAsync;
 
