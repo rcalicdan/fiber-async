@@ -201,9 +201,6 @@ class RealisticPDODriverBenchmark
                     }
                 });
             }
-            // The concurrency limit here applies to how many Fibers run simultaneously,
-            // but the true bottleneck relief comes from distributing actual PDO ops
-            // across different client objects in the pool.
             await(concurrent($tasks, $this->numClientsInPool)); // Limit concurrent Fibers to pool size
         })());
 
@@ -217,16 +214,21 @@ class RealisticPDODriverBenchmark
         $start = microtime(true);
 
         run(Async::async(function () use ($clients, $numOps) {
-            // Prepare statements sequentially to maintain proper indexing
-            $preparedStatements = [];
-            foreach ($clients as $index => $client) {
-                $stmt = await($client->prepare("INSERT INTO async_test (value) VALUES (?)"));
-                $preparedStatements[$index] = $stmt;
+            $prepareTasks = [];
+            
+            foreach (array_keys($clients) as $idx) {
+                $client = $clients[$idx];
+                $prepareTasks[$idx] = Async::async(function () use ($client) {
+                    return await($client->prepare("INSERT INTO async_test (value) VALUES (?)"));
+                });
             }
+            // Await all prepare tasks. $preparedStatements will now be indexed 0 to numClientsInPool-1
+            $preparedStatements = await(concurrent($prepareTasks, $this->numClientsInPool));
 
-            // Execute operations concurrently using the prepared statements
             $tasks = [];
             for ($i = 0; $i < $numOps; $i++) {
+                // Now, $preparedStatements has the correct indices (0 to 9) populated
+                // by the results of the prepareTasks in the order they were submitted.
                 $stmt = $preparedStatements[$i % $this->numClientsInPool];
                 $tasks[] = Async::async(function () use ($stmt, $i) {
                     await($stmt->execute(["test_val_{$i}"]));
@@ -236,7 +238,7 @@ class RealisticPDODriverBenchmark
 
             // Close prepared statement cursors
             $closeStmtTasks = [];
-            foreach ($preparedStatements as $stmt) {
+            foreach ($preparedStatements as $stmt) { // Iterate over the correctly ordered statements
                 $closeStmtTasks[] = Async::async(function () use ($stmt) {
                     await($stmt->closeCursor());
                 });
@@ -244,7 +246,7 @@ class RealisticPDODriverBenchmark
             await(concurrent($closeStmtTasks, $this->numClientsInPool));
         })());
 
-        $this->closeClientPool($clients); // Close clients
+        $this->closeClientPool($clients);
         return (microtime(true) - $start) * 1000;
     }
 
