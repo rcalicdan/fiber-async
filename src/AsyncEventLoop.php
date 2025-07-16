@@ -99,7 +99,7 @@ class AsyncEventLoop implements EventLoopInterface
      * Private constructor to enforce singleton pattern. Sets up all managers
      * and handlers with proper dependency injection.
      */
-    private function __construct()
+    private function __construct(array $databaseConfig = [])
     {
         $this->timerManager = new TimerManager;
         $this->httpRequestManager = new HttpRequestManager;
@@ -110,7 +110,7 @@ class AsyncEventLoop implements EventLoopInterface
         $this->stateHandler = new StateHandler;
         $this->fileManager = new FileManager;
         $this->socketManager = new SocketManager;
-        $this->pdoManager = new PDOManager;
+        $this->pdoManager = new PDOManager($databaseConfig);
 
         // Initialize handlers that depend on managers
         $this->workHandler = new WorkHandler(
@@ -164,14 +164,15 @@ class AsyncEventLoop implements EventLoopInterface
      *
      * @return AsyncEventLoop The singleton event loop instance
      */
-    public static function getInstance(): AsyncEventLoop
+    public static function getInstance(array $databaseConfig = []): AsyncEventLoop
     {
         if (self::$instance === null) {
-            self::$instance = new self;
+            self::$instance = new self($databaseConfig);
         }
 
         return self::$instance;
     }
+
 
     /**
      * Schedule a timer to execute a callback after a specified delay.
