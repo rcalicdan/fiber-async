@@ -11,9 +11,11 @@ use Rcalicdan\FiberAsync\Handlers\AsyncEventLoop\WorkHandler;
 use Rcalicdan\FiberAsync\Managers\FiberManager;
 use Rcalicdan\FiberAsync\Managers\FileManager;
 use Rcalicdan\FiberAsync\Managers\HttpRequestManager;
+use Rcalicdan\FiberAsync\Managers\PDOManager;
 use Rcalicdan\FiberAsync\Managers\SocketManager;
 use Rcalicdan\FiberAsync\Managers\StreamManager;
 use Rcalicdan\FiberAsync\Managers\TimerManager;
+use Rcalicdan\FiberAsync\ValueObjects\PDOOperation;
 use Rcalicdan\FiberAsync\ValueObjects\StreamWatcher;
 
 /**
@@ -84,6 +86,7 @@ class AsyncEventLoop implements EventLoopInterface
      */
     private FileManager $fileManager;
     private SocketManager $socketManager;
+    private PDOManager $pdoManager;
 
     private int $iterationCount = 0;
     private float $lastOptimizationCheck = 0;
@@ -106,6 +109,7 @@ class AsyncEventLoop implements EventLoopInterface
         $this->stateHandler = new StateHandler;
         $this->fileManager = new FileManager;
         $this->socketManager = new SocketManager;
+        $this->pdoManager = new PDOManager;
 
         // Initialize handlers that depend on managers
         $this->workHandler = new WorkHandler(
@@ -116,12 +120,31 @@ class AsyncEventLoop implements EventLoopInterface
             tickHandler: $this->tickHandler,
             fileManager: $this->fileManager,
             socketManager: $this->socketManager,
+            pdoManager: $this->pdoManager,
         );
 
         $this->sleepHandler = new SleepHandler(
             $this->timerManager,
             $this->fiberManager
         );
+    }
+
+    // Add these public methods to AsyncEventLoop
+    public function addPDOOperation(string $type, array $payload, callable $callback, array $options = []): string
+    {
+        $operation = new PDOOperation($type, $payload, $callback, $options);
+        return $this->pdoManager->addOperation($operation);
+    }
+
+    public function cancelPDOOperation(string $operationId): bool
+    {
+        return $this->pdoManager->cancelOperation($operationId);
+    }
+
+    // Add a method to configure latency for testing
+    public function setPDOLatencyConfig(array $config): void
+    {
+        $this->pdoManager->setLatencyConfig($config);
     }
 
     public function getSocketManager(): SocketManager
