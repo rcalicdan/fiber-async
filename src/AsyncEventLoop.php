@@ -91,6 +91,7 @@ class AsyncEventLoop implements EventLoopInterface
     private int $iterationCount = 0;
     private float $lastOptimizationCheck = 0;
     private const OPTIMIZATION_INTERVAL = 1.0;
+    private array $pdoLatencyConfig = []; // ADDED
 
     /**
      * Initialize the event loop with all required managers and handlers.
@@ -129,7 +130,6 @@ class AsyncEventLoop implements EventLoopInterface
         );
     }
 
-    // Add these public methods to AsyncEventLoop
     public function addPDOOperation(string $type, array $payload, callable $callback, array $options = []): string
     {
         $operation = new PDOOperation($type, $payload, $callback, $options);
@@ -141,10 +141,14 @@ class AsyncEventLoop implements EventLoopInterface
         return $this->pdoManager->cancelOperation($operationId);
     }
 
-    // Add a method to configure latency for testing
     public function setPDOLatencyConfig(array $config): void
     {
-        $this->pdoManager->setLatencyConfig($config);
+        $this->pdoLatencyConfig = $config;
+    }
+
+    public function getPDOLatencyConfig(): array
+    {
+        return $this->pdoLatencyConfig;
     }
 
     public function getSocketManager(): SocketManager
