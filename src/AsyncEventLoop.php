@@ -91,7 +91,7 @@ class AsyncEventLoop implements EventLoopInterface
     private int $iterationCount = 0;
     private float $lastOptimizationCheck = 0;
     private const OPTIMIZATION_INTERVAL = 1.0;
-    private array $pdoLatencyConfig = []; // ADDED
+    private array $pdoLatencyConfig = []; 
 
     /**
      * Initialize the event loop with all required managers and handlers.
@@ -99,7 +99,7 @@ class AsyncEventLoop implements EventLoopInterface
      * Private constructor to enforce singleton pattern. Sets up all managers
      * and handlers with proper dependency injection.
      */
-    private function __construct(array $databaseConfig = [])
+    private function __construct()
     {
         $this->timerManager = new TimerManager;
         $this->httpRequestManager = new HttpRequestManager;
@@ -110,9 +110,10 @@ class AsyncEventLoop implements EventLoopInterface
         $this->stateHandler = new StateHandler;
         $this->fileManager = new FileManager;
         $this->socketManager = new SocketManager;
-        $this->pdoManager = new PDOManager($databaseConfig);
 
-        // Initialize handlers that depend on managers
+        // The PDOManager is created here, but it's "empty" and unconfigured.
+        $this->pdoManager = new PDOManager();
+
         $this->workHandler = new WorkHandler(
             timerManager: $this->timerManager,
             httpRequestManager: $this->httpRequestManager,
@@ -121,13 +122,19 @@ class AsyncEventLoop implements EventLoopInterface
             tickHandler: $this->tickHandler,
             fileManager: $this->fileManager,
             socketManager: $this->socketManager,
-            pdoManager: $this->pdoManager,
+            pdoManager: $this->pdoManager
         );
 
         $this->sleepHandler = new SleepHandler(
             $this->timerManager,
             $this->fiberManager
         );
+    }
+
+    public function configureDatabase(array $dbConfig): void
+    {
+        // It delegates the configuration to the manager it owns.
+        $this->pdoManager->initialize($dbConfig);
     }
 
     public function addPDOOperation(string $type, array $payload, callable $callback, array $options = []): string
@@ -164,12 +171,11 @@ class AsyncEventLoop implements EventLoopInterface
      *
      * @return AsyncEventLoop The singleton event loop instance
      */
-    public static function getInstance(array $databaseConfig = []): AsyncEventLoop
+    public static function getInstance(): AsyncEventLoop
     {
         if (self::$instance === null) {
-            self::$instance = new self($databaseConfig);
+            self::$instance = new self();
         }
-
         return self::$instance;
     }
 
@@ -401,9 +407,6 @@ class AsyncEventLoop implements EventLoopInterface
      */
     public static function reset(): void
     {
-        if (self::$instance !== null) {
-            // Optional: You might want to add cleanup logic for managers here if needed
-        }
         self::$instance = null;
     }
 }

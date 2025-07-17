@@ -9,22 +9,36 @@ class PDOManager
 {
     /** @var PDOOperation[] */
     private array $pendingOperations = [];
-
     /** @var array<string, PDOOperation> */
     private array $operationsById = [];
 
-    private PDOOperationHandler $operationHandler;
-    private \PDO $pdo;
+    private ?\PDO $pdo = null;
+    private ?PDOOperationHandler $operationHandler = null;
+    private bool $isInitialized = false;
 
-    public function __construct(array $config = [])
+    /**
+     * Constructor is now clean and takes no arguments.
+     * Initialization is deferred until initialize() is called.
+     */
+    public function __construct()
     {
+    }
+
+    /**
+     * A dedicated method to configure the manager and create the PDO connection.
+     */
+    public function initialize(array $config): void
+    {
+        if ($this->isInitialized) {
+            return;
+        }
         $this->pdo = $this->createPDOConnection($config);
         $this->operationHandler = new PDOOperationHandler($this->pdo);
+        $this->isInitialized = true;
     }
 
     private function createPDOConnection(array $config): \PDO
     {
-        // Default configuration
         $defaults = [
             'driver' => 'mysql',
             'host' => 'localhost',
@@ -39,22 +53,11 @@ class PDOManager
                 \PDO::ATTR_EMULATE_PREPARES => false,
             ]
         ];
-
         $config = array_merge($defaults, $config);
-
         $dsn = $this->buildDSN($config);
-
         try {
-            $pdo = new \PDO(
-                $dsn,
-                $config['username'],
-                $config['password'],
-                $config['options']
-            );
-
-            // Set database-specific configurations
+            $pdo = new \PDO($dsn, $config['username'], $config['password'], $config['options']);
             $this->configureDatabase($pdo, $config);
-
             return $pdo;
         } catch (\PDOException $e) {
             throw new \RuntimeException("Database connection failed: " . $e->getMessage());
@@ -67,24 +70,19 @@ class PDOManager
             case 'mysql':
                 $port = $config['port'] ?? 3306;
                 $dsn = "mysql:host={$config['host']};port={$port};dbname={$config['database']}";
-                if ($config['charset']) {
+                if (!empty($config['charset'])) {
                     $dsn .= ";charset={$config['charset']}";
                 }
                 return $dsn;
-
             case 'pgsql':
             case 'postgresql':
                 $port = $config['port'] ?? 5432;
-                $dsn = "pgsql:host={$config['host']};port={$port};dbname={$config['database']}";
-                return $dsn;
-
+                return "pgsql:host={$config['host']};port={$port};dbname={$config['database']}";
             case 'sqlite':
                 return "sqlite:{$config['database']}";
-
             case 'sqlsrv':
                 $port = $config['port'] ?? 1433;
                 return "sqlsrv:Server={$config['host']},{$port};Database={$config['database']}";
-
             default:
                 throw new \InvalidArgumentException("Unsupported database driver: {$config['driver']}");
         }
@@ -97,7 +95,6 @@ class PDOManager
                 $pdo->exec("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO'");
                 $pdo->exec("SET SESSION time_zone = '+00:00'");
                 break;
-
             case 'pgsql':
             case 'postgresql':
                 $pdo->exec("SET timezone = 'UTC'");
@@ -105,83 +102,59 @@ class PDOManager
         }
     }
 
-    private function createDefaultPDO(): \PDO
-    {
-        // Create a default SQLite in-memory database for testing
-        $pdo = new \PDO('sqlite::memory:');
-        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        return $pdo;
-    }
-
-    /**
-     * Add a PDO operation and return a unique operation ID for cancellation
-     */
     public function addOperation(PDOOperation $operation): string
     {
+        $this->ensureInitialized();
         $this->pendingOperations[] = $operation;
         $this->operationsById[$operation->getId()] = $operation;
-
         return $operation->getId();
     }
 
-    /**
-     * Cancel a PDO operation by its ID
-     */
     public function cancelOperation(string $operationId): bool
     {
         if (!isset($this->operationsById[$operationId])) {
             return false;
         }
-
         $operation = $this->operationsById[$operationId];
-
-        // Remove from pending operations
         $pendingKey = array_search($operation, $this->pendingOperations, true);
         if ($pendingKey !== false) {
             unset($this->pendingOperations[$pendingKey]);
             $this->pendingOperations = array_values($this->pendingOperations);
         }
-
         unset($this->operationsById[$operationId]);
-
-        // Notify callback of cancellation
         $operation->executeCallback('Operation cancelled');
-
         return true;
     }
 
-    /**
-     * Process pending PDO operations
-     */
     public function processOperations(): bool
     {
-        if (empty($this->pendingOperations)) {
+        if (!$this->isInitialized || empty($this->pendingOperations)) {
             return false;
         }
-
         $processed = false;
         $operationsToProcess = $this->pendingOperations;
         $this->pendingOperations = [];
-
         foreach ($operationsToProcess as $operation) {
             if ($this->operationHandler->executeOperation($operation)) {
                 $processed = true;
             }
-
-            // Clean up from ID map
             unset($this->operationsById[$operation->getId()]);
         }
-
         return $processed;
     }
 
     public function hasPendingOperations(): bool
     {
+        if (!$this->isInitialized) {
+            return false;
+        }
         return !empty($this->pendingOperations);
     }
 
-    public function getPendingOperationCount(): int
+    private function ensureInitialized(): void
     {
-        return count($this->pendingOperations);
+        if (!$this->isInitialized) {
+            throw new \LogicException('PDOManager has not been initialized. Was AsyncEventLoop::configureDatabase() or AsyncPDO::init() called?');
+        }
     }
 }

@@ -97,7 +97,6 @@ function run_sync_performance_test(array $dbConfig, int $count, float $latency):
 function run_async_performance_test(array $dbConfig, int $count, float $latency, int $poolSize): array
 {
     AsyncPDO::init($dbConfig, $poolSize);
-    AsyncEventLoop::getInstance($dbConfig);
 
     return AsyncLoop::run(function () use ($dbConfig, $count, $latency) {
         await(AsyncPDO::run(fn(PDO $pdo) => setup_performance_db($pdo, $count, $dbConfig['driver'])));
