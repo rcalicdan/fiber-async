@@ -395,4 +395,15 @@ class AsyncEventLoop implements EventLoopInterface
     {
         return $this->fileManager->removeFileWatcher($watcherId);
     }
+
+    /**
+     * Resets the singleton instance. Primarily for testing purposes.
+     */
+    public static function reset(): void
+    {
+        if (self::$instance !== null) {
+            // Optional: You might want to add cleanup logic for managers here if needed
+        }
+        self::$instance = null;
+    }
 }

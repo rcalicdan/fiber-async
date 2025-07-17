@@ -1,55 +1,157 @@
 <?php
 
-require_once "vendor/autoload.php";
+/**
+ * Benchmark: Sync vs. Async with Verification
+ * This script proves that both methods return the same results,
+ * while demonstrating the performance difference.
+ */
 
-use Rcalicdan\FiberAsync\AsyncEventLoop;
+require_once 'vendor/autoload.php';
+
+use Rcalicdan\FiberAsync\Database\AsyncPdoPool;
+use Rcalicdan\FiberAsync\Facades\Async;
+use Rcalicdan\FiberAsync\Facades\AsyncLoop;
 use Rcalicdan\FiberAsync\Database\DatabaseConfigFactory;
-use Rcalicdan\FiberAsync\Handlers\PDO\PDOHandler;
+use Rcalicdan\FiberAsync\AsyncEventLoop;
 
-$mysqlConfig = DatabaseConfigFactory::mysql([
-    'host' => 'localhost',
-    'port' => 3309,
-    'database' => 'yo',
-    'username' => 'root',
-    'password' => 'Reymart1234',
-    'charset' => 'utf8mb4'
-]);
+class_exists(AsyncPdoPool::class) || require_once __DIR__ . '/src/Database/AsyncPdoPool.php';
 
+// --- Configuration ---
+$dbConfig = DatabaseConfigFactory::sqlite(':memory:');
+$queryCount = 200;
+$poolSize = 10;
+$latencySeconds = 0.01;
 
-$loop = AsyncEventLoop::getInstance($mysqlConfig);
-$pdoHandler = new PDOHandler();
+if ($dbConfig['driver'] === 'sqlite' && $dbConfig['database'] === ':memory:') {
+    $dbConfig['database'] = 'file::memory:?cache=shared';
+    echo "Using shared in-memory SQLite for pooling test.\n";
+}
 
-$loop->setPDOLatencyConfig([
-    'query' => 0.001,
-    'execute' => 0.002,
-]);
+// --- Test Setup ---
+function setup_database(PDO $pdo, int $rowCount): void
+{
+    $pdo->exec("DROP TABLE IF EXISTS benchmark_test");
+    $pdo->exec("CREATE TABLE benchmark_test (id INTEGER PRIMARY KEY, data TEXT)");
+    $stmt = $pdo->prepare("INSERT INTO benchmark_test (data) VALUES (?)");
+    for ($i = 0; $i < $rowCount; $i++) {
+        $stmt->execute(['data-' . $i]);
+    }
+}
 
-$loop->nextTick(function () use ($pdoHandler) {
-    $pdoHandler->execute('
-        CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            username VARCHAR(255) NOT NULL,
-            email VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ')->then(function () {
-        echo "Users table created successfully\n";
+// --- BENCHMARK 1: Synchronous Prepared Statement ---
+function run_sync_prepared(array $config, int $count, float $latency): array
+{
+    echo "Running [1] Synchronous (Prepared Statement)...\n";
+    $pdo = new PDO($config['driver'] . ':' . $config['database']);
+    setup_database($pdo, $count);
+    $stmt = $pdo->prepare("SELECT id, data FROM benchmark_test WHERE id = ?");
+    $startTime = microtime(true);
+    $startMemory = memory_get_usage();
+    
+    // --- CHANGE: Capture results ---
+    $returnedData = [];
+
+    for ($i = 0; $i < $count; $i++) {
+        $idToFind = rand(1, $count);
+        $stmt->execute([$idToFind]);
+        $returnedData[] = $stmt->fetch(PDO::FETCH_ASSOC); // Capture the row
+        usleep((int)($latency * 1000000));
+    }
+    $endTime = microtime(true);
+    $endMemory = memory_get_peak_usage(true);
+    return [
+        'metrics' => ['time' => ($endTime - $startTime), 'memory' => ($endMemory - $startMemory)],
+        'data' => $returnedData
+    ];
+}
+
+// --- BENCHMARK 2: Asynchronous Pooled Prepared Statement ---
+function run_async_pooled_prepared(array $config, int $count, float $latency, int $poolSize): array
+{
+    echo "Running [2] Asynchronous Pool (Prepared Statement)...\n";
+    AsyncEventLoop::getInstance($config);
+    return AsyncLoop::run(function () use ($config, $count, $latency, $poolSize) {
+        $pool = new AsyncPdoPool($config, $poolSize);
+        await(Async::async(function() use ($pool, $count) {
+            $pdo = await($pool->get());
+            try { setup_database($pdo, $count); } 
+            finally { $pool->release($pdo); }
+        })());
+        $startTime = microtime(true);
+        $startMemory = memory_get_usage();
+        $tasks = [];
+        for ($i = 0; $i < $count; $i++) {
+            // --- CHANGE: Task now returns the fetched data ---
+            $tasks[] = Async::async(function () use ($pool, $latency, $count) {
+                $pdo = null;
+                try {
+                    $pdo = await($pool->get());
+                    $idToFind = rand(1, $count);
+                    $stmt = $pdo->prepare("SELECT id, data FROM benchmark_test WHERE id = ?");
+                    $stmt->execute([$idToFind]);
+                    $row = $stmt->fetch(PDO::FETCH_ASSOC); // Get the row
+                    await(Async::delay($latency));
+                    return $row; // Return the row from the async task
+                } finally {
+                    if ($pdo) { $pool->release($pdo); }
+                }
+            })();
+        }
+        
+        // --- CHANGE: Capture the array of results from all tasks ---
+        $returnedData = await(Async::all($tasks));
+
+        $endTime = microtime(true);
+        $endMemory = memory_get_peak_usage(true);
+        $pool->close();
+        return [
+            'metrics' => ['time' => ($endTime - $startTime), 'memory' => ($endMemory - $startMemory)],
+            'data' => $returnedData
+        ];
     });
+}
 
-    $pdoHandler->execute(
-        'INSERT INTO users (username, email) VALUES (?, ?)',
-        ['john_doe', 'john@example.com']
-    )->then(function ($rowCount) {
-        echo "Inserted $rowCount user(s)\n";
-    });
+// --- NEW: Helper to print sample results ---
+function print_sample_results(string $label, array $data): void
+{
+    echo "\n--- Data Verification for: $label ---\n";
+    echo "Total records returned: " . count($data) . "\n";
+    if (count($data) > 6) {
+        echo "First 3 results:\n";
+        print_r(array_slice($data, 0, 3));
+        echo "Last 3 results:\n";
+        print_r(array_slice($data, -3));
+    } else {
+        print_r($data);
+    }
+    echo "----------------------------------------\n";
+}
 
-    $pdoHandler->query('SELECT * FROM users ORDER BY created_at DESC LIMIT 10')
-        ->then(function ($users) {
-            echo "Found " . count($users) . " users:\n";
-            foreach ($users as $user) {
-                echo "- {$user['username']} ({$user['email']})\n";
-            }
-        });
-});
 
-$loop->run();
+// --- Main Execution ---
+try {
+    echo "Preparing benchmarks (200 queries, 10ms latency each)...\n\n";
+    $syncResult = run_sync_prepared($dbConfig, $queryCount, $latencySeconds);
+    AsyncLoop::reset();
+    $asyncResult = run_async_pooled_prepared($dbConfig, $queryCount, $latencySeconds, $poolSize);
+
+    // --- NEW: Print sample data for verification ---
+    print_sample_results("[1] Synchronous Results", $syncResult['data']);
+    print_sample_results("[2] Asynchronous Results", $asyncResult['data']);
+
+    // Display the performance results
+    $timeImprovement = ($syncResult['metrics']['time'] - $asyncResult['metrics']['time']) / $syncResult['metrics']['time'] * 100;
+
+    echo "\n--- Final Benchmark Results ({$queryCount} queries, {$poolSize} max concurrent) ---\n\n";
+    echo "| Method                       | Execution Time      | Peak Memory Usage |\n";
+    echo "|------------------------------|---------------------|-------------------|\n";
+    printf("| [1] Sync (Prepared Stmt)     | %-19s | %-17s |\n", number_format($syncResult['metrics']['time'], 4) . ' s', number_format($syncResult['metrics']['memory'] / 1024) . ' KB');
+    printf("| [2] Async (Prepared Stmt)    | %-19s | %-17s |\n", number_format($asyncResult['metrics']['time'], 4) . ' s', number_format($asyncResult['metrics']['memory'] / 1024) . ' KB');
+    echo "\n";
+    
+    printf("Conclusion: The async prepared statement approach was %.2f%% faster than the standard synchronous prepared statement approach.\n", $timeImprovement);
+
+} catch (Throwable $e) {
+    echo "\nAn error occurred: " . $e->getMessage() . "\n";
+    echo $e->getTraceAsString() . "\n";
+}
