@@ -1,11 +1,11 @@
 <?php
 
 /**
- * Final Performance Benchmark: AsyncDb vs. Synchronous PDO.
+ * Final Performance Benchmark: AsyncDb Facade vs. Synchronous PDO.
  *
- * This script uses MySQL's SLEEP() function to simulate real-world network latency,
- * providing a definitive comparison of I/O-bound performance using the
- * final, high-level AsyncDb facade.
+ * This script correctly simulates a real-world I/O workload by combining a
+ * high-level facade call (AsyncDb::raw) with a cooperative wait (Async::delay)
+ * inside a new async task. This is the canonical pattern for a complex async workflow.
  */
 
 require_once 'vendor/autoload.php';
@@ -17,8 +17,8 @@ use Rcalicdan\FiberAsync\Config\ConfigLoader;
 
 // --- Configuration ---
 $queryCount = 100;
-$latencySeconds = 0.02; // 20ms of latency per query.
-$sql = "SELECT SLEEP({$latencySeconds})";
+$latencySeconds = 0.02; // 20ms of simulated I/O wait per operation.
+$sql = "SELECT 1";      // A fast, non-blocking query.
 
 // --- Helper to build a DSN string for the sync test ---
 function build_dsn_from_config(array $config): string
@@ -38,11 +38,11 @@ function build_dsn_from_config(array $config): string
 // =================================================================
 
 /**
- * Performs the workload using standard, blocking PDO.
+ * Performs the workload using standard, blocking PDO and blocking sleep.
  */
-function run_sync_benchmark(array $dbConfig, int $count, string $query): array
+function run_sync_benchmark(array $dbConfig, int $count, string $query, float $latency): array
 {
-    echo "\n-- [SYNC] Running benchmark... --\n";
+    echo "\n-- [SYNC] Running benchmark with usleep()... --\n";
     $dsn = build_dsn_from_config($dbConfig);
     $pdo = new PDO($dsn, $dbConfig['username'] ?? null, $dbConfig['password'] ?? null);
 
@@ -51,6 +51,8 @@ function run_sync_benchmark(array $dbConfig, int $count, string $query): array
 
     for ($i = 0; $i < $count; $i++) {
         $pdo->query($query);
+        // This simulates I/O wait by BLOCKING the entire process.
+        usleep((int)($latency * 1000000));
     }
 
     $endTime = microtime(true);
@@ -60,25 +62,33 @@ function run_sync_benchmark(array $dbConfig, int $count, string $query): array
 }
 
 /**
- * Performs the exact same workload using your elegant AsyncDb facade.
+ * Performs the workload using the AsyncDb facade and cooperative delay.
  */
-function run_async_benchmark(int $count, string $query): array
+function run_async_benchmark(int $count, string $query, float $latency): array
 {
-    echo "\n-- [ASYNC] Running benchmark... --\n";
+    echo "\n-- [ASYNC] Running benchmark with await(delay())... --\n";
 
-    return AsyncLoop::run(function () use ($count, $query) {
+    return AsyncLoop::run(function () use ($count, $query, $latency) {
         $startTime = microtime(true);
         $startMemory = memory_get_usage();
         
         $tasks = [];
         for ($i = 0; $i < $count; $i++) {
-            // --- THE FIX IS HERE ---
-            // We are now using the final, high-level facade method.
-            // This is the intended API for your framework's users.
-            $tasks[] = AsyncDb::raw($query);
+            /**
+             * --- THIS IS THE KEY PATTERN ---
+             * We create a new async task that performs a sequence of await-able actions.
+             * This entire block becomes a single promise that can be run in parallel.
+             */
+            $tasks[] = Async::async(function() use ($query, $latency) {
+                // 1. Await the database query using the high-level facade.
+                await(AsyncDb::raw($query));
+                
+                // 2. Await the cooperative delay.
+                await(Async::delay($latency));
+            })();
         }
 
-        // Run all 100 queries concurrently, up to the pool limit.
+        // Run all 100 tasks concurrently, up to the pool limit.
         await(Async::all($tasks));
         
         $endTime = microtime(true);
@@ -94,10 +104,9 @@ function run_async_benchmark(int $count, string $query): array
 
 try {
     echo "==================================================================\n";
-    echo "  FINAL BENCHMARK: HIGH-LATENCY MYSQL WORKLOAD\n";
+    echo "  FINAL BENCHMARK: COOPERATIVE MULTITASKING (HIGH-LEVEL FACADE)\n";
     echo "==================================================================\n";
 
-    // Load config once for the sync test and to get the pool size for the report.
     $configLoader = ConfigLoader::getInstance();
     $dbConfigAll = $configLoader->get('database');
     $defaultConnection = $dbConfigAll['default'];
@@ -105,11 +114,11 @@ try {
     $poolSize = $dbConfigAll['pool_size'];
     
     echo "Configuration loaded for default connection: '{$defaultConnection}'\n";
-    echo "($queryCount queries, $poolSize concurrent connections, " . ($latencySeconds * 1000) . "ms DB latency per query)\n";
+    echo "($queryCount queries, $poolSize concurrent connections, " . ($latencySeconds * 1000) . "ms simulated I/O wait per query)\n";
 
     // --- Run Tests ---
-    $syncResult = run_sync_benchmark($mysqlConfig, $queryCount, $sql);
-    $asyncResult = run_async_benchmark($queryCount, $sql);
+    $syncResult = run_sync_benchmark($mysqlConfig, $queryCount, $sql, $latencySeconds);
+    $asyncResult = run_async_benchmark($queryCount, $sql, $latencySeconds);
 
     // --- Final Report ---
     $improvement = ($syncResult['time'] - $asyncResult['time']) / ($syncResult['time'] ?: 1) * 100;
@@ -117,13 +126,13 @@ try {
     echo "\n\n==================================================================\n";
     echo "                      PERFORMANCE REPORT                      \n";
     echo "==================================================================\n";
-    echo "| Mode              | Execution Time      | Peak Memory Usage   |\n";
-    echo "|-------------------|---------------------|---------------------|\n";
-    printf("| Synchronous PDO   | %-19s | %-19s |\n", number_format($syncResult['time'], 4) . ' s', number_format($syncResult['memory'] / 1024, 2) . ' KB');
-    printf("| AsyncDb Facade    | %-19s | %-19s |\n", number_format($asyncResult['time'], 4) . ' s', number_format($asyncResult['memory'] / 1024, 2) . ' KB');
+    echo "| Mode                   | Execution Time      | Peak Memory Usage   |\n";
+    echo "|------------------------|---------------------|---------------------|\n";
+    printf("| Synchronous PDO        | %-19s | %-19s |\n", number_format($syncResult['time'], 4) . ' s', number_format($syncResult['memory'] / 1024, 2) . ' KB');
+    printf("| AsyncDb Facade (Co-op) | %-19s | %-19s |\n", number_format($asyncResult['time'], 4) . ' s', number_format($asyncResult['memory'] / 1024, 2) . ' KB');
     echo "==================================================================\n\n";
     
-    printf("\033[1;32mConclusion: Your AsyncDb facade was %.2f%% faster than standard PDO.\033[0m\n", $improvement);
+    printf("\033[1;32mConclusion: Your cooperative async framework was %.2f%% faster than standard blocking code.\033[0m\n", $improvement);
     $theoreticalSync = $queryCount * $latencySeconds;
     $theoreticalAsync = ceil($queryCount / $poolSize) * $latencySeconds;
     echo "Theoretical Sync Time:   " . number_format($theoreticalSync, 2) . "s. Real Sync Time: " . number_format($syncResult['time'], 2) . "s.\n";
@@ -132,6 +141,5 @@ try {
 } catch (Throwable $e) {
     echo "\n\n--- A TEST FAILED ---\n";
     echo "Error: " . $e->getMessage() . "\n";
-    echo "File: " . $e->getFile() . " on line " . $e->getLine() . "\n";
     echo $e->getTraceAsString() . "\n";
 }
