@@ -79,19 +79,19 @@ function async_sleep(float $seconds): void
 }
 
 /**
- * Run an async operation with a timeout constraint and automatic loop management.
+ * Run an async operations with a timeout constraint and automatic loop management.
  *
  * Executes the operation with a maximum time limit. If the operation doesn't
  * complete within the timeout, it's cancelled and a timeout exception is thrown.
  * The event loop is managed automatically throughout.
  *
- * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
+ * @param  callable|PromiseInterface|array  $asyncOperation  The operation to execute
  * @param  float  $timeout  Maximum time to wait in seconds
  * @return mixed The result of the operation if completed within timeout
  *
  * @throws Exception If the operation times out
  */
-function run_with_timeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
+function run_with_timeout(callable|PromiseInterface|array $asyncOperation, float $timeout): mixed
 {
     return AsyncLoop::runWithTimeout($asyncOperation, $timeout);
 }

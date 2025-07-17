@@ -37,26 +37,31 @@ final readonly class TimeoutHandler
     }
 
     /**
-     * Run an async operation with a timeout limit.
+     * Run an async operations with a timeout limit.
      *
      * Executes the operation and races it against a timeout. If the operation
      * completes before the timeout, its result is returned. If the timeout
      * is reached first, an exception is thrown.
      *
-     * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
+     * @param  callable|PromiseInterface|array  $asyncOperation  The operation to execute
      * @param  float  $timeout  Timeout in seconds
      * @return mixed The result of the async operation
      *
      * @throws Exception If the operation times out
      */
-    public function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
+    public function runWithTimeout(callable|PromiseInterface|array $asyncOperation, float $timeout): mixed
     {
         return $this->executionHandler->run(function () use ($asyncOperation, $timeout) {
-            $promise = $this->executionHandler->createPromiseFromOperation($asyncOperation);
+            $operations = is_array($asyncOperation) ? $asyncOperation : [$asyncOperation];
+
+            $promises = array_map(
+                fn($op) => $this->executionHandler->createPromiseFromOperation($op),
+                $operations
+            );
 
             $timeoutPromise = $this->createTimeoutPromise($timeout);
 
-            return $this->asyncOps->await($this->asyncOps->race([$promise, $timeoutPromise]));
+            return $this->asyncOps->await($this->asyncOps->race([...$promises, $timeoutPromise]));
         });
     }
 

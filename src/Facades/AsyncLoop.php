@@ -121,13 +121,13 @@ final class AsyncLoop
     /**
      * Run an async operation with a timeout constraint and automatic loop management.
      *
-     * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
+     * @param  callable|PromiseInterface|array  $asyncOperation  The operation to execute
      * @param  float  $timeout  Maximum time to wait in seconds
      * @return mixed The result of the operation if completed within timeout
      *
      * @throws \Exception If the operation times out
      */
-    public static function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
+    public static function runWithTimeout(callable|PromiseInterface|array $asyncOperation, float $timeout): mixed
     {
         return self::getLoopOperations()->runWithTimeout($asyncOperation, $timeout);
     }

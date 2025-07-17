@@ -145,13 +145,13 @@ class LoopOperations implements LoopOperationsInterface
      * If the operation doesn't complete within the specified timeout,
      * it will be cancelled and a timeout exception will be thrown.
      *
-     * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
+     * @param  callable|PromiseInterface|array  $asyncOperation  The operation to execute
      * @param  float  $timeout  Maximum time to wait in seconds
      * @return mixed The result of the operation if completed within timeout
      *
      * @throws \Exception If the operation times out
      */
-    public function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed
+    public function runWithTimeout(callable|PromiseInterface|array $asyncOperation, float $timeout): mixed
     {
         return $this->timeoutHandler->runWithTimeout($asyncOperation, $timeout);
     }
