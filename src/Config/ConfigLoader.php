@@ -3,6 +3,8 @@
 namespace Rcalicdan\FiberAsync\Config;
 
 use Dotenv\Dotenv;
+use Exception;
+use PhpParser\Node\Expr\Throw_;
 
 /**
  * A singleton configuration loader that automatically finds the project root.
@@ -41,7 +43,7 @@ final class ConfigLoader
         }
         return self::$instance;
     }
-    
+
     /**
      * Resets the singleton instance, primarily for testing.
      */
@@ -78,23 +80,24 @@ final class ConfigLoader
             }
             $dir = $parentDir;
         }
-        return null; // Root not found
+        return null; 
     }
 
-    /**
-     * Loads the .env file from the project root if it exists.
-     */
     private function loadDotEnv(): void
     {
-        if (file_exists($this->rootPath . '/.env')) {
+        $envFile = $this->rootPath . '/.env';
+        
+        if (file_exists($envFile)) {
+            file_get_contents($envFile);
+
             try {
-                // vlucas/phpdotenv is the standard.
                 $dotenv = Dotenv::createImmutable($this->rootPath);
                 $dotenv->load();
             } catch (\Throwable $e) {
-                // Fail silently if dotenv is not installed.
-                // The config file should have sensible fallbacks.
+                //
             }
+        } else {
+            throw new Exception("Env file not found at: $envFile");
         }
     }
 

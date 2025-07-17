@@ -1,38 +1,14 @@
 <?php
 
-/**
- * =================================================================
- * ASYNCHRONOUS DATABASE CONFIGURATION
- * =================================================================
- *
- * This file defines all the database connections for your application.
- * It is designed to be flexible and read its values from a .env file
- * for security and portability.
- */
-
 return [
+    'default' => $_ENV['DB_CONNECTION'] ?? 'mysql',
 
-    /*
-    |--------------------------------------------------------------------------
-    | Default Database Connection
-    |--------------------------------------------------------------------------
-    */
-    'default' => getenv('ASYNC_DB_CONNECTION') ?: 'mysql',
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Database Connections
-    |--------------------------------------------------------------------------
-    */
     'connections' => [
-
         'sqlite' => [
             'driver'   => 'sqlite',
-            'database' => match ($path = getenv('ASYNC_DB_SQLITE_PATH')) {
-
+            'database' => match ($path = $_ENV['DB_SQLITE_PATH'] ?? null) {
                 ':memory:' => 'file::memory:?cache=shared',
-                false => __DIR__ . '/../database/database.sqlite',
+                null => __DIR__ . '/../database/database.sqlite',
                 default => $path,
             },
             'options'  => [
@@ -43,11 +19,11 @@ return [
 
         'mysql' => [
             'driver'   => 'mysql',
-            'host'     => getenv('ASYNC_DB_HOST') ?: '127.0.0.1',
-            'port'     => getenv('ASYNC_DB_PORT') ?: 3306,
-            'database' => getenv('ASYNC_DB_DATABASE') ?: 'test',
-            'username' => getenv('ASYNC_DB_USERNAME') ?: 'root',
-            'password' => getenv('ASYNC_DB_PASSWORD') ?: '',
+            'host'     => $_ENV['DB_HOST'] ?? '127.0.0.1',
+            'port'     => $_ENV['DB_PORT'] ?? 3306,
+            'database' => $_ENV['DB_DATABASE'] ?? 'test',
+            'username' => $_ENV['DB_USERNAME'] ?? 'root',
+            'password' => $_ENV['DB_PASSWORD'] ?? '',
             'charset'  => 'utf8mb4',
             'options'  => [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -58,11 +34,11 @@ return [
 
         'pgsql' => [
             'driver'   => 'pgsql',
-            'host'     => getenv('ASYNC_DB_HOST_PGSQL') ?: '127.0.0.1',
-            'port'     => getenv('ASYNC_DB_PORT_PGSQL') ?: 5432,
-            'database' => getenv('ASYNC_DB_DATABASE_PGSQL') ?: 'test',
-            'username' => getenv('ASYNC_DB_USERNAME_PGSQL') ?: 'postgres',
-            'password' => getenv('ASYNC_DB_PASSWORD_PGSQL') ?: '',
+            'host'     => $_ENV['DB_HOST_PGSQL'] ?? '127.0.0.1',
+            'port'     => $_ENV['DB_PORT_PGSQL'] ?? 5432,
+            'database' => $_ENV['DB_DATABASE_PGSQL'] ?? 'test',
+            'username' => $_ENV['DB_USERNAME_PGSQL'] ?? 'postgres',
+            'password' => $_ENV['DB_PASSWORD_PGSQL'] ?? '',
             'charset'  => 'utf8',
             'options'  => [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -71,12 +47,5 @@ return [
         ],
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Connection Pool Size
-    |--------------------------------------------------------------------------
-    */
-    'pool_size' => (int)(getenv('ASYNC_DB_POOL_SIZE') ?: 10),
-
-
+    'pool_size' => (int)($_ENV['DB_POOL_SIZE'] ?? 10),
 ];
