@@ -12,6 +12,7 @@ class FileOperation
     private array $options;
     private float $createdAt;
     private bool $cancelled = false;
+    private $scheduledCallback = null;
 
     public function __construct(
         string $type,
@@ -64,9 +65,20 @@ class FileOperation
         return $this->createdAt;
     }
 
+    public function setScheduledCallback(callable $callback): void
+    {
+        $this->scheduledCallback = $callback;
+    }
+
+    public function getScheduledCallback(): ?callable
+    {
+        return $this->scheduledCallback;
+    }
+
     public function cancel(): void
     {
         $this->cancelled = true;
+        $this->scheduledCallback = null;
     }
 
     public function isCancelled(): bool

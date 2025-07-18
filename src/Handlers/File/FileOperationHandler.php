@@ -24,61 +24,58 @@ final readonly class FileOperationHandler
             return false;
         }
 
-        // Schedule the operation to run asynchronously
-        $this->scheduleAsyncOperation($operation);
+        // Execute synchronously but check cancellation at key points
+        $this->executeOperationSync($operation);
         return true;
     }
 
-    private function scheduleAsyncOperation(FileOperation $operation): void
+    private function executeOperationSync(FileOperation $operation): void
     {
-        // Use nextTick to make it truly asynchronous
-        AsyncEventLoop::getInstance()->nextTick(function () use ($operation) {
-            // Check cancellation again before executing
-            if ($operation->isCancelled()) {
-                return;
-            }
+        // Check cancellation before executing
+        if ($operation->isCancelled()) {
+            return;
+        }
 
-            try {
-                switch ($operation->getType()) {
-                    case 'read':
-                        $this->handleRead($operation);
-                        break;
-                    case 'write':
-                        $this->handleWrite($operation);
-                        break;
-                    case 'append':
-                        $this->handleAppend($operation);
-                        break;
-                    case 'delete':
-                        $this->handleDelete($operation);
-                        break;
-                    case 'exists':
-                        $this->handleExists($operation);
-                        break;
-                    case 'stat':
-                        $this->handleStat($operation);
-                        break;
-                    case 'mkdir':
-                        $this->handleMkdir($operation);
-                        break;
-                    case 'rmdir':
-                        $this->handleRmdir($operation);
-                        break;
-                    case 'copy':
-                        $this->handleCopy($operation);
-                        break;
-                    case 'rename':
-                        $this->handleRename($operation);
-                        break;
-                    default:
-                        throw new \InvalidArgumentException("Unknown operation type: {$operation->getType()}");
-                }
-            } catch (\Throwable $e) {
-                if (!$operation->isCancelled()) {
-                    $operation->executeCallback($e->getMessage());
-                }
+        try {
+            switch ($operation->getType()) {
+                case 'read':
+                    $this->handleRead($operation);
+                    break;
+                case 'write':
+                    $this->handleWrite($operation);
+                    break;
+                case 'append':
+                    $this->handleAppend($operation);
+                    break;
+                case 'delete':
+                    $this->handleDelete($operation);
+                    break;
+                case 'exists':
+                    $this->handleExists($operation);
+                    break;
+                case 'stat':
+                    $this->handleStat($operation);
+                    break;
+                case 'mkdir':
+                    $this->handleMkdir($operation);
+                    break;
+                case 'rmdir':
+                    $this->handleRmdir($operation);
+                    break;
+                case 'copy':
+                    $this->handleCopy($operation);
+                    break;
+                case 'rename':
+                    $this->handleRename($operation);
+                    break;
+                default:
+                    throw new \InvalidArgumentException("Unknown operation type: {$operation->getType()}");
             }
-        });
+        } catch (\Throwable $e) {
+            if (!$operation->isCancelled()) {
+                $operation->executeCallback($e->getMessage());
+            }
+        }
     }
 
     private function handleRead(FileOperation $operation): void

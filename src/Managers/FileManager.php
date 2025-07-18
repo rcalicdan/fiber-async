@@ -1,7 +1,5 @@
 <?php
 
-// src/Managers/FileManager.php
-
 namespace Rcalicdan\FiberAsync\Managers;
 
 use Rcalicdan\FiberAsync\Handlers\File\FileOperationHandler;
@@ -32,9 +30,6 @@ class FileManager
         $this->watcherHandler = new FileWatcherHandler;
     }
 
-    /**
-     * Add a file operation and return a unique operation ID for cancellation
-     */
     public function addFileOperation(
         string $type,
         string $path,
@@ -50,9 +45,6 @@ class FileManager
         return $operation->getId();
     }
 
-    /**
-     * Cancel a file operation by its ID
-     */
     public function cancelFileOperation(string $operationId): bool
     {
         if (!isset($this->operationsById[$operationId])) {
@@ -60,9 +52,9 @@ class FileManager
         }
 
         $operation = $this->operationsById[$operationId];
-
         $operation->cancel();
 
+        // Remove from pending operations immediately
         $pendingKey = array_search($operation, $this->pendingOperations, true);
         if ($pendingKey !== false) {
             unset($this->pendingOperations[$pendingKey]);
@@ -74,9 +66,6 @@ class FileManager
         return true;
     }
 
-    /**
-     * Add a file watcher and return a unique watcher ID
-     */
     public function addFileWatcher(string $path, callable $callback, array $options = []): string
     {
         $watcher = $this->watcherHandler->createWatcher($path, $callback, $options);
@@ -87,9 +76,6 @@ class FileManager
         return $watcher->getId();
     }
 
-    /**
-     * Remove a file watcher by its ID
-     */
     public function removeFileWatcher(string $watcherId): bool
     {
         if (! isset($this->watchersById[$watcherId])) {
@@ -101,9 +87,6 @@ class FileManager
         return $this->watcherHandler->removeWatcher($this->watchers, $watcherId);
     }
 
-    /**
-     * Process pending file operations and watchers
-     */
     public function processFileOperations(): bool
     {
         $workDone = false;
@@ -132,6 +115,7 @@ class FileManager
         $this->pendingOperations = [];
 
         foreach ($operationsToProcess as $operation) {
+            // Skip cancelled operations entirely
             if ($operation->isCancelled()) {
                 unset($this->operationsById[$operation->getId()]);
                 continue;

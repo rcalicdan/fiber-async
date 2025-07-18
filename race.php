@@ -8,6 +8,7 @@ $start_time = microtime(true);
 
 run(race([
     write_file_async('1.txt', 'Hi')->then(fn() => print "File write wins\n"),
+     write_file_async('1.txt', 'Hi')->then(fn() => print "File write wins\n"),
     delay(0.001)->then(fn() => print "Delay wins\n"),
 ]));
 
