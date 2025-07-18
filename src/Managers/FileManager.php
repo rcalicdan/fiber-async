@@ -55,13 +55,14 @@ class FileManager
      */
     public function cancelFileOperation(string $operationId): bool
     {
-        if (! isset($this->operationsById[$operationId])) {
+        if (!isset($this->operationsById[$operationId])) {
             return false;
         }
 
         $operation = $this->operationsById[$operationId];
 
-        // Remove from pending operations
+        $operation->cancel();
+
         $pendingKey = array_search($operation, $this->pendingOperations, true);
         if ($pendingKey !== false) {
             unset($this->pendingOperations[$pendingKey]);
@@ -69,9 +70,6 @@ class FileManager
         }
 
         unset($this->operationsById[$operationId]);
-
-        // Notify callback of cancellation
-        $operation->executeCallback('Operation cancelled');
 
         return true;
     }
@@ -134,6 +132,11 @@ class FileManager
         $this->pendingOperations = [];
 
         foreach ($operationsToProcess as $operation) {
+            if ($operation->isCancelled()) {
+                unset($this->operationsById[$operation->getId()]);
+                continue;
+            }
+
             if ($this->operationHandler->executeOperation($operation)) {
                 $processed = true;
             }

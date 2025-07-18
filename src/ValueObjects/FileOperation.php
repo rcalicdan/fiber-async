@@ -1,7 +1,5 @@
 <?php
 
-// src/ValueObjects/FileOperation.php
-
 namespace Rcalicdan\FiberAsync\ValueObjects;
 
 class FileOperation
@@ -10,10 +8,10 @@ class FileOperation
     private string $type;
     private string $path;
     private mixed $data;
-    /** @var callable */
     private $callback;
     private array $options;
     private float $createdAt;
+    private bool $cancelled = false;
 
     public function __construct(
         string $type,
@@ -66,12 +64,26 @@ class FileOperation
         return $this->createdAt;
     }
 
+    public function cancel(): void
+    {
+        $this->cancelled = true;
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->cancelled;
+    }
+
     public function executeCallback(?string $error, mixed $result = null): void
     {
+        if ($this->cancelled) {
+            return;
+        }
+
         try {
             ($this->callback)($error, $result);
         } catch (\Throwable $e) {
-            error_log('File operation callback error: '.$e->getMessage());
+            error_log('File operation callback error: ' . $e->getMessage());
         }
     }
 }
