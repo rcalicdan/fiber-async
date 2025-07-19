@@ -123,7 +123,7 @@ final class AsyncPDO
         return Async::async(function () use ($transactions) {
             $transactionPromises = [];
             $pdoConnections = [];
-            $cancellablePromises = []; // Track cancellable promises
+            $cancellablePromises = []; 
 
             foreach ($transactions as $index => $transactionCallback) {
                 $cancellablePromise = self::startCancellableRacingTransaction($transactionCallback, $index, $pdoConnections);
@@ -136,15 +136,12 @@ final class AsyncPDO
             try {
                 $winnerResult = await($collectionHandler->race($transactionPromises));
 
-                // Cancel all losing transactions immediately
                 self::cancelLosingTransactions($cancellablePromises, $winnerResult['winner_index']);
 
-                // Finalize only the winner and already-cancelled losers
                 await(self::finalizeRacingTransactions($pdoConnections, $winnerResult['winner_index']));
 
                 return $winnerResult['result'];
             } catch (Throwable $e) {
-                // Cancel all transactions and rollback
                 self::cancelAllTransactions($cancellablePromises);
                 await(self::rollbackAllTransactions($pdoConnections));
                 throw $e;
@@ -176,13 +173,11 @@ final class AsyncPDO
             }
         });
 
-        // Set up cancellation handler to rollback transaction immediately
         $cancellablePromise->setCancelHandler(function () use ($index, &$pdoConnections) {
             if (isset($pdoConnections[$index])) {
                 $pdo = $pdoConnections[$index];
                 try {
                     if ($pdo->inTransaction()) {
-                        echo "Transaction $index: Cancelled and rolled back early!\n";
                         $pdo->rollBack();
                     }
                     self::getPool()->release($pdo);
@@ -226,7 +221,6 @@ final class AsyncPDO
     private static function finalizeRacingTransactions(array $pdoConnections, int $winnerIndex): PromiseInterface
     {
         return Async::async(function () use ($pdoConnections, $winnerIndex) {
-            // Only commit the winner - losers should already be cancelled and rolled back
             if (isset($pdoConnections[$winnerIndex])) {
                 $pdo = $pdoConnections[$winnerIndex];
                 try {
