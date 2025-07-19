@@ -7,6 +7,7 @@ use Throwable;
 use Rcalicdan\FiberAsync\Database\AsyncPdoPool;
 use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
 use Rcalicdan\FiberAsync\AsyncEventLoop;
+use Rcalicdan\FiberAsync\CancellablePromise;
 use Rcalicdan\FiberAsync\Handlers\AsyncOperations\PromiseCollectionHandler;
 
 final class AsyncPDO
@@ -122,9 +123,12 @@ final class AsyncPDO
         return Async::async(function () use ($transactions) {
             $transactionPromises = [];
             $pdoConnections = [];
+            $cancellablePromises = []; // Track cancellable promises
 
             foreach ($transactions as $index => $transactionCallback) {
-                $transactionPromises[$index] = self::startRacingTransaction($transactionCallback, $index, $pdoConnections);
+                $cancellablePromise = self::startCancellableRacingTransaction($transactionCallback, $index, $pdoConnections);
+                $transactionPromises[$index] = $cancellablePromise;
+                $cancellablePromises[$index] = $cancellablePromise;
             }
 
             $collectionHandler = new PromiseCollectionHandler();
@@ -132,10 +136,16 @@ final class AsyncPDO
             try {
                 $winnerResult = await($collectionHandler->race($transactionPromises));
 
+                // Cancel all losing transactions immediately
+                self::cancelLosingTransactions($cancellablePromises, $winnerResult['winner_index']);
+
+                // Finalize only the winner and already-cancelled losers
                 await(self::finalizeRacingTransactions($pdoConnections, $winnerResult['winner_index']));
 
                 return $winnerResult['result'];
             } catch (Throwable $e) {
+                // Cancel all transactions and rollback
+                self::cancelAllTransactions($cancellablePromises);
                 await(self::rollbackAllTransactions($pdoConnections));
                 throw $e;
             }
@@ -143,11 +153,11 @@ final class AsyncPDO
     }
 
     /**
-     * Start a single racing transaction
+     * Start a cancellable racing transaction
      */
-    private static function startRacingTransaction(callable $transactionCallback, int $index, array &$pdoConnections): PromiseInterface
+    private static function startCancellableRacingTransaction(callable $transactionCallback, int $index, array &$pdoConnections): CancellablePromise
     {
-        return Async::async(function () use ($transactionCallback, $index, &$pdoConnections) {
+        $cancellablePromise = new CancellablePromise(function ($resolve, $reject) use ($transactionCallback, $index, &$pdoConnections) {
             $pdo = await(self::getPool()->get());
             $pdoConnections[$index] = $pdo;
 
@@ -156,15 +166,58 @@ final class AsyncPDO
             try {
                 $result = $transactionCallback($pdo);
 
-                return [
+                $resolve([
                     'result' => $result,
                     'winner_index' => $index,
                     'success' => true
-                ];
+                ]);
             } catch (Throwable $e) {
                 throw $e;
             }
-        })();
+        });
+
+        // Set up cancellation handler to rollback transaction immediately
+        $cancellablePromise->setCancelHandler(function () use ($index, &$pdoConnections) {
+            if (isset($pdoConnections[$index])) {
+                $pdo = $pdoConnections[$index];
+                try {
+                    if ($pdo->inTransaction()) {
+                        echo "Transaction $index: Cancelled and rolled back early!\n";
+                        $pdo->rollBack();
+                    }
+                    self::getPool()->release($pdo);
+                } catch (Throwable $e) {
+                    error_log("Failed to cancel transaction {$index}: " . $e->getMessage());
+                    self::getPool()->release($pdo);
+                }
+            }
+        });
+
+        return $cancellablePromise;
+    }
+
+    /**
+     * Cancel all losing transactions immediately
+     */
+    private static function cancelLosingTransactions(array $cancellablePromises, int $winnerIndex): void
+    {
+        foreach ($cancellablePromises as $index => $promise) {
+            if ($index !== $winnerIndex && !$promise->isCancelled()) {
+                $promise->cancel();
+            }
+        }
+    }
+
+    /**
+     * Cancel all transactions (for error scenarios)
+     */
+    private static function cancelAllTransactions(array $cancellablePromises): void
+    {
+        foreach ($cancellablePromises as $promise) {
+            if (!$promise->isCancelled()) {
+                $promise->cancel();
+            }
+        }
     }
 
     /**
@@ -173,37 +226,22 @@ final class AsyncPDO
     private static function finalizeRacingTransactions(array $pdoConnections, int $winnerIndex): PromiseInterface
     {
         return Async::async(function () use ($pdoConnections, $winnerIndex) {
-            $commitPromises = [];
-
-            foreach ($pdoConnections as $index => $pdo) {
-                if ($index === $winnerIndex) {
-                    $commitPromises[] = Async::async(function () use ($pdo, $index) {
-                        try {
-                            $pdo->commit();
-                            self::getPool()->release($pdo);
-                        } catch (Throwable $e) {
-                            error_log("Failed to commit winner transaction {$index}: " . $e->getMessage());
-                            $pdo->rollBack();
-                            self::getPool()->release($pdo);
-                            throw $e;
-                        }
-                    })();
-                } else {
-                    $commitPromises[] = Async::async(function () use ($pdo, $index) {
-                        try {
-                            $pdo->rollBack();
-                            self::getPool()->release($pdo);
-                        } catch (Throwable $e) {
-                            error_log("Failed to rollback loser transaction {$index}: " . $e->getMessage());
-                            self::getPool()->release($pdo);
-                        }
-                    })();
+            // Only commit the winner - losers should already be cancelled and rolled back
+            if (isset($pdoConnections[$winnerIndex])) {
+                $pdo = $pdoConnections[$winnerIndex];
+                try {
+                    if ($pdo->inTransaction()) {
+                        $pdo->commit();
+                        echo "Transaction $winnerIndex: Winner committed!\n";
+                    }
+                    self::getPool()->release($pdo);
+                } catch (Throwable $e) {
+                    error_log("Failed to commit winner transaction {$winnerIndex}: " . $e->getMessage());
+                    $pdo->rollBack();
+                    self::getPool()->release($pdo);
+                    throw $e;
                 }
             }
-
-            // Wait for all commit/rollback operations to complete
-            $collectionHandler = new PromiseCollectionHandler();
-            await($collectionHandler->all($commitPromises));
         })();
     }
 
