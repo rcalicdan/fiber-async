@@ -229,3 +229,19 @@ function get_file_mtime_async(string $path): PromiseInterface
         return $stats['mtime'] ?? 0;
     });
 }
+
+function read_file_stream_async(string $path, array $options = []): PromiseInterface
+{
+    return AsyncFile::readFileStream($path, $options);
+}
+
+function write_file_stream_async(string $path, string $data, array $options = []): PromiseInterface
+{
+    return AsyncFile::writeFileStream($path, $data, $options);
+}
+
+function copy_file_stream_async(string $source, string $destination): PromiseInterface
+{
+    return AsyncFile::copyFileStream($source, $destination);
+}
+

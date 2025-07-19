@@ -124,4 +124,19 @@ class AsyncFileOperations
     {
         return $this->fileHandler->unwatchFile($watcherId);
     }
+
+    public function readFileStream(string $path, array $options = []): PromiseInterface
+    {
+        return $this->fileHandler->readFileStream($path, $options);
+    }
+
+    public function writeFileStream(string $path, string $data, array $options = []): PromiseInterface
+    {
+        return $this->fileHandler->writeFileStream($path, $data, $options);
+    }
+
+    public function copyFileStream(string $source, string $destination): PromiseInterface
+    {
+        return $this->fileHandler->copyFileStream($source, $destination);
+    }
 }

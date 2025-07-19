@@ -7,6 +7,8 @@ use Rcalicdan\FiberAsync\AsyncEventLoop;
 
 final readonly class FileOperationHandler
 {
+    private const CHUNK_SIZE = 8192;
+
     public function createOperation(
         string $type,
         string $path,
@@ -19,19 +21,260 @@ final readonly class FileOperationHandler
 
     public function executeOperation(FileOperation $operation): bool
     {
-        // Check if cancelled before starting
         if ($operation->isCancelled()) {
             return false;
         }
 
-        // Execute synchronously but check cancellation at key points
-        $this->executeOperationSync($operation);
+        if ($this->shouldUseStreaming($operation)) {
+            $this->executeStreamingOperation($operation);
+        } else {
+            $this->executeOperationSync($operation);
+        }
+
         return true;
+    }
+
+    private function shouldUseStreaming(FileOperation $operation): bool
+    {
+        $streamableOperations = ['read', 'write', 'copy'];
+
+        if (!in_array($operation->getType(), $streamableOperations)) {
+            return false;
+        }
+
+        $options = $operation->getOptions();
+        if (isset($options['use_streaming']) && $options['use_streaming']) {
+            return true;
+        }
+
+        if (in_array($operation->getType(), ['read', 'copy']) && file_exists($operation->getPath())) {
+            $fileSize = filesize($operation->getPath());
+            return $fileSize > 1024 * 1024; 
+        }
+
+        return false;
+    }
+
+    private function executeStreamingOperation(FileOperation $operation): void
+    {
+        switch ($operation->getType()) {
+            case 'read':
+                $this->handleStreamingRead($operation);
+                break;
+            case 'write':
+                $this->handleStreamingWrite($operation);
+                break;
+            case 'copy':
+                $this->handleStreamingCopy($operation);
+                break;
+            default:
+                $this->executeOperationSync($operation);
+        }
+    }
+
+    private function handleStreamingRead(FileOperation $operation): void
+    {
+        if ($operation->isCancelled()) return;
+
+        $path = $operation->getPath();
+        $options = $operation->getOptions();
+
+        if (!file_exists($path)) {
+            $operation->executeCallback("File does not exist: $path");
+            return;
+        }
+
+        if (!is_readable($path)) {
+            $operation->executeCallback("File is not readable: $path");
+            return;
+        }
+
+        $stream = fopen($path, 'rb');
+        if (!$stream) {
+            $operation->executeCallback("Failed to open file: $path");
+            return;
+        }
+
+        // Handle offset
+        $offset = $options['offset'] ?? 0;
+        if ($offset > 0) {
+            fseek($stream, $offset);
+        }
+
+        $length = $options['length'] ?? null;
+        $content = '';
+        $bytesRead = 0;
+
+        $this->scheduleStreamRead($operation, $stream, $content, $bytesRead, $length);
+    }
+
+    private function scheduleStreamRead(FileOperation $operation, $stream, string &$content, int &$bytesRead, ?int $maxLength): void
+    {
+        if ($operation->isCancelled()) {
+            fclose($stream);
+            return;
+        }
+
+        if (feof($stream) || ($maxLength !== null && $bytesRead >= $maxLength)) {
+            fclose($stream);
+            $operation->executeCallback(null, $content);
+            return;
+        }
+
+        $chunkSize = self::CHUNK_SIZE;
+        if ($maxLength !== null) {
+            $chunkSize = min($chunkSize, $maxLength - $bytesRead);
+        }
+
+        $chunk = fread($stream, $chunkSize);
+        if ($chunk === false) {
+            fclose($stream);
+            $operation->executeCallback("Failed to read from file");
+            return;
+        }
+
+        $content .= $chunk;
+        $bytesRead += strlen($chunk);
+
+        // Schedule next chunk read on next event loop tick
+        AsyncEventLoop::getInstance()->addTimer(0, function () use ($operation, $stream, &$content, &$bytesRead, $maxLength) {
+            $this->scheduleStreamRead($operation, $stream, $content, $bytesRead, $maxLength);
+        });
+    }
+
+    private function handleStreamingWrite(FileOperation $operation): void
+    {
+        if ($operation->isCancelled()) return;
+
+        $path = $operation->getPath();
+        $data = $operation->getData();
+        $options = $operation->getOptions();
+
+        // Create directories if needed
+        if (isset($options['create_directories']) && $options['create_directories']) {
+            $dir = dirname($path);
+            if (!is_dir($dir)) {
+                if ($operation->isCancelled()) return;
+                if (!mkdir($dir, 0755, true)) {
+                    $operation->executeCallback("Failed to create directory: $dir");
+                    return;
+                }
+            }
+        }
+
+        $mode = 'wb';
+        if (isset($options['flags']) && ($options['flags'] & FILE_APPEND)) {
+            $mode = 'ab';
+        }
+
+        $stream = fopen($path, $mode);
+        if (!$stream) {
+            $operation->executeCallback("Failed to open file for writing: $path");
+            return;
+        }
+
+        $dataLength = strlen($data);
+        $bytesWritten = 0;
+
+        $this->scheduleStreamWrite($operation, $stream, $data, $bytesWritten, $dataLength);
+    }
+
+    private function scheduleStreamWrite(FileOperation $operation, $stream, string $data, int &$bytesWritten, int $totalLength): void
+    {
+        if ($operation->isCancelled()) {
+            fclose($stream);
+            return;
+        }
+
+        if ($bytesWritten >= $totalLength) {
+            fclose($stream);
+            $operation->executeCallback(null, $bytesWritten);
+            return;
+        }
+
+        $chunkSize = min(self::CHUNK_SIZE, $totalLength - $bytesWritten);
+        $chunk = substr($data, $bytesWritten, $chunkSize);
+
+        $written = fwrite($stream, $chunk);
+        if ($written === false) {
+            fclose($stream);
+            $operation->executeCallback("Failed to write to file");
+            return;
+        }
+
+        $bytesWritten += $written;
+
+        AsyncEventLoop::getInstance()->addTimer(0, function () use ($operation, $stream, $data, &$bytesWritten, $totalLength) {
+            $this->scheduleStreamWrite($operation, $stream, $data, $bytesWritten, $totalLength);
+        });
+    }
+
+    private function handleStreamingCopy(FileOperation $operation): void
+    {
+        if ($operation->isCancelled()) return;
+
+        $sourcePath = $operation->getPath();
+        $destinationPath = $operation->getData();
+
+        if (!file_exists($sourcePath)) {
+            $operation->executeCallback("Source file does not exist: $sourcePath");
+            return;
+        }
+
+        $sourceStream = fopen($sourcePath, 'rb');
+        if (!$sourceStream) {
+            $operation->executeCallback("Failed to open source file: $sourcePath");
+            return;
+        }
+
+        $destStream = fopen($destinationPath, 'wb');
+        if (!$destStream) {
+            fclose($sourceStream);
+            $operation->executeCallback("Failed to open destination file: $destinationPath");
+            return;
+        }
+
+        $this->scheduleStreamCopy($operation, $sourceStream, $destStream);
+    }
+
+    private function scheduleStreamCopy(FileOperation $operation, $sourceStream, $destStream): void
+    {
+        if ($operation->isCancelled()) {
+            fclose($sourceStream);
+            fclose($destStream);
+            return;
+        }
+
+        if (feof($sourceStream)) {
+            fclose($sourceStream);
+            fclose($destStream);
+            $operation->executeCallback(null, true);
+            return;
+        }
+
+        $chunk = fread($sourceStream, self::CHUNK_SIZE);
+        if ($chunk === false) {
+            fclose($sourceStream);
+            fclose($destStream);
+            $operation->executeCallback("Failed to read from source file");
+            return;
+        }
+
+        $written = fwrite($destStream, $chunk);
+        if ($written === false) {
+            fclose($sourceStream);
+            fclose($destStream);
+            $operation->executeCallback("Failed to write to destination file");
+            return;
+        }
+
+        AsyncEventLoop::getInstance()->addTimer(0, function () use ($operation, $sourceStream, $destStream) {
+            $this->scheduleStreamCopy($operation, $sourceStream, $destStream);
+        });
     }
 
     private function executeOperationSync(FileOperation $operation): void
     {
-        // Check cancellation before executing
         if ($operation->isCancelled()) {
             return;
         }

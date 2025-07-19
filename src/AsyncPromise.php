@@ -72,8 +72,8 @@ class AsyncPromise implements AsyncPromiseInterface
 
         $this->executorHandler->executeExecutor(
             $executor,
-            fn ($value) => $this->resolve($value),
-            fn ($reason) => $this->reject($reason)
+            fn($value) => $this->resolve($value),
+            fn($reason) => $this->reject($reason)
         );
     }
 
@@ -113,22 +113,77 @@ class AsyncPromise implements AsyncPromiseInterface
      * @param  callable|null  $onRejected  Handler for when promise is rejected
      * @return PromiseInterface A new promise for the chained operation
      */
+    /**
+     * Attach fulfillment and rejection handlers to the promise.
+     *
+     * Returns a new promise that will be resolved with the return value
+     * of the executed handler. This enables promise chaining.
+     *
+     * @param  callable|null  $onFulfilled  Handler for when promise is resolved
+     * @param  callable|null  $onRejected   Handler for when promise is rejected
+     * @return PromiseInterface A new promise for the chained operation
+     */
     public function then(?callable $onFulfilled = null, ?callable $onRejected = null): PromiseInterface
     {
-        $newPromise = new self(function ($resolve, $reject) use ($onFulfilled, $onRejected) {
-            $handleResolve = $this->chainHandler->createThenHandler($onFulfilled, $resolve, $reject);
-            $handleReject = $this->chainHandler->createCatchHandler($onRejected, $resolve, $reject);
+        $origin = $this;
+
+        $newPromise = new self(function ($resolve, $reject) use ($onFulfilled, $onRejected, $origin) {
+            $root = $origin instanceof CancellablePromise
+                ? $origin
+                : ($origin->rootCancellable ?? null);
+
+            $handleResolve = function ($value) use ($onFulfilled, $resolve, $reject, $root) {
+                if ($root?->isCancelled()) {
+                    return;
+                }
+
+                if ($onFulfilled) {
+                    try {
+                        $result = $onFulfilled($value);
+                        if ($result instanceof PromiseInterface) {
+                            $result->then($resolve, $reject);
+                        } else {
+                            $resolve($result);
+                        }
+                    } catch (\Throwable $e) {
+                        $reject($e);
+                    }
+                } else {
+                    $resolve($value);
+                }
+            };
+
+            $handleReject = function ($reason) use ($onRejected, $resolve, $reject, $root) {
+                if ($root?->isCancelled()) {
+                    return;
+                }
+
+                if ($onRejected) {
+                    try {
+                        $result = $onRejected($reason);
+                        if ($result instanceof PromiseInterface) {
+                            $result->then($resolve, $reject);
+                        } else {
+                            $resolve($result);
+                        }
+                    } catch (\Throwable $e) {
+                        $reject($e);
+                    }
+                } else {
+                    $reject($reason);
+                }
+            };
 
             if ($this->stateHandler->isResolved()) {
-                $this->chainHandler->scheduleHandler(fn () => $handleResolve($this->stateHandler->getValue()));
+                $this->chainHandler->scheduleHandler(fn() => $handleResolve($this->stateHandler->getValue()));
             } elseif ($this->stateHandler->isRejected()) {
-                $this->chainHandler->scheduleHandler(fn () => $handleReject($this->stateHandler->getReason()));
+                $this->chainHandler->scheduleHandler(fn() => $handleReject($this->stateHandler->getReason()));
             } else {
                 $this->callbackHandler->addThenCallback($handleResolve);
                 $this->callbackHandler->addCatchCallback($handleReject);
             }
         });
-        // Preserve reference to root cancellable promise
+
         if ($this instanceof CancellablePromise) {
             $newPromise->rootCancellable = $this;
         } elseif ($this->rootCancellable) {
@@ -137,6 +192,7 @@ class AsyncPromise implements AsyncPromiseInterface
 
         return $newPromise;
     }
+
 
     public function getRootCancellable(): ?CancellablePromise
     {

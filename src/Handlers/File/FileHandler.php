@@ -18,7 +18,7 @@ final readonly class FileHandler
     public function readFile(string $path, array $options = []): PromiseInterface
     {
         $promise = new CancellablePromise();
-        
+
         $operationId = $this->eventLoop->addFileOperation(
             'read',
             $path,
@@ -27,7 +27,7 @@ final readonly class FileHandler
                 if ($promise->isCancelled()) {
                     return;
                 }
-                
+
                 if ($error) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
@@ -38,7 +38,48 @@ final readonly class FileHandler
         );
 
         // Set up cancellation handler
-        $promise->setCancelHandler(function() use ($operationId) {
+        $promise->setCancelHandler(function () use ($operationId) {
+            $this->eventLoop->cancelFileOperation($operationId);
+        });
+
+        return $promise;
+    }
+
+    public function readFileStream(string $path, array $options = []): PromiseInterface
+    {
+        $options['use_streaming'] = true;
+        return $this->readFile($path, $options);
+    }
+
+    public function writeFileStream(string $path, string $data, array $options = []): PromiseInterface
+    {
+        $options['use_streaming'] = true;
+        return $this->writeFile($path, $data, $options);
+    }
+
+    public function copyFileStream(string $source, string $destination): PromiseInterface
+    {
+        $promise = new CancellablePromise();
+
+        $operationId = $this->eventLoop->addFileOperation(
+            'copy',
+            $source,
+            $destination,
+            function (?string $error, mixed $result = null) use ($promise) {
+                if ($promise->isCancelled()) {
+                    return;
+                }
+
+                if ($error) {
+                    $promise->reject(new \RuntimeException($error));
+                } else {
+                    $promise->resolve($result);
+                }
+            },
+            ['use_streaming' => true] // Force streaming for copy operations
+        );
+
+        $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
 
@@ -48,7 +89,7 @@ final readonly class FileHandler
     public function writeFile(string $path, string $data, array $options = []): PromiseInterface
     {
         $promise = new CancellablePromise();
-        
+
         $operationId = $this->eventLoop->addFileOperation(
             'write',
             $path,
@@ -57,7 +98,7 @@ final readonly class FileHandler
                 if ($promise->isCancelled()) {
                     return;
                 }
-                
+
                 if ($error) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
@@ -68,7 +109,7 @@ final readonly class FileHandler
         );
 
         // Set up cancellation handler
-        $promise->setCancelHandler(function() use ($operationId) {
+        $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
 
@@ -78,7 +119,7 @@ final readonly class FileHandler
     public function appendFile(string $path, string $data): PromiseInterface
     {
         $promise = new CancellablePromise();
-        
+
         $operationId = $this->eventLoop->addFileOperation(
             'append',
             $path,
@@ -87,7 +128,7 @@ final readonly class FileHandler
                 if ($promise->isCancelled()) {
                     return;
                 }
-                
+
                 if ($error) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
@@ -97,7 +138,7 @@ final readonly class FileHandler
         );
 
         // Set up cancellation handler
-        $promise->setCancelHandler(function() use ($operationId) {
+        $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
 
@@ -107,7 +148,7 @@ final readonly class FileHandler
     public function deleteFile(string $path): PromiseInterface
     {
         $promise = new CancellablePromise();
-        
+
         $operationId = $this->eventLoop->addFileOperation(
             'delete',
             $path,
@@ -116,7 +157,7 @@ final readonly class FileHandler
                 if ($promise->isCancelled()) {
                     return;
                 }
-                
+
                 if ($error) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
@@ -126,7 +167,7 @@ final readonly class FileHandler
         );
 
         // Set up cancellation handler
-        $promise->setCancelHandler(function() use ($operationId) {
+        $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
 
@@ -136,7 +177,7 @@ final readonly class FileHandler
     public function fileExists(string $path): PromiseInterface
     {
         $promise = new CancellablePromise();
-        
+
         $operationId = $this->eventLoop->addFileOperation(
             'exists',
             $path,
@@ -145,7 +186,7 @@ final readonly class FileHandler
                 if ($promise->isCancelled()) {
                     return;
                 }
-                
+
                 if ($error) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
@@ -155,7 +196,7 @@ final readonly class FileHandler
         );
 
         // Set up cancellation handler
-        $promise->setCancelHandler(function() use ($operationId) {
+        $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
 
@@ -165,7 +206,7 @@ final readonly class FileHandler
     public function getFileStats(string $path): PromiseInterface
     {
         $promise = new CancellablePromise();
-        
+
         $operationId = $this->eventLoop->addFileOperation(
             'stat',
             $path,
@@ -174,7 +215,7 @@ final readonly class FileHandler
                 if ($promise->isCancelled()) {
                     return;
                 }
-                
+
                 if ($error) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
@@ -184,7 +225,7 @@ final readonly class FileHandler
         );
 
         // Set up cancellation handler
-        $promise->setCancelHandler(function() use ($operationId) {
+        $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
 
@@ -194,7 +235,7 @@ final readonly class FileHandler
     public function createDirectory(string $path, array $options = []): PromiseInterface
     {
         $promise = new CancellablePromise();
-        
+
         $operationId = $this->eventLoop->addFileOperation(
             'mkdir',
             $path,
@@ -203,7 +244,7 @@ final readonly class FileHandler
                 if ($promise->isCancelled()) {
                     return;
                 }
-                
+
                 if ($error) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
@@ -214,7 +255,7 @@ final readonly class FileHandler
         );
 
         // Set up cancellation handler
-        $promise->setCancelHandler(function() use ($operationId) {
+        $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
 
@@ -224,7 +265,7 @@ final readonly class FileHandler
     public function removeDirectory(string $path): PromiseInterface
     {
         $promise = new CancellablePromise();
-        
+
         $operationId = $this->eventLoop->addFileOperation(
             'rmdir',
             $path,
@@ -233,7 +274,7 @@ final readonly class FileHandler
                 if ($promise->isCancelled()) {
                     return;
                 }
-                
+
                 if ($error) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
@@ -243,7 +284,7 @@ final readonly class FileHandler
         );
 
         // Set up cancellation handler
-        $promise->setCancelHandler(function() use ($operationId) {
+        $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
 
@@ -253,7 +294,7 @@ final readonly class FileHandler
     public function copyFile(string $source, string $destination): PromiseInterface
     {
         $promise = new CancellablePromise();
-        
+
         $operationId = $this->eventLoop->addFileOperation(
             'copy',
             $source,
@@ -262,7 +303,7 @@ final readonly class FileHandler
                 if ($promise->isCancelled()) {
                     return;
                 }
-                
+
                 if ($error) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
@@ -272,7 +313,7 @@ final readonly class FileHandler
         );
 
         // Set up cancellation handler
-        $promise->setCancelHandler(function() use ($operationId) {
+        $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
 
@@ -282,7 +323,7 @@ final readonly class FileHandler
     public function renameFile(string $oldPath, string $newPath): PromiseInterface
     {
         $promise = new CancellablePromise();
-        
+
         $operationId = $this->eventLoop->addFileOperation(
             'rename',
             $oldPath,
@@ -291,7 +332,7 @@ final readonly class FileHandler
                 if ($promise->isCancelled()) {
                     return;
                 }
-                
+
                 if ($error) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
@@ -301,7 +342,7 @@ final readonly class FileHandler
         );
 
         // Set up cancellation handler
-        $promise->setCancelHandler(function() use ($operationId) {
+        $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
 

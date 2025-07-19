@@ -181,4 +181,19 @@ final class AsyncFile
     {
         return self::getAsyncFileOperations()->removeDirectory($path);
     }
+
+    public static function readFileStream(string $path, array $options = []): PromiseInterface
+    {
+        return self::getAsyncFileOperations()->readFileStream($path, $options);
+    }
+
+    public static function writeFileStream(string $path, string $data, array $options = []): PromiseInterface
+    {
+        return self::getAsyncFileOperations()->writeFileStream($path, $data, $options);
+    }
+
+    public static function copyFileStream(string $source, string $destination): PromiseInterface
+    {
+        return self::getAsyncFileOperations()->copyFileStream($source, $destination);
+    }
 }
