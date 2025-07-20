@@ -47,5 +47,5 @@ return [
         ],
     ],
 
-    'pool_size' => (int)($_ENV['DB_POOL_SIZE'] ?? 10),
+    'pool_size' => (int)($_ENV['DB_POOL_SIZE'] ?? 20),
 ];
