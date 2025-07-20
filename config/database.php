@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'default' => $_ENV['DB_CONNECTION'] ?? 'mysql',
+    'default' => $_ENV['DB_CONNECTION'] ?? 'sqlite',
 
     'connections' => [
         'sqlite' => [
