@@ -3,7 +3,7 @@
 require_once __DIR__.'/../../src/Helpers/async_helper.php';
 require_once __DIR__.'/../../src/Helpers/loop_helper.php';
 
-use Rcalicdan\FiberAsync\AsyncEventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 
 beforeEach(function () {
     resetEventLoop();
@@ -19,7 +19,7 @@ test('async function wrapper works', function () {
         $result = $value;
     });
 
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $start = microtime(true);
     while ($result === null && (microtime(true) - $start) < 1) {
         $loop->run();
@@ -40,7 +40,7 @@ test('delay function works', function () {
         $completed = true;
     });
 
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     while (! $completed && (microtime(true) - $start) < 1) {
         $loop->run();
         if ($completed) {
@@ -64,7 +64,7 @@ test('resolve helper creates resolved promise', function () {
         $value = $val;
     });
 
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $start = microtime(true);
     while (! $resolved && (microtime(true) - $start) < 1) {
         $loop->run();
@@ -87,7 +87,7 @@ test('reject helper creates rejected promise', function () {
         $reason = $r;
     });
 
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $start = microtime(true);
     while (! $rejected && (microtime(true) - $start) < 1) {
         $loop->run();
@@ -114,7 +114,7 @@ test('all helper waits for all promises', function () {
         $result = $values;
     });
 
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $start = microtime(true);
     while ($result === null && (microtime(true) - $start) < 1) {
         $loop->run();
@@ -139,7 +139,7 @@ test('race helper resolves with first promise', function () {
         $result = $value;
     });
 
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $start = microtime(true);
     while ($result === null && (microtime(true) - $start) < 1) {
         $loop->run();

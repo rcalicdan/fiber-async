@@ -4,7 +4,6 @@ namespace Rcalicdan\FiberAsync\Config;
 
 use Dotenv\Dotenv;
 use Exception;
-use PhpParser\Node\Expr\Throw_;
 
 /**
  * A singleton configuration loader that automatically finds the project root.
@@ -39,8 +38,9 @@ final class ConfigLoader
     public static function getInstance(): self
     {
         if (self::$instance === null) {
-            self::$instance = new self();
+            self::$instance = new self;
         }
+
         return self::$instance;
     }
 
@@ -70,7 +70,7 @@ final class ConfigLoader
     {
         $dir = __DIR__;
         for ($i = 0; $i < 10; $i++) {
-            if (is_dir($dir . '/vendor')) {
+            if (is_dir($dir.'/vendor')) {
                 return $dir;
             }
 
@@ -80,13 +80,14 @@ final class ConfigLoader
             }
             $dir = $parentDir;
         }
-        return null; 
+
+        return null;
     }
 
     private function loadDotEnv(): void
     {
-        $envFile = $this->rootPath . '/.env';
-        
+        $envFile = $this->rootPath.'/.env';
+
         if (file_exists($envFile)) {
             file_get_contents($envFile);
 
@@ -106,9 +107,9 @@ final class ConfigLoader
      */
     private function loadConfigFiles(): void
     {
-        $configDir = $this->rootPath . '/config';
+        $configDir = $this->rootPath.'/config';
         if (is_dir($configDir)) {
-            $files = glob($configDir . '/*.php');
+            $files = glob($configDir.'/*.php');
             foreach ($files as $file) {
                 // The array key becomes the filename, e.g., 'database'
                 $key = basename($file, '.php');

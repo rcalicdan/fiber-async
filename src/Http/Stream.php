@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Http;
 
-use Rcalicdan\FiberAsync\Contracts\StreamInterface;
+use Rcalicdan\FiberAsync\Http\Interfaces\StreamInterface;
 use RuntimeException;
 
 class Stream implements StreamInterface

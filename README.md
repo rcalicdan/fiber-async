@@ -43,7 +43,7 @@ Let me know if you'd like to include a section about publishing it to Packagist,
 
 You can use this library in two ways:
 
-1. **Static Facade**: `Rcalicdan\FiberAsync\Facades\Async::methodName()`
+1. **Static Facade**: `Rcalicdan\FiberAsync\Api\Async::methodName()`
 2. **Global Helper Functions**: Direct function calls like `async()`, `await()`, etc.
 
 Both approaches provide identical functionality - choose the one that fits your coding style preference.

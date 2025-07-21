@@ -1,6 +1,6 @@
 <?php
 
-use Rcalicdan\FiberAsync\Managers\FiberManager;
+use Rcalicdan\FiberAsync\EventLoop\Managers\FiberManager;
 
 test('fiber manager can add and process fibers', function () {
     $manager = new FiberManager;

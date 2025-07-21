@@ -1,9 +1,9 @@
 <?php
 
-use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
-use Rcalicdan\FiberAsync\Facades\AsyncHttp;
-use Rcalicdan\FiberAsync\Handlers\FetchWithRetry\RetryHelperHandler;
+use Rcalicdan\FiberAsync\Api\AsyncHttp;
+use Rcalicdan\FiberAsync\Http\Handlers\RetryHelperHandler;
 use Rcalicdan\FiberAsync\Http\Request;
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 if (! function_exists('http')) {
     /**

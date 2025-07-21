@@ -1,7 +1,7 @@
 <?php
 
-use Rcalicdan\FiberAsync\AsyncOperations;
-use Rcalicdan\FiberAsync\LoopOperations;
+use Rcalicdan\FiberAsync\Async\AsyncOperations;
+use Rcalicdan\FiberAsync\Loop\LoopOperations;
 
 beforeEach(function () {
     resetEventLoop();

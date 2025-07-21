@@ -2,8 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\Http;
 
-use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
-use Rcalicdan\FiberAsync\Handlers\Http\HttpHandler;
+use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 class Request
 {

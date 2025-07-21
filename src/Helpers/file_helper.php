@@ -1,7 +1,7 @@
 <?php
 
-use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
-use Rcalicdan\FiberAsync\Facades\AsyncFile;
+use Rcalicdan\FiberAsync\Api\AsyncFile;
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
  * Read a file asynchronously.
@@ -244,4 +244,3 @@ function copy_file_stream_async(string $source, string $destination): PromiseInt
 {
     return AsyncFile::copyFileStream($source, $destination);
 }
-

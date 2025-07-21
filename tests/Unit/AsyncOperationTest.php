@@ -1,7 +1,7 @@
 <?php
 
-use Rcalicdan\FiberAsync\AsyncEventLoop;
-use Rcalicdan\FiberAsync\AsyncOperations;
+use Rcalicdan\FiberAsync\Async\AsyncOperations;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 
 beforeEach(function () {
     resetEventLoop();
@@ -23,7 +23,7 @@ test('AsyncOperations async method works', function () {
         $result = $value;
     });
 
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $start = microtime(true);
     while ($result === null && (microtime(true) - $start) < 1) {
         $loop->run();
@@ -46,7 +46,7 @@ test('AsyncOperations resolve method works', function () {
         $value = $val;
     });
 
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $start = microtime(true);
     while (! $resolved && (microtime(true) - $start) < 1) {
         $loop->run();
