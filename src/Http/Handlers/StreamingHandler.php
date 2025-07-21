@@ -3,7 +3,7 @@
 namespace Rcalicdan\FiberAsync\Http\Handlers;
 
 use Exception;
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Http\Stream;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;

@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\IOHandlers\File;
 
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\EventLoop\ValueObjects\FileOperation;
 
 final readonly class FileOperationHandler

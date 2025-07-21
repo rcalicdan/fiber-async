@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Async\Handlers;
 
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Promise\AsyncPromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use RuntimeException;

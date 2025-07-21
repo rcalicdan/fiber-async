@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Promise\Handlers;
 
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 
 /**
  * Handles Promise resolution and rejection operations.

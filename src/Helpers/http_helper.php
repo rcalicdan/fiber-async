@@ -1,6 +1,7 @@
 <?php
 
-use Rcalicdan\FiberAsync\Handlers\FetchWithRetry\RetryHelperHandler;
+use Rcalicdan\FiberAsync\Api\AsyncHttp;
+use Rcalicdan\FiberAsync\Http\Handlers\RetryHelperHandler;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 

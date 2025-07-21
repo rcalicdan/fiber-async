@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Loop\Handlers;
 
 use Exception;
 use Rcalicdan\FiberAsync\Async\AsyncOperations;
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Throwable;
 

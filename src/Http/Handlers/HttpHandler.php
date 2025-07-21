@@ -3,7 +3,7 @@
 namespace Rcalicdan\FiberAsync\Http\Handlers;
 
 use Exception;
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;

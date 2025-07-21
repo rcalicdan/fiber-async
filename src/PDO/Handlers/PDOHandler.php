@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\PDO\Handlers;
 
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Promise\AsyncPromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 

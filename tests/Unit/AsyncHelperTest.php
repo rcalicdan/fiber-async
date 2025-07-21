@@ -3,7 +3,7 @@
 require_once __DIR__.'/../../src/Helpers/async_helper.php';
 require_once __DIR__.'/../../src/Helpers/loop_helper.php';
 
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 
 beforeEach(function () {
     resetEventLoop();

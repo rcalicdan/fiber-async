@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync;
+namespace Rcalicdan\FiberAsync\EventLoop;
 
 use Rcalicdan\FiberAsync\EventLoop\Handlers\ActivityHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\SleepHandler;

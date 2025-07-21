@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\File\Handlers;
 
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 

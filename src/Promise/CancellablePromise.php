@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Promise;
 
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 
 /**
  * A promise that can be cancelled to clean up resources.

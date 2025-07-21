@@ -12,7 +12,7 @@
 */
 
 use Rcalicdan\FiberAsync\Api\Async;
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 
 pest()->extend(Tests\TestCase::class)->in('Feature', 'Integration');
 pest()->extend(Tests\TestCase::class)->in('Unit');

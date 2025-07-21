@@ -2,6 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\PDO\Interfaces;
 
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+
 interface AsyncPDOInterface
 {
     public function connect(array $config): PromiseInterface;

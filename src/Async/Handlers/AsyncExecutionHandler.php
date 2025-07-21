@@ -3,7 +3,7 @@
 namespace Rcalicdan\FiberAsync\Async\Handlers;
 
 use Fiber;
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Promise\AsyncPromise;
 use Throwable;
 

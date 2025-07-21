@@ -1,6 +1,6 @@
 <?php
 
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 
 beforeEach(function () {
     resetEventLoop();

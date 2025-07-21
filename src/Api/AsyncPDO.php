@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Api;
 
 use PDO;
 use Rcalicdan\FiberAsync\Async\Handlers\PromiseCollectionHandler;
-use Rcalicdan\FiberAsync\EventLoop;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\PDO\AsyncPdoPool;
 
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
