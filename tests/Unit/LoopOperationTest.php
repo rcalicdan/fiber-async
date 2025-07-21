@@ -1,6 +1,6 @@
 <?php
 
-use Rcalicdan\FiberAsync\AsyncOperations;
+use Rcalicdan\FiberAsync\Async\AsyncOperations;
 use Rcalicdan\FiberAsync\LoopOperations;
 
 beforeEach(function () {

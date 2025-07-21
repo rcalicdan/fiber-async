@@ -1,7 +1,7 @@
 <?php
 
-use Rcalicdan\FiberAsync\AsyncEventLoop;
 use Rcalicdan\FiberAsync\AsyncPromise;
+use Rcalicdan\FiberAsync\EventLoop;
 
 beforeEach(function () {
     resetEventLoop();
@@ -20,7 +20,7 @@ test('promise can be resolved', function () {
     $promise->resolve('test value');
 
     // Process the event loop to handle callbacks
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $start = microtime(true);
     while (! $resolved && (microtime(true) - $start) < 1) {
         $loop->run();
@@ -49,7 +49,7 @@ test('promise can be rejected', function () {
     $promise->reject('test error');
 
     // Process the event loop to handle callbacks
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $start = microtime(true);
     while (! $rejected && (microtime(true) - $start) < 1) {
         $loop->run();
@@ -79,7 +79,7 @@ test('promise with executor function works', function () {
     });
 
     // Process the event loop to handle callbacks
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $start = microtime(true);
     while (! $resolved && (microtime(true) - $start) < 1) {
         $loop->run();
@@ -110,7 +110,7 @@ test('promise chaining works', function () {
     ;
 
     // Process the event loop to handle callbacks
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $start = microtime(true);
     while ($finalValue === null && (microtime(true) - $start) < 1) {
         $loop->run();
@@ -135,7 +135,7 @@ test('promise finally callback executes', function () {
     });
 
     // Process the event loop to handle callbacks
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $start = microtime(true);
     while (! $finallyExecuted && (microtime(true) - $start) < 1) {
         $loop->run();

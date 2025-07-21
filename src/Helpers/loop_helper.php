@@ -1,7 +1,7 @@
 <?php
 
-use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
-use Rcalicdan\FiberAsync\Facades\AsyncLoop;
+use Rcalicdan\FiberAsync\Api\AsyncLoop;
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
  * Run an async operation with automatic event loop management.

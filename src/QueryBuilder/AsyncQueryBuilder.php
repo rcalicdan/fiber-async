@@ -2,13 +2,13 @@
 
 namespace Rcalicdan\FiberAsync\QueryBuilder;
 
-use Rcalicdan\FiberAsync\Contracts\PromiseInterface;
-use Rcalicdan\FiberAsync\Facades\AsyncPDO;
-use Rcalicdan\FiberAsync\Facades\Async;
+use Rcalicdan\FiberAsync\Api\Async;
+use Rcalicdan\FiberAsync\Api\AsyncPDO;
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
  * Async Query Builder - CodeIgniter 4 style query builder for async operations
- * 
+ *
  * Usage:
  * AsyncDb::table('users')->select('id, name')->where('active', 1)->get()
  * AsyncDb::table('users')->find(1)
@@ -49,6 +49,7 @@ class AsyncQueryBuilder
     public function table(string $table): self
     {
         $this->table = $table;
+
         return $this;
     }
 
@@ -61,6 +62,7 @@ class AsyncQueryBuilder
             $columns = array_map('trim', explode(',', $columns));
         }
         $this->select = $columns;
+
         return $this;
     }
 
@@ -72,8 +74,9 @@ class AsyncQueryBuilder
         $this->joins[] = [
             'type' => strtoupper($type),
             'table' => $table,
-            'condition' => $condition
+            'condition' => $condition,
         ];
+
         return $this;
     }
 
@@ -106,6 +109,7 @@ class AsyncQueryBuilder
         $placeholder = $this->getPlaceholder();
         $this->where[] = "{$column} {$operator} {$placeholder}";
         $this->bindings[] = $value;
+
         return $this;
     }
 
@@ -122,6 +126,7 @@ class AsyncQueryBuilder
         $placeholder = $this->getPlaceholder();
         $this->orWhere[] = "{$column} {$operator} {$placeholder}";
         $this->bindings[] = $value;
+
         return $this;
     }
 
@@ -135,7 +140,8 @@ class AsyncQueryBuilder
             $placeholders[] = $this->getPlaceholder();
             $this->bindings[] = $value;
         }
-        $this->whereIn[] = "{$column} IN (" . implode(', ', $placeholders) . ")";
+        $this->whereIn[] = "{$column} IN (".implode(', ', $placeholders).')';
+
         return $this;
     }
 
@@ -149,7 +155,8 @@ class AsyncQueryBuilder
             $placeholders[] = $this->getPlaceholder();
             $this->bindings[] = $value;
         }
-        $this->whereNotIn[] = "{$column} NOT IN (" . implode(', ', $placeholders) . ")";
+        $this->whereNotIn[] = "{$column} NOT IN (".implode(', ', $placeholders).')';
+
         return $this;
     }
 
@@ -166,6 +173,7 @@ class AsyncQueryBuilder
         $this->whereBetween[] = "{$column} BETWEEN {$placeholder1} AND {$placeholder2}";
         $this->bindings[] = $values[0];
         $this->bindings[] = $values[1];
+
         return $this;
     }
 
@@ -175,6 +183,7 @@ class AsyncQueryBuilder
     public function whereNull(string $column): self
     {
         $this->whereNull[] = "{$column} IS NULL";
+
         return $this;
     }
 
@@ -184,6 +193,7 @@ class AsyncQueryBuilder
     public function whereNotNull(string $column): self
     {
         $this->whereNotNull[] = "{$column} IS NOT NULL";
+
         return $this;
     }
 
@@ -194,15 +204,16 @@ class AsyncQueryBuilder
     {
         $placeholder = $this->getPlaceholder();
         $this->where[] = "{$column} LIKE {$placeholder}";
-        
+
         $likeValue = match ($side) {
             'before' => "%{$value}",
             'after' => "{$value}%",
             'both' => "%{$value}%",
             default => $value
         };
-        
+
         $this->bindings[] = $likeValue;
+
         return $this;
     }
 
@@ -215,6 +226,7 @@ class AsyncQueryBuilder
             $columns = array_map('trim', explode(',', $columns));
         }
         $this->groupBy = array_merge($this->groupBy, $columns);
+
         return $this;
     }
 
@@ -231,6 +243,7 @@ class AsyncQueryBuilder
         $placeholder = $this->getPlaceholder();
         $this->having[] = "{$column} {$operator} {$placeholder}";
         $this->bindings[] = $value;
+
         return $this;
     }
 
@@ -239,7 +252,8 @@ class AsyncQueryBuilder
      */
     public function orderBy(string $column, string $direction = 'ASC'): self
     {
-        $this->orderBy[] = "{$column} " . strtoupper($direction);
+        $this->orderBy[] = "{$column} ".strtoupper($direction);
+
         return $this;
     }
 
@@ -252,6 +266,7 @@ class AsyncQueryBuilder
         if ($offset !== null) {
             $this->offset = $offset;
         }
+
         return $this;
     }
 
@@ -261,6 +276,7 @@ class AsyncQueryBuilder
     public function offset(int $offset): self
     {
         $this->offset = $offset;
+
         return $this;
     }
 
@@ -270,6 +286,7 @@ class AsyncQueryBuilder
     public function get(): PromiseInterface
     {
         $sql = $this->buildSelectQuery();
+
         return AsyncPDO::query($sql, $this->bindings);
     }
 
@@ -282,7 +299,7 @@ class AsyncQueryBuilder
         $this->limit = 1;
         $sql = $this->buildSelectQuery();
         $this->limit = $originalLimit;
-        
+
         return AsyncPDO::fetchOne($sql, $this->bindings);
     }
 
@@ -301,9 +318,10 @@ class AsyncQueryBuilder
     {
         return Async::async(function () use ($id, $column) {
             $result = await($this->find($id, $column));
-            if (!$result) {
+            if (! $result) {
                 throw new \RuntimeException("Record not found with {$column} = {$id}");
             }
+
             return $result;
         })();
     }
@@ -315,6 +333,7 @@ class AsyncQueryBuilder
     {
         return Async::async(function () use ($column) {
             $result = await($this->select($column)->first());
+
             return $result ? $result[$column] : null;
         })();
     }
@@ -325,6 +344,7 @@ class AsyncQueryBuilder
     public function count(string $column = '*'): PromiseInterface
     {
         $sql = $this->buildCountQuery($column);
+
         return AsyncPDO::fetchValue($sql, $this->bindings);
     }
 
@@ -335,6 +355,7 @@ class AsyncQueryBuilder
     {
         return Async::async(function () {
             $count = await($this->count());
+
             return $count > 0;
         })();
     }
@@ -345,6 +366,7 @@ class AsyncQueryBuilder
     public function insert(array $data): PromiseInterface
     {
         $sql = $this->buildInsertQuery($data);
+
         return AsyncPDO::execute($sql, array_values($data));
     }
 
@@ -381,6 +403,7 @@ class AsyncQueryBuilder
     {
         $sql = $this->buildUpdateQuery($data);
         $bindings = array_merge(array_values($data), $this->bindings);
+
         return AsyncPDO::execute($sql, $bindings);
     }
 
@@ -390,6 +413,7 @@ class AsyncQueryBuilder
     public function delete(): PromiseInterface
     {
         $sql = $this->buildDeleteQuery();
+
         return AsyncPDO::execute($sql, $this->bindings);
     }
 
@@ -422,8 +446,8 @@ class AsyncQueryBuilder
      */
     protected function buildSelectQuery(): string
     {
-        $sql = 'SELECT ' . implode(', ', $this->select);
-        $sql .= ' FROM ' . $this->table;
+        $sql = 'SELECT '.implode(', ', $this->select);
+        $sql .= ' FROM '.$this->table;
 
         // Add joins
         foreach ($this->joins as $join) {
@@ -434,25 +458,25 @@ class AsyncQueryBuilder
         $sql .= $this->buildWhereClause();
 
         // Add group by
-        if (!empty($this->groupBy)) {
-            $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
+        if (! empty($this->groupBy)) {
+            $sql .= ' GROUP BY '.implode(', ', $this->groupBy);
         }
 
         // Add having
-        if (!empty($this->having)) {
-            $sql .= ' HAVING ' . implode(' AND ', $this->having);
+        if (! empty($this->having)) {
+            $sql .= ' HAVING '.implode(' AND ', $this->having);
         }
 
         // Add order by
-        if (!empty($this->orderBy)) {
-            $sql .= ' ORDER BY ' . implode(', ', $this->orderBy);
+        if (! empty($this->orderBy)) {
+            $sql .= ' ORDER BY '.implode(', ', $this->orderBy);
         }
 
         // Add limit and offset
         if ($this->limit !== null) {
-            $sql .= ' LIMIT ' . $this->limit;
+            $sql .= ' LIMIT '.$this->limit;
             if ($this->offset !== null) {
-                $sql .= ' OFFSET ' . $this->offset;
+                $sql .= ' OFFSET '.$this->offset;
             }
         }
 
@@ -464,7 +488,7 @@ class AsyncQueryBuilder
      */
     protected function buildCountQuery(string $column = '*'): string
     {
-        $sql = "SELECT COUNT({$column}) FROM " . $this->table;
+        $sql = "SELECT COUNT({$column}) FROM ".$this->table;
 
         // Add joins
         foreach ($this->joins as $join) {
@@ -475,13 +499,13 @@ class AsyncQueryBuilder
         $sql .= $this->buildWhereClause();
 
         // Add group by
-        if (!empty($this->groupBy)) {
-            $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
+        if (! empty($this->groupBy)) {
+            $sql .= ' GROUP BY '.implode(', ', $this->groupBy);
         }
 
         // Add having
-        if (!empty($this->having)) {
-            $sql .= ' HAVING ' . implode(' AND ', $this->having);
+        if (! empty($this->having)) {
+            $sql .= ' HAVING '.implode(' AND ', $this->having);
         }
 
         return $sql;
@@ -494,6 +518,7 @@ class AsyncQueryBuilder
     {
         $columns = implode(', ', array_keys($data));
         $placeholders = implode(', ', array_fill(0, count($data), '?'));
+
         return "INSERT INTO {$this->table} ({$columns}) VALUES ({$placeholders})";
     }
 
@@ -504,8 +529,9 @@ class AsyncQueryBuilder
     {
         $firstRow = $data[0];
         $columns = implode(', ', array_keys($firstRow));
-        $placeholders = '(' . implode(', ', array_fill(0, count($firstRow), '?')) . ')';
+        $placeholders = '('.implode(', ', array_fill(0, count($firstRow), '?')).')';
         $allPlaceholders = implode(', ', array_fill(0, count($data), $placeholders));
+
         return "INSERT INTO {$this->table} ({$columns}) VALUES {$allPlaceholders}";
     }
 
@@ -518,8 +544,9 @@ class AsyncQueryBuilder
         foreach (array_keys($data) as $column) {
             $setClauses[] = "{$column} = ?";
         }
-        $sql = "UPDATE {$this->table} SET " . implode(', ', $setClauses);
+        $sql = "UPDATE {$this->table} SET ".implode(', ', $setClauses);
         $sql .= $this->buildWhereClause();
+
         return $sql;
     }
 
@@ -530,6 +557,7 @@ class AsyncQueryBuilder
     {
         $sql = "DELETE FROM {$this->table}";
         $sql .= $this->buildWhereClause();
+
         return $sql;
     }
 
@@ -552,13 +580,13 @@ class AsyncQueryBuilder
         }
 
         $sql = ' WHERE ';
-        
-        if (!empty($conditions)) {
+
+        if (! empty($conditions)) {
             $sql .= implode(' AND ', $conditions);
         }
 
-        if (!empty($this->orWhere)) {
-            if (!empty($conditions)) {
+        if (! empty($this->orWhere)) {
+            if (! empty($conditions)) {
                 $sql .= ' OR ';
             }
             $sql .= implode(' OR ', $this->orWhere);

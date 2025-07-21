@@ -1,20 +1,20 @@
 <?php
 
-use Rcalicdan\FiberAsync\AsyncEventLoop;
+use Rcalicdan\FiberAsync\EventLoop;
 
 beforeEach(function () {
     resetEventLoop();
 });
 
 test('event loop singleton works correctly', function () {
-    $loop1 = AsyncEventLoop::getInstance();
-    $loop2 = AsyncEventLoop::getInstance();
+    $loop1 = EventLoop::getInstance();
+    $loop2 = EventLoop::getInstance();
 
     expect($loop1)->toBe($loop2);
 });
 
 test('event loop can add and process timers', function () {
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $executed = false;
 
     $loop->addTimer(0.01, function () use (&$executed) {
@@ -35,7 +35,7 @@ test('event loop can add and process timers', function () {
 });
 
 test('event loop can process next tick callbacks', function () {
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
     $executed = false;
 
     $loop->nextTick(function () use (&$executed) {
@@ -56,7 +56,7 @@ test('event loop can process next tick callbacks', function () {
 });
 
 test('event loop can be stopped', function () {
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
 
     $loop->nextTick(function () use ($loop) {
         $loop->stop();
@@ -68,7 +68,7 @@ test('event loop can be stopped', function () {
 });
 
 test('event loop detects when it has work', function () {
-    $loop = AsyncEventLoop::getInstance();
+    $loop = EventLoop::getInstance();
 
     // Initially should have no work
     expect($loop->isIdle())->toBeTrue();

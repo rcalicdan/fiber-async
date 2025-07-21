@@ -1,7 +1,7 @@
 <?php
 
+use Rcalicdan\FiberAsync\EventLoop\ValueObjects\Timer;
 use Rcalicdan\FiberAsync\Managers\TimerManager;
-use Rcalicdan\FiberAsync\ValueObjects\Timer;
 
 test('timer manager can add and process timers', function () {
     $manager = new TimerManager;

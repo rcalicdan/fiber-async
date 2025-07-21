@@ -1,7 +1,7 @@
 <?php
 
-use Rcalicdan\FiberAsync\Facades\Async;
-use Rcalicdan\FiberAsync\Facades\AsyncLoop;
+use Rcalicdan\FiberAsync\Api\Async;
+use Rcalicdan\FiberAsync\Api\AsyncLoop;
 
 beforeEach(function () {
     resetEventLoop();
@@ -18,7 +18,7 @@ test('Async Facade can call async operations', function () {
     });
 
     // Process the event loop
-    $loop = Rcalicdan\FiberAsync\AsyncEventLoop::getInstance();
+    $loop = Rcalicdan\FiberAsync\EventLoop::getInstance();
     $start = microtime(true);
     while ($result === null && (microtime(true) - $start) < 1) {
         $loop->run();
@@ -48,7 +48,7 @@ test('Async resolve works', function () {
         $value = $val;
     });
 
-    $loop = Rcalicdan\FiberAsync\AsyncEventLoop::getInstance();
+    $loop = Rcalicdan\FiberAsync\EventLoop::getInstance();
     $start = microtime(true);
     while (! $resolved && (microtime(true) - $start) < 1) {
         $loop->run();
