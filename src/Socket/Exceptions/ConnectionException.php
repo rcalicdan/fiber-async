@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\Exceptions;
+namespace Rcalicdan\FiberAsync\Socket\Exceptions;
 
 /**
  * Thrown for errors that occur during the connection phase.

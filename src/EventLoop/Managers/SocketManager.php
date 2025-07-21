@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\Managers;
+namespace Rcalicdan\FiberAsync\EventLoop\Managers;
 
 class SocketManager
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync;
+namespace Rcalicdan\FiberAsync\Loop;
 
 use Rcalicdan\FiberAsync\Async\AsyncOperations;
 use Rcalicdan\FiberAsync\Loop\Handlers\BenchmarkHandler;

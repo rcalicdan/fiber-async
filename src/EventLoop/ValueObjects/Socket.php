@@ -2,8 +2,9 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\ValueObjects;
 
-use Rcalicdan\FiberAsync\AsyncSocketOperations;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Socket\AsyncSocketOperations;
+use Rcalicdan\FiberAsync\Socket\Exceptions\SocketException;
 
 class Socket
 {
@@ -21,7 +22,7 @@ class Socket
     public function read(?int $length = null, ?float $timeout = 10.0): PromiseInterface
     {
         if ($this->isClosed) {
-            return $this->operations->getAsyncOps()->reject(new \Rcalicdan\FiberAsync\Exceptions\SocketException('Socket is closed.'));
+            return $this->operations->getAsyncOps()->reject(new SocketException('Socket is closed.'));
         }
 
         $readLength = $length ?? 8192; // Default to 8192 if not specified
@@ -32,7 +33,7 @@ class Socket
     public function write(string $data, ?float $timeout = 10.0): PromiseInterface
     {
         if ($this->isClosed) {
-            return $this->operations->getAsyncOps()->reject(new \Rcalicdan\FiberAsync\Exceptions\SocketException('Socket is closed.'));
+            return $this->operations->getAsyncOps()->reject(new SocketException('Socket is closed.'));
         }
 
         return $this->operations->write($this, $data, $timeout);

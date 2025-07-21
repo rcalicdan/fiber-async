@@ -2,8 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\Handlers;
 
-use Rcalicdan\FiberAsync\Managers\FiberManager;
-use Rcalicdan\FiberAsync\Managers\TimerManager;
+use Rcalicdan\FiberAsync\EventLoop\Managers\FiberManager;
+use Rcalicdan\FiberAsync\EventLoop\Managers\TimerManager;
 
 final class SleepHandler
 {

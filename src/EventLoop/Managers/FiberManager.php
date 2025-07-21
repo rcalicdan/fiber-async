@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\Managers;
+namespace Rcalicdan\FiberAsync\EventLoop\Managers;
 
 use Rcalicdan\FiberAsync\EventLoop\IOHandlers\Fiber\FiberResumeHandler;
 use Rcalicdan\FiberAsync\EventLoop\IOHandlers\Fiber\FiberStartHandler;

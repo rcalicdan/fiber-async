@@ -3,7 +3,7 @@
 namespace Rcalicdan\FiberAsync\Api;
 
 use Rcalicdan\FiberAsync\Async\AsyncOperations;
-use Rcalicdan\FiberAsync\LoopOperations;
+use Rcalicdan\FiberAsync\Loop\LoopOperations;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**

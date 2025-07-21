@@ -1,14 +1,15 @@
 <?php
 
-namespace Rcalicdan\FiberAsync;
+namespace Rcalicdan\FiberAsync\Socket;
 
 use Rcalicdan\FiberAsync\Async\AsyncOperations;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\EventLoop\ValueObjects\Socket;
-use Rcalicdan\FiberAsync\Exceptions\ConnectionException;
-use Rcalicdan\FiberAsync\Exceptions\SocketException;
-use Rcalicdan\FiberAsync\Exceptions\TimeoutException;
 use Rcalicdan\FiberAsync\Promise\AsyncPromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Socket\Exceptions\ConnectionException;
+use Rcalicdan\FiberAsync\Socket\Exceptions\SocketException;
+use Rcalicdan\FiberAsync\Socket\Exceptions\TimeoutException;
 
 class AsyncSocketOperations
 {

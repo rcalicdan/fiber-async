@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Api;
 
-use Rcalicdan\FiberAsync\AsyncSocketOperations;
+use Rcalicdan\FiberAsync\Socket\AsyncSocketOperations;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 final class AsyncSocket

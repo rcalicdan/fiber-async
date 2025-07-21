@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Api;
 
-use Rcalicdan\FiberAsync\AsyncFileOperations;
+use Rcalicdan\FiberAsync\File\AsyncFileOperations;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**

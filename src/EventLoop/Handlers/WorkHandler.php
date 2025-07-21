@@ -2,13 +2,13 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\Handlers;
 
-use Rcalicdan\FiberAsync\Managers\FiberManager;
-use Rcalicdan\FiberAsync\Managers\FileManager;
-use Rcalicdan\FiberAsync\Managers\HttpRequestManager;
-use Rcalicdan\FiberAsync\Managers\PDOManager;
-use Rcalicdan\FiberAsync\Managers\SocketManager;
-use Rcalicdan\FiberAsync\Managers\StreamManager;
-use Rcalicdan\FiberAsync\Managers\TimerManager;
+use Rcalicdan\FiberAsync\EventLoop\Managers\FiberManager;
+use Rcalicdan\FiberAsync\EventLoop\Managers\FileManager;
+use Rcalicdan\FiberAsync\EventLoop\Managers\HttpRequestManager;
+use Rcalicdan\FiberAsync\EventLoop\Managers\PDOManager;
+use Rcalicdan\FiberAsync\EventLoop\Managers\SocketManager;
+use Rcalicdan\FiberAsync\EventLoop\Managers\StreamManager;
+use Rcalicdan\FiberAsync\EventLoop\Managers\TimerManager;
 
 final readonly class WorkHandler
 {

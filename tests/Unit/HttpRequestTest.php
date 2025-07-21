@@ -1,7 +1,7 @@
 <?php
 
+use Rcalicdan\FiberAsync\EventLoop\Managers\HttpRequestManager;
 use Rcalicdan\FiberAsync\EventLoop\ValueObjects\HttpRequest;
-use Rcalicdan\FiberAsync\Managers\HttpRequestManager;
 
 test('http request manager can add and process requests', function () {
     $manager = new HttpRequestManager;

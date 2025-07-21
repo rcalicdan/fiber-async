@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync;
+namespace Rcalicdan\FiberAsync\File;
 
 use Rcalicdan\FiberAsync\File\Handlers\FileHandler;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
