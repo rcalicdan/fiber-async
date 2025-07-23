@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\MySQL;
 
-use Rcalicdan\FiberAsync\Api\Async;
+use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 class PreparedStatement
@@ -27,7 +27,7 @@ class PreparedStatement
     public function execute(array $params = []): PromiseInterface
     {
         if (count($params) !== $this->numParams) {
-            return Async::reject(new \InvalidArgumentException(
+            return Promise::reject(new \InvalidArgumentException(
                 "Incorrect number of parameters: expected {$this->numParams}, got ".count($params)
             ));
         }
