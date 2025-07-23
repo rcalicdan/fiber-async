@@ -3,7 +3,7 @@
 namespace Rcalicdan\FiberAsync\Async\Handlers;
 
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
-use Rcalicdan\FiberAsync\Promise\AsyncPromise;
+use Rcalicdan\FiberAsync\Promise\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use RuntimeException;
 use Throwable;
@@ -42,7 +42,7 @@ final readonly class ConcurrencyHandler
      */
     public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($tasks, $concurrency) {
+        return new Promise(function ($resolve, $reject) use ($tasks, $concurrency) {
             if (empty($tasks)) {
                 $resolve([]);
 

@@ -3,8 +3,8 @@
 namespace Rcalicdan\FiberAsync\PDO;
 
 use PDO;
-use Rcalicdan\FiberAsync\Api\Async;
-use Rcalicdan\FiberAsync\Promise\AsyncPromise;
+use Rcalicdan\FiberAsync\Api\Promise;
+use Rcalicdan\FiberAsync\Promise\Promise as AsyncPromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use SplQueue;
 
@@ -49,7 +49,7 @@ class AsyncPdoPool
     {
         // If an idle connection is waiting in the pool, use it.
         if (! $this->pool->isEmpty()) {
-            return Async::resolve($this->pool->dequeue());
+            return Promise::resolve($this->pool->dequeue());
         }
 
         // If we haven't reached our max connection limit, create a new one.
@@ -59,17 +59,17 @@ class AsyncPdoPool
             try {
                 $connection = $this->createConnection();
 
-                return Async::resolve($connection);
+                return Promise::resolve($connection);
             } catch (\Throwable $e) {
                 // If connection fails, decrement count and reject the promise.
                 $this->activeConnections--;
 
-                return Async::reject($e);
+                return Promise::reject($e);
             }
         }
 
         // If the pool is full, wait for a connection to be released.
-        $promise = new AsyncPromise;
+        $promise = new AsyncPromise();
         $this->waiters->enqueue($promise);
 
         return $promise;

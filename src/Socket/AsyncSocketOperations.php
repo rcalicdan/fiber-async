@@ -5,7 +5,7 @@ namespace Rcalicdan\FiberAsync\Socket;
 use Rcalicdan\FiberAsync\Async\AsyncOperations;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\EventLoop\ValueObjects\Socket;
-use Rcalicdan\FiberAsync\Promise\AsyncPromise;
+use Rcalicdan\FiberAsync\Promise\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\Socket\Exceptions\ConnectionException;
 use Rcalicdan\FiberAsync\Socket\Exceptions\SocketException;
@@ -29,7 +29,7 @@ class AsyncSocketOperations
 
     public function connect(string $address, ?float $timeout = 10.0, array $contextOptions = []): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($address, $timeout, $contextOptions) {
+        return new Promise(function ($resolve, $reject) use ($address, $timeout, $contextOptions) {
             $context = stream_context_create($contextOptions);
             $socket = @stream_socket_client($address, $errno, $errstr, 0, STREAM_CLIENT_ASYNC_CONNECT, $context);
             if ($socket === false) {
@@ -63,7 +63,7 @@ class AsyncSocketOperations
 
     public function read(Socket $client, int $length, ?float $timeout = 10.0): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($client, $length, $timeout) {
+        return new Promise(function ($resolve, $reject) use ($client, $length, $timeout) {
             $socketResource = $client->getResource();
             $timerId = null;
 
@@ -98,7 +98,7 @@ class AsyncSocketOperations
 
     public function write(Socket $client, string $data, ?float $timeout = 10.0): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($client, $data, $timeout) {
+        return new Promise(function ($resolve, $reject) use ($client, $data, $timeout) {
             $timerId = null;
 
             // Start the robust, recursive write operation.

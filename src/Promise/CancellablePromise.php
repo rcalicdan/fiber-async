@@ -7,7 +7,7 @@ use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 /**
  * A promise that can be cancelled to clean up resources.
  */
-class CancellablePromise extends AsyncPromise
+class CancellablePromise extends Promise
 {
     private ?string $timerId = null;
     private bool $cancelled = false;

@@ -1,14 +1,14 @@
 <?php
 
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
-use Rcalicdan\FiberAsync\Promise\AsyncPromise;
+use Rcalicdan\FiberAsync\Promise\Promise;
 
 beforeEach(function () {
     resetEventLoop();
 });
 
 test('promise can be resolved', function () {
-    $promise = new AsyncPromise;
+    $promise = new Promise;
     $resolved = false;
     $value = null;
 
@@ -37,7 +37,7 @@ test('promise can be resolved', function () {
 });
 
 test('promise can be rejected', function () {
-    $promise = new AsyncPromise;
+    $promise = new Promise;
     $rejected = false;
     $reason = null;
 
@@ -69,7 +69,7 @@ test('promise with executor function works', function () {
     $resolved = false;
     $value = null;
 
-    $promise = new AsyncPromise(function ($resolve, $reject) {
+    $promise = new Promise(function ($resolve, $reject) {
         $resolve('executor value');
     });
 
@@ -96,7 +96,7 @@ test('promise with executor function works', function () {
 test('promise chaining works', function () {
     $finalValue = null;
 
-    $promise = new AsyncPromise(function ($resolve) {
+    $promise = new Promise(function ($resolve) {
         $resolve(5);
     });
 
@@ -126,7 +126,7 @@ test('promise chaining works', function () {
 test('promise finally callback executes', function () {
     $finallyExecuted = false;
 
-    $promise = new AsyncPromise(function ($resolve) {
+    $promise = new Promise(function ($resolve) {
         $resolve('test');
     });
 

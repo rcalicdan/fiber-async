@@ -3,7 +3,7 @@
 namespace Rcalicdan\FiberAsync\Async\Handlers;
 
 use Exception;
-use Rcalicdan\FiberAsync\Promise\AsyncPromise;
+use Rcalicdan\FiberAsync\Promise\Promise;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
@@ -28,7 +28,7 @@ final readonly class PromiseCollectionHandler
      */
     public function all(array $promises): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($promises) {
+        return new Promise(function ($resolve, $reject) use ($promises) {
             if (empty($promises)) {
                 $resolve([]);
 
@@ -71,7 +71,7 @@ final readonly class PromiseCollectionHandler
      */
     public function race(array $promises): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($promises) {
+        return new Promise(function ($resolve, $reject) use ($promises) {
             if (empty($promises)) {
                 $reject(new Exception('No promises provided'));
 
@@ -136,7 +136,7 @@ final readonly class PromiseCollectionHandler
     {
         if ($promise instanceof CancellablePromise && ! $promise->isCancelled()) {
             $promise->cancel();
-        } elseif ($promise instanceof AsyncPromise) {
+        } elseif ($promise instanceof Promise) {
             $rootCancellable = $promise->getRootCancellable();
             if ($rootCancellable && ! $rootCancellable->isCancelled()) {
                 $rootCancellable->cancel();

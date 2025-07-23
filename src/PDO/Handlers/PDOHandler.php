@@ -3,7 +3,7 @@
 namespace Rcalicdan\FiberAsync\PDO\Handlers;
 
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
-use Rcalicdan\FiberAsync\Promise\AsyncPromise;
+use Rcalicdan\FiberAsync\Promise\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 final readonly class PDOHandler
@@ -17,7 +17,7 @@ final readonly class PDOHandler
 
     public function query(string $sql, array $params = [], array $options = []): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($sql, $params, $options) {
+        return new Promise(function ($resolve, $reject) use ($sql, $params, $options) {
             $this->eventLoop->addPDOOperation(
                 'query',
                 ['sql' => $sql, 'params' => $params],
@@ -35,7 +35,7 @@ final readonly class PDOHandler
 
     public function execute(string $sql, array $params = [], array $options = []): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($sql, $params, $options) {
+        return new Promise(function ($resolve, $reject) use ($sql, $params, $options) {
             $this->eventLoop->addPDOOperation(
                 'execute',
                 ['sql' => $sql, 'params' => $params],
@@ -53,7 +53,7 @@ final readonly class PDOHandler
 
     public function prepare(string $sql, array $options = []): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($sql, $options) {
+        return new Promise(function ($resolve, $reject) use ($sql, $options) {
             $this->eventLoop->addPDOOperation(
                 'prepare',
                 ['sql' => $sql],
@@ -71,7 +71,7 @@ final readonly class PDOHandler
 
     public function beginTransaction(array $options = []): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($options) {
+        return new Promise(function ($resolve, $reject) use ($options) {
             $this->eventLoop->addPDOOperation(
                 'beginTransaction',
                 [],
@@ -89,7 +89,7 @@ final readonly class PDOHandler
 
     public function commit(array $options = []): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($options) {
+        return new Promise(function ($resolve, $reject) use ($options) {
             $this->eventLoop->addPDOOperation(
                 'commit',
                 [],
@@ -107,7 +107,7 @@ final readonly class PDOHandler
 
     public function rollback(array $options = []): PromiseInterface
     {
-        return new AsyncPromise(function ($resolve, $reject) use ($options) {
+        return new Promise(function ($resolve, $reject) use ($options) {
             $this->eventLoop->addPDOOperation(
                 'rollback',
                 [],

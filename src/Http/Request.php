@@ -248,11 +248,7 @@ class Request
         $this->addBodyOptions($options);
         $this->addAuthenticationOptions($options);
 
-        // --- FIX IS HERE ---
-        // Instead of merging, we only add known custom cURL options from $this->options.
-        // This prevents internal keys like 'multipart' from being passed to curl_setopt_array.
         foreach ($this->options as $key => $value) {
-            // Only add integer keys, which correspond to CURLOPT_* constants
             if (is_int($key)) {
                 $options[$key] = $value;
             }

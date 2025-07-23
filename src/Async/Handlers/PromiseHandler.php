@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Async\Handlers;
 
-use Rcalicdan\FiberAsync\Promise\AsyncPromise;
+use Rcalicdan\FiberAsync\Promise\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -25,7 +25,7 @@ final readonly class PromiseHandler
      */
     public function resolve(mixed $value): PromiseInterface
     {
-        $promise = new AsyncPromise;
+        $promise = new Promise;
         $promise->resolve($value);
 
         return $promise;
@@ -42,7 +42,7 @@ final readonly class PromiseHandler
      */
     public function reject(mixed $reason): PromiseInterface
     {
-        $promise = new AsyncPromise;
+        $promise = new Promise;
         $promise->reject($reason);
 
         return $promise;
@@ -58,6 +58,6 @@ final readonly class PromiseHandler
      */
     public function createEmpty(): PromiseInterface
     {
-        return new AsyncPromise;
+        return new Promise;
     }
 }

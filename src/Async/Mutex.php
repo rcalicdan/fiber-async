@@ -2,8 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\Async;
 
-use Rcalicdan\FiberAsync\Api\Async;
-use Rcalicdan\FiberAsync\Promise\AsyncPromise;
+use Rcalicdan\FiberAsync\Api\Promise;
+use Rcalicdan\FiberAsync\Promise\Promise as AsyncPromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -24,7 +24,7 @@ class Mutex
         if (! $this->locked) {
             $this->locked = true;
 
-            return Async::resolve($this); // Lock acquired immediately
+            return Promise::resolve($this); // Lock acquired immediately
         }
 
         // If locked, return a promise that will be resolved when the lock is released.

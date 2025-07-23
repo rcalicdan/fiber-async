@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Async\Handlers;
 
 use Fiber;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
-use Rcalicdan\FiberAsync\Promise\AsyncPromise;
+use Rcalicdan\FiberAsync\Promise\Promise;
 use Throwable;
 
 /**
@@ -28,7 +28,7 @@ final readonly class AsyncExecutionHandler
     public function async(callable $asyncFunction): callable
     {
         return function (...$args) use ($asyncFunction) {
-            return new AsyncPromise(function ($resolve, $reject) use ($asyncFunction, $args) {
+            return new Promise(function ($resolve, $reject) use ($asyncFunction, $args) {
                 $fiber = new Fiber(function () use ($asyncFunction, $args, $resolve, $reject) {
                     try {
                         $result = $asyncFunction(...$args);
@@ -55,7 +55,7 @@ final readonly class AsyncExecutionHandler
     public function asyncify(callable $syncFunction): callable
     {
         return function (...$args) use ($syncFunction) {
-            return new AsyncPromise(function ($resolve, $reject) use ($syncFunction, $args) {
+            return new Promise(function ($resolve, $reject) use ($syncFunction, $args) {
                 $fiber = new Fiber(function () use ($syncFunction, $args, $resolve, $reject) {
                     try {
                         $result = $syncFunction(...$args);

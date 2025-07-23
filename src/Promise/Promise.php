@@ -7,8 +7,8 @@ use Rcalicdan\FiberAsync\Promise\Handlers\ChainHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\ExecutorHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\ResolutionHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\StateHandler;
-use Rcalicdan\FiberAsync\Promise\Interfaces\AsyncPromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+
 
 /**
  * Implementation of the Promise pattern for asynchronous operations.
@@ -21,7 +21,7 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
  * Promises can be in one of three states: pending, resolved (fulfilled), or
  * rejected. Once settled (resolved or rejected), a promise cannot change state.
  */
-class AsyncPromise implements AsyncPromiseInterface
+class Promise implements PromiseInterface
 {
     /**
      * @var StateHandler Manages the promise's state (pending, resolved, rejected)
