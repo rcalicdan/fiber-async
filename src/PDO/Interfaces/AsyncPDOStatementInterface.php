@@ -2,6 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\PDO\Interfaces;
 
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+
 interface AsyncPDOStatementInterface
 {
     public function execute(array $params = []): PromiseInterface;
