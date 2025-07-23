@@ -2,8 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\Async\Handlers;
 
-use Rcalicdan\FiberAsync\Promise\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Promise;
 
 /**
  * Handles creation and basic operations on Promise instances.

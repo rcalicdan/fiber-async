@@ -4,8 +4,8 @@ namespace Rcalicdan\FiberAsync\PDO;
 
 use PDO;
 use Rcalicdan\FiberAsync\Api\Promise;
-use Rcalicdan\FiberAsync\Promise\Promise as AsyncPromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Promise as AsyncPromise;
 use SplQueue;
 
 /**
@@ -69,7 +69,7 @@ class AsyncPdoPool
         }
 
         // If the pool is full, wait for a connection to be released.
-        $promise = new AsyncPromise();
+        $promise = new AsyncPromise;
         $this->waiters->enqueue($promise);
 
         return $promise;

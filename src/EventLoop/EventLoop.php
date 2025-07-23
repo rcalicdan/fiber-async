@@ -8,8 +8,6 @@ use Rcalicdan\FiberAsync\EventLoop\Handlers\StateHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\TickHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\WorkHandler;
 use Rcalicdan\FiberAsync\EventLoop\Interfaces\EventLoopInterface;
-use Rcalicdan\FiberAsync\EventLoop\ValueObjects\PDOOperation;
-use Rcalicdan\FiberAsync\EventLoop\ValueObjects\StreamWatcher;
 use Rcalicdan\FiberAsync\EventLoop\Managers\FiberManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\FileManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\HttpRequestManager;
@@ -17,6 +15,8 @@ use Rcalicdan\FiberAsync\EventLoop\Managers\PDOManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\SocketManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\StreamManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\TimerManager;
+use Rcalicdan\FiberAsync\EventLoop\ValueObjects\PDOOperation;
+use Rcalicdan\FiberAsync\EventLoop\ValueObjects\StreamWatcher;
 
 /**
  * Main event loop implementation for asynchronous operations using PHP Fibers.

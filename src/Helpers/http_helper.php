@@ -5,7 +5,7 @@ use Rcalicdan\FiberAsync\Http\Handlers\RetryHelperHandler;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
-if (!function_exists('http')) {
+if (! function_exists('http')) {
     /**
      * Get HTTP request builder instance.
      *
@@ -13,7 +13,7 @@ if (!function_exists('http')) {
      * and execute HTTP requests with method chaining.
      *
      * @return Request HTTP request builder instance
-     * 
+     *
      * @example
      * $response = await(http()->get('https://api.example.com'));
      */
@@ -23,17 +23,17 @@ if (!function_exists('http')) {
     }
 }
 
-if (!function_exists('http_get')) {
+if (! function_exists('http_get')) {
     /**
      * Perform an asynchronous GET request.
      *
      * Sends a GET request to the specified URL with optional query parameters
      * without blocking the event loop.
      *
-     * @param string $url The URL to send the request to
-     * @param array $query Optional query parameters
+     * @param  string  $url  The URL to send the request to
+     * @param  array  $query  Optional query parameters
      * @return PromiseInterface Promise that resolves with the response
-     * 
+     *
      * @example
      * $response = await(http_get('https://api.example.com', ['key' => 'value']));
      */
@@ -43,17 +43,17 @@ if (!function_exists('http_get')) {
     }
 }
 
-if (!function_exists('http_post')) {
+if (! function_exists('http_post')) {
     /**
      * Perform an asynchronous POST request.
      *
      * Sends a POST request to the specified URL with optional data payload
      * without blocking the event loop.
      *
-     * @param string $url The URL to send the request to
-     * @param array $data Optional data payload
+     * @param  string  $url  The URL to send the request to
+     * @param  array  $data  Optional data payload
      * @return PromiseInterface Promise that resolves with the response
-     * 
+     *
      * @example
      * $response = await(http_post('https://api.example.com', ['name' => 'John']));
      */
@@ -63,18 +63,18 @@ if (!function_exists('http_post')) {
     }
 }
 
-if (!function_exists('http_stream')) {
+if (! function_exists('http_stream')) {
     /**
      * Stream an HTTP request.
      *
      * Performs an HTTP request and processes the response as a stream,
      * calling the provided callback for each chunk of data received.
      *
-     * @param string $url The URL to stream from
-     * @param array $options Request options
-     * @param callable|null $onChunk Callback to handle each chunk
+     * @param  string  $url  The URL to stream from
+     * @param  array  $options  Request options
+     * @param  callable|null  $onChunk  Callback to handle each chunk
      * @return PromiseInterface Promise that resolves when streaming completes
-     * 
+     *
      * @example
      * await(http_stream('https://api.example.com/data', [], function($chunk) {
      *     echo "Received: " . $chunk;
@@ -86,18 +86,18 @@ if (!function_exists('http_stream')) {
     }
 }
 
-if (!function_exists('http_download')) {
+if (! function_exists('http_download')) {
     /**
      * Download a file from a URL.
      *
      * Downloads a file from the specified URL and saves it to the destination
      * path without blocking the event loop.
      *
-     * @param string $url The URL to download from
-     * @param string $destination The local path to save the file
-     * @param array $options Download options
+     * @param  string  $url  The URL to download from
+     * @param  string  $destination  The local path to save the file
+     * @param  array  $options  Download options
      * @return PromiseInterface Promise that resolves when download completes
-     * 
+     *
      * @example
      * await(http_download('https://example.com/file.zip', '/local/file.zip'));
      */
@@ -107,17 +107,17 @@ if (!function_exists('http_download')) {
     }
 }
 
-if (!function_exists('http_put')) {
+if (! function_exists('http_put')) {
     /**
      * Perform an asynchronous PUT request.
      *
      * Sends a PUT request to the specified URL with optional data payload
      * without blocking the event loop.
      *
-     * @param string $url The URL to send the request to
-     * @param array $data Optional data payload
+     * @param  string  $url  The URL to send the request to
+     * @param  array  $data  Optional data payload
      * @return PromiseInterface Promise that resolves with the response
-     * 
+     *
      * @example
      * $response = await(http_put('https://api.example.com/resource/1', ['name' => 'Updated']));
      */
@@ -127,15 +127,15 @@ if (!function_exists('http_put')) {
     }
 }
 
-if (!function_exists('http_delete')) {
+if (! function_exists('http_delete')) {
     /**
      * Perform an asynchronous DELETE request.
      *
      * Sends a DELETE request to the specified URL without blocking the event loop.
      *
-     * @param string $url The URL to send the request to
+     * @param  string  $url  The URL to send the request to
      * @return PromiseInterface Promise that resolves with the response
-     * 
+     *
      * @example
      * $response = await(http_delete('https://api.example.com/resource/1'));
      */
@@ -145,17 +145,17 @@ if (!function_exists('http_delete')) {
     }
 }
 
-if (!function_exists('fetch')) {
+if (! function_exists('fetch')) {
     /**
      * Fetch data from URL (JavaScript-like fetch API).
      *
      * Provides a JavaScript-like fetch interface for making HTTP requests
      * with flexible options configuration.
      *
-     * @param string $url The URL to fetch from
-     * @param array $options Request options (method, headers, body, etc.)
+     * @param  string  $url  The URL to fetch from
+     * @param  array  $options  Request options (method, headers, body, etc.)
      * @return PromiseInterface Promise that resolves with the response
-     * 
+     *
      * @example
      * $response = await(fetch('https://api.example.com', [
      *     'method' => 'POST',
@@ -169,19 +169,19 @@ if (!function_exists('fetch')) {
     }
 }
 
-if (!function_exists('fetch_with_retry')) {
+if (! function_exists('fetch_with_retry')) {
     /**
      * Fetch data with automatic retry logic.
      *
      * Performs an HTTP request with automatic retry on failure, using
      * exponential backoff to space out retry attempts.
      *
-     * @param string $url The URL to fetch from
-     * @param array $options Request options
-     * @param int $maxRetries Maximum number of retry attempts
-     * @param float $baseDelay Base delay between retries in seconds
+     * @param  string  $url  The URL to fetch from
+     * @param  array  $options  Request options
+     * @param  int  $maxRetries  Maximum number of retry attempts
+     * @param  float  $baseDelay  Base delay between retries in seconds
      * @return PromiseInterface Promise that resolves with the response
-     * 
+     *
      * @example
      * $response = await(fetch_with_retry('https://api.example.com', [], 3, 1.0));
      */

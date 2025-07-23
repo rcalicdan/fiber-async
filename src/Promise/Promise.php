@@ -9,7 +9,6 @@ use Rcalicdan\FiberAsync\Promise\Handlers\ResolutionHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\StateHandler;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
-
 /**
  * Implementation of the Promise pattern for asynchronous operations.
  *

@@ -3,8 +3,8 @@
 namespace Rcalicdan\FiberAsync\Async;
 
 use Rcalicdan\FiberAsync\Api\Promise;
-use Rcalicdan\FiberAsync\Promise\Promise as AsyncPromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Promise as AsyncPromise;
 
 /**
  * A simple, non-reentrant, async-friendly Mutex (Mutual Exclusion lock).

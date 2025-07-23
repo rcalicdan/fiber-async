@@ -3,8 +3,8 @@
 namespace Rcalicdan\FiberAsync\PDO\Handlers;
 
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
-use Rcalicdan\FiberAsync\Promise\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Promise;
 
 final readonly class PDOHandler
 {

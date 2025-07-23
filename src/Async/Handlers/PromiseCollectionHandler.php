@@ -3,9 +3,9 @@
 namespace Rcalicdan\FiberAsync\Async\Handlers;
 
 use Exception;
-use Rcalicdan\FiberAsync\Promise\Promise;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Promise;
 
 /**
  * Handles operations on collections of Promises.

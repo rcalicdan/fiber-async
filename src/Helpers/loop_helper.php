@@ -3,7 +3,7 @@
 use Rcalicdan\FiberAsync\Api\AsyncLoop;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
-if (!function_exists('run')) {
+if (! function_exists('run')) {
     /**
      * Run an async operation with automatic event loop management.
      *
@@ -20,7 +20,7 @@ if (!function_exists('run')) {
     }
 }
 
-if (!function_exists('run_all')) {
+if (! function_exists('run_all')) {
     /**
      * Run multiple async operations concurrently with automatic loop management.
      *
@@ -37,7 +37,7 @@ if (!function_exists('run_all')) {
     }
 }
 
-if (!function_exists('run_concurrent')) {
+if (! function_exists('run_concurrent')) {
     /**
      * Run async operations with concurrency control and automatic loop management.
      *
@@ -55,7 +55,7 @@ if (!function_exists('run_concurrent')) {
     }
 }
 
-if (!function_exists('task')) {
+if (! function_exists('task')) {
     /**
      * Create and run a simple async task with automatic event loop management.
      *
@@ -72,7 +72,7 @@ if (!function_exists('task')) {
     }
 }
 
-if (!function_exists('async_sleep')) {
+if (! function_exists('async_sleep')) {
     /**
      * Perform an async delay with automatic event loop management.
      *
@@ -88,7 +88,7 @@ if (!function_exists('async_sleep')) {
     }
 }
 
-if (!function_exists('run_with_timeout')) {
+if (! function_exists('run_with_timeout')) {
     /**
      * Run an async operations with a timeout constraint and automatic loop management.
      *
@@ -108,7 +108,7 @@ if (!function_exists('run_with_timeout')) {
     }
 }
 
-if (!function_exists('benchmark')) {
+if (! function_exists('benchmark')) {
     /**
      * Run an async operation and measure its performance metrics.
      *

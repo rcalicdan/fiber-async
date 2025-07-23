@@ -4,6 +4,7 @@ namespace Rcalicdan\FiberAsync\QueryBuilder;
 
 use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Api\AsyncPDO;
+use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -376,7 +377,7 @@ class AsyncQueryBuilder
     public function insertBatch(array $data): PromiseInterface
     {
         if (empty($data)) {
-            return Async::resolve(0);
+            return Promise::resolve(0);
         }
 
         $sql = $this->buildInsertBatchQuery($data);
