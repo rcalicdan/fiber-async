@@ -12,7 +12,7 @@ use Rcalicdan\FiberAsync\QueryBuilder\AsyncQueryBuilder;
  * This facade automatically loads configuration from .env and config/database.php
  * the first time it is used, providing a zero-setup experience for the developer.
  */
-class AsyncDb
+class AsyncDB
 {
     private static bool $isInitialized = false;
 
