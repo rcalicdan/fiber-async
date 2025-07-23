@@ -1,6 +1,8 @@
 <?php
 
 use Rcalicdan\FiberAsync\Api\Async;
+use Rcalicdan\FiberAsync\Api\Promise;
+use Rcalicdan\FiberAsync\Api\Timer;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -60,7 +62,7 @@ function await(PromiseInterface $promise): mixed
  */
 function delay(float $seconds): PromiseInterface
 {
-    return Async::delay($seconds);
+    return Timer::delay($seconds);
 }
 
 /**
@@ -75,7 +77,7 @@ function delay(float $seconds): PromiseInterface
  */
 function all(array $promises): PromiseInterface
 {
-    return Async::all($promises);
+    return Promise::all($promises);
 }
 
 /**
@@ -90,7 +92,7 @@ function all(array $promises): PromiseInterface
  */
 function race(array $promises): PromiseInterface
 {
-    return Async::race($promises);
+    return Promise::race($promises);
 }
 
 /**
@@ -104,7 +106,7 @@ function race(array $promises): PromiseInterface
  */
 function resolve(mixed $value): PromiseInterface
 {
-    return Async::resolve($value);
+    return Promise::resolve($value);
 }
 
 /**
@@ -118,7 +120,7 @@ function resolve(mixed $value): PromiseInterface
  */
 function reject(mixed $reason): PromiseInterface
 {
-    return Async::reject($reason);
+    return Promise::reject($reason);
 }
 
 /**
@@ -164,5 +166,5 @@ function asyncify(callable $syncFunction): callable
  */
 function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
 {
-    return Async::concurrent($tasks, $concurrency);
+    return Promise::concurrent($tasks, $concurrency);
 }

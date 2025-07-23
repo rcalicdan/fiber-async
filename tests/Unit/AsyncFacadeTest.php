@@ -2,6 +2,7 @@
 
 use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Api\AsyncLoop;
+use Rcalicdan\FiberAsync\Api\Promise;
 
 beforeEach(function () {
     resetEventLoop();
@@ -43,7 +44,7 @@ test('Async resolve works', function () {
     $resolved = false;
     $value = null;
 
-    Async::resolve('facade test')->then(function ($val) use (&$resolved, &$value) {
+    Promise::resolve('facade test')->then(function ($val) use (&$resolved, &$value) {
         $resolved = true;
         $value = $val;
     });

@@ -7,16 +7,15 @@ use Rcalicdan\FiberAsync\Loop\LoopOperations;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
- * Static facade for accessing asynchronous operations and event loop management.
+ * Static facade for core asynchronous operations and fiber management.
  *
- * This facade provides a simplified interface to the complex async subsystem,
- * combining both AsyncOperations and LoopOperations functionality through static
- * methods. It manages singleton instances internally and provides convenient
- * access to fiber-based asynchronous programming capabilities.
+ * This facade provides a simplified interface to fiber-based asynchronous programming
+ * capabilities, focusing on execution control, function transformation, and async
+ * workflow management. It handles automatic initialization of the underlying async
+ * infrastructure and manages singleton instances internally.
  *
- * This facade handles automatic initialization of the underlying async infrastructure
- * and provides both low-level async operations and high-level loop management
- * through a unified static API.
+ * For promise creation and collection utilities, see the Promise class.
+ * For timer-based operations, see the Timer class.
  */
 final class Async
 {
@@ -117,84 +116,12 @@ final class Async
     }
 
     /**
-     * Create a promise that resolves after a specified time delay.
-     *
-     * This creates a timer-based promise that will resolve with null after
-     * the specified delay. Useful for creating pauses in async execution
-     * without blocking the event loop.
-     *
-     * @param  float  $seconds  Number of seconds to delay
-     * @return PromiseInterface A promise that resolves after the delay
-     */
-    public static function delay(float $seconds): PromiseInterface
-    {
-        return self::getAsyncOperations()->delay($seconds);
-    }
-
-    /**
-     * Wait for all promises to resolve and return their results in order.
-     *
-     * Creates a promise that resolves when all input promises resolve, with
-     * an array of their results in the same order. If any promise rejects,
-     * the returned promise immediately rejects with the first rejection reason.
-     *
-     * @param  array  $promises  Array of promises to wait for
-     * @return PromiseInterface A promise that resolves with an array of all results
-     */
-    public static function all(array $promises): PromiseInterface
-    {
-        return self::getAsyncOperations()->all($promises);
-    }
-
-    /**
-     * Return the first promise to settle (resolve or reject).
-     *
-     * Creates a promise that settles with the same value/reason as the first
-     * promise in the array to settle. Useful for timeout scenarios or when
-     * you need the fastest response from multiple sources.
-     *
-     * @param  array  $promises  Array of promises to race
-     * @return PromiseInterface A promise that settles with the first result
-     */
-    public static function race(array $promises): PromiseInterface
-    {
-        return self::getAsyncOperations()->race($promises);
-    }
-
-    /**
-     * Create a promise that is already resolved with the given value.
-     *
-     * This is useful for creating resolved promises in async workflows or
-     * for converting synchronous values into promise-compatible form.
-     *
-     * @param  mixed  $value  The value to resolve the promise with
-     * @return PromiseInterface A promise resolved with the provided value
-     */
-    public static function resolve(mixed $value): PromiseInterface
-    {
-        return self::getAsyncOperations()->resolve($value);
-    }
-
-    /**
-     * Create a promise that is already rejected with the given reason.
-     *
-     * This is useful for creating rejected promises in async workflows or
-     * for converting exceptions into promise-compatible form.
-     *
-     * @param  mixed  $reason  The reason for rejection (typically an exception)
-     * @return PromiseInterface A promise rejected with the provided reason
-     */
-    public static function reject(mixed $reason): PromiseInterface
-    {
-        return self::getAsyncOperations()->reject($reason);
-    }
-
-    /**
      * Create a safe async function with automatic error handling.
      *
      * The returned function will catch any exceptions thrown during execution
      * and convert them to rejected promises, preventing uncaught exceptions
-     * from crashing the event loop.
+     * from crashing the event loop. This is essential for building robust
+     * async applications that can gracefully handle errors.
      *
      * @param  callable  $asyncFunction  The async function to make safe
      * @return callable A safe version that always returns a promise
@@ -209,7 +136,8 @@ final class Async
      *
      * Wraps a synchronous function so it can be used alongside async operations
      * without blocking the event loop. The function will be executed in a way
-     * that doesn't interfere with concurrent async operations.
+     * that doesn't interfere with concurrent async operations, making it safe
+     * to use within fiber-based async workflows.
      *
      * @param  callable  $syncFunction  The synchronous function to wrap
      * @return callable An async-compatible version of the function
@@ -217,21 +145,5 @@ final class Async
     public static function asyncify(callable $syncFunction): callable
     {
         return self::getAsyncOperations()->asyncify($syncFunction);
-    }
-
-    /**
-     * Execute multiple tasks concurrently with a concurrency limit.
-     *
-     * Processes an array of tasks (callables or promises) in batches to avoid
-     * overwhelming the system. This is essential for handling large numbers
-     * of concurrent operations without exhausting system resources.
-     *
-     * @param  array  $tasks  Array of tasks (callables or promises) to execute
-     * @param  int  $concurrency  Maximum number of concurrent executions
-     * @return PromiseInterface A promise that resolves with all task results
-     */
-    public static function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
-    {
-        return self::getAsyncOperations()->concurrent($tasks, $concurrency);
     }
 }
