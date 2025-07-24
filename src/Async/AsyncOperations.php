@@ -222,6 +222,11 @@ class AsyncOperations implements AsyncOperationsInterface
         return $this->collectionHandler->any($promises);
     }
 
+    public function timeout(callable|PromiseInterface|array $promises, float $seconds): PromiseInterface
+    {
+        return $this->collectionHandler->timeout($promises, $seconds);
+    }
+
     /**
      * Execute multiple tasks with a concurrency limit.
      *

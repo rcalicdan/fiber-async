@@ -126,6 +126,22 @@ final class Promise
     }
 
     /**
+     * Create a promise that resolves after a specified delay.
+     *
+     * This is useful for implementing timeouts, delays, or scheduling
+     * operations to execute after a certain period. The promise will
+     * resolve with null after the specified number of seconds.
+     * automatically throws execption if the timout timer won.
+     *
+     * @param  float  $seconds  Number of seconds to wait before resolving
+     * @return PromiseInterface A promise that resolves after the delay
+     */
+    public static function timeout(callable|PromiseInterface|array $promises, float $seconds): PromiseInterface
+    {
+        return self::getAsyncOperations()->timeout($promises, $seconds);
+    }
+
+    /**
      * Execute multiple tasks concurrently with a concurrency limit.
      *
      * Processes an array of tasks (callables or promises) in controlled batches

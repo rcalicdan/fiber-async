@@ -155,6 +155,22 @@ if (! function_exists('any')) {
     }
 }
 
+if (! function_exists('timeout')) {
+    /**
+     * Run an async operation with a timeout limit.
+     *
+     * Executes the provided promises and ensures they complete within the
+     * operation and automatically throws execption if the timout timer won.
+     *
+     * @param  float  $seconds  Number of seconds to wait before resolving
+     * @return PromiseInterface A promise that resolves after the delay
+     */
+    function timeout(callable|PromiseInterface|array $promises, float $seconds): PromiseInterface
+    {
+        return Promise::timeout($promises, $seconds);
+    }
+}
+
 if (! function_exists('resolve')) {
     /**
      * Create a promise that is already resolved with the given value.
