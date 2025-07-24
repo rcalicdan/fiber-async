@@ -175,5 +175,5 @@ final class Promise
     public static function batch(array $tasks, int $batchSize = 10, ?int $concurrency = null): PromiseInterface
     {
         return self::getAsyncOperations()->batch($tasks, $batchSize, $concurrency);
-    }   
+    }
 }

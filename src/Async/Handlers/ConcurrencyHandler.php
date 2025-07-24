@@ -45,6 +45,7 @@ final readonly class ConcurrencyHandler
         return new Promise(function ($resolve, $reject) use ($tasks, $concurrency) {
             if ($concurrency <= 0) {
                 $reject(new \InvalidArgumentException('Concurrency limit must be greater than 0'));
+
                 return;
             }
 
@@ -150,11 +151,13 @@ final readonly class ConcurrencyHandler
         return new Promise(function ($resolve, $reject) use ($tasks, $batchSize, $concurrency) {
             if ($batchSize <= 0) {
                 $reject(new \InvalidArgumentException('Batch size must be greater than 0'));
+
                 return;
             }
 
             if (empty($tasks)) {
                 $resolve([]);
+
                 return;
             }
 
@@ -183,6 +186,7 @@ final readonly class ConcurrencyHandler
             ) {
                 if ($batchIndex >= $totalBatches) {
                     $resolve($allResults);
+
                     return;
                 }
 
@@ -201,7 +205,8 @@ final readonly class ConcurrencyHandler
                         $batchIndex++;
                         EventLoop::getInstance()->nextTick($processNextBatch);
                     })
-                    ->catch($reject);
+                    ->catch($reject)
+                ;
             };
 
             EventLoop::getInstance()->nextTick($processNextBatch);

@@ -20,8 +20,8 @@ final readonly class PromiseCollectionHandler
 
     public function __construct()
     {
-        $this->executionHandler = new AsyncExecutionHandler();
-        $this->timerHandler = new TimerHandler();
+        $this->executionHandler = new AsyncExecutionHandler;
+        $this->timerHandler = new TimerHandler;
     }
 
     public function all(array $promises): PromiseInterface
@@ -29,6 +29,7 @@ final readonly class PromiseCollectionHandler
         return new Promise(function ($resolve, $reject) use ($promises) {
             if (empty($promises)) {
                 $resolve([]);
+
                 return;
             }
 
@@ -43,11 +44,12 @@ final readonly class PromiseCollectionHandler
                         ? $this->executionHandler->async($item)()
                         : $item;
 
-                    if (!($promise instanceof PromiseInterface)) {
+                    if (! ($promise instanceof PromiseInterface)) {
                         throw new RuntimeException('Item must return a Promise or be a callable that returns a Promise');
                     }
                 } catch (Throwable $e) {
                     $reject($e);
+
                     return;
                 }
 
@@ -86,6 +88,7 @@ final readonly class PromiseCollectionHandler
         $cancellablePromise = new CancellablePromise(function ($resolve, $reject) use ($promises, &$promiseInstances, &$settled) {
             if (empty($promises)) {
                 $reject(new Exception('No promises provided'));
+
                 return;
             }
 
@@ -94,14 +97,14 @@ final readonly class PromiseCollectionHandler
                     if (is_callable($item)) {
                         $promise = $item();
 
-                        if (!($promise instanceof PromiseInterface)) {
+                        if (! ($promise instanceof PromiseInterface)) {
                             $promise = $this->executionHandler->async($item)();
                         }
                     } else {
                         $promise = $item;
                     }
 
-                    if (!($promise instanceof PromiseInterface)) {
+                    if (! ($promise instanceof PromiseInterface)) {
                         throw new RuntimeException('Item must return a Promise or be a callable that returns a Promise');
                     }
 
@@ -111,6 +114,7 @@ final readonly class PromiseCollectionHandler
                         $this->cancelPromiseIfPossible($p);
                     }
                     $reject($e);
+
                     return;
                 }
 
@@ -130,7 +134,8 @@ final readonly class PromiseCollectionHandler
 
                         $this->handleRaceSettlement($settled, $promiseInstances, $index);
                         $reject($reason);
-                    });
+                    })
+                ;
             }
         });
 
@@ -147,20 +152,18 @@ final readonly class PromiseCollectionHandler
     /**
      * Race the given operation(s) against a deadline.
      *
-     * @param callable|PromiseInterface|array $operations
-     * @param float  $seconds  Timeout duration in seconds
-     * @param bool   $hard     true  – always throw when the deadline is reached
-     *                         false – throw only if *nothing* settled before the deadline
+     * @param  float  $seconds  Timeout duration in seconds
+     * @param  bool  $hard  true  – always throw when the deadline is reached
+     *                      false – throw only if *nothing* settled before the deadline
      *
      * @throws Exception on timeout (behaviour depends on $hard)
      */
     /**
      * Race the given operation(s) against a deadline.
      *
-     * @param callable|PromiseInterface|array $operations
-     * @param float  $seconds  Timeout duration in seconds
-     * @param bool   $hard     true  – always throw when the deadline is reached
-     *                         false – throw only if *nothing* settled before the deadline
+     * @param  float  $seconds  Timeout duration in seconds
+     * @param  bool  $hard  true  – always throw when the deadline is reached
+     *                      false – throw only if *nothing* settled before the deadline
      *
      * @throws Exception on timeout (behaviour depends on $hard)
      */
@@ -174,7 +177,7 @@ final readonly class PromiseCollectionHandler
 
         $items = is_array($operations) ? $operations : [$operations];
         $promises = array_map(
-            fn($item) => is_callable($item)
+            fn ($item) => is_callable($item)
                 ? $this->executionHandler->async($item)()
                 : $item,
             $items
@@ -182,7 +185,8 @@ final readonly class PromiseCollectionHandler
 
         $timeoutPromise = $this->timerHandler
             ->delay($seconds)
-            ->then(fn() => throw new Exception("Operation timed out after {$seconds} seconds"));
+            ->then(fn () => throw new Exception("Operation timed out after {$seconds} seconds"))
+        ;
 
         return $this->race([...$promises, $timeoutPromise]);
     }
@@ -199,26 +203,27 @@ final readonly class PromiseCollectionHandler
             function ($resolve, $reject) use ($promises, &$promiseInstances, &$settled) {
                 if (empty($promises)) {
                     $reject(new Exception('No promises provided'));
+
                     return;
                 }
 
-                $rejections      = [];
-                $rejectedCount   = 0;
-                $total           = count($promises);
+                $rejections = [];
+                $rejectedCount = 0;
+                $total = count($promises);
 
                 foreach ($promises as $index => $item) {
                     try {
                         if (is_callable($item)) {
                             $promise = $item();
 
-                            if (!($promise instanceof PromiseInterface)) {
+                            if (! ($promise instanceof PromiseInterface)) {
                                 $promise = $this->executionHandler->async($item)();
                             }
                         } else {
                             $promise = $item;
                         }
 
-                        if (!($promise instanceof PromiseInterface)) {
+                        if (! ($promise instanceof PromiseInterface)) {
                             throw new RuntimeException(
                                 'Item must return a Promise or be a callable that returns a Promise'
                             );
@@ -230,6 +235,7 @@ final readonly class PromiseCollectionHandler
                             $this->cancelPromiseIfPossible($p);
                         }
                         $reject($e);
+
                         return;
                     }
 
@@ -271,7 +277,8 @@ final readonly class PromiseCollectionHandler
                                     );
                                 }
                             }
-                        );
+                        )
+                    ;
                 }
             }
         );
@@ -314,11 +321,11 @@ final readonly class PromiseCollectionHandler
 
     private function cancelPromiseIfPossible(PromiseInterface $promise): void
     {
-        if ($promise instanceof CancellablePromise && !$promise->isCancelled()) {
+        if ($promise instanceof CancellablePromise && ! $promise->isCancelled()) {
             $promise->cancel();
         } elseif ($promise instanceof Promise) {
             $rootCancellable = $promise->getRootCancellable();
-            if ($rootCancellable && !$rootCancellable->isCancelled()) {
+            if ($rootCancellable && ! $rootCancellable->isCancelled()) {
                 $rootCancellable->cancel();
             }
         }
