@@ -26,8 +26,8 @@ $mysqlConfig = DatabaseConfigFactory::mysql([
     'port'     => 3306,
 ]);
 
-$poolSize = 50; // Set the desired pool size for the test
-$queryCount = 100;
+$poolSize = 100; // Set the desired pool size for the test
+$queryCount = 1000;
 $latencySeconds = 0.01; // 10ms
 
 // --- Helper Functions ---
