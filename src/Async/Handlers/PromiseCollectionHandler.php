@@ -6,6 +6,8 @@ use Exception;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Promise;
+use RuntimeException;
+use Throwable;
 
 /**
  * Handles operations on collections of Promises.
@@ -16,37 +18,51 @@ use Rcalicdan\FiberAsync\Promise\Promise;
  */
 final readonly class PromiseCollectionHandler
 {
-    /**
-     * Wait for all Promises in a collection to resolve.
-     *
-     * This method takes an array of Promises and returns a single Promise
-     * that resolves when all input Promises have resolved. If any Promise
-     * rejects, the returned Promise immediately rejects.
-     *
-     * @param  array  $promises  Array of Promise instances
-     * @return PromiseInterface Promise that resolves with array of all results
-     */
+    private AsyncExecutionHandler $executionHandler;
+
+    public function __construct()
+    {
+        $this->executionHandler = new AsyncExecutionHandler();
+    }
+
     public function all(array $promises): PromiseInterface
     {
         return new Promise(function ($resolve, $reject) use ($promises) {
             if (empty($promises)) {
                 $resolve([]);
-
                 return;
             }
 
             $results = [];
             $completed = 0;
             $total = count($promises);
+            $hasStringKeys = $this->hasStringKeys($promises);
 
-            foreach ($promises as $index => $promise) {
+            foreach ($promises as $key => $item) {
+                try {
+                    $promise = is_callable($item)
+                        ? $this->executionHandler->async($item)()
+                        : $item;
+
+                    if (!($promise instanceof PromiseInterface)) {
+                        throw new RuntimeException('Item must return a Promise or be a callable that returns a Promise');
+                    }
+                } catch (Throwable $e) {
+                    $reject($e);
+                    return;
+                }
+
                 $promise
-                    ->then(function ($value) use (&$results, &$completed, $total, $index, $resolve) {
-                        $results[$index] = $value;
+                    ->then(function ($value) use (&$results, &$completed, $total, $key, $resolve, $hasStringKeys) {
+                        $results[$key] = $value;
                         $completed++;
                         if ($completed === $total) {
-                            ksort($results); // Maintain order
-                            $resolve(array_values($results));
+                            if ($hasStringKeys) {
+                                $resolve($results);
+                            } else {
+                                ksort($results);
+                                $resolve(array_values($results));
+                            }
                         }
                     })
                     ->catch(function ($reason) use ($reject) {
@@ -142,5 +158,16 @@ final readonly class PromiseCollectionHandler
                 $rootCancellable->cancel();
             }
         }
+    }
+
+    /**
+     * Check if an array has string keys (associative array).
+     *
+     * @param  array  $array  The array to check
+     * @return bool True if the array has string keys
+     */
+    private function hasStringKeys(array $array): bool
+    {
+        return count(array_filter(array_keys($array), 'is_string')) > 0;
     }
 }
