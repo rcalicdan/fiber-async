@@ -149,24 +149,7 @@ final readonly class PromiseCollectionHandler
         return $cancellablePromise;
     }
 
-    /**
-     * Race the given operation(s) against a deadline.
-     *
-     * @param  float  $seconds  Timeout duration in seconds
-     * @param  bool  $hard  true  – always throw when the deadline is reached
-     *                      false – throw only if *nothing* settled before the deadline
-     *
-     * @throws Exception on timeout (behaviour depends on $hard)
-     */
-    /**
-     * Race the given operation(s) against a deadline.
-     *
-     * @param  float  $seconds  Timeout duration in seconds
-     * @param  bool  $hard  true  – always throw when the deadline is reached
-     *                      false – throw only if *nothing* settled before the deadline
-     *
-     * @throws Exception on timeout (behaviour depends on $hard)
-     */
+    
     public function timeout(
         callable|PromiseInterface|array $operations,
         float $seconds
