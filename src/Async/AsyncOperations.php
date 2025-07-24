@@ -209,6 +209,20 @@ class AsyncOperations implements AsyncOperationsInterface
     }
 
     /**
+     * Wait for any promise in the collection to resolve.
+     *
+     * Returns a promise that resolves with the value of the first
+     * promise that resolves, or rejects if all promises reject.
+     *
+     * @param  array  $promises  Array of promises to wait for
+     * @return PromiseInterface A promise that resolves with the first settled value
+     */
+    public function any(array $promises): PromiseInterface
+    {
+        return $this->collectionHandler->any($promises);
+    }
+
+    /**
      * Execute multiple tasks with a concurrency limit.
      *
      * Processes tasks in batches to avoid overwhelming the system
@@ -221,5 +235,21 @@ class AsyncOperations implements AsyncOperationsInterface
     public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {
         return $this->concurrencyHandler->concurrent($tasks, $concurrency);
+    }
+
+    /**
+     * Execute multiple tasks in batches with a concurrency limit.
+     *
+     * This method processes tasks in smaller batches, allowing for
+     * controlled concurrency and resource management.
+     *
+     * @param  array  $tasks  Array of tasks (callables or promises) to execute
+     * @param  int  $batchSize  Size of each batch to process concurrently
+     * @param  int  $concurrency  Maximum number of concurrent executions per batch
+     * @return PromiseInterface A promise that resolves with all results
+     */
+    public function batch(array $tasks, int $batchSize = 10, ?int $concurrency = null): PromiseInterface
+    {
+        return $this->concurrencyHandler->batch($tasks, $batchSize, $concurrency);
     }
 }
