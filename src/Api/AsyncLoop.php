@@ -133,6 +133,19 @@ final class AsyncLoop
     }
 
     /**
+     * Run async operations in batches with concurrency control and automatic loop management.
+     *
+     * @param  array  $asyncOperations  Array of operations to execute
+     * @param  int  $batch  Number of operations to run in each batch
+     * @param  int|null  $concurrency  Maximum number of concurrent operations per batch
+     * @return array Results of all operations
+     */
+    public static function runBatch(array $asyncOperations, int $batch, ?int $concurrency = null): array
+    {
+        return self::getLoopOperations()->runBatch($asyncOperations, $batch, $concurrency);
+    }
+
+    /**
      * Perform an async delay with automatic event loop management.
      *
      * Creates a delay without blocking the current thread, with the event loop

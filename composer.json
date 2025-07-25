@@ -29,7 +29,8 @@
     "require-dev": {
         "laravel/pint": "^1.10",
         "pestphp/pest": "^3.0",
-        "phpstan/phpstan": "^2.1"
+        "phpstan/phpstan": "^2.1",
+        "guzzlehttp/guzzle": "*"
     },
     "autoload-dev": {
         "psr-4": {

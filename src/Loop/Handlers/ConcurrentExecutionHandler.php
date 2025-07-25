@@ -72,4 +72,11 @@ final readonly class ConcurrentExecutionHandler
             return $this->asyncOps->await($this->asyncOps->concurrent($asyncOperations, $concurrency));
         });
     }
+
+    public function runBatch(array $asyncOperations, int $batch, ?int $concurrency = null): array
+    {
+        return $this->executionHandler->run(function () use ($asyncOperations, $batch, $concurrency) {
+           return $this->asyncOps->await($this->asyncOps->batch($asyncOperations, $batch, $concurrency));
+        });
+    }
 }

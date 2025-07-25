@@ -52,16 +52,7 @@ final readonly class TimeoutHandler
     public function runWithTimeout(callable|PromiseInterface|array $asyncOperation, float $timeout): mixed
     {
         return $this->executionHandler->run(function () use ($asyncOperation, $timeout) {
-            $operations = is_array($asyncOperation) ? $asyncOperation : [$asyncOperation];
-
-            $promises = array_map(
-                fn ($op) => $this->executionHandler->createPromiseFromOperation($op),
-                $operations
-            );
-
-            $timeoutPromise = $this->createTimeoutPromise($timeout);
-
-            return $this->asyncOps->await($this->asyncOps->race([...$promises, $timeoutPromise]));
+            return $this->asyncOps->await($this->asyncOps->timeout($asyncOperation, $timeout));
         });
     }
 

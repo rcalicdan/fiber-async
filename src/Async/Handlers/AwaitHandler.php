@@ -41,7 +41,7 @@ final readonly class AwaitHandler
      */
     public function await(PromiseInterface $promise): mixed
     {
-        $this->contextHandler->validateFiberContext();
+        $this->contextHandler->validateFiberContext('await() can only be used inside a Fiber context, make sure it is inside async() or run() inside a callable');
 
         $result = null;
         $error = null;

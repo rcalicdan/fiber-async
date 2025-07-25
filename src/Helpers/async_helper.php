@@ -131,6 +131,46 @@ if (! function_exists('race')) {
     }
 }
 
+if (! function_exists('any')) {
+    /**
+     * Wait for any promise in the collection to resolve.
+     *
+     * Returns a promise that resolves with the value of the first
+     * promise that resolves, or rejects if all promises reject.
+     *
+     * @param  array  $promises  Array of promises to wait for
+     * @return PromiseInterface A promise that resolves with the first settled value
+     *
+     * @example
+     * $promises = [
+     *     http_get('https://api1.example.com'),
+     *     http_get('https://api2.example.com'),
+     *     http_get('https://api3.example.com')
+     * ];
+     * $result = await(any($promises)); // Resolves with the first settled value
+     */
+    function any(array $promises): PromiseInterface
+    {
+        return Promise::any($promises);
+    }
+}
+
+if (! function_exists('timeout')) {
+    /**
+     * Run an async operation with a timeout limit.
+     *
+     * Executes the provided promises and ensures they complete within the
+     * operation and automatically throws execption if the timout timer won.
+     *
+     * @param  float  $seconds  Number of seconds to wait before resolving
+     * @return PromiseInterface A promise that resolves after the delay
+     */
+    function timeout(callable|PromiseInterface|array $promises, float $seconds): PromiseInterface
+    {
+        return Promise::timeout($promises, $seconds);
+    }
+}
+
 if (! function_exists('resolve')) {
     /**
      * Create a promise that is already resolved with the given value.
@@ -232,5 +272,29 @@ if (! function_exists('concurrent')) {
     function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {
         return Promise::concurrent($tasks, $concurrency);
+    }
+}
+
+if (! function_exists('batch')) {
+    /**
+     * Execute multiple tasks in batches with a concurrency limit.
+     *
+     * This method processes tasks in smaller batches, allowing for controlled
+     * concurrency and resource management. It is particularly useful for
+     * processing large datasets or performing operations that require
+     * significant resources without overwhelming the system.
+     *
+     * @param  array  $tasks  Array of tasks (callables or promises) to execute
+     * @param  int  $batchSize  Size of each batch to process concurrently
+     * @param  int  $concurrency  Maximum number of concurrent executions per batch
+     * @return PromiseInterface A promise that resolves with all results
+     *
+     * @example
+     * $tasks = array_map(fn($url) => fn() => http_get($url), $urls);
+     * $results = await(batch($tasks, 100, 5));
+     */
+    function batch(array $tasks, int $batchSize = 10, ?int $concurrency = null): PromiseInterface
+    {
+        return Promise::batch($tasks, $batchSize, $concurrency);
     }
 }

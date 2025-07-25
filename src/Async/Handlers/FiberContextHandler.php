@@ -32,10 +32,10 @@ final readonly class FiberContextHandler
      *
      * @throws RuntimeException If not executing within a Fiber context
      */
-    public function validateFiberContext(): void
+    public function validateFiberContext(string $message = 'Operation can only be used inside a Fiber context'): void
     {
         if (! $this->inFiber()) {
-            throw new RuntimeException('Operation can only be used inside a Fiber context');
+            throw new RuntimeException($message);
         }
     }
 }

@@ -2,8 +2,8 @@
 
 // tests/Unit/LoopHelperTest.php
 
-require_once __DIR__.'/../../src/Helpers/async_helper.php';
-require_once __DIR__.'/../../src/Helpers/loop_helper.php';
+require_once __DIR__ . '/../../src/Helpers/async_helper.php';
+require_once __DIR__ . '/../../src/Helpers/loop_helper.php';
 
 beforeEach(function () {
     resetEventLoop();
@@ -39,16 +39,16 @@ test('run_all executes multiple operations concurrently', function () {
 
     $results = run_all([
         'op1' => function () {
-            return await(delay(0.05)->then(fn () => 'result1'));
+            return await(delay(0.05)->then(fn() => 'result1'));
         },
         'op2' => function () {
-            return await(delay(0.05)->then(fn () => 'result2'));
+            return await(delay(0.05)->then(fn() => 'result2'));
         },
     ]);
 
     $duration = microtime(true) - $start;
 
-    expect($results)->toBe(['result1', 'result2']);
+    expect($results)->toBe(['op1' => 'result1', 'op2' => 'result2']);
     // Should take around 50ms (parallel), not 100ms (sequential)
     expect($duration)->toBeLessThan(0.08);
 });

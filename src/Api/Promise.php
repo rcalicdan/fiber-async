@@ -96,6 +96,20 @@ final class Promise
     }
 
     /**
+     * Wait for any promise in the collection to resolve.
+     *
+     * Returns a promise that resolves with the value of the first
+     * promise that resolves, or rejects if all promises reject.
+     *
+     * @param  array  $promises  Array of promises to wait for
+     * @return PromiseInterface A promise that resolves with the first settled value
+     */
+    public static function any(array $promises): PromiseInterface
+    {
+        return self::getAsyncOperations()->any($promises);
+    }
+
+    /**
      * Return the first promise to settle (resolve or reject).
      *
      * Creates a promise that settles with the same value/reason as the first
@@ -109,6 +123,22 @@ final class Promise
     public static function race(array $promises): PromiseInterface
     {
         return self::getAsyncOperations()->race($promises);
+    }
+
+    /**
+     * Create a promise that resolves after a specified delay.
+     *
+     * This is useful for implementing timeouts, delays, or scheduling
+     * operations to execute after a certain period. The promise will
+     * resolve with null after the specified number of seconds.
+     * automatically throws execption if the timout timer won.
+     *
+     * @param  float  $seconds  Number of seconds to wait before resolving
+     * @return PromiseInterface A promise that resolves after the delay
+     */
+    public static function timeout(callable|PromiseInterface|array $promises, float $seconds): PromiseInterface
+    {
+        return self::getAsyncOperations()->timeout($promises, $seconds);
     }
 
     /**
@@ -127,5 +157,23 @@ final class Promise
     public static function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {
         return self::getAsyncOperations()->concurrent($tasks, $concurrency);
+    }
+
+    /**
+     * Execute multiple tasks in batches with a concurrency limit.
+     *
+     * This method processes tasks in smaller batches, allowing for controlled
+     * concurrency and resource management. It is particularly useful for
+     * processing large datasets or performing operations that require
+     * significant resources without overwhelming the system.
+     *
+     * @param  array  $tasks  Array of tasks (callables or promises) to execute
+     * @param  int  $batchSize  Size of each batch to process concurrently (default: 10)
+     * @param  int  $concurrency  Maximum number of concurrent executions (default: 10)
+     * @return PromiseInterface A promise that resolves with all task results
+     */
+    public static function batch(array $tasks, int $batchSize = 10, ?int $concurrency = null): PromiseInterface
+    {
+        return self::getAsyncOperations()->batch($tasks, $batchSize, $concurrency);
     }
 }
