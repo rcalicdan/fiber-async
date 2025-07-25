@@ -108,6 +108,21 @@ if (! function_exists('run_with_timeout')) {
     }
 }
 
+if (! function_exists('run_batch')) {
+    /**
+     * Run async operations in batches with concurrency control and automatic loop management.
+     *
+     * @param  array  $asyncOperations  Array of operations to execute
+     * @param  int  $batch  Number of operations to run in each batch
+     * @param  int|null  $concurrency  Maximum number of concurrent operations per batch
+     * @return array Results of all operations
+     */
+    function run_batch(array $asyncOperations, int $batch, ?int $concurrency = null): array
+    {
+        return AsyncLoop::runBatch($asyncOperations, $batch, $concurrency);
+    }
+}
+
 if (! function_exists('benchmark')) {
     /**
      * Run an async operation and measure its performance metrics.

@@ -158,6 +158,19 @@ class LoopOperations implements LoopOperationsInterface
     }
 
     /**
+     * Run async operations in batches with concurrency control and automatic loop management.
+     *
+     * @param  array  $asyncOperations  Array of operations to execute
+     * @param  int  $batch  Number of operations to run in each batch
+     * @param  int|null  $concurrency  Maximum number of concurrent operations per batch
+     * @return array Results of all operations
+     */
+    public function runBatch(array $asyncOperations, int $batch, ?int $concurrency = null): array
+    {
+        return $this->concurrentHandler->runBatch($asyncOperations, $batch, $concurrency);
+    }
+
+    /**
      * Run an async operation and measure its execution time.
      *
      * Returns both the operation result and performance metrics including
