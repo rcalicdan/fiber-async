@@ -1,17 +1,19 @@
 <?php
+
 namespace Rcalicdan\FiberAsync\Http;
 
+use Rcalicdan\FiberAsync\Http\Interfaces\RequestInterface;
+use Rcalicdan\FiberAsync\Http\Interfaces\UriInterface;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
-use Rcalicdan\FiberAsync\Http\Response; 
-use Rcalicdan\FiberAsync\Http\StreamingResponse; 
 
-class Request
+class Request extends Message implements RequestInterface
 {
     private HttpHandler $handler;
-    private array $headers = [];
+    private string $method = 'GET';
+    private ?string $requestTarget = null;
+    private UriInterface $uri;
     private array $options = [];
-    private ?string $body = null;
     private int $timeout = 30;
     private int $connectTimeout = 10;
     private bool $followRedirects = true;
@@ -21,21 +23,103 @@ class Request
     private ?array $auth = null;
     private ?RetryConfig $retryConfig = null;
 
-    public function __construct(HttpHandler $handler)
+    public function __construct(HttpHandler $handler, string $method = 'GET', $uri = '', array $headers = [], $body = null, string $version = '1.1')
     {
         $this->handler = $handler;
+        $this->method = strtoupper($method);
+        $this->uri = $uri instanceof UriInterface ? $uri : new Uri($uri);
+        $this->setHeaders($headers);
+        $this->protocol = $version;
         $this->userAgent = 'FiberAsync-HTTP/1.0';
+
+        if ($body !== '' && $body !== null) {
+            $this->body = $body instanceof Stream ? $body : new Stream(fopen('php://temp', 'r+'), null);
+            if (!($body instanceof Stream)) {
+                $this->body->write($body);
+                $this->body->rewind();
+            }
+        } else {
+            $this->body = new Stream(fopen('php://temp', 'r+'), null);
+        }
+    }
+
+    public function getRequestTarget(): string
+    {
+        if ($this->requestTarget !== null) {
+            return $this->requestTarget;
+        }
+
+        $target = $this->uri->getPath();
+        if ($target === '') {
+            $target = '/';
+        }
+        if ($this->uri->getQuery() !== '') {
+            $target .= '?' . $this->uri->getQuery();
+        }
+
+        return $target;
+    }
+
+    public function withRequestTarget(string $requestTarget): RequestInterface
+    {
+        if ($this->requestTarget === $requestTarget) {
+            return $this;
+        }
+
+        $new = clone $this;
+        $new->requestTarget = $requestTarget;
+        return $new;
+    }
+
+    public function getMethod(): string
+    {
+        return $this->method;
+    }
+
+    public function withMethod(string $method): RequestInterface
+    {
+        $method = strtoupper($method);
+        if ($this->method === $method) {
+            return $this;
+        }
+
+        $new = clone $this;
+        $new->method = $method;
+        return $new;
+    }
+
+    public function getUri(): UriInterface
+    {
+        return $this->uri;
+    }
+
+    public function withUri(UriInterface $uri, bool $preserveHost = false): RequestInterface
+    {
+        if ($uri === $this->uri) {
+            return $this;
+        }
+
+        $new = clone $this;
+        $new->uri = $uri;
+
+        if (!$preserveHost || !isset($this->headerNames['host'])) {
+            $new->updateHostFromUri();
+        }
+
+        return $new;
     }
 
     public function headers(array $headers): self
     {
-        $this->headers = array_merge($this->headers, $headers);
+        foreach ($headers as $name => $value) {
+            $this->headers[strtolower($name)] = $value;
+        }
         return $this;
     }
 
     public function header(string $name, string $value): self
     {
-        $this->headers[$name] = $value;
+        $this->headers[strtolower($name)] = $value;
         return $this;
     }
 
@@ -115,20 +199,22 @@ class Request
 
     public function body(string $content): self
     {
-        $this->body = $content;
+        $this->body = new Stream(fopen('php://temp', 'r+'), null);
+        $this->body->write($content);
+        $this->body->rewind();
         return $this;
     }
 
     public function json(array $data): self
     {
-        $this->body = json_encode($data);
+        $this->body(json_encode($data));
         $this->contentType('application/json');
         return $this;
     }
 
     public function form(array $data): self
     {
-        $this->body = http_build_query($data);
+        $this->body(http_build_query($data));
         $this->contentType('application/x-www-form-urlencoded');
         return $this;
     }
@@ -136,31 +222,21 @@ class Request
     public function multipart(array $data): self
     {
         $this->options['multipart'] = $data;
-        $this->body = null;
         return $this;
     }
 
-    /**
-     * @return PromiseInterface<StreamingResponse>
-     */
     public function stream(string $url, ?callable $onChunk = null): PromiseInterface
     {
         $options = $this->buildCurlOptions('GET', $url);
         return $this->handler->stream($url, $options, $onChunk);
     }
 
-    /**
-     * @return PromiseInterface<array>
-     */
     public function download(string $url, string $destination): PromiseInterface
     {
         $options = $this->buildCurlOptions('GET', $url);
         return $this->handler->download($url, $destination, $options);
     }
 
-    /**
-     * @return PromiseInterface<StreamingResponse>
-     */
     public function streamPost(string $url, $body = null, ?callable $onChunk = null): PromiseInterface
     {
         if ($body !== null) {
@@ -171,50 +247,35 @@ class Request
         return $this->handler->stream($url, $options, $onChunk);
     }
 
-    /**
-     * @return PromiseInterface<Response>
-     */
     public function get(string $url, array $query = []): PromiseInterface
     {
         if ($query) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
         }
         return $this->send('GET', $url);
     }
 
-    /**
-     * @return PromiseInterface<Response>
-     */
     public function post(string $url, array $data = []): PromiseInterface
     {
-        if ($data && ! $this->body && ! isset($this->options['multipart'])) {
+        if ($data && !$this->body->getSize() && !isset($this->options['multipart'])) {
             $this->json($data);
         }
         return $this->send('POST', $url);
     }
 
-    /**
-     * @return PromiseInterface<Response>
-     */
     public function put(string $url, array $data = []): PromiseInterface
     {
-        if ($data && ! $this->body && ! isset($this->options['multipart'])) {
+        if ($data && !$this->body->getSize() && !isset($this->options['multipart'])) {
             $this->json($data);
         }
         return $this->send('PUT', $url);
     }
 
-    /**
-     * @return PromiseInterface<Response>
-     */
     public function delete(string $url): PromiseInterface
     {
         return $this->send('DELETE', $url);
     }
 
-    /**
-     * @return PromiseInterface<Response>
-     */
     public function send(string $method, string $url): PromiseInterface
     {
         $options = $this->buildCurlOptions($method, $url);
@@ -272,8 +333,8 @@ class Request
     {
         if (isset($this->options['multipart'])) {
             $options[CURLOPT_POSTFIELDS] = $this->options['multipart'];
-        } elseif ($this->body !== null) {
-            $options[CURLOPT_POSTFIELDS] = $this->body;
+        } elseif ($this->body->getSize() > 0) {
+            $options[CURLOPT_POSTFIELDS] = (string) $this->body;
         }
     }
 
@@ -286,5 +347,25 @@ class Request
                 $options[CURLOPT_HTTPAUTH] = CURLAUTH_BASIC;
             }
         }
+    }
+
+    private function updateHostFromUri(): void
+    {
+        $host = $this->uri->getHost();
+        if ($host === '') {
+            return;
+        }
+
+        if (($port = $this->uri->getPort()) !== null) {
+            $host .= ':' . $port;
+        }
+
+        if (isset($this->headerNames['host'])) {
+            $header = $this->headerNames['host'];
+        } else {
+            $header = 'Host';
+            $this->headerNames['host'] = 'Host';
+        }
+        $this->headers[$header] = [$host];
     }
 }
