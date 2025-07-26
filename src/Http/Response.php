@@ -22,7 +22,17 @@ class Response
         return $this->body;
     }
 
+    public function getBody(): string
+    {
+        return $this->body;
+    }
+
     public function json(): array
+    {
+        return json_decode($this->body, true) ?? [];
+    }
+
+    public function getJson(): array
     {
         return json_decode($this->body, true) ?? [];
     }
@@ -30,6 +40,21 @@ class Response
     public function status(): int
     {
         return $this->status;
+    }
+
+    public function getStatus(): int
+    {
+        return $this->status;
+    }
+
+    public function getHeaders(): array
+    {
+        return $this->parsedHeaders;
+    }
+
+    public function getHeader(string $name): ?string
+    {
+        return $this->parsedHeaders[strtolower($name)] ?? null;
     }
 
     public function ok(): bool
