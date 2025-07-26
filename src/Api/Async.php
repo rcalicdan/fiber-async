@@ -99,16 +99,17 @@ final class Async
     }
 
     /**
-     * Suspend the current fiber until the promise resolves or rejects.
+     * Suspends the current fiber until the promise is fulfilled or rejected.
      *
-     * This method pauses execution of the current fiber and returns control
-     * to the event loop until the promise settles. Must be called from within
-     * a fiber context. Returns the resolved value or throws on rejection.
+     * This method is the heart of the await pattern. It pauses the fiber's
+     * execution, allowing the event loop to run other tasks. When the promise
+     * settles, the fiber is resumed.
      *
-     * @param  PromiseInterface  $promise  The promise to await
-     * @return mixed The resolved value of the promise
+     * @template TValue The expected type of the resolved value from the promise.
+     * @param PromiseInterface<TValue> $promise The promise to await.
+     * @return TValue The resolved value of the promise.
      *
-     * @throws \Exception If the promise is rejected
+     * @throws \Exception If the promise is rejected, this method throws the rejection reason.
      */
     public static function await(PromiseInterface $promise): mixed
     {

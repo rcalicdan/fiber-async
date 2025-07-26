@@ -7,16 +7,31 @@ use Rcalicdan\FiberAsync\Http\Interfaces\StreamInterface;
 
 abstract class Message implements MessageInterface
 {
+    /** 
+     * @var string The HTTP protocol version.
+     */
     protected string $protocol = '1.1';
+
+    /** @var array<string, string[]> HTTP headers. */
     protected array $headers = [];
+
+    /** @var array<string, string> Map of lowercase header names to original case. */
     protected array $headerNames = [];
+
+    /** @var StreamInterface The message body. */
     protected StreamInterface $body;
 
+    /**
+     * {@inheritdoc}
+     */
     public function getProtocolVersion(): string
     {
         return $this->protocol;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function withProtocolVersion(string $version): MessageInterface
     {
         if ($this->protocol === $version) {
@@ -28,16 +43,25 @@ abstract class Message implements MessageInterface
         return $new;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getHeaders(): array
     {
         return $this->headers;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function hasHeader(string $name): bool
     {
         return isset($this->headerNames[strtolower($name)]);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getHeader(string $name): array
     {
         $header = strtolower($name);
@@ -49,11 +73,18 @@ abstract class Message implements MessageInterface
         return $this->headers[$header];
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getHeaderLine(string $name): string
     {
         return implode(', ', $this->getHeader($name));
     }
 
+    /**
+     * {@inheritdoc}
+     * @param string|string[] $value
+     */
     public function withHeader(string $name, $value): MessageInterface
     {
         $value = $this->normalizeHeaderValue($value);
@@ -69,6 +100,10 @@ abstract class Message implements MessageInterface
         return $new;
     }
 
+    /**
+     * {@inheritdoc}
+     * @param string|string[] $value
+     */
     public function withAddedHeader(string $name, $value): MessageInterface
     {
         if (!$this->hasHeader($name)) {
@@ -82,6 +117,9 @@ abstract class Message implements MessageInterface
         return $new;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function withoutHeader(string $name): MessageInterface
     {
         $normalized = strtolower($name);
@@ -96,11 +134,17 @@ abstract class Message implements MessageInterface
         return $new;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getBody(): StreamInterface
     {
         return $this->body;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function withBody(StreamInterface $body): MessageInterface
     {
         if ($body === $this->body) {
@@ -112,6 +156,12 @@ abstract class Message implements MessageInterface
         return $new;
     }
 
+    /**
+     * Set headers from an array.
+     *
+     * @param array<string, string|string[]> $headers
+     * @return void
+     */
     protected function setHeaders(array $headers): void
     {
         $this->headerNames = [];
@@ -133,6 +183,13 @@ abstract class Message implements MessageInterface
         }
     }
 
+    /**
+     * Normalize a header value to an array of strings.
+     *
+     * @param mixed $value
+     * @return string[]
+     * @throws \InvalidArgumentException
+     */
     private function normalizeHeaderValue($value): array
     {
         if (!is_array($value)) {
