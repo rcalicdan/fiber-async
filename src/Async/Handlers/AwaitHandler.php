@@ -33,8 +33,9 @@ final readonly class AwaitHandler
      * If the Promise resolves, returns the resolved value.
      * If the Promise rejects, throws the rejection reason as an exception.
      *
-     * @param  PromiseInterface  $promise  The Promise to await
-     * @return mixed The resolved value of the Promise
+     * @template T The type of the resolved value of the promise.
+     * @param PromiseInterface<T> $promise The promise to await.
+     * @return T The resolved value of the promise.
      *
      * @throws Exception|Throwable If the Promise is rejected
      * @throws \RuntimeException If not called from within a Fiber context

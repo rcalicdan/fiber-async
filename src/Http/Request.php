@@ -1,9 +1,10 @@
 <?php
-
 namespace Rcalicdan\FiberAsync\Http;
 
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Http\Response; 
+use Rcalicdan\FiberAsync\Http\StreamingResponse; 
 
 class Request
 {
@@ -29,14 +30,12 @@ class Request
     public function headers(array $headers): self
     {
         $this->headers = array_merge($this->headers, $headers);
-
         return $this;
     }
 
     public function header(string $name, string $value): self
     {
         $this->headers[$name] = $value;
-
         return $this;
     }
 
@@ -58,21 +57,18 @@ class Request
     public function basicAuth(string $username, string $password): self
     {
         $this->auth = ['basic', $username, $password];
-
         return $this;
     }
 
     public function timeout(int $seconds): self
     {
         $this->timeout = $seconds;
-
         return $this;
     }
 
     public function connectTimeout(int $seconds): self
     {
         $this->connectTimeout = $seconds;
-
         return $this;
     }
 
@@ -80,7 +76,6 @@ class Request
     {
         $this->followRedirects = $follow;
         $this->maxRedirects = $max;
-
         return $this;
     }
 
@@ -91,42 +86,36 @@ class Request
             baseDelay: $baseDelay,
             backoffMultiplier: $backoffMultiplier
         );
-
         return $this;
     }
 
     public function retryWith(RetryConfig $config): self
     {
         $this->retryConfig = $config;
-
         return $this;
     }
 
     public function noRetry(): self
     {
         $this->retryConfig = null;
-
         return $this;
     }
 
     public function verifySSL(bool $verify = true): self
     {
         $this->verifySSL = $verify;
-
         return $this;
     }
 
     public function userAgent(string $userAgent): self
     {
         $this->userAgent = $userAgent;
-
         return $this;
     }
 
     public function body(string $content): self
     {
         $this->body = $content;
-
         return $this;
     }
 
@@ -134,7 +123,6 @@ class Request
     {
         $this->body = json_encode($data);
         $this->contentType('application/json');
-
         return $this;
     }
 
@@ -142,7 +130,6 @@ class Request
     {
         $this->body = http_build_query($data);
         $this->contentType('application/x-www-form-urlencoded');
-
         return $this;
     }
 
@@ -150,76 +137,90 @@ class Request
     {
         $this->options['multipart'] = $data;
         $this->body = null;
-
         return $this;
     }
 
+    /**
+     * @return PromiseInterface<StreamingResponse>
+     */
     public function stream(string $url, ?callable $onChunk = null): PromiseInterface
     {
         $options = $this->buildCurlOptions('GET', $url);
-
         return $this->handler->stream($url, $options, $onChunk);
     }
 
+    /**
+     * @return PromiseInterface<array>
+     */
     public function download(string $url, string $destination): PromiseInterface
     {
         $options = $this->buildCurlOptions('GET', $url);
-
         return $this->handler->download($url, $destination, $options);
     }
 
+    /**
+     * @return PromiseInterface<StreamingResponse>
+     */
     public function streamPost(string $url, $body = null, ?callable $onChunk = null): PromiseInterface
     {
         if ($body !== null) {
             $this->body($body);
         }
-
         $options = $this->buildCurlOptions('POST', $url);
         $options[CURLOPT_HEADER] = false;
-
         return $this->handler->stream($url, $options, $onChunk);
     }
 
+    /**
+     * @return PromiseInterface<Response>
+     */
     public function get(string $url, array $query = []): PromiseInterface
     {
         if ($query) {
             $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
         }
-
         return $this->send('GET', $url);
     }
 
+    /**
+     * @return PromiseInterface<Response>
+     */
     public function post(string $url, array $data = []): PromiseInterface
     {
         if ($data && ! $this->body && ! isset($this->options['multipart'])) {
             $this->json($data);
         }
-
         return $this->send('POST', $url);
     }
 
+    /**
+     * @return PromiseInterface<Response>
+     */
     public function put(string $url, array $data = []): PromiseInterface
     {
         if ($data && ! $this->body && ! isset($this->options['multipart'])) {
             $this->json($data);
         }
-
         return $this->send('PUT', $url);
     }
 
+    /**
+     * @return PromiseInterface<Response>
+     */
     public function delete(string $url): PromiseInterface
     {
         return $this->send('DELETE', $url);
     }
 
+    /**
+     * @return PromiseInterface<Response>
+     */
     public function send(string $method, string $url): PromiseInterface
     {
         $options = $this->buildCurlOptions($method, $url);
-
         if ($this->retryConfig) {
             return $this->handler->fetchWithRetry($url, $options, $this->retryConfig);
         }
-
         return $this->handler->fetch($url, $options);
     }
 
@@ -253,7 +254,6 @@ class Request
                 $options[$key] = $value;
             }
         }
-
         return $options;
     }
 

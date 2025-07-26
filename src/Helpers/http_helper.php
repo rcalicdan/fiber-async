@@ -3,6 +3,8 @@
 use Rcalicdan\FiberAsync\Api\AsyncHttp;
 use Rcalicdan\FiberAsync\Http\Handlers\RetryHelperHandler;
 use Rcalicdan\FiberAsync\Http\Request;
+use Rcalicdan\FiberAsync\Http\Response;
+use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 if (! function_exists('http')) {
@@ -32,7 +34,7 @@ if (! function_exists('http_get')) {
      *
      * @param  string  $url  The URL to send the request to
      * @param  array  $query  Optional query parameters
-     * @return PromiseInterface Promise that resolves with the response
+     * @return PromiseInterface<Response> Promise that resolves with the response
      *
      * @example
      * $response = await(http_get('https://api.example.com', ['key' => 'value']));
@@ -52,7 +54,7 @@ if (! function_exists('http_post')) {
      *
      * @param  string  $url  The URL to send the request to
      * @param  array  $data  Optional data payload
-     * @return PromiseInterface Promise that resolves with the response
+     * @return PromiseInterface<Response> Promise that resolves with the response
      *
      * @example
      * $response = await(http_post('https://api.example.com', ['name' => 'John']));
@@ -73,7 +75,7 @@ if (! function_exists('http_stream')) {
      * @param  string  $url  The URL to stream from
      * @param  array  $options  Request options
      * @param  callable|null  $onChunk  Callback to handle each chunk
-     * @return PromiseInterface Promise that resolves when streaming completes
+     * @return PromiseInterface<StreamingResponse> Promise that resolves when streaming completes
      *
      * @example
      * await(http_stream('https://api.example.com/data', [], function($chunk) {
@@ -96,7 +98,7 @@ if (! function_exists('http_download')) {
      * @param  string  $url  The URL to download from
      * @param  string  $destination  The local path to save the file
      * @param  array  $options  Download options
-     * @return PromiseInterface Promise that resolves when download completes
+     * @return PromiseInterface<array> Promise that resolves when download completes
      *
      * @example
      * await(http_download('https://example.com/file.zip', '/local/file.zip'));
@@ -116,7 +118,7 @@ if (! function_exists('http_put')) {
      *
      * @param  string  $url  The URL to send the request to
      * @param  array  $data  Optional data payload
-     * @return PromiseInterface Promise that resolves with the response
+     * @return PromiseInterface<Response> Promise that resolves with the response
      *
      * @example
      * $response = await(http_put('https://api.example.com/resource/1', ['name' => 'Updated']));
@@ -134,7 +136,7 @@ if (! function_exists('http_delete')) {
      * Sends a DELETE request to the specified URL without blocking the event loop.
      *
      * @param  string  $url  The URL to send the request to
-     * @return PromiseInterface Promise that resolves with the response
+     * @return PromiseInterface<Response> Promise that resolves with the response
      *
      * @example
      * $response = await(http_delete('https://api.example.com/resource/1'));
@@ -154,7 +156,7 @@ if (! function_exists('fetch')) {
      *
      * @param  string  $url  The URL to fetch from
      * @param  array  $options  Request options (method, headers, body, etc.)
-     * @return PromiseInterface Promise that resolves with the response
+     * @return PromiseInterface<Response> Promise that resolves with the response
      *
      * @example
      * $response = await(fetch('https://api.example.com', [
@@ -180,7 +182,7 @@ if (! function_exists('fetch_with_retry')) {
      * @param  array  $options  Request options
      * @param  int  $maxRetries  Maximum number of retry attempts
      * @param  float  $baseDelay  Base delay between retries in seconds
-     * @return PromiseInterface Promise that resolves with the response
+     * @return PromiseInterface<Response> Promise that resolves with the response
      *
      * @example
      * $response = await(fetch_with_retry('https://api.example.com', [], 3, 1.0));
@@ -189,7 +191,6 @@ if (! function_exists('fetch_with_retry')) {
     {
         $request = AsyncHttp::request()->retry($maxRetries, $baseDelay);
         $response = RetryHelperHandler::getRetryLogic($request, $url, $options);
-
         return $response;
     }
 }

@@ -51,8 +51,9 @@ if (! function_exists('await')) {
      * to the event loop until the promise settles. Must be called from within
      * a fiber context. Returns the resolved value or throws on rejection.
      *
-     * @param  PromiseInterface  $promise  The promise to await
-     * @return mixed The resolved value of the promise
+     * @template T The type of the resolved value of the promise.
+     * @param PromiseInterface<T> $promise The promise to await.
+     * @return T The resolved value of the promise.
      *
      * @throws Exception If the promise is rejected
      *

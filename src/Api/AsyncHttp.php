@@ -4,17 +4,21 @@ namespace Rcalicdan\FiberAsync\Api;
 
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Request;
+use Rcalicdan\FiberAsync\Http\Response;
+use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
  * HTTP Facade for clean, static access to HTTP operations
  *
  * @method static Request request()
- * @method static PromiseInterface get(string $url, array $query = [])
- * @method static PromiseInterface post(string $url, array $data = [])
- * @method static PromiseInterface put(string $url, array $data = [])
- * @method static PromiseInterface delete(string $url)
- * @method static PromiseInterface fetch(string $url, array $options = [])
+ * @method static PromiseInterface<Response> get(string $url, array $query = [])
+ * @method static PromiseInterface<Response> post(string $url, array $data = [])
+ * @method static PromiseInterface<Response> put(string $url, array $data = [])
+ * @method static PromiseInterface<Response> delete(string $url)
+ * @method static PromiseInterface<Response> fetch(string $url, array $options = [])
+ * @method static PromiseInterface<StreamingResponse> stream(string $url, array $options = [], ?callable $onChunk = null)
+ * @method static PromiseInterface<array> download(string $url, string $destination, array $options = [])
  */
 class AsyncHttp
 {
@@ -31,7 +35,6 @@ class AsyncHttp
         if (self::$instance === null) {
             self::$instance = new HttpHandler;
         }
-
         return self::$instance;
     }
 
@@ -45,6 +48,7 @@ class AsyncHttp
 
     /**
      * Quick GET request
+     * @return PromiseInterface<Response>
      */
     public static function get(string $url, array $query = []): PromiseInterface
     {
@@ -53,6 +57,7 @@ class AsyncHttp
 
     /**
      * Quick POST request with JSON data
+     * @return PromiseInterface<Response>
      */
     public static function post(string $url, array $data = []): PromiseInterface
     {
@@ -61,6 +66,7 @@ class AsyncHttp
 
     /**
      * Quick PUT request
+     * @return PromiseInterface<Response>
      */
     public static function put(string $url, array $data = []): PromiseInterface
     {
@@ -69,6 +75,7 @@ class AsyncHttp
 
     /**
      * Quick DELETE request
+     * @return PromiseInterface<Response>
      */
     public static function delete(string $url): PromiseInterface
     {
@@ -77,6 +84,7 @@ class AsyncHttp
 
     /**
      * Enhanced fetch method
+     * @return PromiseInterface<Response>
      */
     public static function fetch(string $url, array $options = []): PromiseInterface
     {
@@ -85,6 +93,7 @@ class AsyncHttp
 
     /**
      * Stream a response with optional chunk handling
+     * @return PromiseInterface<StreamingResponse>
      */
     public static function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
     {
@@ -93,6 +102,7 @@ class AsyncHttp
 
     /**
      * Download a file
+     * @return PromiseInterface<array>
      */
     public static function download(string $url, string $destination, array $options = []): PromiseInterface
     {

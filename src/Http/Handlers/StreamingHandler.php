@@ -4,6 +4,8 @@ namespace Rcalicdan\FiberAsync\Http\Handlers;
 
 use Exception;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
+use Rcalicdan\FiberAsync\Http\Exceptions\HttpException;
+use Rcalicdan\FiberAsync\Http\Exceptions\HttpStreamException;
 use Rcalicdan\FiberAsync\Http\Stream;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
@@ -18,7 +20,7 @@ final readonly class StreamingHandler
 
         $responseStream = fopen('php://temp', 'w+b');
         if (! $responseStream) {
-            $promise->reject(new Exception('Failed to create response stream'));
+            $promise->reject(new HttpStreamException('Failed to create response stream'));
 
             return $promise;
         }
@@ -58,7 +60,7 @@ final readonly class StreamingHandler
 
                 if ($error) {
                     fclose($responseStream);
-                    $promise->reject(new Exception("Streaming request failed: {$error}"));
+                    $promise->reject(new HttpStreamException("Streaming request failed: {$error}"));
                 } else {
                     rewind($responseStream);
                     $stream = new Stream($responseStream);
@@ -86,7 +88,7 @@ final readonly class StreamingHandler
 
         $file = fopen($destination, 'wb');
         if (! $file) {
-            $promise->reject(new Exception("Cannot open file for writing: {$destination}"));
+            $promise->reject(new HttpStreamException("Cannot open file for writing: {$destination}"));
 
             return $promise;
         }

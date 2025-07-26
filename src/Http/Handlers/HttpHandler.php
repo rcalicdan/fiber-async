@@ -4,6 +4,7 @@ namespace Rcalicdan\FiberAsync\Http\Handlers;
 
 use Exception;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
+use Rcalicdan\FiberAsync\Http\Exceptions\HttpException;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
@@ -31,6 +32,7 @@ final readonly class HttpHandler
 
     /**
      * Quick GET request
+     * @return PromiseInterface<Response>
      */
     public function get(string $url, array $query = []): PromiseInterface
     {
@@ -39,6 +41,7 @@ final readonly class HttpHandler
 
     /**
      * Quick POST request with JSON data
+     * @return PromiseInterface<Response>
      */
     public function post(string $url, array $data = []): PromiseInterface
     {
@@ -47,6 +50,7 @@ final readonly class HttpHandler
 
     /**
      * Quick PUT request
+     * @return PromiseInterface<Response>
      */
     public function put(string $url, array $data = []): PromiseInterface
     {
@@ -55,6 +59,7 @@ final readonly class HttpHandler
 
     /**
      * Quick DELETE request
+     * @return PromiseInterface<Response>
      */
     public function delete(string $url): PromiseInterface
     {
@@ -67,7 +72,6 @@ final readonly class HttpHandler
     public function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
-
         return $this->streamingHandler->streamRequest($url, $curlOptions, $onChunk);
     }
 
@@ -77,7 +81,6 @@ final readonly class HttpHandler
     public function download(string $url, string $destination, array $options = []): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
-
         return $this->streamingHandler->downloadFile($url, $destination, $curlOptions);
     }
 
@@ -91,7 +94,6 @@ final readonly class HttpHandler
             fwrite($resource, $content);
             rewind($resource);
         }
-
         return new Stream($resource);
     }
 
@@ -104,54 +106,49 @@ final readonly class HttpHandler
         if (! $resource) {
             throw new RuntimeException("Cannot open file: {$path}");
         }
-
         return new Stream($resource, $path);
     }
 
     /**
      * Enhanced fetch with support for both cURL options and JavaScript-like options
+     * @return PromiseInterface<Response>
      */
     public function fetch(string $url, array $options = []): PromiseInterface
     {
         // Check if options are JavaScript-like or cURL-like
         $curlOptions = $this->normalizeFetchOptions($url, $options);
-
         $promise = new CancellablePromise;
         $requestId = null;
-
         $requestId = EventLoop::getInstance()->addHttpRequest($url, $curlOptions, function ($error, $response, $httpCode, $headers = []) use ($promise) {
             if ($promise->isCancelled()) {
                 return;
             }
 
             if ($error) {
-                $promise->reject(new Exception("HTTP Request failed: {$error}"));
+                $promise->reject(new HttpException("HTTP Request failed: {$error}"));
             } else {
                 $promise->resolve(new Response($response, $httpCode, $headers));
             }
         });
-
         $promise->setCancelHandler(function () use (&$requestId) {
             if ($requestId !== null) {
                 EventLoop::getInstance()->cancelHttpRequest($requestId);
             }
         });
-
         return $promise;
     }
 
     /**
      * Enhanced fetch with retry support
+     * @return PromiseInterface<Response>
      */
     public function fetchWithRetry(string $url, array $options, RetryConfig $retryConfig): PromiseInterface
     {
         $promise = new CancellablePromise;
         $attempt = 0;
         $requestId = null;
-
         $executeRequest = function () use ($url, $options, $retryConfig, $promise, &$attempt, &$requestId, &$executeRequest) {
             $attempt++;
-
             $requestId = EventLoop::getInstance()->addHttpRequest(
                 $url,
                 $options,
@@ -159,49 +156,38 @@ final readonly class HttpHandler
                     if ($promise->isCancelled()) {
                         return;
                     }
-
                     $shouldRetry = $retryConfig->shouldRetry($attempt, $httpCode, $error);
-
                     if ($error && $shouldRetry) {
                         $delay = $retryConfig->getDelay($attempt);
-
                         // Schedule retry after delay
                         EventLoop::getInstance()->addTimer($delay, function () use ($executeRequest) {
                             $executeRequest();
                         });
-
                         return;
                     }
-
                     if ($httpCode > 0 && $shouldRetry) {
                         $delay = $retryConfig->getDelay($attempt);
-
                         // Schedule retry after delay for retryable status codes
                         EventLoop::getInstance()->addTimer($delay, function () use ($executeRequest) {
                             $executeRequest();
                         });
-
                         return;
                     }
-
                     // No retry needed or max retries reached
                     if ($error) {
-                        $promise->reject(new Exception("HTTP Request failed after {$attempt} attempts: {$error}"));
+                        $promise->reject(new HttpException("HTTP Request failed after {$attempt} attempts: {$error}"));
                     } else {
                         $promise->resolve(new Response($response, $httpCode, $headers));
                     }
                 }
             );
         };
-
         $executeRequest();
-
         $promise->setCancelHandler(function () use (&$requestId) {
             if ($requestId !== null) {
                 EventLoop::getInstance()->cancelHttpRequest($requestId);
             }
         });
-
         return $promise;
     }
 
@@ -210,12 +196,10 @@ final readonly class HttpHandler
      */
     private function normalizeFetchOptions(string $url, array $options): array
     {
-        // If options contain cURL constants, assume it's already in cURL format
         if ($this->isCurlOptionsFormat($options)) {
             return $options;
         }
 
-        // Convert JavaScript-like options to cURL options
         $curlOptions = [
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
@@ -223,12 +207,10 @@ final readonly class HttpHandler
             CURLOPT_NOBODY => false,
         ];
 
-        // Handle method
         if (isset($options['method'])) {
             $curlOptions[CURLOPT_CUSTOMREQUEST] = strtoupper($options['method']);
         }
 
-        // Handle headers
         if (isset($options['headers'])) {
             $headerStrings = [];
             foreach ($options['headers'] as $name => $value) {
@@ -237,17 +219,14 @@ final readonly class HttpHandler
             $curlOptions[CURLOPT_HTTPHEADER] = $headerStrings;
         }
 
-        // Handle body
         if (isset($options['body'])) {
             $curlOptions[CURLOPT_POSTFIELDS] = $options['body'];
         }
 
-        // Handle timeout
         if (isset($options['timeout'])) {
             $curlOptions[CURLOPT_TIMEOUT] = $options['timeout'];
         }
 
-        // Handle other common options
         if (isset($options['follow_redirects'])) {
             $curlOptions[CURLOPT_FOLLOWLOCATION] = (bool) $options['follow_redirects'];
         }
@@ -260,10 +239,8 @@ final readonly class HttpHandler
         if (isset($options['user_agent'])) {
             $curlOptions[CURLOPT_USERAGENT] = $options['user_agent'];
         }
-
         return $curlOptions;
     }
-
     /**
      * Check if options are in cURL format (contain cURL constants)
      */
@@ -274,7 +251,6 @@ final readonly class HttpHandler
                 return true; // cURL options are positive integers
             }
         }
-
         return false;
     }
 }
