@@ -9,16 +9,33 @@ final readonly class HttpResponseHandler
     public function handleSuccessfulResponse($handle, HttpRequest $request): void
     {
         $fullResponse = curl_multi_getcontent($handle) ?? '';
-
         $httpCode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
         $headerSize = curl_getinfo($handle, CURLINFO_HEADER_SIZE);
-
         $headerStr = substr($fullResponse, 0, $headerSize);
         $body = substr($fullResponse, $headerSize);
 
-        $headers = array_filter(explode("\r\n", trim($headerStr)));
+        $parsedHeaders = [];
+        $headerLines = explode("\r\n", trim($headerStr));
+        array_shift($headerLines);
 
-        $request->executeCallback(null, $body, $httpCode, $headers);
+        foreach ($headerLines as $line) {
+            $parts = explode(':', $line, 2);
+            if (count($parts) === 2) {
+                $name = trim($parts[0]);
+                $value = trim($parts[1]);
+
+                if (isset($parsedHeaders[$name])) {
+                    if (!is_array($parsedHeaders[$name])) {
+                        $parsedHeaders[$name] = [$parsedHeaders[$name]];
+                    }
+                    $parsedHeaders[$name][] = $value;
+                } else {
+                    $parsedHeaders[$name] = $value;
+                }
+            }
+        }
+
+        $request->executeCallback(null, $body, $httpCode, $parsedHeaders);
     }
 
     public function handleErrorResponse($handle, HttpRequest $request): void
@@ -30,7 +47,6 @@ final readonly class HttpResponseHandler
     public function processCompletedRequests(\CurlMultiHandle $multiHandle, array &$activeRequests): bool
     {
         $processed = false;
-
         while ($info = curl_multi_info_read($multiHandle)) {
             $handle = $info['handle'];
             $handleId = (int) $handle;
@@ -50,7 +66,6 @@ final readonly class HttpResponseHandler
                 $processed = true;
             }
         }
-
         return $processed;
     }
 }

@@ -4,7 +4,6 @@ namespace Rcalicdan\FiberAsync\Http\Handlers;
 
 use Exception;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
-use Rcalicdan\FiberAsync\Http\Exceptions\HttpException;
 use Rcalicdan\FiberAsync\Http\Exceptions\HttpStreamException;
 use Rcalicdan\FiberAsync\Http\Stream;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
@@ -19,42 +18,37 @@ final readonly class StreamingHandler
         $requestId = null;
 
         $responseStream = fopen('php://temp', 'w+b');
-        if (! $responseStream) {
+        if (!$responseStream) {
             $promise->reject(new HttpStreamException('Failed to create response stream'));
-
             return $promise;
         }
 
         $headerAccumulator = [];
 
-        $streamingOptions = $options + [
+        $streamingOptions = array_replace($options, [
+            CURLOPT_HEADER => false,
             CURLOPT_WRITEFUNCTION => function ($ch, $data) use ($responseStream, $onChunk) {
                 fwrite($responseStream, $data);
-
                 if ($onChunk) {
                     $onChunk($data);
                 }
-
                 return strlen($data);
             },
             CURLOPT_HEADERFUNCTION => function ($ch, $header) use (&$headerAccumulator) {
-                // This function captures each header line
                 $trimmedHeader = trim($header);
                 if ($trimmedHeader !== '') {
                     $headerAccumulator[] = $trimmedHeader;
                 }
-
                 return strlen($header);
             },
-        ];
+        ]);
 
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
             $streamingOptions,
-            function ($error, $response, $httpCode, $headers = []) use ($promise, $responseStream, &$headerAccumulator) { // Pass accumulator by reference
+            function ($error, $response, $httpCode, $headers = []) use ($promise, $responseStream, &$headerAccumulator) {
                 if ($promise->isCancelled()) {
                     fclose($responseStream);
-
                     return;
                 }
 
@@ -87,13 +81,13 @@ final readonly class StreamingHandler
         $requestId = null;
 
         $file = fopen($destination, 'wb');
-        if (! $file) {
+        if (!$file) {
             $promise->reject(new HttpStreamException("Cannot open file for writing: {$destination}"));
-
             return $promise;
         }
 
-        $downloadOptions = $options + [
+        $downloadOptions = array_replace($options, [
+            CURLOPT_HEADER => false,
             CURLOPT_WRITEFUNCTION => function ($ch, $data) use ($file) {
                 return fwrite($file, $data);
             },
@@ -102,10 +96,9 @@ final readonly class StreamingHandler
                 if ($promise->isCancelled()) {
                     return 1;
                 }
-
                 return 0;
             },
-        ];
+        ]);
 
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
@@ -115,7 +108,6 @@ final readonly class StreamingHandler
 
                 if ($promise->isCancelled()) {
                     unlink($destination);
-
                     return;
                 }
 

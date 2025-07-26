@@ -9,7 +9,6 @@ use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
 use Rcalicdan\FiberAsync\Http\Stream;
-use Rcalicdan\FiberAsync\Http\Uri;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use RuntimeException;
@@ -79,16 +78,14 @@ final readonly class HttpHandler
         return new Stream($resource, $path);
     }
 
-    public function fetch(string $url, array $options = []): PromiseInterface
+    public function sendRequest(string $url, array $curlOptions): PromiseInterface
     {
-        $curlOptions = $this->normalizeFetchOptions($url, $options);
         $promise = new CancellablePromise;
         $requestId = null;
         $requestId = EventLoop::getInstance()->addHttpRequest($url, $curlOptions, function ($error, $response, $httpCode, $headers = []) use ($promise) {
             if ($promise->isCancelled()) {
                 return;
             }
-
             if ($error) {
                 $promise->reject(new HttpException("HTTP Request failed: {$error}"));
             } else {
@@ -101,6 +98,12 @@ final readonly class HttpHandler
             }
         });
         return $promise;
+    }
+
+    public function fetch(string $url, array $options = []): PromiseInterface
+    {
+        $curlOptions = $this->normalizeFetchOptions($url, $options);
+        return $this->sendRequest($url, $curlOptions);
     }
 
     public function fetchWithRetry(string $url, array $options, RetryConfig $retryConfig): PromiseInterface
@@ -117,23 +120,19 @@ final readonly class HttpHandler
                     if ($promise->isCancelled()) {
                         return;
                     }
+
                     $shouldRetry = $retryConfig->shouldRetry($attempt, $httpCode, $error);
-                    if ($error && $shouldRetry) {
+
+                    if ($shouldRetry) {
                         $delay = $retryConfig->getDelay($attempt);
-                        EventLoop::getInstance()->addTimer($delay, function () use ($executeRequest) {
-                            $executeRequest();
-                        });
+                        EventLoop::getInstance()->addTimer($delay, $executeRequest);
                         return;
                     }
-                    if ($httpCode > 0 && $shouldRetry) {
-                        $delay = $retryConfig->getDelay($attempt);
-                        EventLoop::getInstance()->addTimer($delay, function () use ($executeRequest) {
-                            $executeRequest();
-                        });
-                        return;
-                    }
+
                     if ($error) {
                         $promise->reject(new HttpException("HTTP Request failed after {$attempt} attempts: {$error}"));
+                    } else if ($httpCode !== null && in_array($httpCode, $retryConfig->retryableStatusCodes)) {
+                        $promise->reject(new HttpException("HTTP Request failed with status {$httpCode} after {$attempt} attempts."));
                     } else {
                         $promise->resolve(new Response($response, $httpCode, $headers));
                     }

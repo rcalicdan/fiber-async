@@ -112,7 +112,7 @@ class Request extends Message implements RequestInterface
     public function headers(array $headers): self
     {
         foreach ($headers as $name => $value) {
-            $this->headers[strtolower($name)] = $value;
+            $this->header($name, $value);
         }
         return $this;
     }
@@ -218,10 +218,12 @@ class Request extends Message implements RequestInterface
         $this->contentType('application/x-www-form-urlencoded');
         return $this;
     }
-
+    
     public function multipart(array $data): self
     {
+        $this->body = new Stream(fopen('php://temp', 'r+'), null);
         $this->options['multipart'] = $data;
+        unset($this->headers['content-type']);
         return $this;
     }
 
@@ -282,7 +284,7 @@ class Request extends Message implements RequestInterface
         if ($this->retryConfig) {
             return $this->handler->fetchWithRetry($url, $options, $this->retryConfig);
         }
-        return $this->handler->fetch($url, $options);
+        return $this->handler->sendRequest($url, $options);
     }
 
     private function buildCurlOptions(string $method, string $url): array
