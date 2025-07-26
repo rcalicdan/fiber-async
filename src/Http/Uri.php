@@ -3,41 +3,34 @@
 namespace Rcalicdan\FiberAsync\Http;
 
 use Rcalicdan\FiberAsync\Http\Interfaces\UriInterface;
-use InvalidArgumentException;
 
 class Uri implements UriInterface
 {
-    private const SCHEMES = ['http' => 80, 'https' => 443];
-    private const CHAR_UNRESERVED = 'a-zA-Z0-9_\-\.~';
-    private const CHAR_SUB_DELIMS = '!\$&\'\(\)\*\+,;=';
+    protected string $scheme = '';
+    protected string $host = '';
+    protected ?int $port = null;
+    protected string $path = '/';
+    protected string $query = '';
+    protected string $fragment = '';
+    protected string $userInfo = '';
 
-    private string $scheme = '';
-    private string $userInfo = '';
-    private string $host = '';
-    private ?int $port = null;
-    private string $path = '';
-    private string $query = '';
-    private string $fragment = '';
-
-    public function __construct(string $uri = '')
+    public function __construct(string $uri)
     {
-        if ($uri !== '') {
-            $parts = parse_url($uri);
-            if ($parts === false) {
-                throw new InvalidArgumentException("Unable to parse URI: $uri");
-            }
+        $parts = parse_url($uri);
 
-            $this->scheme = isset($parts['scheme']) ? strtolower($parts['scheme']) : '';
-            $this->userInfo = $parts['user'] ?? '';
-            $this->host = isset($parts['host']) ? strtolower($parts['host']) : '';
-            $this->port = $parts['port'] ?? null;
-            $this->path = $parts['path'] ?? '';
-            $this->query = $parts['query'] ?? '';
-            $this->fragment = $parts['fragment'] ?? '';
+        if (!$parts) {
+            throw new \InvalidArgumentException("Invalid URI: $uri");
+        }
 
-            if (isset($parts['pass'])) {
-                $this->userInfo .= ':' . $parts['pass'];
-            }
+        $this->scheme = $parts['scheme'] ?? '';
+        $this->host = $parts['host'] ?? '';
+        $this->port = $parts['port'] ?? null;
+        $this->path = $parts['path'] ?? '/';
+        $this->query = $parts['query'] ?? '';
+        $this->fragment = $parts['fragment'] ?? '';
+
+        if (isset($parts['user'])) {
+            $this->userInfo = $parts['user'] . (isset($parts['pass']) ? ':' . $parts['pass'] : '');
         }
     }
 
@@ -48,12 +41,10 @@ class Uri implements UriInterface
 
     public function getAuthority(): string
     {
-        $authority = $this->host;
-        if ($this->userInfo !== '') {
-            $authority = $this->userInfo . '@' . $authority;
-        }
+        $authority = $this->getUserInfo() !== '' ? $this->getUserInfo() . '@' : '';
+        $authority .= $this->host;
 
-        if ($this->port !== null) {
+        if ($this->port !== null && !in_array($this->port, [80, 443])) {
             $authority .= ':' . $this->port;
         }
 
@@ -92,112 +83,72 @@ class Uri implements UriInterface
 
     public function withScheme(string $scheme): UriInterface
     {
-        $scheme = strtolower($scheme);
-        if ($this->scheme === $scheme) {
-            return $this;
-        }
-
-        $new = clone $this;
-        $new->scheme = $scheme;
-        return $new;
+        $clone = clone $this;
+        $clone->scheme = $scheme;
+        return $clone;
     }
 
     public function withUserInfo(string $user, ?string $password = null): UriInterface
     {
-        $info = $user;
-        if ($password !== null && $password !== '') {
-            $info .= ':' . $password;
-        }
-
-        if ($this->userInfo === $info) {
-            return $this;
-        }
-
-        $new = clone $this;
-        $new->userInfo = $info;
-        return $new;
+        $clone = clone $this;
+        $clone->userInfo = $user . ($password !== null ? ':' . $password : '');
+        return $clone;
     }
 
     public function withHost(string $host): UriInterface
     {
-        $host = strtolower($host);
-        if ($this->host === $host) {
-            return $this;
-        }
-
-        $new = clone $this;
-        $new->host = $host;
-        return $new;
+        $clone = clone $this;
+        $clone->host = $host;
+        return $clone;
     }
 
     public function withPort(?int $port): UriInterface
     {
-        if ($port !== null && ($port < 0 || $port > 65535)) {
-            throw new InvalidArgumentException('Invalid port: ' . $port . '. Must be between 0 and 65535');
-        }
-
-        if ($this->port === $port) {
-            return $this;
-        }
-
-        $new = clone $this;
-        $new->port = $port;
-        return $new;
+        $clone = clone $this;
+        $clone->port = $port;
+        return $clone;
     }
 
     public function withPath(string $path): UriInterface
     {
-        if ($this->path === $path) {
-            return $this;
-        }
-
-        $new = clone $this;
-        $new->path = $path;
-        return $new;
+        $clone = clone $this;
+        $clone->path = $path;
+        return $clone;
     }
 
     public function withQuery(string $query): UriInterface
     {
-        if ($this->query === $query) {
-            return $this;
-        }
-
-        $new = clone $this;
-        $new->query = $query;
-        return $new;
+        $clone = clone $this;
+        $clone->query = $query;
+        return $clone;
     }
 
     public function withFragment(string $fragment): UriInterface
     {
-        if ($this->fragment === $fragment) {
-            return $this;
-        }
-
-        $new = clone $this;
-        $new->fragment = $fragment;
-        return $new;
+        $clone = clone $this;
+        $clone->fragment = $fragment;
+        return $clone;
     }
 
     public function __toString(): string
     {
         $uri = '';
 
-        if ($this->scheme !== '') {
-            $uri .= $this->scheme . ':';
+        if ($this->scheme) {
+            $uri .= $this->scheme . '://';
         }
 
-        $authority = $this->getAuthority();
-        if ($authority !== '' || $this->scheme === 'file') {
-            $uri .= '//' . $authority;
+        $uri .= $this->getAuthority();
+
+        if ($this->path) {
+            $uri .= $this->path;
         }
 
-        $uri .= $this->path;
-
-        if ($this->query !== '') {
+        if ($this->query) {
             $uri .= '?' . $this->query;
         }
 
-        if ($this->fragment !== '') {
+        if ($this->fragment) {
             $uri .= '#' . $this->fragment;
         }
 

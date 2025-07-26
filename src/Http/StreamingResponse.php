@@ -12,7 +12,7 @@ class StreamingResponse extends Response
     public function __construct(StreamInterface $stream, int $status, array $headers = [])
     {
         $this->stream = $stream;
-        parent::__construct('', $status, $headers);
+        parent::__construct($stream, $status, $headers);
     }
 
     public function getStream(): StreamInterface
@@ -23,13 +23,19 @@ class StreamingResponse extends Response
     public function body(): string
     {
         if ($this->streamConsumed) {
-            return $this->body;
+            return (string) $this->body;
         }
 
-        $this->body = $this->stream->getContents();
+        $content = $this->stream->getContents();
         $this->streamConsumed = true;
 
-        return $this->body;
+        // Update the body stream with the consumed content
+        $resource = fopen('php://temp', 'r+');
+        fwrite($resource, $content);
+        rewind($resource);
+        $this->body = new Stream($resource);
+
+        return $content;
     }
 
     public function json(): array
@@ -40,7 +46,7 @@ class StreamingResponse extends Response
     public function saveToFile(string $path): bool
     {
         $file = fopen($path, 'wb');
-        if (! $file) {
+        if (!$file) {
             return false;
         }
 
@@ -49,7 +55,7 @@ class StreamingResponse extends Response
                 $this->stream->rewind();
             }
 
-            while (! $this->stream->eof()) {
+            while (!$this->stream->eof()) {
                 $chunk = $this->stream->read(8192);
                 if ($chunk === '') {
                     break;
@@ -69,7 +75,7 @@ class StreamingResponse extends Response
             return $this->saveToFile($destination);
         }
 
-        if (! is_resource($destination)) {
+        if (!is_resource($destination)) {
             return false;
         }
 
@@ -78,7 +84,7 @@ class StreamingResponse extends Response
                 $this->stream->rewind();
             }
 
-            while (! $this->stream->eof()) {
+            while (!$this->stream->eof()) {
                 $chunk = $this->stream->read(8192);
                 if ($chunk === '') {
                     break;

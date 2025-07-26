@@ -9,6 +9,7 @@ use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
 use Rcalicdan\FiberAsync\Http\Stream;
+use Rcalicdan\FiberAsync\Http\Uri;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use RuntimeException;
@@ -22,71 +23,43 @@ final readonly class HttpHandler
         $this->streamingHandler = new StreamingHandler;
     }
 
-    /**
-     * Create a new HTTP request builder
-     */
     public function request(): Request
     {
         return new Request($this);
     }
 
-    /**
-     * Quick GET request
-     * @return PromiseInterface<Response>
-     */
     public function get(string $url, array $query = []): PromiseInterface
     {
         return $this->request()->get($url, $query);
     }
 
-    /**
-     * Quick POST request with JSON data
-     * @return PromiseInterface<Response>
-     */
     public function post(string $url, array $data = []): PromiseInterface
     {
         return $this->request()->post($url, $data);
     }
 
-    /**
-     * Quick PUT request
-     * @return PromiseInterface<Response>
-     */
     public function put(string $url, array $data = []): PromiseInterface
     {
         return $this->request()->put($url, $data);
     }
 
-    /**
-     * Quick DELETE request
-     * @return PromiseInterface<Response>
-     */
     public function delete(string $url): PromiseInterface
     {
         return $this->request()->delete($url);
     }
 
-    /**
-     * Stream a request and get a streaming response
-     */
     public function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
         return $this->streamingHandler->streamRequest($url, $curlOptions, $onChunk);
     }
 
-    /**
-     * Download a file directly to disk
-     */
     public function download(string $url, string $destination, array $options = []): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
         return $this->streamingHandler->downloadFile($url, $destination, $curlOptions);
     }
 
-    /**
-     * Create a stream from a string
-     */
     public function createStream(string $content = ''): Stream
     {
         $resource = fopen('php://temp', 'w+b');
@@ -97,25 +70,17 @@ final readonly class HttpHandler
         return new Stream($resource);
     }
 
-    /**
-     * Create a stream from a file
-     */
     public function createStreamFromFile(string $path, string $mode = 'rb'): Stream
     {
         $resource = fopen($path, $mode);
-        if (! $resource) {
+        if (!$resource) {
             throw new RuntimeException("Cannot open file: {$path}");
         }
         return new Stream($resource, $path);
     }
 
-    /**
-     * Enhanced fetch with support for both cURL options and JavaScript-like options
-     * @return PromiseInterface<Response>
-     */
     public function fetch(string $url, array $options = []): PromiseInterface
     {
-        // Check if options are JavaScript-like or cURL-like
         $curlOptions = $this->normalizeFetchOptions($url, $options);
         $promise = new CancellablePromise;
         $requestId = null;
@@ -138,10 +103,6 @@ final readonly class HttpHandler
         return $promise;
     }
 
-    /**
-     * Enhanced fetch with retry support
-     * @return PromiseInterface<Response>
-     */
     public function fetchWithRetry(string $url, array $options, RetryConfig $retryConfig): PromiseInterface
     {
         $promise = new CancellablePromise;
@@ -159,7 +120,6 @@ final readonly class HttpHandler
                     $shouldRetry = $retryConfig->shouldRetry($attempt, $httpCode, $error);
                     if ($error && $shouldRetry) {
                         $delay = $retryConfig->getDelay($attempt);
-                        // Schedule retry after delay
                         EventLoop::getInstance()->addTimer($delay, function () use ($executeRequest) {
                             $executeRequest();
                         });
@@ -167,13 +127,11 @@ final readonly class HttpHandler
                     }
                     if ($httpCode > 0 && $shouldRetry) {
                         $delay = $retryConfig->getDelay($attempt);
-                        // Schedule retry after delay for retryable status codes
                         EventLoop::getInstance()->addTimer($delay, function () use ($executeRequest) {
                             $executeRequest();
                         });
                         return;
                     }
-                    // No retry needed or max retries reached
                     if ($error) {
                         $promise->reject(new HttpException("HTTP Request failed after {$attempt} attempts: {$error}"));
                     } else {
@@ -191,9 +149,6 @@ final readonly class HttpHandler
         return $promise;
     }
 
-    /**
-     * Normalize fetch options to support both JavaScript-like and cURL formats
-     */
     private function normalizeFetchOptions(string $url, array $options): array
     {
         if ($this->isCurlOptionsFormat($options)) {
@@ -241,14 +196,12 @@ final readonly class HttpHandler
         }
         return $curlOptions;
     }
-    /**
-     * Check if options are in cURL format (contain cURL constants)
-     */
+
     private function isCurlOptionsFormat(array $options): bool
     {
         foreach (array_keys($options) as $key) {
             if (is_int($key) && $key > 0) {
-                return true; // cURL options are positive integers
+                return true;
             }
         }
         return false;
