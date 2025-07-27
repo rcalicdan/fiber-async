@@ -8,7 +8,7 @@ namespace Rcalicdan\FiberAsync\Http\Interfaces;
  * This interface encapsulates an HTTP request with its associated cURL handle,
  * callback function, and execution methods for async HTTP operations.
  */
-interface HttpRequestInterface
+interface AsyncHttpRequestInterface
 {
     /**
      * Gets the cURL handle associated with this HTTP request.
