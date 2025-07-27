@@ -15,13 +15,15 @@ class TrackableCache implements CacheInterface
     public function get(string $key, mixed $default = null): mixed
     {
         $this->operations[] = ['get', $key, microtime(true)];
+
         return $this->storage[$key] ?? $default;
     }
 
-    public function set(string $key, mixed $value, \DateInterval|int|null $ttl = null): bool
+    public function set(string $key, mixed $value, DateInterval|int|null $ttl = null): bool
     {
         $this->operations[] = ['set', $key, microtime(true), $ttl];
         $this->storage[$key] = $value;
+
         return true;
     }
 
@@ -29,6 +31,7 @@ class TrackableCache implements CacheInterface
     {
         $this->operations[] = ['delete', $key, microtime(true)];
         unset($this->storage[$key]);
+
         return true;
     }
 
@@ -36,6 +39,7 @@ class TrackableCache implements CacheInterface
     {
         $this->operations[] = ['clear', microtime(true)];
         $this->storage = [];
+
         return true;
     }
 
@@ -46,11 +50,12 @@ class TrackableCache implements CacheInterface
         }
     }
 
-    public function setMultiple(iterable $values, \DateInterval|int|null $ttl = null): bool
+    public function setMultiple(iterable $values, DateInterval|int|null $ttl = null): bool
     {
         foreach ($values as $key => $value) {
             $this->set($key, $value, $ttl);
         }
+
         return true;
     }
 
@@ -59,23 +64,26 @@ class TrackableCache implements CacheInterface
         foreach ($keys as $key) {
             $this->delete($key);
         }
+
         return true;
     }
 
     public function has(string $key): bool
     {
         $this->operations[] = ['has', $key, microtime(true)];
+
         return isset($this->storage[$key]);
     }
 
     public function getOperationsCount(string $operation): int
     {
-        return count(array_filter($this->operations, fn($op) => $op[0] === $operation));
+        return count(array_filter($this->operations, fn ($op) => $op[0] === $operation));
     }
 
     public function getLastOperation(string $operation): ?array
     {
-        $ops = array_filter($this->operations, fn($op) => $op[0] === $operation);
+        $ops = array_filter($this->operations, fn ($op) => $op[0] === $operation);
+
         return empty($ops) ? null : end($ops);
     }
 
@@ -95,8 +103,8 @@ class TrackableCache implements CacheInterface
  */
 function clearFilesystemCache()
 {
-    $cacheDir = getcwd() . '/cache';
-    if (!is_dir($cacheDir)) {
+    $cacheDir = getcwd().'/cache';
+    if (! is_dir($cacheDir)) {
         return;
     }
     $files = new RecursiveIteratorIterator(
@@ -117,7 +125,7 @@ beforeEach(function () {
 describe('HTTP Client Caching - Core Functionality', function () {
 
     test('cached requests populate and use cache correctly', function () {
-        $trackableCache = new TrackableCache();
+        $trackableCache = new TrackableCache;
         $cacheConfig = new CacheConfig(ttlSeconds: 60, cache: $trackableCache);
         $url = 'https://httpbin.org/json';
 
@@ -144,7 +152,7 @@ describe('HTTP Client Caching - Core Functionality', function () {
     });
 
     test('uncached requests bypass cache completely', function () {
-        $trackableCache = new TrackableCache();
+        $trackableCache = new TrackableCache;
 
         run(function () use ($trackableCache) {
             // Two uncached calls
@@ -158,7 +166,7 @@ describe('HTTP Client Caching - Core Functionality', function () {
     });
 
     test('different URLs are cached separately', function () {
-        $trackableCache = new TrackableCache();
+        $trackableCache = new TrackableCache;
         $cacheConfig = new CacheConfig(ttlSeconds: 60, cache: $trackableCache);
 
         run(function () use ($trackableCache, $cacheConfig) {
@@ -184,7 +192,7 @@ describe('HTTP Client Caching - Core Functionality', function () {
     });
 
     test('POST requests are never cached', function () {
-        $trackableCache = new TrackableCache();
+        $trackableCache = new TrackableCache;
         $cacheConfig = new CacheConfig(ttlSeconds: 60, cache: $trackableCache);
 
         run(function () use ($trackableCache, $cacheConfig) {
@@ -202,11 +210,11 @@ describe('HTTP Client Caching - Core Functionality', function () {
 describe('HTTP Client Caching - Performance & Timing', function () {
 
     test('cached responses are significantly faster than network calls', function () {
-        $trackableCache = new TrackableCache();
+        $trackableCache = new TrackableCache;
         $cacheConfig = new CacheConfig(ttlSeconds: 60, cache: $trackableCache);
         $url = 'https://httpbin.org/delay/1'; // 1 second delay endpoint
 
-        run(function () use ($trackableCache, $cacheConfig, $url) {
+        run(function () use ($cacheConfig, $url) {
             // First call - should be slow (network + 1 second delay)
             $start1 = microtime(true);
             $response1 = await(http()->cacheWith($cacheConfig)->get($url));
@@ -230,7 +238,7 @@ describe('HTTP Client Caching - Performance & Timing', function () {
     });
 
     test('concurrent requests to same URL only hit network once', function () {
-        $trackableCache = new TrackableCache();
+        $trackableCache = new TrackableCache;
         $cacheConfig = new CacheConfig(ttlSeconds: 60, cache: $trackableCache);
         $url = 'https://httpbin.org/uuid';
 
@@ -258,7 +266,7 @@ describe('HTTP Client Caching - Performance & Timing', function () {
 describe('HTTP Client Caching - Cache Configuration', function () {
 
     test('cache TTL is respected when setting cache entries', function () {
-        $trackableCache = new TrackableCache();
+        $trackableCache = new TrackableCache;
         $cacheConfig = new CacheConfig(ttlSeconds: 300, cache: $trackableCache); // 5 minutes
 
         run(function () use ($trackableCache, $cacheConfig) {
@@ -271,10 +279,10 @@ describe('HTTP Client Caching - Cache Configuration', function () {
     });
 
     test('cache keys are generated consistently for same URLs', function () {
-        $trackableCache = new TrackableCache();
+        $trackableCache = new TrackableCache;
         $cacheConfig = new CacheConfig(ttlSeconds: 60, cache: $trackableCache);
         $url = 'https://httpbin.org/json';
-        $expectedKey = 'http_' . sha1($url);
+        $expectedKey = 'http_'.sha1($url);
 
         run(function () use ($trackableCache, $cacheConfig, $url, $expectedKey) {
             await(http()->cacheWith($cacheConfig)->get($url));
@@ -304,7 +312,7 @@ describe('HTTP Client Caching - Cache Configuration', function () {
 describe('HTTP Client Caching - Edge Cases', function () {
 
     test('failed requests are not cached', function () {
-        $trackableCache = new TrackableCache();
+        $trackableCache = new TrackableCache;
         $cacheConfig = new CacheConfig(ttlSeconds: 60, cache: $trackableCache);
 
         run(function () use ($trackableCache, $cacheConfig) {
@@ -317,7 +325,7 @@ describe('HTTP Client Caching - Edge Cases', function () {
 
             // Even if the request was made, 404s shouldn't be cached
             // (depending on your implementation - you might want to check this)
-            $cachedEntries = array_filter($trackableCache->operations, fn($op) => $op[0] === 'set');
+            $cachedEntries = array_filter($trackableCache->operations, fn ($op) => $op[0] === 'set');
 
             // If 404s are not cached, there should be no set operations
             // If they are cached, you might want to adjust this test
@@ -327,7 +335,7 @@ describe('HTTP Client Caching - Edge Cases', function () {
     });
 
     test('cache handles special characters in URLs', function () {
-        $trackableCache = new TrackableCache();
+        $trackableCache = new TrackableCache;
         $cacheConfig = new CacheConfig(ttlSeconds: 60, cache: $trackableCache);
         $url = 'https://httpbin.org/json?param=test%20value&other=special!@#';
 
@@ -343,7 +351,7 @@ describe('HTTP Client Caching - Edge Cases', function () {
     });
 
     test('very large responses can be cached', function () {
-        $trackableCache = new TrackableCache();
+        $trackableCache = new TrackableCache;
         $cacheConfig = new CacheConfig(ttlSeconds: 60, cache: $trackableCache);
 
         run(function () use ($trackableCache, $cacheConfig) {

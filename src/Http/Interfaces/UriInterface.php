@@ -74,7 +74,7 @@ interface UriInterface
     /**
      * Return an instance with the specified scheme.
      *
-     * @param string $scheme The scheme to use for the new instance.
+     * @param  string  $scheme  The scheme to use for the new instance.
      * @return static A new instance with the specified scheme.
      */
     public function withScheme(string $scheme): UriInterface;
@@ -82,8 +82,8 @@ interface UriInterface
     /**
      * Return an instance with the specified user information.
      *
-     * @param string $user The user name to use for the new instance.
-     * @param string|null $password The password associated with the user.
+     * @param  string  $user  The user name to use for the new instance.
+     * @param  string|null  $password  The password associated with the user.
      * @return static A new instance with the specified user information.
      */
     public function withUserInfo(string $user, ?string $password = null): UriInterface;
@@ -91,7 +91,7 @@ interface UriInterface
     /**
      * Return an instance with the specified host.
      *
-     * @param string $host The hostname to use for the new instance.
+     * @param  string  $host  The hostname to use for the new instance.
      * @return static A new instance with the specified host.
      */
     public function withHost(string $host): UriInterface;
@@ -99,7 +99,7 @@ interface UriInterface
     /**
      * Return an instance with the specified port.
      *
-     * @param int|null $port The port to use for the new instance; a null value removes the port information.
+     * @param  int|null  $port  The port to use for the new instance; a null value removes the port information.
      * @return static A new instance with the specified port.
      */
     public function withPort(?int $port): UriInterface;
@@ -107,7 +107,7 @@ interface UriInterface
     /**
      * Return an instance with the specified path.
      *
-     * @param string $path The path to use for the new instance.
+     * @param  string  $path  The path to use for the new instance.
      * @return static A new instance with the specified path.
      */
     public function withPath(string $path): UriInterface;
@@ -115,7 +115,7 @@ interface UriInterface
     /**
      * Return an instance with the specified query string.
      *
-     * @param string $query The query string to use for the new instance.
+     * @param  string  $query  The query string to use for the new instance.
      * @return static A new instance with the specified query string.
      */
     public function withQuery(string $query): UriInterface;
@@ -123,7 +123,7 @@ interface UriInterface
     /**
      * Return an instance with the specified URI fragment.
      *
-     * @param string $fragment The fragment to use for the new instance.
+     * @param  string  $fragment  The fragment to use for the new instance.
      * @return static A new instance with the specified fragment.
      */
     public function withFragment(string $fragment): UriInterface;
@@ -132,7 +132,6 @@ interface UriInterface
      * Return the string representation of the URI.
      *
      * @see https://tools.ietf.org/html/rfc3986#section-3
-     * @return string
      */
     public function __toString(): string;
 }

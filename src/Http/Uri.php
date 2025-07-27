@@ -20,7 +20,8 @@ class Uri implements UriInterface
     /**
      * Initializes a new URI instance by parsing a URI string.
      *
-     * @param string $uri The URI to parse.
+     * @param  string  $uri  The URI to parse.
+     *
      * @throws \InvalidArgumentException If the given URI cannot be parsed.
      */
     public function __construct(string $uri)
@@ -39,7 +40,7 @@ class Uri implements UriInterface
         $this->fragment = $parts['fragment'] ?? '';
 
         if (isset($parts['user'])) {
-            $this->userInfo = $parts['user'] . (isset($parts['pass']) ? ':' . $parts['pass'] : '');
+            $this->userInfo = $parts['user'].(isset($parts['pass']) ? ':'.$parts['pass'] : '');
         }
     }
 
@@ -56,11 +57,11 @@ class Uri implements UriInterface
      */
     public function getAuthority(): string
     {
-        $authority = $this->getUserInfo() !== '' ? $this->getUserInfo() . '@' : '';
+        $authority = $this->getUserInfo() !== '' ? $this->getUserInfo().'@' : '';
         $authority .= $this->host;
 
         if ($this->port !== null && ! in_array($this->port, [80, 443])) {
-            $authority .= ':' . $this->port;
+            $authority .= ':'.$this->port;
         }
 
         return $authority;
@@ -121,6 +122,7 @@ class Uri implements UriInterface
     {
         $clone = clone $this;
         $clone->scheme = $scheme;
+
         return $clone;
     }
 
@@ -130,7 +132,8 @@ class Uri implements UriInterface
     public function withUserInfo(string $user, ?string $password = null): UriInterface
     {
         $clone = clone $this;
-        $clone->userInfo = $user . ($password !== null ? ':' . $password : '');
+        $clone->userInfo = $user.($password !== null ? ':'.$password : '');
+
         return $clone;
     }
 
@@ -141,6 +144,7 @@ class Uri implements UriInterface
     {
         $clone = clone $this;
         $clone->host = $host;
+
         return $clone;
     }
 
@@ -151,6 +155,7 @@ class Uri implements UriInterface
     {
         $clone = clone $this;
         $clone->port = $port;
+
         return $clone;
     }
 
@@ -161,6 +166,7 @@ class Uri implements UriInterface
     {
         $clone = clone $this;
         $clone->path = $path;
+
         return $clone;
     }
 
@@ -171,6 +177,7 @@ class Uri implements UriInterface
     {
         $clone = clone $this;
         $clone->query = $query;
+
         return $clone;
     }
 
@@ -181,6 +188,7 @@ class Uri implements UriInterface
     {
         $clone = clone $this;
         $clone->fragment = $fragment;
+
         return $clone;
     }
 
@@ -192,7 +200,7 @@ class Uri implements UriInterface
         $uri = '';
 
         if ($this->scheme) {
-            $uri .= $this->scheme . '://';
+            $uri .= $this->scheme.'://';
         }
 
         $uri .= $this->getAuthority();
@@ -202,11 +210,11 @@ class Uri implements UriInterface
         }
 
         if ($this->query) {
-            $uri .= '?' . $this->query;
+            $uri .= '?'.$this->query;
         }
 
         if ($this->fragment) {
-            $uri .= '#' . $this->fragment;
+            $uri .= '#'.$this->fragment;
         }
 
         return $uri;

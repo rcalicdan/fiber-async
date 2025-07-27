@@ -46,8 +46,8 @@ class HttpHandler
     /**
      * Performs a quick, asynchronous GET request.
      *
-     * @param string $url The target URL.
-     * @param array $query Optional query parameters.
+     * @param  string  $url  The target URL.
+     * @param  array  $query  Optional query parameters.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function get(string $url, array $query = []): PromiseInterface
@@ -58,8 +58,8 @@ class HttpHandler
     /**
      * Performs a quick, asynchronous POST request with a JSON payload.
      *
-     * @param string $url The target URL.
-     * @param array $data Data to be JSON-encoded and sent as the request body.
+     * @param  string  $url  The target URL.
+     * @param  array  $data  Data to be JSON-encoded and sent as the request body.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function post(string $url, array $data = []): PromiseInterface
@@ -70,8 +70,8 @@ class HttpHandler
     /**
      * Performs a quick, asynchronous PUT request.
      *
-     * @param string $url The target URL.
-     * @param array $data Data to be JSON-encoded and sent as the request body.
+     * @param  string  $url  The target URL.
+     * @param  array  $data  Data to be JSON-encoded and sent as the request body.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function put(string $url, array $data = []): PromiseInterface
@@ -82,7 +82,7 @@ class HttpHandler
     /**
      * Performs a quick, asynchronous DELETE request.
      *
-     * @param string $url The target URL.
+     * @param  string  $url  The target URL.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function delete(string $url): PromiseInterface
@@ -95,35 +95,37 @@ class HttpHandler
      *
      * Ideal for large responses that should not be fully loaded into memory.
      *
-     * @param string $url The URL to stream from.
-     * @param array $options Advanced cURL or request options.
-     * @param callable|null $onChunk An optional callback to execute for each received data chunk. `function(string $chunk): void`
+     * @param  string  $url  The URL to stream from.
+     * @param  array  $options  Advanced cURL or request options.
+     * @param  callable|null  $onChunk  An optional callback to execute for each received data chunk. `function(string $chunk): void`
      * @return PromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse object.
      */
     public function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
+
         return $this->streamingHandler->streamRequest($url, $curlOptions, $onChunk);
     }
 
     /**
      * Asynchronously downloads a file from a URL to a specified destination.
      *
-     * @param string $url The URL of the file to download.
-     * @param string $destination The local path to save the file.
-     * @param array $options Advanced cURL or request options.
+     * @param  string  $url  The URL of the file to download.
+     * @param  string  $destination  The local path to save the file.
+     * @param  array  $options  Advanced cURL or request options.
      * @return PromiseInterface<array{file: string, status: int|null, headers: array}> A promise that resolves with download metadata.
      */
     public function download(string $url, string $destination, array $options = []): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
+
         return $this->streamingHandler->downloadFile($url, $destination, $curlOptions);
     }
 
     /**
      * Creates a new stream from a string.
      *
-     * @param string $content The initial content of the stream.
+     * @param  string  $content  The initial content of the stream.
      * @return Stream A new Stream object.
      */
     public function createStream(string $content = ''): Stream
@@ -133,15 +135,17 @@ class HttpHandler
             fwrite($resource, $content);
             rewind($resource);
         }
+
         return new Stream($resource);
     }
 
     /**
      * Creates a new stream from a file path.
      *
-     * @param string $path The path to the file.
-     * @param string $mode The mode to open the file with (e.g., 'rb', 'w+b').
+     * @param  string  $path  The path to the file.
+     * @param  string  $mode  The mode to open the file with (e.g., 'rb', 'w+b').
      * @return Stream A new Stream object wrapping the file resource.
+     *
      * @throws RuntimeException if the file cannot be opened.
      */
     public function createStreamFromFile(string $path, string $mode = 'rb'): Stream
@@ -150,6 +154,7 @@ class HttpHandler
         if (! $resource) {
             throw new RuntimeException("Cannot open file: {$path}");
         }
+
         return new Stream($resource, $path);
     }
 
@@ -164,6 +169,7 @@ class HttpHandler
             $psr6Cache = new FilesystemAdapter('http', 0, 'cache');
             self::$defaultCache = new Psr16Cache($psr6Cache);
         }
+
         return self::$defaultCache;
     }
 
@@ -171,10 +177,10 @@ class HttpHandler
      * The main entry point for sending a request from the Request builder.
      * It intelligently applies caching logic before proceeding to dispatch the request.
      *
-     * @param string $url The target URL.
-     * @param array $curlOptions The compiled cURL options for the request.
-     * @param CacheConfig|null $cacheConfig The caching rules for this request, if any.
-     * @param RetryConfig|null $retryConfig The retry rules for this request, if any.
+     * @param  string  $url  The target URL.
+     * @param  array  $curlOptions  The compiled cURL options for the request.
+     * @param  CacheConfig|null  $cacheConfig  The caching rules for this request, if any.
+     * @param  RetryConfig|null  $retryConfig  The retry rules for this request, if any.
      * @return PromiseInterface<Response>
      */
     public function sendRequest(string $url, array $curlOptions, ?CacheConfig $cacheConfig = null, ?RetryConfig $retryConfig = null): PromiseInterface
@@ -186,7 +192,7 @@ class HttpHandler
 
         // Use the custom cache from the config, or fall back to the zero-config default.
         $cache = $cacheConfig->cache ?? self::getDefaultCache();
-        $cacheKey = 'http_' . sha1($url);
+        $cacheKey = 'http_'.sha1($url);
 
         return async(function () use ($cache, $cacheKey, $url, $curlOptions, $cacheConfig, $retryConfig) {
             $cachedItem = $cache->get($cacheKey);
@@ -199,10 +205,10 @@ class HttpHandler
             // Cache is stale or missing. If stale, prepare for revalidation by adding conditional headers.
             if ($cachedItem && $cacheConfig->respectServerHeaders) {
                 if (isset($cachedItem['headers']['etag'])) {
-                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-None-Match: ' . $cachedItem['headers']['etag'][0];
+                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-None-Match: '.$cachedItem['headers']['etag'][0];
                 }
                 if (isset($cachedItem['headers']['last-modified'])) {
-                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-Modified-Since: ' . $cachedItem['headers']['last-modified'][0];
+                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-Modified-Since: '.$cachedItem['headers']['last-modified'][0];
                 }
             }
 
@@ -214,6 +220,7 @@ class HttpHandler
                 $newExpiry = $this->calculateExpiry($response, $cacheConfig);
                 $cachedItem['expires_at'] = $newExpiry;
                 $cache->set($cacheKey, $cachedItem, $newExpiry > time() ? $newExpiry - time() : 0);
+
                 return new Response($cachedItem['body'], 200, $cachedItem['headers']);
             }
 
@@ -223,9 +230,9 @@ class HttpHandler
                 if ($expiry > time()) {
                     $ttl = $expiry - time();
                     $cache->set($cacheKey, [
-                        'body'       => (string) $response->getBody(),
-                        'status'     => $response->status(),
-                        'headers'    => $response->getHeaders(),
+                        'body' => (string) $response->getBody(),
+                        'status' => $response->status(),
+                        'headers' => $response->getHeaders(),
                         'expires_at' => $expiry,
                     ], $ttl);
                 }
@@ -244,14 +251,15 @@ class HttpHandler
         if ($retryConfig) {
             return $this->fetchWithRetry($url, $curlOptions, $retryConfig);
         }
+
         return $this->fetch($url, $curlOptions);
     }
 
     /**
      * A flexible, fetch-like method for making HTTP requests.
      *
-     * @param string $url The target URL.
-     * @param array $options An associative array of request options (method, headers, body, etc.).
+     * @param  string  $url  The target URL.
+     * @param  array  $options  An associative array of request options (method, headers, body, etc.).
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function fetch(string $url, array $options = []): PromiseInterface
@@ -287,9 +295,9 @@ class HttpHandler
     /**
      * Sends a request with automatic retry logic on failure.
      *
-     * @param string $url The target URL.
-     * @param array $options An array of cURL options.
-     * @param RetryConfig $retryConfig Configuration object for retry behavior.
+     * @param  string  $url  The target URL.
+     * @param  array  $options  An array of cURL options.
+     * @param  RetryConfig  $retryConfig  Configuration object for retry behavior.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function fetchWithRetry(string $url, array $options, RetryConfig $retryConfig): PromiseInterface
@@ -311,6 +319,7 @@ class HttpHandler
                     if ($shouldRetry) {
                         $delay = $retryConfig->getDelay($attempt);
                         EventLoop::getInstance()->addTimer($delay, $executeRequest);
+
                         return;
                     }
                     if ($error) {
@@ -391,6 +400,7 @@ class HttpHandler
                 return true;
             }
         }
+
         return false;
     }
 
@@ -403,7 +413,7 @@ class HttpHandler
             $header = $response->getHeaderLine('Cache-Control');
             // Look for 'max-age' in the Cache-Control header.
             if ($header && preg_match('/max-age=(\d+)/', $header, $matches)) {
-                return time() + (int)$matches[1];
+                return time() + (int) $matches[1];
             }
         }
 

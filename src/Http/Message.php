@@ -12,14 +12,12 @@ use Rcalicdan\FiberAsync\Http\Interfaces\StreamInterface;
  * for handling protocol versions, headers, and message bodies, which is then
  * extended by the concrete `Request` and `Response` classes.
  *
- * @see \Rcalicdan\FiberAsync\Http\Interfaces\MessageInterface
+ * @see MessageInterface
  */
 abstract class Message implements MessageInterface
 {
     /**
      * The HTTP protocol version.
-     *
-     * @var string
      */
     protected string $protocol = '1.1';
 
@@ -90,6 +88,7 @@ abstract class Message implements MessageInterface
         }
 
         $header = $this->headerNames[$header];
+
         return $this->headers[$header];
     }
 
@@ -181,7 +180,7 @@ abstract class Message implements MessageInterface
      * This method correctly handles case-insensitivity and preserves the original
      * casing of the header names provided.
      *
-     * @param array<string, string|string[]> $headers An associative array of headers to set.
+     * @param  array<string, string|string[]>  $headers  An associative array of headers to set.
      */
     protected function setHeaders(array $headers): void
     {
@@ -207,8 +206,9 @@ abstract class Message implements MessageInterface
     /**
      * Normalizes a header value to ensure it is an array of strings.
      *
-     * @param mixed $value The header value to normalize.
+     * @param  mixed  $value  The header value to normalize.
      * @return string[] The normalized header value as an array of strings.
+     *
      * @throws \InvalidArgumentException If the value is an empty array.
      */
     private function normalizeHeaderValue($value): array

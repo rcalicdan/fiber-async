@@ -30,9 +30,10 @@ interface ResponseInterface extends MessageInterface
      * to the RFC 7231 or IANA recommended reason phrase for the response's
      * status code.
      *
-     * @param int $code The 3-digit integer result code to set.
-     * @param string $reasonPhrase The reason phrase to use with the provided status code.
+     * @param  int  $code  The 3-digit integer result code to set.
+     * @param  string  $reasonPhrase  The reason phrase to use with the provided status code.
      * @return static A new instance with the specified status.
+     *
      * @throws \InvalidArgumentException For invalid status code arguments.
      */
     public function withStatus(int $code, string $reasonPhrase = ''): ResponseInterface;
@@ -75,7 +76,7 @@ interface ResponseInterface extends MessageInterface
     /**
      * Get a single response header by name.
      *
-     * @param string $name The case-insensitive header name.
+     * @param  string  $name  The case-insensitive header name.
      * @return string|null The header value, or null if the header does not exist.
      */
     public function header(string $name): ?string;

@@ -35,7 +35,7 @@ class Stream implements StreamInterface
             'r+t' => true,
             'x+t' => true,
             'c+t' => true,
-            'a+' => true
+            'a+' => true,
         ],
         'write' => [
             'w' => true,
@@ -54,15 +54,16 @@ class Stream implements StreamInterface
             'x+t' => true,
             'c+t' => true,
             'a' => true,
-            'a+' => true
+            'a+' => true,
         ],
     ];
 
     /**
      * Initializes a new Stream instance.
      *
-     * @param resource $resource The PHP stream resource.
-     * @param string|null $uri The URI associated with the stream, if any.
+     * @param  resource  $resource  The PHP stream resource.
+     * @param  string|null  $uri  The URI associated with the stream, if any.
+     *
      * @throws RuntimeException if the provided argument is not a resource.
      */
     public function __construct($resource, ?string $uri = null)
@@ -93,6 +94,7 @@ class Stream implements StreamInterface
             if ($this->isSeekable()) {
                 $this->rewind();
             }
+
             return $this->getContents();
         } catch (\Throwable $e) {
             // Per PSR-7, must not throw an exception.
@@ -151,6 +153,7 @@ class Stream implements StreamInterface
         $stats = fstat($this->resource);
         if (is_array($stats) && isset($stats['size'])) {
             $this->size = $stats['size'];
+
             return $this->size;
         }
 
@@ -204,7 +207,7 @@ class Stream implements StreamInterface
         }
 
         if (fseek($this->resource, $offset, $whence) === -1) {
-            throw new RuntimeException('Unable to seek to stream position ' . $offset . ' with whence ' . var_export($whence, true));
+            throw new RuntimeException('Unable to seek to stream position '.$offset.' with whence '.var_export($whence, true));
         }
     }
 

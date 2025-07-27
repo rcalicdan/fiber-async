@@ -32,15 +32,12 @@ interface RequestInterface extends MessageInterface
      *
      * In most cases, this will be the origin-form of the URI, unless a
      * different form is provided upon instantiation.
-     *
-     * @return string
      */
     public function getRequestTarget(): string;
 
     /**
      * Returns an instance with the specific request-target.
      *
-     * @param string $requestTarget
      * @return static A new instance with the specified request-target.
      */
     public function withRequestTarget(string $requestTarget): RequestInterface;
@@ -58,8 +55,9 @@ interface RequestInterface extends MessageInterface
      * While HTTP method names are typically uppercase, this method MUST NOT
      * modify the given string.
      *
-     * @param string $method Case-sensitive method.
+     * @param  string  $method  Case-sensitive method.
      * @return static A new instance with the specified method.
+     *
      * @throws \InvalidArgumentException for invalid HTTP methods.
      */
     public function withMethod(string $method): RequestInterface;
@@ -70,8 +68,9 @@ interface RequestInterface extends MessageInterface
      * This method MUST return a UriInterface instance.
      *
      * @see http://tools.ietf.org/html/rfc3986#section-4.3
+     *
      * @return UriInterface Returns a UriInterface instance
-     *     representing the URI of the request.
+     *                      representing the URI of the request.
      */
     public function getUri(): UriInterface;
 
@@ -85,8 +84,8 @@ interface RequestInterface extends MessageInterface
      * You can opt-in to preserving the original Host header by setting
      * `$preserveHost` to `true`.
      *
-     * @param UriInterface $uri New request URI to use.
-     * @param bool $preserveHost Preserve the original state of the Host header.
+     * @param  UriInterface  $uri  New request URI to use.
+     * @param  bool  $preserveHost  Preserve the original state of the Host header.
      * @return static A new instance with the specified URI.
      */
     public function withUri(UriInterface $uri, bool $preserveHost = false): RequestInterface;

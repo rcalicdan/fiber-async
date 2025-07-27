@@ -27,7 +27,7 @@ describe('URI Handling', function () {
         expect($uriHttps->getPort())->toBe(443);
         expect($uriHttps->getAuthority())->toBe('example.com');
     });
-    
+
     test('handles schemeless URIs', function () {
         $uri = new Uri('//example.com/path');
         expect($uri->getScheme())->toBe('');
@@ -69,7 +69,8 @@ describe('URI Handling', function () {
             ->withUserInfo('testuser', 'testpass')
             ->withPath('/api/v1')
             ->withQuery('sort=asc')
-            ->withFragment('results');
+            ->withFragment('results')
+        ;
 
         expect($newUri->getScheme())->toBe('https');
         expect($newUri->getHost())->toBe('example.org');
@@ -82,8 +83,8 @@ describe('URI Handling', function () {
 
     test('__toString reassembles the URI correctly', function () {
         $expectedUri = 'ftp://admin:secret@sub.domain.co.uk:999/some/path?key=val#frag';
-        
-        $uri = new Uri('http://example.com'); 
+
+        $uri = new Uri('http://example.com');
 
         $reassembledUri = $uri
             ->withScheme('ftp')
@@ -92,15 +93,16 @@ describe('URI Handling', function () {
             ->withUserInfo('admin', 'secret')
             ->withPath('/some/path')
             ->withQuery('key=val')
-            ->withFragment('frag');
-        
+            ->withFragment('frag')
+        ;
+
         expect((string) $reassembledUri)->toBe($expectedUri);
     });
-    
+
     test('__toString omits empty components', function () {
         $uri = new Uri('');
         $uri = $uri->withScheme('https')->withHost('example.com')->withPath('/test');
-        
+
         expect((string) $uri)->toBe('https://example.com/test');
     });
 });

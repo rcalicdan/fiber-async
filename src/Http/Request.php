@@ -34,12 +34,12 @@ class Request extends Message implements RequestInterface
     /**
      * Initializes a new Request builder instance.
      *
-     * @param HttpHandler $handler The core handler responsible for dispatching the request.
-     * @param string $method The HTTP method for the request.
-     * @param string|UriInterface $uri The URI for the request.
-     * @param array $headers An associative array of headers.
-     * @param mixed|null $body The request body.
-     * @param string $version The HTTP protocol version.
+     * @param  HttpHandler  $handler  The core handler responsible for dispatching the request.
+     * @param  string  $method  The HTTP method for the request.
+     * @param  string|UriInterface  $uri  The URI for the request.
+     * @param  array  $headers  An associative array of headers.
+     * @param  mixed|null  $body  The request body.
+     * @param  string  $version  The HTTP protocol version.
      */
     public function __construct(HttpHandler $handler, string $method = 'GET', $uri = '', array $headers = [], $body = null, string $version = '1.1')
     {
@@ -75,7 +75,7 @@ class Request extends Message implements RequestInterface
             $target = '/';
         }
         if ($this->uri->getQuery() !== '') {
-            $target .= '?' . $this->uri->getQuery();
+            $target .= '?'.$this->uri->getQuery();
         }
 
         return $target;
@@ -150,7 +150,7 @@ class Request extends Message implements RequestInterface
     /**
      * Set multiple headers at once.
      *
-     * @param array<string, string> $headers An associative array of header names to values.
+     * @param  array<string, string>  $headers  An associative array of header names to values.
      * @return self For fluent method chaining.
      */
     public function headers(array $headers): self
@@ -165,8 +165,8 @@ class Request extends Message implements RequestInterface
     /**
      * Set a single header.
      *
-     * @param string $name The header name.
-     * @param string $value The header value.
+     * @param  string  $name  The header name.
+     * @param  string  $value  The header value.
      * @return self For fluent method chaining.
      */
     public function header(string $name, string $value): self
@@ -179,7 +179,7 @@ class Request extends Message implements RequestInterface
     /**
      * Set the Content-Type header.
      *
-     * @param string $type The media type (e.g., 'application/json').
+     * @param  string  $type  The media type (e.g., 'application/json').
      * @return self For fluent method chaining.
      */
     public function contentType(string $type): self
@@ -190,7 +190,7 @@ class Request extends Message implements RequestInterface
     /**
      * Set the Accept header.
      *
-     * @param string $type The desired media type (e.g., 'application/json').
+     * @param  string  $type  The desired media type (e.g., 'application/json').
      * @return self For fluent method chaining.
      */
     public function accept(string $type): self
@@ -201,7 +201,7 @@ class Request extends Message implements RequestInterface
     /**
      * Attach a bearer token to the Authorization header.
      *
-     * @param string $token The bearer token.
+     * @param  string  $token  The bearer token.
      * @return self For fluent method chaining.
      */
     public function bearerToken(string $token): self
@@ -212,8 +212,8 @@ class Request extends Message implements RequestInterface
     /**
      * Set basic authentication credentials.
      *
-     * @param string $username The username.
-     * @param string $password The password.
+     * @param  string  $username  The username.
+     * @param  string  $password  The password.
      * @return self For fluent method chaining.
      */
     public function basicAuth(string $username, string $password): self
@@ -226,7 +226,7 @@ class Request extends Message implements RequestInterface
     /**
      * Set the total request timeout in seconds.
      *
-     * @param int $seconds The timeout duration.
+     * @param  int  $seconds  The timeout duration.
      * @return self For fluent method chaining.
      */
     public function timeout(int $seconds): self
@@ -239,7 +239,7 @@ class Request extends Message implements RequestInterface
     /**
      * Set the connection timeout in seconds.
      *
-     * @param int $seconds The timeout duration for the connection phase.
+     * @param  int  $seconds  The timeout duration for the connection phase.
      * @return self For fluent method chaining.
      */
     public function connectTimeout(int $seconds): self
@@ -252,8 +252,8 @@ class Request extends Message implements RequestInterface
     /**
      * Configure automatic redirect following.
      *
-     * @param bool $follow Whether to follow redirects.
-     * @param int $max The maximum number of redirects to follow.
+     * @param  bool  $follow  Whether to follow redirects.
+     * @param  int  $max  The maximum number of redirects to follow.
      * @return self For fluent method chaining.
      */
     public function redirects(bool $follow = true, int $max = 5): self
@@ -267,9 +267,9 @@ class Request extends Message implements RequestInterface
     /**
      * Enable and configure automatic retries on failure.
      *
-     * @param int $maxRetries Maximum number of retry attempts.
-     * @param float $baseDelay Initial delay in seconds before the first retry.
-     * @param float $backoffMultiplier Multiplier for exponential backoff (e.g., 2.0).
+     * @param  int  $maxRetries  Maximum number of retry attempts.
+     * @param  float  $baseDelay  Initial delay in seconds before the first retry.
+     * @param  float  $backoffMultiplier  Multiplier for exponential backoff (e.g., 2.0).
      * @return self For fluent method chaining.
      */
     public function retry(int $maxRetries = 3, float $baseDelay = 1.0, float $backoffMultiplier = 2.0): self
@@ -286,7 +286,7 @@ class Request extends Message implements RequestInterface
     /**
      * Configure retries using a custom RetryConfig object.
      *
-     * @param RetryConfig $config The retry configuration object.
+     * @param  RetryConfig  $config  The retry configuration object.
      * @return self For fluent method chaining.
      */
     public function retryWith(RetryConfig $config): self
@@ -311,7 +311,7 @@ class Request extends Message implements RequestInterface
     /**
      * Configure SSL certificate verification.
      *
-     * @param bool $verify Whether to verify the peer's SSL certificate.
+     * @param  bool  $verify  Whether to verify the peer's SSL certificate.
      * @return self For fluent method chaining.
      */
     public function verifySSL(bool $verify = true): self
@@ -324,7 +324,7 @@ class Request extends Message implements RequestInterface
     /**
      * Set the User-Agent header for the request.
      *
-     * @param string $userAgent The User-Agent string.
+     * @param  string  $userAgent  The User-Agent string.
      * @return self For fluent method chaining.
      */
     public function userAgent(string $userAgent): self
@@ -337,7 +337,7 @@ class Request extends Message implements RequestInterface
     /**
      * Set the request body from a string.
      *
-     * @param string $content The raw string content for the body.
+     * @param  string  $content  The raw string content for the body.
      * @return self For fluent method chaining.
      */
     public function body(string $content): self
@@ -353,7 +353,7 @@ class Request extends Message implements RequestInterface
      * Set the request body as JSON.
      * Automatically sets the Content-Type header to 'application/json'.
      *
-     * @param array $data The data to be JSON-encoded.
+     * @param  array  $data  The data to be JSON-encoded.
      * @return self For fluent method chaining.
      */
     public function json(array $data): self
@@ -368,7 +368,7 @@ class Request extends Message implements RequestInterface
      * Set the request body as a URL-encoded form.
      * Automatically sets the Content-Type header to 'application/x-www-form-urlencoded'.
      *
-     * @param array $data The form data.
+     * @param  array  $data  The form data.
      * @return self For fluent method chaining.
      */
     public function form(array $data): self
@@ -382,7 +382,7 @@ class Request extends Message implements RequestInterface
     /**
      * Set the request body as multipart/form-data.
      *
-     * @param array $data The multipart data.
+     * @param  array  $data  The multipart data.
      * @return self For fluent method chaining.
      */
     public function multipart(array $data): self
@@ -397,8 +397,8 @@ class Request extends Message implements RequestInterface
     /**
      * Streams the response body of a GET request.
      *
-     * @param string $url The URL to stream from.
-     * @param callable|null $onChunk An optional callback for each data chunk. `function(string $chunk): void`
+     * @param  string  $url  The URL to stream from.
+     * @param  callable|null  $onChunk  An optional callback for each data chunk. `function(string $chunk): void`
      * @return PromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse.
      */
     public function stream(string $url, ?callable $onChunk = null): PromiseInterface
@@ -411,8 +411,8 @@ class Request extends Message implements RequestInterface
     /**
      * Downloads a file from a URL to a local destination.
      *
-     * @param string $url The URL of the file to download.
-     * @param string $destination The local file path to save to.
+     * @param  string  $url  The URL of the file to download.
+     * @param  string  $destination  The local file path to save to.
      * @return PromiseInterface<array{file: string, status: int|null, headers: array}> A promise that resolves with download metadata.
      */
     public function download(string $url, string $destination): PromiseInterface
@@ -425,9 +425,9 @@ class Request extends Message implements RequestInterface
     /**
      * Streams the response body of a POST request.
      *
-     * @param string $url The target URL.
-     * @param mixed|null $body The request body.
-     * @param callable|null $onChunk An optional callback for each data chunk. `function(string $chunk): void`
+     * @param  string  $url  The target URL.
+     * @param  mixed|null  $body  The request body.
+     * @param  callable|null  $onChunk  An optional callback for each data chunk. `function(string $chunk): void`
      * @return PromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse.
      */
     public function streamPost(string $url, $body = null, ?callable $onChunk = null): PromiseInterface
@@ -444,14 +444,14 @@ class Request extends Message implements RequestInterface
     /**
      * Performs an asynchronous GET request.
      *
-     * @param string $url The target URL.
-     * @param array $query Optional query parameters to append to the URL.
+     * @param  string  $url  The target URL.
+     * @param  array  $query  Optional query parameters to append to the URL.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function get(string $url, array $query = []): PromiseInterface
     {
         if ($query) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
         }
 
         return $this->send('GET', $url);
@@ -460,8 +460,8 @@ class Request extends Message implements RequestInterface
     /**
      * Performs an asynchronous POST request.
      *
-     * @param string $url The target URL.
-     * @param array $data If provided, will be JSON-encoded and set as the request body.
+     * @param  string  $url  The target URL.
+     * @param  array  $data  If provided, will be JSON-encoded and set as the request body.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function post(string $url, array $data = []): PromiseInterface
@@ -476,8 +476,8 @@ class Request extends Message implements RequestInterface
     /**
      * Performs an asynchronous PUT request.
      *
-     * @param string $url The target URL.
-     * @param array $data If provided, will be JSON-encoded and set as the request body.
+     * @param  string  $url  The target URL.
+     * @param  array  $data  If provided, will be JSON-encoded and set as the request body.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function put(string $url, array $data = []): PromiseInterface
@@ -492,7 +492,7 @@ class Request extends Message implements RequestInterface
     /**
      * Performs an asynchronous DELETE request.
      *
-     * @param string $url The target URL.
+     * @param  string  $url  The target URL.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function delete(string $url): PromiseInterface
@@ -506,13 +506,14 @@ class Request extends Message implements RequestInterface
      * This enables a zero-config, file-based cache for the request.
      * The underlying handler will automatically manage the cache instance.
      *
-     * @param int $ttlSeconds The number of seconds the response should be cached.
-     * @param bool $respectServerHeaders If true, the server's `Cache-Control: max-age` header will override the provided TTL.
+     * @param  int  $ttlSeconds  The number of seconds the response should be cached.
+     * @param  bool  $respectServerHeaders  If true, the server's `Cache-Control: max-age` header will override the provided TTL.
      * @return self For fluent method chaining.
      */
     public function cache(int $ttlSeconds = 3600, bool $respectServerHeaders = true): self
     {
         $this->cacheConfig = new CacheConfig($ttlSeconds, $respectServerHeaders);
+
         return $this;
     }
 
@@ -522,12 +523,13 @@ class Request extends Message implements RequestInterface
      * This method is for advanced use cases where you need to provide a specific
      * cache implementation (e.g., Redis, Memcached) or more complex rules.
      *
-     * @param CacheConfig $config The custom caching configuration object.
+     * @param  CacheConfig  $config  The custom caching configuration object.
      * @return self For fluent method chaining.
      */
     public function cacheWith(CacheConfig $config): self
     {
         $this->cacheConfig = $config;
+
         return $this;
     }
 
@@ -537,22 +539,22 @@ class Request extends Message implements RequestInterface
      * This method builds the final cURL options and sends the request via the
      * HttpHandler, which will apply caching and/or retry logic as configured.
      *
-     * @param string $method The HTTP method (GET, POST, etc.).
-     * @param string $url The target URL.
+     * @param  string  $method  The HTTP method (GET, POST, etc.).
+     * @param  string  $url  The target URL.
      * @return PromiseInterface<Response> A promise that resolves with the final Response object.
      */
     public function send(string $method, string $url): PromiseInterface
     {
         $options = $this->buildCurlOptions($method, $url);
-        
+
         return $this->handler->sendRequest($url, $options, $this->cacheConfig, $this->retryConfig);
     }
 
     /**
      * Compiles all configured options into a cURL options array.
      *
-     * @param string $method The HTTP method.
-     * @param string $url The target URL.
+     * @param  string  $method  The HTTP method.
+     * @param  string  $url  The target URL.
      * @return array The final cURL options array.
      */
     private function buildCurlOptions(string $method, string $url): array
@@ -601,7 +603,7 @@ class Request extends Message implements RequestInterface
     /**
      * Adds configured headers to the cURL options.
      *
-     * @param array &$options The cURL options array passed by reference.
+     * @param  array  &$options  The cURL options array passed by reference.
      */
     private function addHeaderOptions(array &$options): void
     {
@@ -617,7 +619,7 @@ class Request extends Message implements RequestInterface
     /**
      * Adds the configured body to the cURL options.
      *
-     * @param array &$options The cURL options array passed by reference.
+     * @param  array  &$options  The cURL options array passed by reference.
      */
     private function addBodyOptions(array &$options): void
     {
@@ -631,7 +633,7 @@ class Request extends Message implements RequestInterface
     /**
      * Adds configured authentication details to the cURL options.
      *
-     * @param array &$options The cURL options array passed by reference.
+     * @param  array  &$options  The cURL options array passed by reference.
      */
     private function addAuthenticationOptions(array &$options): void
     {
@@ -655,7 +657,7 @@ class Request extends Message implements RequestInterface
         }
 
         if (($port = $this->uri->getPort()) !== null) {
-            $host .= ':' . $port;
+            $host .= ':'.$port;
         }
 
         if (isset($this->headerNames['host'])) {

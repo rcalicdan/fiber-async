@@ -37,6 +37,7 @@ class AsyncHttp
         if (self::$instance === null) {
             self::$instance = new HttpHandler;
         }
+
         return self::$instance;
     }
 
@@ -53,8 +54,8 @@ class AsyncHttp
     /**
      * Performs a quick, asynchronous GET request.
      *
-     * @param string $url The target URL.
-     * @param array $query Optional query parameters.
+     * @param  string  $url  The target URL.
+     * @param  array  $query  Optional query parameters.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public static function get(string $url, array $query = []): PromiseInterface
@@ -65,8 +66,8 @@ class AsyncHttp
     /**
      * Performs a quick, asynchronous POST request with a JSON payload.
      *
-     * @param string $url The target URL.
-     * @param array $data Data to be JSON-encoded.
+     * @param  string  $url  The target URL.
+     * @param  array  $data  Data to be JSON-encoded.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public static function post(string $url, array $data = []): PromiseInterface
@@ -77,8 +78,8 @@ class AsyncHttp
     /**
      * Performs a quick, asynchronous PUT request.
      *
-     * @param string $url The target URL.
-     * @param array $data Data to be JSON-encoded.
+     * @param  string  $url  The target URL.
+     * @param  array  $data  Data to be JSON-encoded.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public static function put(string $url, array $data = []): PromiseInterface
@@ -89,7 +90,7 @@ class AsyncHttp
     /**
      * Performs a quick, asynchronous DELETE request.
      *
-     * @param string $url The target URL.
+     * @param  string  $url  The target URL.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public static function delete(string $url): PromiseInterface
@@ -100,8 +101,8 @@ class AsyncHttp
     /**
      * A flexible, fetch-like method for making HTTP requests.
      *
-     * @param string $url The target URL.
-     * @param array $options Associative array of request options (method, headers, body, etc.).
+     * @param  string  $url  The target URL.
+     * @param  array  $options  Associative array of request options (method, headers, body, etc.).
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public static function fetch(string $url, array $options = []): PromiseInterface
@@ -112,9 +113,9 @@ class AsyncHttp
     /**
      * Streams an HTTP response, processing it in chunks.
      *
-     * @param string $url The URL to stream from.
-     * @param array $options Advanced cURL or request options.
-     * @param callable|null $onChunk Optional callback for each data chunk.
+     * @param  string  $url  The URL to stream from.
+     * @param  array  $options  Advanced cURL or request options.
+     * @param  callable|null  $onChunk  Optional callback for each data chunk.
      * @return PromiseInterface<StreamingResponse> A promise resolving with a StreamingResponse object.
      */
     public static function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
@@ -125,9 +126,9 @@ class AsyncHttp
     /**
      * Asynchronously downloads a file from a URL.
      *
-     * @param string $url The URL of the file to download.
-     * @param string $destination The local path to save the file.
-     * @param array $options Advanced cURL or request options.
+     * @param  string  $url  The URL of the file to download.
+     * @param  string  $destination  The local path to save the file.
+     * @param  array  $options  Advanced cURL or request options.
      * @return PromiseInterface<array{file: string, status: int|null, headers: array}> A promise resolving with download metadata.
      */
     public static function download(string $url, string $destination, array $options = []): PromiseInterface
@@ -146,7 +147,7 @@ class AsyncHttp
     /**
      * Allows setting a custom HttpHandler instance, primarily for mocking during tests.
      *
-     * @param HttpHandler $handler The custom handler instance.
+     * @param  HttpHandler  $handler  The custom handler instance.
      */
     public static function setInstance(HttpHandler $handler): void
     {
@@ -156,8 +157,8 @@ class AsyncHttp
     /**
      * Magic method to handle dynamic static calls and proxy them to the handler instance.
      *
-     * @param string $method The method name.
-     * @param array $arguments The arguments to pass to the method.
+     * @param  string  $method  The method name.
+     * @param  array  $arguments  The arguments to pass to the method.
      * @return mixed The result of the proxied method call.
      */
     public static function __callStatic(string $method, array $arguments)

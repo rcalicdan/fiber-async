@@ -29,7 +29,7 @@ interface MessageInterface
      *
      * The version string MUST contain only the HTTP version number (e.g., "1.1", "1.0").
      *
-     * @param string $version HTTP protocol version.
+     * @param  string  $version  HTTP protocol version.
      * @return static A new instance with the specified protocol version.
      */
     public function withProtocolVersion(string $version): MessageInterface;
@@ -47,10 +47,10 @@ interface MessageInterface
     /**
      * Checks if a header exists by the given case-insensitive name.
      *
-     * @param string $name Case-insensitive header field name.
+     * @param  string  $name  Case-insensitive header field name.
      * @return bool Returns true if any header names match the given header
-     *     name using a case-insensitive string comparison. Returns false if
-     *     no matching header name is found in the message.
+     *              name using a case-insensitive string comparison. Returns false if
+     *              no matching header name is found in the message.
      */
     public function hasHeader(string $name): bool;
 
@@ -63,9 +63,9 @@ interface MessageInterface
      * If the header does not appear in the message, this method MUST return an
      * empty array.
      *
-     * @param string $name Case-insensitive header field name.
+     * @param  string  $name  Case-insensitive header field name.
      * @return string[] An array of string values as provided for the given
-     *    header. If the header does not exist, an empty array MUST be returned.
+     *                  header. If the header does not exist, an empty array MUST be returned.
      */
     public function getHeader(string $name): array;
 
@@ -83,10 +83,10 @@ interface MessageInterface
      * If the header does not appear in the message, this method MUST return
      * an empty string.
      *
-     * @param string $name Case-insensitive header field name.
+     * @param  string  $name  Case-insensitive header field name.
      * @return string A string of values as provided for the given header
-     *    concatenated together using a comma. If the header does not exist,
-     *    an empty string MUST be returned.
+     *                concatenated together using a comma. If the header does not exist,
+     *                an empty string MUST be returned.
      */
     public function getHeaderLine(string $name): string;
 
@@ -96,10 +96,10 @@ interface MessageInterface
      * While header names are case-insensitive, the casing of the header will
      * be preserved by this function, and returned from getHeaders().
      *
-     * @param string $name Case-insensitive header field name.
-     * @param string|string[] $value Header value(s).
+     * @param  string  $name  Case-insensitive header field name.
+     * @param  string|string[]  $value  Header value(s).
      * @return static A new instance with the provided header, replacing any
-     *     existing values of that header.
+     *                existing values of that header.
      */
     public function withHeader(string $name, $value): MessageInterface;
 
@@ -110,8 +110,8 @@ interface MessageInterface
      * value(s) will be appended to the existing list. If the header did not
      * exist previously, it will be added.
      *
-     * @param string $name Case-insensitive header field name to add.
-     * @param string|string[] $value Header value(s).
+     * @param  string  $name  Case-insensitive header field name to add.
+     * @param  string|string[]  $value  Header value(s).
      * @return static A new instance with the specified header appended.
      */
     public function withAddedHeader(string $name, $value): MessageInterface;
@@ -121,7 +121,7 @@ interface MessageInterface
      *
      * Header resolution MUST be case-insensitive.
      *
-     * @param string $name Case-insensitive header field name to remove.
+     * @param  string  $name  Case-insensitive header field name to remove.
      * @return static A new instance without the specified header.
      */
     public function withoutHeader(string $name): MessageInterface;
@@ -138,8 +138,9 @@ interface MessageInterface
      *
      * The body MUST be a StreamInterface object.
      *
-     * @param StreamInterface $body Body.
+     * @param  StreamInterface  $body  Body.
      * @return static A new instance with the specified body.
+     *
      * @throws \InvalidArgumentException When the body is not valid.
      */
     public function withBody(StreamInterface $body): MessageInterface;

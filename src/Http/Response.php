@@ -81,9 +81,9 @@ class Response extends Message implements ResponseInterface
     /**
      * Initializes a new Response instance.
      *
-     * @param string|StreamInterface $body The response body. Can be a string or a StreamInterface object.
-     * @param int $status The HTTP status code.
-     * @param array<string, string|string[]> $headers An associative array of response headers.
+     * @param  string|StreamInterface  $body  The response body. Can be a string or a StreamInterface object.
+     * @param  int  $status  The HTTP status code.
+     * @param  array<string, string|string[]>  $headers  An associative array of response headers.
      */
     public function __construct($body = 'php://memory', int $status = 200, array $headers = [])
     {
@@ -126,6 +126,7 @@ class Response extends Message implements ResponseInterface
 
     /**
      * {@inheritdoc}
+     *
      * @throws \InvalidArgumentException For invalid status code arguments.
      */
     public function withStatus(int $code, string $reasonPhrase = ''): ResponseInterface
@@ -220,7 +221,7 @@ class Response extends Message implements ResponseInterface
     /**
      * Get a single response header by name.
      *
-     * @param string $name The case-insensitive header name.
+     * @param  string  $name  The case-insensitive header name.
      * @return string|null The header value, or null if the header does not exist.
      */
     public function header(string $name): ?string
@@ -257,7 +258,7 @@ class Response extends Message implements ResponseInterface
      */
     public function failed(): bool
     {
-        return !$this->successful();
+        return ! $this->successful();
     }
 
     /**

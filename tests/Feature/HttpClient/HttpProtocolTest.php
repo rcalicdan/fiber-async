@@ -20,9 +20,9 @@ class HttpProtocolTest extends HttpHandler
     {
         $multiHandle = curl_multi_init();
         $ch = curl_init();
-        
+
         $curlOptions[CURLOPT_HEADER] = true;
-        
+
         curl_setopt_array($ch, $curlOptions);
         curl_multi_add_handle($multiHandle, $ch);
 
@@ -37,17 +37,17 @@ class HttpProtocolTest extends HttpHandler
                     $mrc = curl_multi_exec($multiHandle, $active);
                 } while ($mrc == CURLM_CALL_MULTI_PERFORM);
             } else {
-                usleep(100); 
+                usleep(100);
             }
         }
-        
+
         $info = curl_multi_info_read($multiHandle);
         $handle = $info['handle'];
         $fullResponse = curl_multi_getcontent($handle);
         $httpCode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
-        $protocol = curl_getinfo($handle, CURLINFO_HTTP_VERSION); 
+        $protocol = curl_getinfo($handle, CURLINFO_HTTP_VERSION);
         $headerSize = curl_getinfo($handle, CURLINFO_HEADER_SIZE);
-        
+
         $headerStr = substr($fullResponse, 0, $headerSize);
         $body = substr($fullResponse, $headerSize);
 
@@ -55,33 +55,31 @@ class HttpProtocolTest extends HttpHandler
         $headerLines = explode("\r\n", trim($headerStr));
         foreach ($headerLines as $line) {
             if (strpos($line, ': ') !== false) {
-                list($key, $value) = explode(': ', $line, 2);
+                [$key, $value] = explode(': ', $line, 2);
                 $headers[$key] = $value;
             }
         }
-        
+
         curl_multi_remove_handle($multiHandle, $handle);
         curl_multi_close($multiHandle);
-        
-        return resolve((object)[
+
+        return resolve((object) [
             'response' => new Response($body, $httpCode, $headers),
-            'protocol' => $protocol
+            'protocol' => $protocol,
         ]);
     }
 }
-
 
 /**
  * Helper function to set up our custom TestHttpHandler for each test.
  */
 function setupTestHandler()
 {
-    AsyncHttp::setInstance(new HttpProtocolTest());
+    AsyncHttp::setInstance(new HttpProtocolTest);
 }
 
-
 beforeEach(function () {
-    resetEventLoop(); 
+    resetEventLoop();
     AsyncHttp::reset();
 });
 
@@ -97,7 +95,7 @@ describe('HTTP Protocol Negotiation', function () {
                     ->get('https://httpbin.org/get')
             );
         });
-        
+
         // cURL constant for HTTP/1.1 is 2
         expect($result->protocol)->toBe(CURL_HTTP_VERSION_1_1);
         expect($result->response->ok())->toBeTrue();
@@ -105,7 +103,7 @@ describe('HTTP Protocol Negotiation', function () {
 
     test('performs a request using HTTP/2 when supported', function () {
         $curl_version = curl_version();
-        if (!($curl_version['features'] & CURL_VERSION_HTTP2)) {
+        if (! ($curl_version['features'] & CURL_VERSION_HTTP2)) {
             test()->markTestSkipped('HTTP/2 is not supported in this cURL environment.');
         }
 
@@ -126,7 +124,7 @@ describe('HTTP Protocol Negotiation', function () {
 
     test('gracefully falls back when HTTP/3 is requested but not supported', function () {
         setupTestHandler();
-        
+
         $result = run(function () {
             return await(
                 http()
@@ -134,14 +132,14 @@ describe('HTTP Protocol Negotiation', function () {
                     ->get('https://www.cloudflare.com')
             );
         });
-        
+
         expect($result->response->ok())->toBeTrue();
-        
+
         // Prove it did NOT use HTTP/3 (since it's not supported)
         if (defined('CURL_HTTP_VERSION_3')) {
-             expect($result->protocol)->not->toBe(CURL_HTTP_VERSION_3);
+            expect($result->protocol)->not->toBe(CURL_HTTP_VERSION_3);
         }
-       
+
         // Prove it fell back to a working protocol
         expect($result->protocol)->toBeIn([CURL_HTTP_VERSION_1_1, CURL_HTTP_VERSION_2]);
     });

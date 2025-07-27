@@ -14,13 +14,13 @@ class RetryConfig
     /**
      * Initializes a new retry configuration instance.
      *
-     * @param int $maxRetries The maximum number of times to retry a failed request.
-     * @param float $baseDelay The initial delay in seconds before the first retry.
-     * @param float $maxDelay The absolute maximum delay in seconds between retries.
-     * @param float $backoffMultiplier The multiplier for exponential backoff (e.g., 2.0 doubles the delay each time).
-     * @param bool $jitter Whether to apply a random jitter to the delay to prevent thundering herd issues.
-     * @param int[] $retryableStatusCodes A list of HTTP status codes that should trigger a retry.
-     * @param string[] $retryableExceptions A list of substrings found in error messages that should trigger a retry.
+     * @param  int  $maxRetries  The maximum number of times to retry a failed request.
+     * @param  float  $baseDelay  The initial delay in seconds before the first retry.
+     * @param  float  $maxDelay  The absolute maximum delay in seconds between retries.
+     * @param  float  $backoffMultiplier  The multiplier for exponential backoff (e.g., 2.0 doubles the delay each time).
+     * @param  bool  $jitter  Whether to apply a random jitter to the delay to prevent thundering herd issues.
+     * @param  int[]  $retryableStatusCodes  A list of HTTP status codes that should trigger a retry.
+     * @param  string[]  $retryableExceptions  A list of substrings found in error messages that should trigger a retry.
      */
     public function __construct(
         public readonly int $maxRetries = 3,
@@ -35,9 +35,9 @@ class RetryConfig
     /**
      * Determines if a retry should be attempted based on the current state.
      *
-     * @param int $attempt The current attempt number (e.g., 1 for the first retry).
-     * @param int|null $statusCode The HTTP status code of the failed response, if available.
-     * @param string|null $error The error message from the failed request, if available.
+     * @param  int  $attempt  The current attempt number (e.g., 1 for the first retry).
+     * @param  int|null  $statusCode  The HTTP status code of the failed response, if available.
+     * @param  string|null  $error  The error message from the failed request, if available.
      * @return bool True if the request should be retried, false otherwise.
      */
     public function shouldRetry(int $attempt, ?int $statusCode = null, ?string $error = null): bool
@@ -62,7 +62,7 @@ class RetryConfig
      *
      * Implements an exponential backoff strategy with optional jitter.
      *
-     * @param int $attempt The current attempt number.
+     * @param  int  $attempt  The current attempt number.
      * @return float The calculated delay in seconds.
      */
     public function getDelay(int $attempt): float
@@ -83,7 +83,7 @@ class RetryConfig
     /**
      * Checks if an error message matches any of the retryable exception strings.
      *
-     * @param string $error The error message to check.
+     * @param  string  $error  The error message to check.
      * @return bool True if the error is considered retryable.
      */
     private function isRetryableError(string $error): bool
