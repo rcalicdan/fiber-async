@@ -35,6 +35,7 @@ class AsyncHttp
         if (self::$instance === null) {
             self::$instance = new HttpHandler;
         }
+
         return self::$instance;
     }
 
@@ -48,6 +49,7 @@ class AsyncHttp
 
     /**
      * Quick GET request
+     *
      * @return PromiseInterface<Response>
      */
     public static function get(string $url, array $query = []): PromiseInterface
@@ -57,6 +59,7 @@ class AsyncHttp
 
     /**
      * Quick POST request with JSON data
+     *
      * @return PromiseInterface<Response>
      */
     public static function post(string $url, array $data = []): PromiseInterface
@@ -66,6 +69,7 @@ class AsyncHttp
 
     /**
      * Quick PUT request
+     *
      * @return PromiseInterface<Response>
      */
     public static function put(string $url, array $data = []): PromiseInterface
@@ -75,6 +79,7 @@ class AsyncHttp
 
     /**
      * Quick DELETE request
+     *
      * @return PromiseInterface<Response>
      */
     public static function delete(string $url): PromiseInterface
@@ -84,6 +89,7 @@ class AsyncHttp
 
     /**
      * Enhanced fetch method
+     *
      * @return PromiseInterface<Response>
      */
     public static function fetch(string $url, array $options = []): PromiseInterface
@@ -93,6 +99,7 @@ class AsyncHttp
 
     /**
      * Stream a response with optional chunk handling
+     *
      * @return PromiseInterface<StreamingResponse>
      */
     public static function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
@@ -102,6 +109,7 @@ class AsyncHttp
 
     /**
      * Download a file
+     *
      * @return PromiseInterface<array>
      */
     public static function download(string $url, string $destination, array $options = []): PromiseInterface

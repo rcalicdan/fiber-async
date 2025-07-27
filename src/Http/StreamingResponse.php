@@ -46,7 +46,7 @@ class StreamingResponse extends Response
     public function saveToFile(string $path): bool
     {
         $file = fopen($path, 'wb');
-        if (!$file) {
+        if (! $file) {
             return false;
         }
 
@@ -55,7 +55,7 @@ class StreamingResponse extends Response
                 $this->stream->rewind();
             }
 
-            while (!$this->stream->eof()) {
+            while (! $this->stream->eof()) {
                 $chunk = $this->stream->read(8192);
                 if ($chunk === '') {
                     break;
@@ -75,7 +75,7 @@ class StreamingResponse extends Response
             return $this->saveToFile($destination);
         }
 
-        if (!is_resource($destination)) {
+        if (! is_resource($destination)) {
             return false;
         }
 
@@ -84,7 +84,7 @@ class StreamingResponse extends Response
                 $this->stream->rewind();
             }
 
-            while (!$this->stream->eof()) {
+            while (! $this->stream->eof()) {
                 $chunk = $this->stream->read(8192);
                 if ($chunk === '') {
                     break;

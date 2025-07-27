@@ -25,7 +25,7 @@ final readonly class HttpResponseHandler
                 $value = trim($parts[1]);
 
                 if (isset($parsedHeaders[$name])) {
-                    if (!is_array($parsedHeaders[$name])) {
+                    if (! is_array($parsedHeaders[$name])) {
                         $parsedHeaders[$name] = [$parsedHeaders[$name]];
                     }
                     $parsedHeaders[$name][] = $value;
@@ -66,6 +66,7 @@ final readonly class HttpResponseHandler
                 $processed = true;
             }
         }
+
         return $processed;
     }
 }

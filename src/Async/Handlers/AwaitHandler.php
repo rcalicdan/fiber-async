@@ -34,7 +34,8 @@ final readonly class AwaitHandler
      * If the Promise rejects, throws the rejection reason as an exception.
      *
      * @template T The type of the resolved value of the promise.
-     * @param PromiseInterface<T> $promise The promise to await.
+     *
+     * @param  PromiseInterface<T>  $promise  The promise to await.
      * @return T The resolved value of the promise.
      *
      * @throws Exception|Throwable If the Promise is rejected

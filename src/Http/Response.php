@@ -75,7 +75,7 @@ class Response extends Message implements ResponseInterface
         $this->statusCode = $status;
         $this->reasonPhrase = self::PHRASES[$status] ?? 'Unknown Status Code';
 
-        if (!($body instanceof StreamInterface)) {
+        if (! ($body instanceof StreamInterface)) {
             if (is_string($body)) {
                 $resource = fopen('php://temp', 'r+');
                 if ($body !== '') {
@@ -154,12 +154,14 @@ class Response extends Message implements ResponseInterface
         foreach ($this->headers as $name => $values) {
             $headers[strtolower($name)] = is_array($values) ? implode(', ', $values) : $values;
         }
+
         return $headers;
     }
 
     public function header(string $name): ?string
     {
         $header = $this->getHeaderLine($name);
+
         return $header !== '' ? $header : null;
     }
 
@@ -175,7 +177,7 @@ class Response extends Message implements ResponseInterface
 
     public function failed(): bool
     {
-        return !$this->successful();
+        return ! $this->successful();
     }
 
     public function clientError(): bool

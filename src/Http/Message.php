@@ -7,7 +7,7 @@ use Rcalicdan\FiberAsync\Http\Interfaces\StreamInterface;
 
 abstract class Message implements MessageInterface
 {
-    /** 
+    /**
      * @var string The HTTP protocol version.
      */
     protected string $protocol = '1.1';
@@ -40,6 +40,7 @@ abstract class Message implements MessageInterface
 
         $new = clone $this;
         $new->protocol = $version;
+
         return $new;
     }
 
@@ -65,11 +66,12 @@ abstract class Message implements MessageInterface
     public function getHeader(string $name): array
     {
         $header = strtolower($name);
-        if (!isset($this->headerNames[$header])) {
+        if (! isset($this->headerNames[$header])) {
             return [];
         }
 
         $header = $this->headerNames[$header];
+
         return $this->headers[$header];
     }
 
@@ -83,7 +85,8 @@ abstract class Message implements MessageInterface
 
     /**
      * {@inheritdoc}
-     * @param string|string[] $value
+     *
+     * @param  string|string[]  $value
      */
     public function withHeader(string $name, $value): MessageInterface
     {
@@ -102,11 +105,12 @@ abstract class Message implements MessageInterface
 
     /**
      * {@inheritdoc}
-     * @param string|string[] $value
+     *
+     * @param  string|string[]  $value
      */
     public function withAddedHeader(string $name, $value): MessageInterface
     {
-        if (!$this->hasHeader($name)) {
+        if (! $this->hasHeader($name)) {
             return $this->withHeader($name, $value);
         }
 
@@ -123,7 +127,7 @@ abstract class Message implements MessageInterface
     public function withoutHeader(string $name): MessageInterface
     {
         $normalized = strtolower($name);
-        if (!isset($this->headerNames[$normalized])) {
+        if (! isset($this->headerNames[$normalized])) {
             return $this;
         }
 
@@ -153,14 +157,14 @@ abstract class Message implements MessageInterface
 
         $new = clone $this;
         $new->body = $body;
+
         return $new;
     }
 
     /**
      * Set headers from an array.
      *
-     * @param array<string, string|string[]> $headers
-     * @return void
+     * @param  array<string, string|string[]>  $headers
      */
     protected function setHeaders(array $headers): void
     {
@@ -186,13 +190,14 @@ abstract class Message implements MessageInterface
     /**
      * Normalize a header value to an array of strings.
      *
-     * @param mixed $value
+     * @param  mixed  $value
      * @return string[]
+     *
      * @throws \InvalidArgumentException
      */
     private function normalizeHeaderValue($value): array
     {
-        if (!is_array($value)) {
+        if (! is_array($value)) {
             return [trim((string) $value)];
         }
 

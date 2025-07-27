@@ -2,7 +2,6 @@
 
 namespace Rcalicdan\FiberAsync\Http\Handlers;
 
-use Exception;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Http\Exceptions\HttpException;
 use Rcalicdan\FiberAsync\Http\Request;
@@ -50,12 +49,14 @@ final readonly class HttpHandler
     public function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
+
         return $this->streamingHandler->streamRequest($url, $curlOptions, $onChunk);
     }
 
     public function download(string $url, string $destination, array $options = []): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
+
         return $this->streamingHandler->downloadFile($url, $destination, $curlOptions);
     }
 
@@ -66,15 +67,17 @@ final readonly class HttpHandler
             fwrite($resource, $content);
             rewind($resource);
         }
+
         return new Stream($resource);
     }
 
     public function createStreamFromFile(string $path, string $mode = 'rb'): Stream
     {
         $resource = fopen($path, $mode);
-        if (!$resource) {
+        if (! $resource) {
             throw new RuntimeException("Cannot open file: {$path}");
         }
+
         return new Stream($resource, $path);
     }
 
@@ -97,12 +100,14 @@ final readonly class HttpHandler
                 EventLoop::getInstance()->cancelHttpRequest($requestId);
             }
         });
+
         return $promise;
     }
 
     public function fetch(string $url, array $options = []): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
+
         return $this->sendRequest($url, $curlOptions);
     }
 
@@ -126,12 +131,13 @@ final readonly class HttpHandler
                     if ($shouldRetry) {
                         $delay = $retryConfig->getDelay($attempt);
                         EventLoop::getInstance()->addTimer($delay, $executeRequest);
+
                         return;
                     }
 
                     if ($error) {
                         $promise->reject(new HttpException("HTTP Request failed after {$attempt} attempts: {$error}"));
-                    } else if ($httpCode !== null && in_array($httpCode, $retryConfig->retryableStatusCodes)) {
+                    } elseif ($httpCode !== null && in_array($httpCode, $retryConfig->retryableStatusCodes)) {
                         $promise->reject(new HttpException("HTTP Request failed with status {$httpCode} after {$attempt} attempts."));
                     } else {
                         $promise->resolve(new Response($response, $httpCode, $headers));
@@ -145,6 +151,7 @@ final readonly class HttpHandler
                 EventLoop::getInstance()->cancelHttpRequest($requestId);
             }
         });
+
         return $promise;
     }
 
@@ -193,6 +200,7 @@ final readonly class HttpHandler
         if (isset($options['user_agent'])) {
             $curlOptions[CURLOPT_USERAGENT] = $options['user_agent'];
         }
+
         return $curlOptions;
     }
 
@@ -203,6 +211,7 @@ final readonly class HttpHandler
                 return true;
             }
         }
+
         return false;
     }
 }

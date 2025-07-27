@@ -18,7 +18,7 @@ describe('HTTP Client Streaming and Downloads', function () {
                 function (string $chunk) use (&$chunkCount, &$fullContent, &$lines) {
                     $chunkCount++;
                     $fullContent .= $chunk;
-                    
+
                     // Process potential multiple lines in a single chunk
                     $receivedLines = explode("\n", trim($chunk));
                     foreach ($receivedLines as $line) {
@@ -30,9 +30,9 @@ describe('HTTP Client Streaming and Downloads', function () {
             ));
         });
 
-        expect($chunkCount)->toBeGreaterThanOrEqual(1); 
-        expect($lines)->toHaveCount(5); 
-        expect($lines[0])->toHaveKeys(['id', 'url', 'args', 'headers']); 
+        expect($chunkCount)->toBeGreaterThanOrEqual(1);
+        expect($lines)->toHaveCount(5);
+        expect($lines[0])->toHaveKeys(['id', 'url', 'args', 'headers']);
         expect($response->body())->toEqual($fullContent);
     });
 
@@ -40,7 +40,7 @@ describe('HTTP Client Streaming and Downloads', function () {
         $destination = tempnam(sys_get_temp_dir(), 'download_test');
         $imageUrl = 'https://httpbin.org/image/png';
 
-        $result = run(fn() => await(http_download($imageUrl, $destination)));
+        $result = run(fn () => await(http_download($imageUrl, $destination)));
 
         expect($result['file'])->toBe($destination);
         expect($result['status'])->toBe(200);

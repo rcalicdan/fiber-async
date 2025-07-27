@@ -19,19 +19,19 @@ class Stream implements StreamInterface
             'r' => true, 'w+' => true, 'r+' => true, 'x+' => true, 'c+' => true,
             'rb' => true, 'w+b' => true, 'r+b' => true, 'x+b' => true,
             'c+b' => true, 'rt' => true, 'w+t' => true, 'r+t' => true,
-            'x+t' => true, 'c+t' => true, 'a+' => true
+            'x+t' => true, 'c+t' => true, 'a+' => true,
         ],
         'write' => [
             'w' => true, 'w+' => true, 'rw' => true, 'r+' => true, 'x+' => true,
             'c+' => true, 'wb' => true, 'w+b' => true, 'r+b' => true,
             'x+b' => true, 'c+b' => true, 'w+t' => true, 'r+t' => true,
-            'x+t' => true, 'c+t' => true, 'a' => true, 'a+' => true
-        ]
+            'x+t' => true, 'c+t' => true, 'a' => true, 'a+' => true,
+        ],
     ];
 
     public function __construct($resource, ?string $uri = null)
     {
-        if (!is_resource($resource)) {
+        if (! is_resource($resource)) {
             throw new RuntimeException('Stream must be a resource');
         }
 
@@ -46,7 +46,7 @@ class Stream implements StreamInterface
 
     public function __toString(): string
     {
-        if (!$this->isReadable()) {
+        if (! $this->isReadable()) {
             return '';
         }
 
@@ -54,6 +54,7 @@ class Stream implements StreamInterface
             if ($this->isSeekable()) {
                 $this->rewind();
             }
+
             return $this->getContents();
         } catch (\Throwable $e) {
             return '';
@@ -70,7 +71,7 @@ class Stream implements StreamInterface
 
     public function detach()
     {
-        if (!is_resource($this->resource)) {
+        if (! is_resource($this->resource)) {
             return null;
         }
 
@@ -91,7 +92,7 @@ class Stream implements StreamInterface
             return $this->size;
         }
 
-        if (!is_resource($this->resource)) {
+        if (! is_resource($this->resource)) {
             return null;
         }
 
@@ -102,6 +103,7 @@ class Stream implements StreamInterface
         $stats = fstat($this->resource);
         if (is_array($stats) && isset($stats['size'])) {
             $this->size = $stats['size'];
+
             return $this->size;
         }
 
@@ -110,7 +112,7 @@ class Stream implements StreamInterface
 
     public function tell(): int
     {
-        if (!is_resource($this->resource)) {
+        if (! is_resource($this->resource)) {
             throw new RuntimeException('Stream is detached');
         }
 
@@ -124,7 +126,7 @@ class Stream implements StreamInterface
 
     public function eof(): bool
     {
-        if (!is_resource($this->resource)) {
+        if (! is_resource($this->resource)) {
             return true;
         }
 
@@ -138,12 +140,12 @@ class Stream implements StreamInterface
 
     public function seek(int $offset, int $whence = SEEK_SET): void
     {
-        if (!$this->isSeekable()) {
+        if (! $this->isSeekable()) {
             throw new RuntimeException('Stream is not seekable');
         }
 
         if (fseek($this->resource, $offset, $whence) === -1) {
-            throw new RuntimeException('Unable to seek to stream position ' . $offset . ' with whence ' . var_export($whence, true));
+            throw new RuntimeException('Unable to seek to stream position '.$offset.' with whence '.var_export($whence, true));
         }
     }
 
@@ -159,7 +161,7 @@ class Stream implements StreamInterface
 
     public function write(string $string): int
     {
-        if (!$this->isWritable()) {
+        if (! $this->isWritable()) {
             throw new RuntimeException('Cannot write to a non-writable stream');
         }
 
@@ -180,7 +182,7 @@ class Stream implements StreamInterface
 
     public function read(int $length): string
     {
-        if (!$this->isReadable()) {
+        if (! $this->isReadable()) {
             throw new RuntimeException('Cannot read from non-readable stream');
         }
 
@@ -202,7 +204,7 @@ class Stream implements StreamInterface
 
     public function getContents(): string
     {
-        if (!$this->isReadable()) {
+        if (! $this->isReadable()) {
             throw new RuntimeException('Cannot read from non-readable stream');
         }
 
@@ -216,7 +218,7 @@ class Stream implements StreamInterface
 
     public function getMetadata(?string $key = null)
     {
-        if (!is_resource($this->resource)) {
+        if (! is_resource($this->resource)) {
             return $key ? null : [];
         }
 

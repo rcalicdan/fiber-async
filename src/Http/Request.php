@@ -2,9 +2,9 @@
 
 namespace Rcalicdan\FiberAsync\Http;
 
+use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Interfaces\RequestInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\UriInterface;
-use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 class Request extends Message implements RequestInterface
@@ -34,7 +34,7 @@ class Request extends Message implements RequestInterface
 
         if ($body !== '' && $body !== null) {
             $this->body = $body instanceof Stream ? $body : new Stream(fopen('php://temp', 'r+'), null);
-            if (!($body instanceof Stream)) {
+            if (! ($body instanceof Stream)) {
                 $this->body->write($body);
                 $this->body->rewind();
             }
@@ -54,7 +54,7 @@ class Request extends Message implements RequestInterface
             $target = '/';
         }
         if ($this->uri->getQuery() !== '') {
-            $target .= '?' . $this->uri->getQuery();
+            $target .= '?'.$this->uri->getQuery();
         }
 
         return $target;
@@ -68,6 +68,7 @@ class Request extends Message implements RequestInterface
 
         $new = clone $this;
         $new->requestTarget = $requestTarget;
+
         return $new;
     }
 
@@ -85,6 +86,7 @@ class Request extends Message implements RequestInterface
 
         $new = clone $this;
         $new->method = $method;
+
         return $new;
     }
 
@@ -102,7 +104,7 @@ class Request extends Message implements RequestInterface
         $new = clone $this;
         $new->uri = $uri;
 
-        if (!$preserveHost || !isset($this->headerNames['host'])) {
+        if (! $preserveHost || ! isset($this->headerNames['host'])) {
             $new->updateHostFromUri();
         }
 
@@ -114,12 +116,14 @@ class Request extends Message implements RequestInterface
         foreach ($headers as $name => $value) {
             $this->header($name, $value);
         }
+
         return $this;
     }
 
     public function header(string $name, string $value): self
     {
         $this->headers[strtolower($name)] = $value;
+
         return $this;
     }
 
@@ -141,18 +145,21 @@ class Request extends Message implements RequestInterface
     public function basicAuth(string $username, string $password): self
     {
         $this->auth = ['basic', $username, $password];
+
         return $this;
     }
 
     public function timeout(int $seconds): self
     {
         $this->timeout = $seconds;
+
         return $this;
     }
 
     public function connectTimeout(int $seconds): self
     {
         $this->connectTimeout = $seconds;
+
         return $this;
     }
 
@@ -160,6 +167,7 @@ class Request extends Message implements RequestInterface
     {
         $this->followRedirects = $follow;
         $this->maxRedirects = $max;
+
         return $this;
     }
 
@@ -170,30 +178,35 @@ class Request extends Message implements RequestInterface
             baseDelay: $baseDelay,
             backoffMultiplier: $backoffMultiplier
         );
+
         return $this;
     }
 
     public function retryWith(RetryConfig $config): self
     {
         $this->retryConfig = $config;
+
         return $this;
     }
 
     public function noRetry(): self
     {
         $this->retryConfig = null;
+
         return $this;
     }
 
     public function verifySSL(bool $verify = true): self
     {
         $this->verifySSL = $verify;
+
         return $this;
     }
 
     public function userAgent(string $userAgent): self
     {
         $this->userAgent = $userAgent;
+
         return $this;
     }
 
@@ -202,6 +215,7 @@ class Request extends Message implements RequestInterface
         $this->body = new Stream(fopen('php://temp', 'r+'), null);
         $this->body->write($content);
         $this->body->rewind();
+
         return $this;
     }
 
@@ -209,6 +223,7 @@ class Request extends Message implements RequestInterface
     {
         $this->body(json_encode($data));
         $this->contentType('application/json');
+
         return $this;
     }
 
@@ -216,26 +231,30 @@ class Request extends Message implements RequestInterface
     {
         $this->body(http_build_query($data));
         $this->contentType('application/x-www-form-urlencoded');
+
         return $this;
     }
-    
+
     public function multipart(array $data): self
     {
         $this->body = new Stream(fopen('php://temp', 'r+'), null);
         $this->options['multipart'] = $data;
         unset($this->headers['content-type']);
+
         return $this;
     }
 
     public function stream(string $url, ?callable $onChunk = null): PromiseInterface
     {
         $options = $this->buildCurlOptions('GET', $url);
+
         return $this->handler->stream($url, $options, $onChunk);
     }
 
     public function download(string $url, string $destination): PromiseInterface
     {
         $options = $this->buildCurlOptions('GET', $url);
+
         return $this->handler->download($url, $destination, $options);
     }
 
@@ -246,30 +265,34 @@ class Request extends Message implements RequestInterface
         }
         $options = $this->buildCurlOptions('POST', $url);
         $options[CURLOPT_HEADER] = false;
+
         return $this->handler->stream($url, $options, $onChunk);
     }
 
     public function get(string $url, array $query = []): PromiseInterface
     {
         if ($query) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
         }
+
         return $this->send('GET', $url);
     }
 
     public function post(string $url, array $data = []): PromiseInterface
     {
-        if ($data && !$this->body->getSize() && !isset($this->options['multipart'])) {
+        if ($data && ! $this->body->getSize() && ! isset($this->options['multipart'])) {
             $this->json($data);
         }
+
         return $this->send('POST', $url);
     }
 
     public function put(string $url, array $data = []): PromiseInterface
     {
-        if ($data && !$this->body->getSize() && !isset($this->options['multipart'])) {
+        if ($data && ! $this->body->getSize() && ! isset($this->options['multipart'])) {
             $this->json($data);
         }
+
         return $this->send('PUT', $url);
     }
 
@@ -284,6 +307,7 @@ class Request extends Message implements RequestInterface
         if ($this->retryConfig) {
             return $this->handler->fetchWithRetry($url, $options, $this->retryConfig);
         }
+
         return $this->handler->sendRequest($url, $options);
     }
 
@@ -317,6 +341,7 @@ class Request extends Message implements RequestInterface
                 $options[$key] = $value;
             }
         }
+
         return $options;
     }
 
@@ -359,7 +384,7 @@ class Request extends Message implements RequestInterface
         }
 
         if (($port = $this->uri->getPort()) !== null) {
-            $host .= ':' . $port;
+            $host .= ':'.$port;
         }
 
         if (isset($this->headerNames['host'])) {

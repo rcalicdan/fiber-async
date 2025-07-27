@@ -106,7 +106,8 @@ final class Async
      * settles, the fiber is resumed.
      *
      * @template TValue The expected type of the resolved value from the promise.
-     * @param PromiseInterface<TValue> $promise The promise to await.
+     *
+     * @param  PromiseInterface<TValue>  $promise  The promise to await.
      * @return TValue The resolved value of the promise.
      *
      * @throws \Exception If the promise is rejected, this method throws the rejection reason.

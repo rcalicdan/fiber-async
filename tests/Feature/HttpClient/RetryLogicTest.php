@@ -36,18 +36,16 @@ describe('HTTP Client Retry Logic', function () {
         expect($response->ok())->toBeTrue();
     })->skip('This test requires a more advanced httpbin feature that can be unreliable. Keeping for reference.');
 
-
-
     test('gives up after max retries with exponential backoff', function () {
-        $maxRetries = 2; 
-        $baseDelay = 0.2; 
+        $maxRetries = 2;
+        $baseDelay = 0.2;
         $backoffMultiplier = 2.0;
         $e = null;
 
         $start = microtime(true);
 
         try {
-            run(fn() => await(
+            run(fn () => await(
                 http()
                     ->retry($maxRetries, $baseDelay, $backoffMultiplier)
                     ->get('https://httpbin.org/status/503')
@@ -61,16 +59,15 @@ describe('HTTP Client Retry Logic', function () {
         $expectedMinDuration = $baseDelay + ($baseDelay * $backoffMultiplier);
 
         echo "\n\n⏱️ Retry Backoff Test:\n";
-        echo "  • Total duration: " . round($duration, 4) . "s\n";
-        echo "  • Expected min delay: " . round($expectedMinDuration, 4) . "s\n";
+        echo '  • Total duration: '.round($duration, 4)."s\n";
+        echo '  • Expected min delay: '.round($expectedMinDuration, 4)."s\n";
 
         expect($duration)->toBeGreaterThan($expectedMinDuration);
     });
 
-
     test('does not retry on non-retryable client errors like 404', function () {
         $start = microtime(true);
-        $response = run(fn() => await(http()->retry(3, 0.2)->get('https://httpbin.org/status/404')));
+        $response = run(fn () => await(http()->retry(3, 0.2)->get('https://httpbin.org/status/404')));
         $duration = microtime(true) - $start;
 
         expect($response->status())->toBe(404);
@@ -87,7 +84,7 @@ describe('HTTP Client Retry Logic', function () {
         $e = null;
 
         try {
-            run(fn() => await(
+            run(fn () => await(
                 http()
                     ->retryWith($customRetryConfig)
                     ->get('https://httpbin.org/status/418')
@@ -101,7 +98,6 @@ describe('HTTP Client Retry Logic', function () {
         expect($duration)->toBeGreaterThan(0.2);
     });
 
-
     test('retries on a DNS failure exception', function () {
         $maxRetries = 1;
         $baseDelay = 0.1;
@@ -109,7 +105,7 @@ describe('HTTP Client Retry Logic', function () {
         $e = null;
 
         try {
-            run(fn() => await(
+            run(fn () => await(
                 http()
                     ->retry($maxRetries, $baseDelay)
                     ->get('https://this-domain-will-not-resolve-ever.test')
@@ -121,6 +117,6 @@ describe('HTTP Client Retry Logic', function () {
 
         expect(isset($e))->toBeTrue();
         expect($duration)->toBeGreaterThan(0.08);
-        expect($e->getMessage())->toContain("after 2 attempts");
+        expect($e->getMessage())->toContain('after 2 attempts');
     });
 });

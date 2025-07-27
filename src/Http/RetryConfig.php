@@ -37,11 +37,11 @@ class RetryConfig
         $delay = min($delay, $this->maxDelay);
         if ($this->jitter) {
             $jitterRange = $delay * 0.25;
-            $minJitter = (int)(-$jitterRange * 100);
-            $maxJitter = (int)($jitterRange * 100);
+            $minJitter = (int) (-$jitterRange * 100);
+            $maxJitter = (int) ($jitterRange * 100);
             $delay += mt_rand($minJitter, $maxJitter) / 100;
         }
-        
+
         return max(0, $delay);
     }
 
@@ -52,6 +52,7 @@ class RetryConfig
                 return true;
             }
         }
+
         return false;
     }
 }

@@ -52,7 +52,8 @@ if (! function_exists('await')) {
      * a fiber context. Returns the resolved value or throws on rejection.
      *
      * @template T The type of the resolved value of the promise.
-     * @param PromiseInterface<T> $promise The promise to await.
+     *
+     * @param  PromiseInterface<T>  $promise  The promise to await.
      * @return T The resolved value of the promise.
      *
      * @throws Exception If the promise is rejected

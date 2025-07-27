@@ -18,8 +18,9 @@ final readonly class StreamingHandler
         $requestId = null;
 
         $responseStream = fopen('php://temp', 'w+b');
-        if (!$responseStream) {
+        if (! $responseStream) {
             $promise->reject(new HttpStreamException('Failed to create response stream'));
+
             return $promise;
         }
 
@@ -32,6 +33,7 @@ final readonly class StreamingHandler
                 if ($onChunk) {
                     $onChunk($data);
                 }
+
                 return strlen($data);
             },
             CURLOPT_HEADERFUNCTION => function ($ch, $header) use (&$headerAccumulator) {
@@ -39,6 +41,7 @@ final readonly class StreamingHandler
                 if ($trimmedHeader !== '') {
                     $headerAccumulator[] = $trimmedHeader;
                 }
+
                 return strlen($header);
             },
         ]);
@@ -49,6 +52,7 @@ final readonly class StreamingHandler
             function ($error, $response, $httpCode, $headers = []) use ($promise, $responseStream, &$headerAccumulator) {
                 if ($promise->isCancelled()) {
                     fclose($responseStream);
+
                     return;
                 }
 
@@ -81,8 +85,9 @@ final readonly class StreamingHandler
         $requestId = null;
 
         $file = fopen($destination, 'wb');
-        if (!$file) {
+        if (! $file) {
             $promise->reject(new HttpStreamException("Cannot open file for writing: {$destination}"));
+
             return $promise;
         }
 
@@ -96,6 +101,7 @@ final readonly class StreamingHandler
                 if ($promise->isCancelled()) {
                     return 1;
                 }
+
                 return 0;
             },
         ]);
@@ -108,6 +114,7 @@ final readonly class StreamingHandler
 
                 if ($promise->isCancelled()) {
                     unlink($destination);
+
                     return;
                 }
 
