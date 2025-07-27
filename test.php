@@ -1,96 +1,112 @@
 <?php
 
-use Rcalicdan\FiberAsync\Http\Uri;
-
 require 'vendor/autoload.php';
 
-// ======================= TEST CONFIGURATION =======================
-// We define our test targets here. It's easy to add more!
-$testApis = [
-    [
-        'name' => 'PokéAPI (Larger JSON Payloads)',
-        'baseUri' => 'https://pokeapi.co/api/v2',
-        'resourcePathFormat' => '/pokemon/%d', // e.g., /pokemon/1, /pokemon/2
-        'requests' => 25, // Let's use a slightly higher number
-    ],
-    [
-        'name' => 'JSONPlaceholder (Simple JSON Payloads)',
-        'baseUri' => 'https://jsonplaceholder.typicode.com',
-        'resourcePathFormat' => '/todos/%d', // e.g., /todos/1, /todos/2
-        'requests' => 25,
-    ],
-];
-// =================================================================
-
 /**
- * A reusable function to run our concurrent fetch test for a specific HTTP version.
- *
- * @param string $version The protocol version to use ('1.1' or '2.0').
- * @param array $urls The list of UriInterface objects to fetch.
- * @return float The total execution time in seconds.
+ * Helper to recursively delete the default filesystem cache directory to ensure a clean test.
  */
-function runBenchmark(string $version, array $urls): float
+function clearFilesystemCache()
 {
-    echo "--- Testing with HTTP/{$version} ---\n";
-    $startTime = microtime(true);
-
-    $responses = run(function () use ($version, $urls) {
-        $promises = array_map(function (Uri $uri) use ($version) {
-            return http()
-                ->withProtocolVersion($version)
-                ->get((string)$uri);
-        }, $urls);
-
-        return await(all($promises));
-    });
-
-    echo "Received " . count($responses) . " responses successfully.\n";
-
-    $endTime = microtime(true);
-    $duration = $endTime - $startTime;
-    echo "Time taken: " . number_format($duration, 4) . " seconds\n\n";
-    return $duration;
+    $cacheDir = getcwd() . '/cache/http';
+    if (!is_dir($cacheDir)) {
+        return;
+    }
+    echo "Clearing filesystem cache...\n";
+    $files = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($cacheDir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ($files as $fileinfo) {
+        ($fileinfo->isDir() ? 'rmdir' : 'unlink')($fileinfo->getRealPath());
+    }
+    @rmdir($cacheDir);
 }
 
+// --- Test Configuration ---
+const NUM_REQUESTS = 15;
+const BASE_URI = 'https://jsonplaceholder.typicode.com';
 
-// --- Main Execution Loop ---
-foreach ($testApis as $apiConfig) {
-    $line = str_repeat('=', 60);
-    echo "{$line}\n";
-    echo "BENCHMARKING: {$apiConfig['name']}\n";
-    echo "{$line}\n";
+echo "====================================================\n";
+echo "Starting Concurrent HTTP Caching Benchmark...\n";
+echo "Performing " . NUM_REQUESTS . " concurrent requests per run.\n";
+echo "====================================================\n\n";
 
-    echo "Preparing to fetch {$apiConfig['requests']} resources from {$apiConfig['baseUri']}...\n\n";
-
-    // --- Perform a single warm-up request for this specific domain ---
-    echo "--- Performing warm-up request... ---\n";
-    run(fn() => await(http()->get($apiConfig['baseUri'])));
-    echo "Warm-up complete. Starting benchmark.\n\n";
-    sleep(1); // Small pause to let the network settle.
-
-    // --- Generate the URLs for this API test ---
-    $urls = [];
-    for ($i = 1; $i <= $apiConfig['requests']; $i++) {
-        $path = sprintf($apiConfig['resourcePathFormat'], $i);
-        $urls[] = (new Uri($apiConfig['baseUri']))->withPath($path);
-    }
-
-    // --- Run the benchmarks ---
-    // We run HTTP/1.1 first this time to give HTTP/2 the "warm connection" advantage
-    $http2_duration = runBenchmark('2.0', $urls);
-    $http1_duration = runBenchmark('1.1', $urls);
-
-
-    // --- Per-API Summary ---
-    echo "-------------------- Summary for {$apiConfig['name']} --------------------\n";
-    echo "HTTP/1.1 Total Time: " . number_format($http1_duration, 4) . " seconds\n";
-    echo "HTTP/2 Total Time:   " . number_format($http2_duration, 4) . " seconds\n";
-
-    if ($http2_duration < $http1_duration && $http2_duration > 0) {
-        $improvement = ($http1_duration / $http2_duration);
-        echo "Result: HTTP/2 was " . number_format($improvement, 2) . " times faster.\n";
-    } else {
-        echo "Result: No significant performance improvement was observed for this API.\n";
-    }
-    echo "\n\n";
+// --- Generate the list of URLs to fetch ---
+$urls = [];
+for ($i = 1; $i <= NUM_REQUESTS; $i++) {
+    $urls[] = BASE_URI . "/posts/{$i}";
 }
+
+// =================================================================
+// BENCHMARK 1: CONCURRENT REQUESTS WITHOUT CACHING
+// =================================================================
+echo "--- BENCHMARK 1: CONCURRENT REQUESTS WITHOUT CACHING ---\n";
+
+// Run 1a: Cold network requests (DNS, TLS, etc.)
+$start_cold_nocache = microtime(true);
+run(function () use ($urls) {
+    $promises = array_map(function ($url) {
+        // THE FIX: Add timeout and retry logic to make the client resilient.
+        return http()->timeout(10)->retry(3, 0.5)->get($url);
+    }, $urls);
+    await(all($promises));
+});
+$time_cold_nocache = microtime(true) - $start_cold_nocache;
+echo "Cold Run (Network): " . number_format($time_cold_nocache, 4) . " seconds\n";
+
+// Run 1b: Warm network requests (reusing connections)
+$start_warm_nocache = microtime(true);
+run(function () use ($urls) {
+    $promises = array_map(function ($url) {
+        // THE FIX: Also add it here for consistency.
+        return http()->timeout(10)->retry(3, 0.5)->get($url);
+    }, $urls);
+    await(all($promises));
+});
+$time_warm_nocache = microtime(true) - $start_warm_nocache;
+echo "Warm Run (Network): " . number_format($time_warm_nocache, 4) . " seconds\n\n";
+
+
+// =================================================================
+// BENCHMARK 2: CONCURRENT REQUESTS WITH CACHING
+// =================================================================
+echo "--- BENCHMARK 2: CONCURRENT REQUESTS WITH CACHING ---\n";
+clearFilesystemCache();
+
+// Run 2a: Cold network requests (populating the cache)
+$start_cold_cache = microtime(true);
+run(function () use ($urls) {
+    $promises = array_map(function ($url) {
+        // THE FIX: Add it here as well for the cache-populating run.
+        return http()->timeout(10)->retry(3, 0.5)->cache(3600)->get($url);
+    }, $urls);
+    await(all($promises));
+});
+$time_cold_cache = microtime(true) - $start_cold_cache;
+echo "Cold Run (Populating Cache): " . number_format($time_cold_cache, 4) . " seconds\n";
+
+// Run 2b: Warm cache requests (reading from the filesystem)
+$start_warm_cache = microtime(true);
+run(function () use ($urls) {
+    $promises = array_map(fn($url) => http()->cache(3600)->get($url), $urls);
+    await(all($promises));
+});
+$time_warm_cache = microtime(true) - $start_warm_cache;
+echo "Warm Run (Hitting Cache):    " . number_format($time_warm_cache, 4) . " seconds\n\n";
+
+
+// =================================================================
+// FINAL SUMMARY
+// =================================================================
+echo "==================== FINAL SUMMARY ====================\n";
+echo "This compares the 'warm' runs to provide the fairest comparison.\n\n";
+echo "Concurrent performance WITHOUT Caching: " . number_format($time_warm_nocache, 4) . " seconds\n";
+echo "Concurrent performance WITH Caching:    " . number_format($time_warm_cache, 4) . " seconds\n";
+
+if ($time_warm_cache > 0 && $time_warm_nocache > $time_warm_cache) {
+    $improvement = $time_warm_nocache / $time_warm_cache;
+    echo "\nResult: Caching made the concurrent tasks " . number_format($improvement, 1) . " times faster.\n";
+} else {
+    echo "\nResult: No significant performance improvement was observed.\n";
+}
+echo "===============================================\n";

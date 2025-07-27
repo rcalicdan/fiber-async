@@ -1,69 +1,28 @@
 <?php
 
+namespace Tests\Feature\HttpClient;
+
 use Rcalicdan\FiberAsync\Api\AsyncHttp;
-use Rcalicdan\FiberAsync\EventLoop\EventLoop;
+use Rcalicdan\FiberAsync\Http\CacheConfig;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Response;
-use Rcalicdan\FiberAsync\Promise\CancellablePromise;
+use Rcalicdan\FiberAsync\Http\RetryConfig;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
- * A custom, test-only HttpHandler that intercepts the final cURL handle
- * to extract the negotiated HTTP protocol version.
- * 
- * It is marked as readonly to correctly extend the readonly parent HttpHandler.
+ * A custom, test-only HttpHandler that performs a real, but blocking, network
+ * request to accurately determine the negotiated HTTP protocol version from cURL.
+ * This is acceptable for a feature test where we need to inspect low-level details.
  */
-readonly class TestHttpHandler extends HttpHandler
+class HttpProtocolTest extends HttpHandler
 {
-    /**
-     * Overrides the default sendRequest to inject our protocol-sniffing logic.
-     *
-     * @param string $url
-     * @param array $curlOptions
-     * @return PromiseInterface
-     */
-    public function sendRequest(string $url, array $curlOptions): PromiseInterface
+    public function sendRequest(string $url, array $curlOptions, ?CacheConfig $cacheConfig = null, ?RetryConfig $retryConfig = null): PromiseInterface
     {
-        $testPromise = new CancellablePromise();
-        $requestId = null;
-
-        $requestId = EventLoop::getInstance()->addHttpRequest(
-            $url,
-            $curlOptions,
-            function ($error, $responseBody, $httpCode, $headers = []) use ($testPromise, &$requestId, $curlOptions) {
-                if ($testPromise->isCancelled()) {
-                    return;
-                }
-                
-            
-                $tempHandle = curl_init();
-                curl_setopt_array($tempHandle, $curlOptions);
-                curl_exec($tempHandle); 
-                
-                $protocolVersion = curl_getinfo($tempHandle, CURLINFO_HTTP_VERSION);
-                curl_close($tempHandle);
-
-
-                if ($error) {
-                    $testPromise->reject(new \Exception($error));
-                } else {
-                    $testPromise->resolve((object)[
-                        'response' => new Response($responseBody, $httpCode, $headers),
-                        'protocol' => $protocolVersion,
-                    ]);
-                }
-            }
-        );
-        
-        $testPromise->setCancelHandler(function () use (&$requestId) {
-            if ($requestId) {
-                EventLoop::getInstance()->cancelHttpRequest($requestId);
-            }
-        });
-
-        
         $multiHandle = curl_multi_init();
         $ch = curl_init();
+        
+        $curlOptions[CURLOPT_HEADER] = true;
+        
         curl_setopt_array($ch, $curlOptions);
         curl_multi_add_handle($multiHandle, $ch);
 
@@ -78,32 +37,46 @@ readonly class TestHttpHandler extends HttpHandler
                     $mrc = curl_multi_exec($multiHandle, $active);
                 } while ($mrc == CURLM_CALL_MULTI_PERFORM);
             } else {
-                usleep(100); // Prevent busy-waiting
+                usleep(100); 
             }
         }
         
         $info = curl_multi_info_read($multiHandle);
         $handle = $info['handle'];
-        $responseBody = curl_multi_getcontent($handle);
+        $fullResponse = curl_multi_getcontent($handle);
         $httpCode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
-        $protocol = curl_getinfo($handle, CURLINFO_HTTP_VERSION);
+        $protocol = curl_getinfo($handle, CURLINFO_HTTP_VERSION); 
+        $headerSize = curl_getinfo($handle, CURLINFO_HEADER_SIZE);
+        
+        $headerStr = substr($fullResponse, 0, $headerSize);
+        $body = substr($fullResponse, $headerSize);
+
+        $headers = [];
+        $headerLines = explode("\r\n", trim($headerStr));
+        foreach ($headerLines as $line) {
+            if (strpos($line, ': ') !== false) {
+                list($key, $value) = explode(': ', $line, 2);
+                $headers[$key] = $value;
+            }
+        }
         
         curl_multi_remove_handle($multiHandle, $handle);
         curl_multi_close($multiHandle);
         
-        $promise = new CancellablePromise();
-        $promise->resolve((object)['response' => new Response($responseBody, $httpCode, []), 'protocol' => $protocol]);
-        return $promise;
+        return resolve((object)[
+            'response' => new Response($body, $httpCode, $headers),
+            'protocol' => $protocol
+        ]);
     }
 }
 
 
 /**
- * Sets up our custom HttpHandler for testing protocol versions.
+ * Helper function to set up our custom TestHttpHandler for each test.
  */
 function setupTestHandler()
 {
-    AsyncHttp::setInstance(new TestHttpHandler());
+    AsyncHttp::setInstance(new HttpProtocolTest());
 }
 
 
@@ -125,6 +98,7 @@ describe('HTTP Protocol Negotiation', function () {
             );
         });
         
+        // cURL constant for HTTP/1.1 is 2
         expect($result->protocol)->toBe(CURL_HTTP_VERSION_1_1);
         expect($result->response->ok())->toBeTrue();
     });
@@ -145,6 +119,7 @@ describe('HTTP Protocol Negotiation', function () {
             );
         });
 
+        // cURL constant for HTTP/2 is 3
         expect($result->protocol)->toBe(CURL_HTTP_VERSION_2);
         expect($result->response->ok())->toBeTrue();
     });
@@ -162,10 +137,12 @@ describe('HTTP Protocol Negotiation', function () {
         
         expect($result->response->ok())->toBeTrue();
         
+        // Prove it did NOT use HTTP/3 (since it's not supported)
         if (defined('CURL_HTTP_VERSION_3')) {
              expect($result->protocol)->not->toBe(CURL_HTTP_VERSION_3);
         }
        
+        // Prove it fell back to a working protocol
         expect($result->protocol)->toBeIn([CURL_HTTP_VERSION_1_1, CURL_HTTP_VERSION_2]);
     });
 });

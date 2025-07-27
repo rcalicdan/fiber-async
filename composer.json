@@ -24,12 +24,12 @@
         "php": "^8.2",
         "vlucas/phpdotenv": "^5.6",
           "ext-sockets": "*",
-        "rcalicdan/mysql-binary-protocol": "^1.0"
+        "rcalicdan/mysql-binary-protocol": "^1.0",
+        "symfony/cache": "^7.3"
     },
     "require-dev": {
         "laravel/pint": "^1.10",
         "pestphp/pest": "^3.0",
-        "phpstan/phpstan": "^2.1",
         "guzzlehttp/guzzle": "*"
     },
     "autoload-dev": {

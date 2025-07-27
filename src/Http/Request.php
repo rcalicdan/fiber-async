@@ -29,6 +29,7 @@ class Request extends Message implements RequestInterface
     private ?string $userAgent = null;
     private ?array $auth = null;
     private ?RetryConfig $retryConfig = null;
+    private ?CacheConfig $cacheConfig = null;
 
     /**
      * Initializes a new Request builder instance.
@@ -500,10 +501,41 @@ class Request extends Message implements RequestInterface
     }
 
     /**
+     * Enables caching for this request with a specific Time-To-Live.
+     *
+     * This enables a zero-config, file-based cache for the request.
+     * The underlying handler will automatically manage the cache instance.
+     *
+     * @param int $ttlSeconds The number of seconds the response should be cached.
+     * @param bool $respectServerHeaders If true, the server's `Cache-Control: max-age` header will override the provided TTL.
+     * @return self For fluent method chaining.
+     */
+    public function cache(int $ttlSeconds = 3600, bool $respectServerHeaders = true): self
+    {
+        $this->cacheConfig = new CacheConfig($ttlSeconds, $respectServerHeaders);
+        return $this;
+    }
+
+    /**
+     * Enables caching for this request using a custom configuration object.
+     *
+     * This method is for advanced use cases where you need to provide a specific
+     * cache implementation (e.g., Redis, Memcached) or more complex rules.
+     *
+     * @param CacheConfig $config The custom caching configuration object.
+     * @return self For fluent method chaining.
+     */
+    public function cacheWith(CacheConfig $config): self
+    {
+        $this->cacheConfig = $config;
+        return $this;
+    }
+
+    /**
      * Dispatches the configured request.
      *
      * This method builds the final cURL options and sends the request via the
-     * HttpHandler, applying any configured retry logic.
+     * HttpHandler, which will apply caching and/or retry logic as configured.
      *
      * @param string $method The HTTP method (GET, POST, etc.).
      * @param string $url The target URL.
@@ -512,11 +544,8 @@ class Request extends Message implements RequestInterface
     public function send(string $method, string $url): PromiseInterface
     {
         $options = $this->buildCurlOptions($method, $url);
-        if ($this->retryConfig) {
-            return $this->handler->fetchWithRetry($url, $options, $this->retryConfig);
-        }
-
-        return $this->handler->sendRequest($url, $options);
+        
+        return $this->handler->sendRequest($url, $options, $this->cacheConfig, $this->retryConfig);
     }
 
     /**
