@@ -8,11 +8,18 @@ use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
 use Rcalicdan\FiberAsync\Http\Stream;
+use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use RuntimeException;
 
-final readonly class HttpHandler
+/**
+ * Core handler for creating and dispatching asynchronous HTTP requests.
+ *
+ * This class acts as the workhorse for the AsyncHttp Api, translating high-level
+ * requests into low-level operations managed by the event loop.
+ */
+readonly class HttpHandler
 {
     private StreamingHandler $streamingHandler;
 
@@ -21,45 +28,99 @@ final readonly class HttpHandler
         $this->streamingHandler = new StreamingHandler;
     }
 
+    /**
+     * Creates a new fluent HTTP request builder instance.
+     *
+     * @return Request The request builder.
+     */
     public function request(): Request
     {
         return new Request($this);
     }
 
+    /**
+     * Performs a quick, asynchronous GET request.
+     *
+     * @param string $url The target URL.
+     * @param array $query Optional query parameters.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object.
+     */
     public function get(string $url, array $query = []): PromiseInterface
     {
         return $this->request()->get($url, $query);
     }
 
+    /**
+     * Performs a quick, asynchronous POST request with a JSON payload.
+     *
+     * @param string $url The target URL.
+     * @param array $data Data to be JSON-encoded and sent as the request body.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object.
+     */
     public function post(string $url, array $data = []): PromiseInterface
     {
         return $this->request()->post($url, $data);
     }
 
+    /**
+     * Performs a quick, asynchronous PUT request.
+     *
+     * @param string $url The target URL.
+     * @param array $data Data to be JSON-encoded and sent as the request body.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object.
+     */
     public function put(string $url, array $data = []): PromiseInterface
     {
         return $this->request()->put($url, $data);
     }
 
+    /**
+     * Performs a quick, asynchronous DELETE request.
+     *
+     * @param string $url The target URL.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object.
+     */
     public function delete(string $url): PromiseInterface
     {
         return $this->request()->delete($url);
     }
 
+    /**
+     * Streams an HTTP response, processing it in chunks.
+     *
+     * Ideal for large responses that should not be fully loaded into memory.
+     *
+     * @param string $url The URL to stream from.
+     * @param array $options Advanced cURL or request options.
+     * @param callable|null $onChunk An optional callback to execute for each received data chunk. `function(string $chunk): void`
+     * @return PromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse object.
+     */
     public function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
-
         return $this->streamingHandler->streamRequest($url, $curlOptions, $onChunk);
     }
 
+    /**
+     * Asynchronously downloads a file from a URL to a specified destination.
+     *
+     * @param string $url The URL of the file to download.
+     * @param string $destination The local path to save the file.
+     * @param array $options Advanced cURL or request options.
+     * @return PromiseInterface<array{file: string, status: int|null, headers: array}> A promise that resolves with download metadata.
+     */
     public function download(string $url, string $destination, array $options = []): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
-
         return $this->streamingHandler->downloadFile($url, $destination, $curlOptions);
     }
 
+    /**
+     * Creates a new stream from a string.
+     *
+     * @param string $content The initial content of the stream.
+     * @return Stream A new Stream object.
+     */
     public function createStream(string $content = ''): Stream
     {
         $resource = fopen('php://temp', 'w+b');
@@ -67,24 +128,39 @@ final readonly class HttpHandler
             fwrite($resource, $content);
             rewind($resource);
         }
-
         return new Stream($resource);
     }
 
+    /**
+     * Creates a new stream from a file path.
+     *
+     * @param string $path The path to the file.
+     * @param string $mode The mode to open the file with (e.g., 'rb', 'w+b').
+     * @return Stream A new Stream object wrapping the file resource.
+     * @throws RuntimeException if the file cannot be opened.
+     */
     public function createStreamFromFile(string $path, string $mode = 'rb'): Stream
     {
-        $resource = fopen($path, $mode);
+        $resource = @fopen($path, $mode);
         if (! $resource) {
             throw new RuntimeException("Cannot open file: {$path}");
         }
-
         return new Stream($resource, $path);
     }
 
+    /**
+     * Sends a pre-configured HTTP request to the event loop.
+     * This is the core method used by other public-facing methods.
+     *
+     * @param string $url The target URL.
+     * @param array $curlOptions An array of cURL options.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object.
+     */
     public function sendRequest(string $url, array $curlOptions): PromiseInterface
     {
         $promise = new CancellablePromise;
         $requestId = null;
+
         $requestId = EventLoop::getInstance()->addHttpRequest($url, $curlOptions, function ($error, $response, $httpCode, $headers = []) use ($promise) {
             if ($promise->isCancelled()) {
                 return;
@@ -95,6 +171,7 @@ final readonly class HttpHandler
                 $promise->resolve(new Response($response, $httpCode, $headers));
             }
         });
+
         $promise->setCancelHandler(function () use (&$requestId) {
             if ($requestId !== null) {
                 EventLoop::getInstance()->cancelHttpRequest($requestId);
@@ -104,18 +181,33 @@ final readonly class HttpHandler
         return $promise;
     }
 
+    /**
+     * A flexible, fetch-like method for making HTTP requests.
+     *
+     * @param string $url The target URL.
+     * @param array $options An associative array of request options (method, headers, body, etc.).
+     * @return PromiseInterface<Response> A promise that resolves with a Response object.
+     */
     public function fetch(string $url, array $options = []): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
-
         return $this->sendRequest($url, $curlOptions);
     }
 
+    /**
+     * Sends a request with automatic retry logic on failure.
+     *
+     * @param string $url The target URL.
+     * @param array $options An array of cURL options.
+     * @param RetryConfig $retryConfig Configuration object for retry behavior.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object.
+     */
     public function fetchWithRetry(string $url, array $options, RetryConfig $retryConfig): PromiseInterface
     {
         $promise = new CancellablePromise;
         $attempt = 0;
         $requestId = null;
+
         $executeRequest = function () use ($url, $options, $retryConfig, $promise, &$attempt, &$requestId, &$executeRequest) {
             $attempt++;
             $requestId = EventLoop::getInstance()->addHttpRequest(
@@ -125,16 +217,12 @@ final readonly class HttpHandler
                     if ($promise->isCancelled()) {
                         return;
                     }
-
                     $shouldRetry = $retryConfig->shouldRetry($attempt, $httpCode, $error);
-
                     if ($shouldRetry) {
                         $delay = $retryConfig->getDelay($attempt);
                         EventLoop::getInstance()->addTimer($delay, $executeRequest);
-
                         return;
                     }
-
                     if ($error) {
                         $promise->reject(new HttpException("HTTP Request failed after {$attempt} attempts: {$error}"));
                     } elseif ($httpCode !== null && in_array($httpCode, $retryConfig->retryableStatusCodes)) {
@@ -145,7 +233,9 @@ final readonly class HttpHandler
                 }
             );
         };
+
         $executeRequest();
+
         $promise->setCancelHandler(function () use (&$requestId) {
             if ($requestId !== null) {
                 EventLoop::getInstance()->cancelHttpRequest($requestId);
@@ -211,7 +301,6 @@ final readonly class HttpHandler
                 return true;
             }
         }
-
         return false;
     }
 }

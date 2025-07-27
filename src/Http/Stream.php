@@ -5,8 +5,12 @@ namespace Rcalicdan\FiberAsync\Http;
 use Rcalicdan\FiberAsync\Http\Interfaces\StreamInterface;
 use RuntimeException;
 
+/**
+ * A PSR-7 compliant stream representation of a PHP resource.
+ */
 class Stream implements StreamInterface
 {
+    /** @var resource|null The underlying PHP stream resource. */
     private $resource;
     private ?string $uri;
     private bool $seekable;
@@ -16,19 +20,51 @@ class Stream implements StreamInterface
 
     private const READ_WRITE_HASH = [
         'read' => [
-            'r' => true, 'w+' => true, 'r+' => true, 'x+' => true, 'c+' => true,
-            'rb' => true, 'w+b' => true, 'r+b' => true, 'x+b' => true,
-            'c+b' => true, 'rt' => true, 'w+t' => true, 'r+t' => true,
-            'x+t' => true, 'c+t' => true, 'a+' => true,
+            'r' => true,
+            'w+' => true,
+            'r+' => true,
+            'x+' => true,
+            'c+' => true,
+            'rb' => true,
+            'w+b' => true,
+            'r+b' => true,
+            'x+b' => true,
+            'c+b' => true,
+            'rt' => true,
+            'w+t' => true,
+            'r+t' => true,
+            'x+t' => true,
+            'c+t' => true,
+            'a+' => true
         ],
         'write' => [
-            'w' => true, 'w+' => true, 'rw' => true, 'r+' => true, 'x+' => true,
-            'c+' => true, 'wb' => true, 'w+b' => true, 'r+b' => true,
-            'x+b' => true, 'c+b' => true, 'w+t' => true, 'r+t' => true,
-            'x+t' => true, 'c+t' => true, 'a' => true, 'a+' => true,
+            'w' => true,
+            'w+' => true,
+            'rw' => true,
+            'r+' => true,
+            'x+' => true,
+            'c+' => true,
+            'wb' => true,
+            'w+b' => true,
+            'r+b' => true,
+            'x+b' => true,
+            'c+b' => true,
+            'w+t' => true,
+            'r+t' => true,
+            'x+t' => true,
+            'c+t' => true,
+            'a' => true,
+            'a+' => true
         ],
     ];
 
+    /**
+     * Initializes a new Stream instance.
+     *
+     * @param resource $resource The PHP stream resource.
+     * @param string|null $uri The URI associated with the stream, if any.
+     * @throws RuntimeException if the provided argument is not a resource.
+     */
     public function __construct($resource, ?string $uri = null)
     {
         if (! is_resource($resource)) {
@@ -44,6 +80,9 @@ class Stream implements StreamInterface
         $this->writable = isset(self::READ_WRITE_HASH['write'][$meta['mode']]);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function __toString(): string
     {
         if (! $this->isReadable()) {
@@ -54,13 +93,16 @@ class Stream implements StreamInterface
             if ($this->isSeekable()) {
                 $this->rewind();
             }
-
             return $this->getContents();
         } catch (\Throwable $e) {
+            // Per PSR-7, must not throw an exception.
             return '';
         }
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function close(): void
     {
         if (is_resource($this->resource)) {
@@ -69,6 +111,9 @@ class Stream implements StreamInterface
         $this->detach();
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function detach()
     {
         if (! is_resource($this->resource)) {
@@ -86,6 +131,9 @@ class Stream implements StreamInterface
         return $result;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getSize(): ?int
     {
         if ($this->size !== null) {
@@ -103,13 +151,15 @@ class Stream implements StreamInterface
         $stats = fstat($this->resource);
         if (is_array($stats) && isset($stats['size'])) {
             $this->size = $stats['size'];
-
             return $this->size;
         }
 
         return null;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function tell(): int
     {
         if (! is_resource($this->resource)) {
@@ -124,6 +174,9 @@ class Stream implements StreamInterface
         return $result;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function eof(): bool
     {
         if (! is_resource($this->resource)) {
@@ -133,11 +186,17 @@ class Stream implements StreamInterface
         return feof($this->resource);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function isSeekable(): bool
     {
         return $this->seekable;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function seek(int $offset, int $whence = SEEK_SET): void
     {
         if (! $this->isSeekable()) {
@@ -145,27 +204,35 @@ class Stream implements StreamInterface
         }
 
         if (fseek($this->resource, $offset, $whence) === -1) {
-            throw new RuntimeException('Unable to seek to stream position '.$offset.' with whence '.var_export($whence, true));
+            throw new RuntimeException('Unable to seek to stream position ' . $offset . ' with whence ' . var_export($whence, true));
         }
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function rewind(): void
     {
         $this->seek(0);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function isWritable(): bool
     {
         return $this->writable;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function write(string $string): int
     {
         if (! $this->isWritable()) {
             throw new RuntimeException('Cannot write to a non-writable stream');
         }
-
-        $this->size = null;
+        $this->size = null; // Invalidate cached size
 
         $result = fwrite($this->resource, $string);
         if ($result === false) {
@@ -175,11 +242,17 @@ class Stream implements StreamInterface
         return $result;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function isReadable(): bool
     {
         return $this->readable;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function read(int $length): string
     {
         if (! $this->isReadable()) {
@@ -202,6 +275,9 @@ class Stream implements StreamInterface
         return $result;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getContents(): string
     {
         if (! $this->isReadable()) {
@@ -216,6 +292,9 @@ class Stream implements StreamInterface
         return $contents;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getMetadata(?string $key = null)
     {
         if (! is_resource($this->resource)) {

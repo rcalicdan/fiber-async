@@ -5,8 +5,18 @@ namespace Rcalicdan\FiberAsync\Http;
 use Rcalicdan\FiberAsync\Http\Interfaces\ResponseInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\StreamInterface;
 
+/**
+ * Represents an HTTP response.
+ *
+ * This class provides an immutable, PSR-7 compatible representation of an HTTP response,
+ * along with several convenient helper methods for inspecting the response status,
+ * headers, and body.
+ */
 class Response extends Message implements ResponseInterface
 {
+    /**
+     * @var array<int, string> Map of standard HTTP status code/reason phrases.
+     */
     private const PHRASES = [
         100 => 'Continue',
         101 => 'Switching Protocols',
@@ -26,7 +36,6 @@ class Response extends Message implements ResponseInterface
         303 => 'See Other',
         304 => 'Not Modified',
         305 => 'Use Proxy',
-        306 => 'Switch Proxy',
         307 => 'Temporary Redirect',
         400 => 'Bad Request',
         401 => 'Unauthorized',
@@ -50,7 +59,6 @@ class Response extends Message implements ResponseInterface
         422 => 'Unprocessable Entity',
         423 => 'Locked',
         424 => 'Failed Dependency',
-        425 => 'Unordered Collection',
         426 => 'Upgrade Required',
         428 => 'Precondition Required',
         429 => 'Too Many Requests',
@@ -70,6 +78,13 @@ class Response extends Message implements ResponseInterface
     private int $statusCode;
     private string $reasonPhrase;
 
+    /**
+     * Initializes a new Response instance.
+     *
+     * @param string|StreamInterface $body The response body. Can be a string or a StreamInterface object.
+     * @param int $status The HTTP status code.
+     * @param array<string, string|string[]> $headers An associative array of response headers.
+     */
     public function __construct($body = 'php://memory', int $status = 200, array $headers = [])
     {
         $this->statusCode = $status;
@@ -84,6 +99,7 @@ class Response extends Message implements ResponseInterface
                 }
                 $body = new Stream($resource);
             } else {
+                // Default to an empty stream if body is not a recognizable type
                 $body = new Stream(fopen('php://temp', 'r+'));
             }
         }
@@ -92,16 +108,26 @@ class Response extends Message implements ResponseInterface
         $this->setHeaders($headers);
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getStatusCode(): int
     {
         return $this->statusCode;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getReasonPhrase(): string
     {
         return $this->reasonPhrase;
     }
 
+    /**
+     * {@inheritdoc}
+     * @throws \InvalidArgumentException For invalid status code arguments.
+     */
     public function withStatus(int $code, string $reasonPhrase = ''): ResponseInterface
     {
         if ($code < 100 || $code >= 600) {
@@ -118,36 +144,69 @@ class Response extends Message implements ResponseInterface
         return $new;
     }
 
+    /**
+     * Get the response body as a string.
+     *
+     * @return string The full response body.
+     */
     public function body(): string
     {
         return (string) $this->body;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function getBody(): StreamInterface
     {
         return $this->body;
     }
 
+    /**
+     * Get the response body decoded from JSON.
+     *
+     * @return array The decoded JSON data. Returns an empty array on failure.
+     */
     public function json(): array
     {
         return json_decode((string) $this->body, true) ?? [];
     }
 
+    /**
+     * Alias for `json()`.
+     *
+     * @return array The decoded JSON data.
+     */
     public function getJson(): array
     {
         return $this->json();
     }
 
+    /**
+     * Get the HTTP status code.
+     *
+     * @return int The status code.
+     */
     public function status(): int
     {
         return $this->statusCode;
     }
 
+    /**
+     * Alias for `status()`.
+     *
+     * @return int The status code.
+     */
     public function getStatus(): int
     {
         return $this->statusCode;
     }
 
+    /**
+     * Get all response headers.
+     *
+     * @return array<string, string> An associative array of header names to values.
+     */
     public function headers(): array
     {
         $headers = [];
@@ -158,6 +217,12 @@ class Response extends Message implements ResponseInterface
         return $headers;
     }
 
+    /**
+     * Get a single response header by name.
+     *
+     * @param string $name The case-insensitive header name.
+     * @return string|null The header value, or null if the header does not exist.
+     */
     public function header(string $name): ?string
     {
         $header = $this->getHeaderLine($name);
@@ -165,26 +230,51 @@ class Response extends Message implements ResponseInterface
         return $header !== '' ? $header : null;
     }
 
+    /**
+     * Determine if the response has a successful status code (2xx).
+     *
+     * @return bool True if the status code is between 200 and 299.
+     */
     public function ok(): bool
     {
         return $this->statusCode >= 200 && $this->statusCode < 300;
     }
 
+    /**
+     * Alias for `ok()`.
+     *
+     * @return bool True if the response was successful.
+     */
     public function successful(): bool
     {
         return $this->ok();
     }
 
+    /**
+     * Determine if the response indicates a client or server error.
+     *
+     * @return bool True if the status code is 400 or greater.
+     */
     public function failed(): bool
     {
-        return ! $this->successful();
+        return !$this->successful();
     }
 
+    /**
+     * Determine if the response has a client error status code (4xx).
+     *
+     * @return bool True if the status code is between 400 and 499.
+     */
     public function clientError(): bool
     {
         return $this->statusCode >= 400 && $this->statusCode < 500;
     }
 
+    /**
+     * Determine if the response has a server error status code (5xx).
+     *
+     * @return bool True if the status code is 500 or greater.
+     */
     public function serverError(): bool
     {
         return $this->statusCode >= 500;

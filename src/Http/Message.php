@@ -5,17 +5,36 @@ namespace Rcalicdan\FiberAsync\Http;
 use Rcalicdan\FiberAsync\Http\Interfaces\MessageInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\StreamInterface;
 
+/**
+ * An abstract base class providing a common implementation for HTTP messages.
+ *
+ * This class implements the `MessageInterface` and provides the foundational logic
+ * for handling protocol versions, headers, and message bodies, which is then
+ * extended by the concrete `Request` and `Response` classes.
+ *
+ * @see \Rcalicdan\FiberAsync\Http\Interfaces\MessageInterface
+ */
 abstract class Message implements MessageInterface
 {
     /**
-     * @var string The HTTP protocol version.
+     * The HTTP protocol version.
+     *
+     * @var string
      */
     protected string $protocol = '1.1';
 
-    /** @var array<string, string[]> HTTP headers. */
+    /**
+     * An associative array of HTTP headers.
+     *
+     * @var array<string, string[]>
+     */
     protected array $headers = [];
 
-    /** @var array<string, string> Map of lowercase header names to original case. */
+    /**
+     * A map of lowercase header names to their original case.
+     *
+     * @var array<string, string>
+     */
     protected array $headerNames = [];
 
     /** @var StreamInterface The message body. */
@@ -71,7 +90,6 @@ abstract class Message implements MessageInterface
         }
 
         $header = $this->headerNames[$header];
-
         return $this->headers[$header];
     }
 
@@ -85,8 +103,6 @@ abstract class Message implements MessageInterface
 
     /**
      * {@inheritdoc}
-     *
-     * @param  string|string[]  $value
      */
     public function withHeader(string $name, $value): MessageInterface
     {
@@ -105,8 +121,6 @@ abstract class Message implements MessageInterface
 
     /**
      * {@inheritdoc}
-     *
-     * @param  string|string[]  $value
      */
     public function withAddedHeader(string $name, $value): MessageInterface
     {
@@ -162,9 +176,12 @@ abstract class Message implements MessageInterface
     }
 
     /**
-     * Set headers from an array.
+     * Replaces all headers with a new set from an associative array.
      *
-     * @param  array<string, string|string[]>  $headers
+     * This method correctly handles case-insensitivity and preserves the original
+     * casing of the header names provided.
+     *
+     * @param array<string, string|string[]> $headers An associative array of headers to set.
      */
     protected function setHeaders(array $headers): void
     {
@@ -188,12 +205,11 @@ abstract class Message implements MessageInterface
     }
 
     /**
-     * Normalize a header value to an array of strings.
+     * Normalizes a header value to ensure it is an array of strings.
      *
-     * @param  mixed  $value
-     * @return string[]
-     *
-     * @throws \InvalidArgumentException
+     * @param mixed $value The header value to normalize.
+     * @return string[] The normalized header value as an array of strings.
+     * @throws \InvalidArgumentException If the value is an empty array.
      */
     private function normalizeHeaderValue($value): array
     {
@@ -202,7 +218,7 @@ abstract class Message implements MessageInterface
         }
 
         if (count($value) === 0) {
-            throw new \InvalidArgumentException('Header value must be a string or non-empty array.');
+            throw new \InvalidArgumentException('Header value must be a string or a non-empty array of strings.');
         }
 
         return array_map(function ($v) {
