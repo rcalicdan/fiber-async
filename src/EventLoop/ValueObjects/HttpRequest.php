@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\ValueObjects;
 
-use Rcalicdan\FiberAsync\Http\Interfaces\AsyncHttpRequestInterface;
+use Rcalicdan\FiberAsync\EventLoop\Interfaces\AsyncHttpRequestInterface;
 
 class HttpRequest implements AsyncHttpRequestInterface
 {

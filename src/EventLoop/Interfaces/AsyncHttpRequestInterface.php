@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\Http\Interfaces;
+namespace Rcalicdan\FiberAsync\EventLoop\Interfaces;
 
 /**
  * Represents an HTTP request within the async system.
