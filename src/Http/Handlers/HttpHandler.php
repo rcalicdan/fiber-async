@@ -159,9 +159,21 @@ class HttpHandler
     }
 
     /**
+     * Generates the unique cache key for a given URL.
+     * This method is the single source of truth for cache key generation,
+     * ensuring consistency between caching and invalidation logic.
+     *
+     * @param string $url The URL to generate a cache key for.
+     * @return string The unique cache key.
+     */
+    public static function generateCacheKey(string $url): string
+    {
+        return 'http_' . sha1($url);
+    }
+
+    /**
      * Lazily creates and returns a default PSR-16 cache instance.
-     * This enables zero-config caching for the user. The cache is stored
-     * in a 'cache/http' directory relative to the project's execution root.
+     * This enables zero-config caching for the user.
      */
     private static function getDefaultCache(): CacheInterface
     {
@@ -169,70 +181,55 @@ class HttpHandler
             $psr6Cache = new FilesystemAdapter('http', 0, 'cache');
             self::$defaultCache = new Psr16Cache($psr6Cache);
         }
-
         return self::$defaultCache;
     }
 
     /**
      * The main entry point for sending a request from the Request builder.
      * It intelligently applies caching logic before proceeding to dispatch the request.
-     *
-     * @param  string  $url  The target URL.
-     * @param  array  $curlOptions  The compiled cURL options for the request.
-     * @param  CacheConfig|null  $cacheConfig  The caching rules for this request, if any.
-     * @param  RetryConfig|null  $retryConfig  The retry rules for this request, if any.
-     * @return PromiseInterface<Response>
      */
     public function sendRequest(string $url, array $curlOptions, ?CacheConfig $cacheConfig = null, ?RetryConfig $retryConfig = null): PromiseInterface
     {
-        // If no cache config is provided, or if it's not a cacheable method (e.g., POST), bypass caching.
         if ($cacheConfig === null || ($curlOptions[CURLOPT_CUSTOMREQUEST] ?? 'GET') !== 'GET') {
             return $this->dispatchRequest($url, $curlOptions, $retryConfig);
         }
 
-        // Use the custom cache from the config, or fall back to the zero-config default.
         $cache = $cacheConfig->cache ?? self::getDefaultCache();
-        $cacheKey = 'http_'.sha1($url);
+        $cacheKey = self::generateCacheKey($url);
 
         return async(function () use ($cache, $cacheKey, $url, $curlOptions, $cacheConfig, $retryConfig) {
             $cachedItem = $cache->get($cacheKey);
 
             if ($cachedItem && time() < $cachedItem['expires_at']) {
-                // Cache is fresh! Return it immediately without a network call.
                 return new Response($cachedItem['body'], $cachedItem['status'], $cachedItem['headers']);
             }
 
-            // Cache is stale or missing. If stale, prepare for revalidation by adding conditional headers.
             if ($cachedItem && $cacheConfig->respectServerHeaders) {
                 if (isset($cachedItem['headers']['etag'])) {
-                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-None-Match: '.$cachedItem['headers']['etag'][0];
+                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-None-Match: ' . $cachedItem['headers']['etag'][0];
                 }
                 if (isset($cachedItem['headers']['last-modified'])) {
-                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-Modified-Since: '.$cachedItem['headers']['last-modified'][0];
+                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-Modified-Since: ' . $cachedItem['headers']['last-modified'][0];
                 }
             }
 
-            // Perform the actual network request (with retries if configured).
             $response = await($this->dispatchRequest($url, $curlOptions, $retryConfig));
 
-            // If the server returns 304, our stale item is still valid. Reuse it and update its expiry.
             if ($response->status() === 304 && $cachedItem) {
                 $newExpiry = $this->calculateExpiry($response, $cacheConfig);
                 $cachedItem['expires_at'] = $newExpiry;
                 $cache->set($cacheKey, $cachedItem, $newExpiry > time() ? $newExpiry - time() : 0);
-
                 return new Response($cachedItem['body'], 200, $cachedItem['headers']);
             }
 
-            // We got a new, full response. Let's cache it if it's successful and cacheable.
             if ($response->ok()) {
                 $expiry = $this->calculateExpiry($response, $cacheConfig);
                 if ($expiry > time()) {
                     $ttl = $expiry - time();
                     $cache->set($cacheKey, [
-                        'body' => (string) $response->getBody(),
-                        'status' => $response->status(),
-                        'headers' => $response->getHeaders(),
+                        'body'       => (string) $response->getBody(),
+                        'status'     => $response->status(),
+                        'headers'    => $response->getHeaders(),
                         'expires_at' => $expiry,
                     ], $ttl);
                 }
@@ -244,14 +241,12 @@ class HttpHandler
 
     /**
      * Dispatches the request to the network, applying retry logic if configured.
-     * This is the final step before the request hits the event loop.
      */
     private function dispatchRequest(string $url, array $curlOptions, ?RetryConfig $retryConfig): PromiseInterface
     {
         if ($retryConfig) {
             return $this->fetchWithRetry($url, $curlOptions, $retryConfig);
         }
-
         return $this->fetch($url, $curlOptions);
     }
 
@@ -295,39 +290,44 @@ class HttpHandler
     /**
      * Sends a request with automatic retry logic on failure.
      *
-     * @param  string  $url  The target URL.
-     * @param  array  $options  An array of cURL options.
-     * @param  RetryConfig  $retryConfig  Configuration object for retry behavior.
-     * @return PromiseInterface<Response> A promise that resolves with a Response object.
+     * @param string $url The target URL.
+     * @param array $options An array of cURL options.
+     * @param RetryConfig $retryConfig Configuration object for retry behavior.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object or rejects with an HttpException on final failure.
      */
     public function fetchWithRetry(string $url, array $options, RetryConfig $retryConfig): PromiseInterface
     {
         $promise = new CancellablePromise;
         $attempt = 0;
+        $totalAttempts = 0;
         $requestId = null;
 
-        $executeRequest = function () use ($url, $options, $retryConfig, $promise, &$attempt, &$requestId, &$executeRequest) {
-            $attempt++;
+        $executeRequest = function () use ($url, $options, $retryConfig, $promise, &$attempt, &$totalAttempts, &$requestId, &$executeRequest) {
+            $totalAttempts++;
             $requestId = EventLoop::getInstance()->addHttpRequest(
                 $url,
                 $options,
-                function ($error, $response, $httpCode, $headers = []) use ($retryConfig, $promise, $attempt, &$executeRequest) {
+                function ($error, $responseBody, $httpCode, $headers = []) use ($retryConfig, $promise, &$attempt, $totalAttempts, &$executeRequest) {
                     if ($promise->isCancelled()) {
                         return;
                     }
-                    $shouldRetry = $retryConfig->shouldRetry($attempt, $httpCode, $error);
-                    if ($shouldRetry) {
+
+                    $isRetryable = ($error && $retryConfig->isRetryableError($error)) ||
+                        ($httpCode && in_array($httpCode, $retryConfig->retryableStatusCodes));
+
+                    if ($isRetryable && $attempt < $retryConfig->maxRetries) {
+                        $attempt++;
                         $delay = $retryConfig->getDelay($attempt);
                         EventLoop::getInstance()->addTimer($delay, $executeRequest);
-
                         return;
                     }
+
                     if ($error) {
-                        $promise->reject(new HttpException("HTTP Request failed after {$attempt} attempts: {$error}"));
-                    } elseif ($httpCode !== null && in_array($httpCode, $retryConfig->retryableStatusCodes)) {
-                        $promise->reject(new HttpException("HTTP Request failed with status {$httpCode} after {$attempt} attempts."));
+                        $promise->reject(new HttpException("HTTP Request failed after {$totalAttempts} attempts: {$error}"));
+                    } elseif ($isRetryable) {
+                        $promise->reject(new HttpException("HTTP Request failed with status {$httpCode} after {$totalAttempts} attempts."));
                     } else {
-                        $promise->resolve(new Response($response, $httpCode, $headers));
+                        $promise->resolve(new Response($responseBody, $httpCode, $headers));
                     }
                 }
             );
@@ -411,13 +411,11 @@ class HttpHandler
     {
         if ($cacheConfig->respectServerHeaders) {
             $header = $response->getHeaderLine('Cache-Control');
-            // Look for 'max-age' in the Cache-Control header.
             if ($header && preg_match('/max-age=(\d+)/', $header, $matches)) {
                 return time() + (int) $matches[1];
             }
         }
 
-        // Fallback to the default TTL from the config if headers are not respected or not present.
         return time() + $cacheConfig->ttlSeconds;
     }
 }

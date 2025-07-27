@@ -98,24 +98,6 @@ class TrackableCache implements CacheInterface
     }
 }
 
-/**
- * Helper to recursively delete the default filesystem cache directory.
- */
-function clearFilesystemCache()
-{
-    $cacheDir = getcwd().'/cache';
-    if (! is_dir($cacheDir)) {
-        return;
-    }
-    $files = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($cacheDir, RecursiveDirectoryIterator::SKIP_DOTS),
-        RecursiveIteratorIterator::CHILD_FIRST
-    );
-    foreach ($files as $fileinfo) {
-        ($fileinfo->isDir() ? 'rmdir' : 'unlink')($fileinfo->getRealPath());
-    }
-    @rmdir($cacheDir);
-}
 
 beforeEach(function () {
     AsyncHttp::reset();
