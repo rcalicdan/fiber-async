@@ -12,7 +12,7 @@ class StreamingResponse extends Response
     public function __construct(StreamInterface $stream, int $status, array $headers = [])
     {
         $this->stream = $stream;
-        parent::__construct('', $status, $headers);
+        parent::__construct($stream, $status, $headers);
     }
 
     public function getStream(): StreamInterface
@@ -23,13 +23,19 @@ class StreamingResponse extends Response
     public function body(): string
     {
         if ($this->streamConsumed) {
-            return $this->body;
+            return (string) $this->body;
         }
 
-        $this->body = $this->stream->getContents();
+        $content = $this->stream->getContents();
         $this->streamConsumed = true;
 
-        return $this->body;
+        // Update the body stream with the consumed content
+        $resource = fopen('php://temp', 'r+');
+        fwrite($resource, $content);
+        rewind($resource);
+        $this->body = new Stream($resource);
+
+        return $content;
     }
 
     public function json(): array

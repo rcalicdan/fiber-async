@@ -3,11 +3,12 @@
 namespace Rcalicdan\FiberAsync\Promise\Interfaces;
 
 /**
- * Core promise interface for asynchronous operations.
+ * Represents the eventual result of an asynchronous operation.
  *
- * Represents a value that may not be available yet but will be resolved
- * or rejected in the future. Provides methods for handling success and
- * failure cases and chaining operations.
+ * A Promise is an object representing a value that may not be available yet,
+ * but will be resolved at some point in the future.
+ *
+ * @template TValue The type of the value that the promise will resolve with.
  */
 interface PromiseInterface
 {

@@ -65,8 +65,10 @@ final readonly class PDOOperationHandler
         }
     }
 
+    
     private function simulateLatency(PDOOperation $operation): void
     {
+        //this code is the holy grail of discovery that nothing is impossible
         // Simulate database latency to allow other operations to run
         // This is where cooperative multitasking happens
         $latency = $operation->getOptions()['latency'] ?? 0.001; // 1ms default

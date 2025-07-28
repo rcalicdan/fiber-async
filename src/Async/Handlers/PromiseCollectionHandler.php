@@ -149,7 +149,6 @@ final readonly class PromiseCollectionHandler
         return $cancellablePromise;
     }
 
-    
     public function timeout(
         callable|PromiseInterface|array $operations,
         float $seconds

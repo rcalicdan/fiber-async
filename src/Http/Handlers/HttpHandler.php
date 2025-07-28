@@ -2,20 +2,31 @@
 
 namespace Rcalicdan\FiberAsync\Http\Handlers;
 
-use Exception;
+use Psr\SimpleCache\CacheInterface;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
+use Rcalicdan\FiberAsync\Http\CacheConfig;
 use Rcalicdan\FiberAsync\Http\Exceptions\HttpException;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
 use Rcalicdan\FiberAsync\Http\Stream;
+use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use RuntimeException;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\Cache\Psr16Cache;
 
-final readonly class HttpHandler
+/**
+ * Core handler for creating and dispatching asynchronous HTTP requests.
+ *
+ * This class acts as the workhorse for the AsyncHttp Api, translating high-level
+ * requests into low-level operations managed by the event loop.
+ */
+class HttpHandler
 {
     private StreamingHandler $streamingHandler;
+    private static ?CacheInterface $defaultCache = null;
 
     public function __construct()
     {
@@ -23,7 +34,9 @@ final readonly class HttpHandler
     }
 
     /**
-     * Create a new HTTP request builder
+     * Creates a new fluent HTTP request builder instance.
+     *
+     * @return Request The request builder.
      */
     public function request(): Request
     {
@@ -31,8 +44,11 @@ final readonly class HttpHandler
     }
 
     /**
-     * Quick GET request
-     * @return PromiseInterface<Response>
+     * Performs a quick, asynchronous GET request.
+     *
+     * @param  string  $url  The target URL.
+     * @param  array  $query  Optional query parameters.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function get(string $url, array $query = []): PromiseInterface
     {
@@ -40,8 +56,11 @@ final readonly class HttpHandler
     }
 
     /**
-     * Quick POST request with JSON data
-     * @return PromiseInterface<Response>
+     * Performs a quick, asynchronous POST request with a JSON payload.
+     *
+     * @param  string  $url  The target URL.
+     * @param  array  $data  Data to be JSON-encoded and sent as the request body.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function post(string $url, array $data = []): PromiseInterface
     {
@@ -49,8 +68,11 @@ final readonly class HttpHandler
     }
 
     /**
-     * Quick PUT request
-     * @return PromiseInterface<Response>
+     * Performs a quick, asynchronous PUT request.
+     *
+     * @param  string  $url  The target URL.
+     * @param  array  $data  Data to be JSON-encoded and sent as the request body.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function put(string $url, array $data = []): PromiseInterface
     {
@@ -58,8 +80,10 @@ final readonly class HttpHandler
     }
 
     /**
-     * Quick DELETE request
-     * @return PromiseInterface<Response>
+     * Performs a quick, asynchronous DELETE request.
+     *
+     * @param  string  $url  The target URL.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function delete(string $url): PromiseInterface
     {
@@ -67,25 +91,42 @@ final readonly class HttpHandler
     }
 
     /**
-     * Stream a request and get a streaming response
+     * Streams an HTTP response, processing it in chunks.
+     *
+     * Ideal for large responses that should not be fully loaded into memory.
+     *
+     * @param  string  $url  The URL to stream from.
+     * @param  array  $options  Advanced cURL or request options.
+     * @param  callable|null  $onChunk  An optional callback to execute for each received data chunk. `function(string $chunk): void`
+     * @return PromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse object.
      */
     public function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
+
         return $this->streamingHandler->streamRequest($url, $curlOptions, $onChunk);
     }
 
     /**
-     * Download a file directly to disk
+     * Asynchronously downloads a file from a URL to a specified destination.
+     *
+     * @param  string  $url  The URL of the file to download.
+     * @param  string  $destination  The local path to save the file.
+     * @param  array  $options  Advanced cURL or request options.
+     * @return PromiseInterface<array{file: string, status: int|null, headers: array}> A promise that resolves with download metadata.
      */
     public function download(string $url, string $destination, array $options = []): PromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
+
         return $this->streamingHandler->downloadFile($url, $destination, $curlOptions);
     }
 
     /**
-     * Create a stream from a string
+     * Creates a new stream from a string.
+     *
+     * @param  string  $content  The initial content of the stream.
+     * @return Stream A new Stream object.
      */
     public function createStream(string $content = ''): Stream
     {
@@ -94,106 +135,215 @@ final readonly class HttpHandler
             fwrite($resource, $content);
             rewind($resource);
         }
+
         return new Stream($resource);
     }
 
     /**
-     * Create a stream from a file
+     * Creates a new stream from a file path.
+     *
+     * @param  string  $path  The path to the file.
+     * @param  string  $mode  The mode to open the file with (e.g., 'rb', 'w+b').
+     * @return Stream A new Stream object wrapping the file resource.
+     *
+     * @throws RuntimeException if the file cannot be opened.
      */
     public function createStreamFromFile(string $path, string $mode = 'rb'): Stream
     {
-        $resource = fopen($path, $mode);
+        $resource = @fopen($path, $mode);
         if (! $resource) {
             throw new RuntimeException("Cannot open file: {$path}");
         }
+
         return new Stream($resource, $path);
     }
 
     /**
-     * Enhanced fetch with support for both cURL options and JavaScript-like options
-     * @return PromiseInterface<Response>
+     * Generates the unique cache key for a given URL.
+     * This method is the single source of truth for cache key generation,
+     * ensuring consistency between caching and invalidation logic.
+     *
+     * @param string $url The URL to generate a cache key for.
+     * @return string The unique cache key.
+     */
+    public static function generateCacheKey(string $url): string
+    {
+        return 'http_' . sha1($url);
+    }
+
+    /**
+     * Lazily creates and returns a default PSR-16 cache instance.
+     * This enables zero-config caching for the user.
+     */
+    private static function getDefaultCache(): CacheInterface
+    {
+        if (self::$defaultCache === null) {
+            $psr6Cache = new FilesystemAdapter('http', 0, 'cache');
+            self::$defaultCache = new Psr16Cache($psr6Cache);
+        }
+        return self::$defaultCache;
+    }
+
+    /**
+     * The main entry point for sending a request from the Request builder.
+     * It intelligently applies caching logic before proceeding to dispatch the request.
+     */
+    public function sendRequest(string $url, array $curlOptions, ?CacheConfig $cacheConfig = null, ?RetryConfig $retryConfig = null): PromiseInterface
+    {
+        if ($cacheConfig === null || ($curlOptions[CURLOPT_CUSTOMREQUEST] ?? 'GET') !== 'GET') {
+            return $this->dispatchRequest($url, $curlOptions, $retryConfig);
+        }
+
+        $cache = $cacheConfig->cache ?? self::getDefaultCache();
+        $cacheKey = self::generateCacheKey($url);
+
+        return async(function () use ($cache, $cacheKey, $url, $curlOptions, $cacheConfig, $retryConfig) {
+            $cachedItem = $cache->get($cacheKey);
+
+            if ($cachedItem && time() < $cachedItem['expires_at']) {
+                return new Response($cachedItem['body'], $cachedItem['status'], $cachedItem['headers']);
+            }
+
+            if ($cachedItem && $cacheConfig->respectServerHeaders) {
+                if (isset($cachedItem['headers']['etag'])) {
+                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-None-Match: ' . $cachedItem['headers']['etag'][0];
+                }
+                if (isset($cachedItem['headers']['last-modified'])) {
+                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-Modified-Since: ' . $cachedItem['headers']['last-modified'][0];
+                }
+            }
+
+            $response = await($this->dispatchRequest($url, $curlOptions, $retryConfig));
+
+            if ($response->status() === 304 && $cachedItem) {
+                $newExpiry = $this->calculateExpiry($response, $cacheConfig);
+                $cachedItem['expires_at'] = $newExpiry;
+                $cache->set($cacheKey, $cachedItem, $newExpiry > time() ? $newExpiry - time() : 0);
+                return new Response($cachedItem['body'], 200, $cachedItem['headers']);
+            }
+
+            if ($response->ok()) {
+                $expiry = $this->calculateExpiry($response, $cacheConfig);
+                if ($expiry > time()) {
+                    $ttl = $expiry - time();
+                    $cache->set($cacheKey, [
+                        'body'       => (string) $response->getBody(),
+                        'status'     => $response->status(),
+                        'headers'    => $response->getHeaders(),
+                        'expires_at' => $expiry,
+                    ], $ttl);
+                }
+            }
+
+            return $response;
+        })();
+    }
+
+    /**
+     * Dispatches the request to the network, applying retry logic if configured.
+     */
+    private function dispatchRequest(string $url, array $curlOptions, ?RetryConfig $retryConfig): PromiseInterface
+    {
+        if ($retryConfig) {
+            return $this->fetchWithRetry($url, $curlOptions, $retryConfig);
+        }
+        return $this->fetch($url, $curlOptions);
+    }
+
+    /**
+     * A flexible, fetch-like method for making HTTP requests.
+     *
+     * @param  string  $url  The target URL.
+     * @param  array  $options  An associative array of request options (method, headers, body, etc.).
+     * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function fetch(string $url, array $options = []): PromiseInterface
     {
-        // Check if options are JavaScript-like or cURL-like
         $curlOptions = $this->normalizeFetchOptions($url, $options);
         $promise = new CancellablePromise;
-        $requestId = null;
-        $requestId = EventLoop::getInstance()->addHttpRequest($url, $curlOptions, function ($error, $response, $httpCode, $headers = []) use ($promise) {
-            if ($promise->isCancelled()) {
-                return;
-            }
 
-            if ($error) {
-                $promise->reject(new HttpException("HTTP Request failed: {$error}"));
-            } else {
-                $promise->resolve(new Response($response, $httpCode, $headers));
+        $requestId = EventLoop::getInstance()->addHttpRequest(
+            $url,
+            $curlOptions,
+            function ($error, $response, $httpCode, $headers = []) use ($promise) {
+                if ($promise->isCancelled()) {
+                    return;
+                }
+
+                if ($error) {
+                    $promise->reject(new HttpException("HTTP Request failed: {$error}"));
+                } else {
+                    $promise->resolve(new Response($response, $httpCode, $headers));
+                }
             }
-        });
-        $promise->setCancelHandler(function () use (&$requestId) {
+        );
+
+        $promise->setCancelHandler(function () use ($requestId) {
             if ($requestId !== null) {
                 EventLoop::getInstance()->cancelHttpRequest($requestId);
             }
         });
+
         return $promise;
     }
 
     /**
-     * Enhanced fetch with retry support
-     * @return PromiseInterface<Response>
+     * Sends a request with automatic retry logic on failure.
+     *
+     * @param string $url The target URL.
+     * @param array $options An array of cURL options.
+     * @param RetryConfig $retryConfig Configuration object for retry behavior.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object or rejects with an HttpException on final failure.
      */
     public function fetchWithRetry(string $url, array $options, RetryConfig $retryConfig): PromiseInterface
     {
         $promise = new CancellablePromise;
         $attempt = 0;
+        $totalAttempts = 0;
         $requestId = null;
-        $executeRequest = function () use ($url, $options, $retryConfig, $promise, &$attempt, &$requestId, &$executeRequest) {
-            $attempt++;
+
+        $executeRequest = function () use ($url, $options, $retryConfig, $promise, &$attempt, &$totalAttempts, &$requestId, &$executeRequest) {
+            $totalAttempts++;
             $requestId = EventLoop::getInstance()->addHttpRequest(
                 $url,
                 $options,
-                function ($error, $response, $httpCode, $headers = []) use ($retryConfig, $promise, $attempt, &$executeRequest) {
+                function ($error, $responseBody, $httpCode, $headers = []) use ($retryConfig, $promise, &$attempt, $totalAttempts, &$executeRequest) {
                     if ($promise->isCancelled()) {
                         return;
                     }
-                    $shouldRetry = $retryConfig->shouldRetry($attempt, $httpCode, $error);
-                    if ($error && $shouldRetry) {
+
+                    $isRetryable = ($error && $retryConfig->isRetryableError($error)) ||
+                        ($httpCode && in_array($httpCode, $retryConfig->retryableStatusCodes));
+
+                    if ($isRetryable && $attempt < $retryConfig->maxRetries) {
+                        $attempt++;
                         $delay = $retryConfig->getDelay($attempt);
-                        // Schedule retry after delay
-                        EventLoop::getInstance()->addTimer($delay, function () use ($executeRequest) {
-                            $executeRequest();
-                        });
+                        EventLoop::getInstance()->addTimer($delay, $executeRequest);
                         return;
                     }
-                    if ($httpCode > 0 && $shouldRetry) {
-                        $delay = $retryConfig->getDelay($attempt);
-                        // Schedule retry after delay for retryable status codes
-                        EventLoop::getInstance()->addTimer($delay, function () use ($executeRequest) {
-                            $executeRequest();
-                        });
-                        return;
-                    }
-                    // No retry needed or max retries reached
+
                     if ($error) {
-                        $promise->reject(new HttpException("HTTP Request failed after {$attempt} attempts: {$error}"));
+                        $promise->reject(new HttpException("HTTP Request failed after {$totalAttempts} attempts: {$error}"));
+                    } elseif ($isRetryable) {
+                        $promise->reject(new HttpException("HTTP Request failed with status {$httpCode} after {$totalAttempts} attempts."));
                     } else {
-                        $promise->resolve(new Response($response, $httpCode, $headers));
+                        $promise->resolve(new Response($responseBody, $httpCode, $headers));
                     }
                 }
             );
         };
+
         $executeRequest();
+
         $promise->setCancelHandler(function () use (&$requestId) {
             if ($requestId !== null) {
                 EventLoop::getInstance()->cancelHttpRequest($requestId);
             }
         });
+
         return $promise;
     }
 
-    /**
-     * Normalize fetch options to support both JavaScript-like and cURL formats
-     */
     private function normalizeFetchOptions(string $url, array $options): array
     {
         if ($this->isCurlOptionsFormat($options)) {
@@ -239,18 +389,33 @@ final readonly class HttpHandler
         if (isset($options['user_agent'])) {
             $curlOptions[CURLOPT_USERAGENT] = $options['user_agent'];
         }
+
         return $curlOptions;
     }
-    /**
-     * Check if options are in cURL format (contain cURL constants)
-     */
+
     private function isCurlOptionsFormat(array $options): bool
     {
         foreach (array_keys($options) as $key) {
             if (is_int($key) && $key > 0) {
-                return true; // cURL options are positive integers
+                return true;
             }
         }
+
         return false;
+    }
+
+    /**
+     * Calculates the expiry timestamp based on Cache-Control headers or the default TTL from config.
+     */
+    private function calculateExpiry(Response $response, CacheConfig $cacheConfig): int
+    {
+        if ($cacheConfig->respectServerHeaders) {
+            $header = $response->getHeaderLine('Cache-Control');
+            if ($header && preg_match('/max-age=(\d+)/', $header, $matches)) {
+                return time() + (int) $matches[1];
+            }
+        }
+
+        return time() + $cacheConfig->ttlSeconds;
     }
 }

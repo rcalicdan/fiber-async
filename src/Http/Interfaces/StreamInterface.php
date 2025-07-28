@@ -2,6 +2,15 @@
 
 namespace Rcalicdan\FiberAsync\Http\Interfaces;
 
+use RuntimeException;
+
+/**
+ * Describes a data stream.
+ *
+ * Typically, an instance will wrap a PHP stream resource; this interface provides
+ * a wrapper around the most common operations, including serialization of the
+ * entire stream to a string.
+ */
 interface StreamInterface
 {
     /**
@@ -45,7 +54,7 @@ interface StreamInterface
      *
      * @return int Position of the file pointer
      *
-     * @throws \RuntimeException on error.
+     * @throws RuntimeException on error.
      */
     public function tell(): int;
 
@@ -62,16 +71,17 @@ interface StreamInterface
     /**
      * Seek to a position in the stream.
      *
-     * @link http://www.php.net/manual/en/function.fseek.php
+     * @see http://www.php.net/manual/en/function.fseek.php
      *
      * @param  int  $offset  Stream offset
      * @param  int  $whence  Specifies how the cursor position will be calculated
      *                       based on the seek offset. Valid values are identical to the built-in
-     *                       PHP $whence values for `fseek()`.  SEEK_SET: Set position equal to
-     *                       offset bytes SEEK_CUR: Set position to current location plus offset
-     *                       SEEK_END: Set position to end-of-stream plus offset.
+     *                       PHP fseek() function.
+     *                       SEEK_SET: Set position equal to offset bytes.
+     *                       SEEK_CUR: Set position to current location plus offset.
+     *                       SEEK_END: Set position to end-of-file plus offset.
      *
-     * @throws \RuntimeException on failure.
+     * @throws RuntimeException on failure.
      */
     public function seek(int $offset, int $whence = SEEK_SET): void;
 
@@ -82,9 +92,9 @@ interface StreamInterface
      * otherwise, it will perform a seek(0).
      *
      * @see seek()
-     * @link http://www.php.net/manual/en/function.fseek.php
+     * @see http://www.php.net/manual/en/function.rewind.php
      *
-     * @throws \RuntimeException on failure.
+     * @throws RuntimeException on failure.
      */
     public function rewind(): void;
 
@@ -99,7 +109,7 @@ interface StreamInterface
      * @param  string  $string  The string that is to be written.
      * @return int Returns the number of bytes written to the stream.
      *
-     * @throws \RuntimeException on failure.
+     * @throws RuntimeException on failure.
      */
     public function write(string $string): int;
 
@@ -117,15 +127,15 @@ interface StreamInterface
      * @return string Returns the data read from the stream, or an empty string
      *                if no bytes are available.
      *
-     * @throws \RuntimeException if an error occurs.
+     * @throws RuntimeException if an error occurs.
      */
     public function read(int $length): string;
 
     /**
      * Returns the remaining contents in a string
      *
-     * @throws \RuntimeException if unable to read or an error occurs while
-     *                           reading.
+     * @throws RuntimeException if unable to read or an error occurs while
+     *                          reading.
      */
     public function getContents(): string;
 
@@ -135,7 +145,7 @@ interface StreamInterface
      * The keys returned are identical to the keys returned from PHP's
      * stream_get_meta_data() function.
      *
-     * @link http://php.net/manual/en/function.stream-get-meta-data.php
+     * @see http://php.net/manual/en/function.stream-get-meta-data.php
      *
      * @param  string|null  $key  Specific metadata to retrieve.
      * @return array|mixed|null Returns an associative array if no key is

@@ -2,8 +2,8 @@
 
 // tests/Unit/LoopHelperTest.php
 
-require_once __DIR__ . '/../../src/Helpers/async_helper.php';
-require_once __DIR__ . '/../../src/Helpers/loop_helper.php';
+require_once __DIR__.'/../../src/Helpers/async_helper.php';
+require_once __DIR__.'/../../src/Helpers/loop_helper.php';
 
 beforeEach(function () {
     resetEventLoop();
@@ -39,10 +39,10 @@ test('run_all executes multiple operations concurrently', function () {
 
     $results = run_all([
         'op1' => function () {
-            return await(delay(0.05)->then(fn() => 'result1'));
+            return await(delay(0.05)->then(fn () => 'result1'));
         },
         'op2' => function () {
-            return await(delay(0.05)->then(fn() => 'result2'));
+            return await(delay(0.05)->then(fn () => 'result2'));
         },
     ]);
 

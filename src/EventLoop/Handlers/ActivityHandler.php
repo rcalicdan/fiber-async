@@ -21,7 +21,7 @@ final class ActivityHandler
         // Calculate average activity interval for adaptive behavior
         if ($this->activityCounter > 0) {
             $interval = $now - $this->lastActivity;
-            $this->avgActivityInterval = ($this->avgActivityInterval * 0.9) + ($interval * 0.1);
+            $this->avgActivityInterval = $this->avgActivityInterval * 0.9 + $interval * 0.1;
         }
 
         $this->lastActivity = $now;

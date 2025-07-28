@@ -2,9 +2,9 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\ValueObjects;
 
-use Rcalicdan\FiberAsync\Http\Interfaces\HttpRequestInterface;
+use Rcalicdan\FiberAsync\EventLoop\Interfaces\AsyncHttpRequestInterface;
 
-class HttpRequest implements HttpRequestInterface
+class HttpRequest implements AsyncHttpRequestInterface
 {
     private \CurlHandle $handle;
     private $callback;

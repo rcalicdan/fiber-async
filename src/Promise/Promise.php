@@ -10,15 +10,15 @@ use Rcalicdan\FiberAsync\Promise\Handlers\StateHandler;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
- * Implementation of the Promise pattern for asynchronous operations.
+ * A Promise/A+ compliant implementation for managing asynchronous operations.
  *
- * This class provides a complete Promise/A+ compatible implementation that
- * supports chaining, error handling, and various callback patterns. It manages
- * the lifecycle of asynchronous operations and provides a clean API for
- * handling eventual results or failures.
+ * This class provides a robust mechanism for handling eventual results or
+ * failures from asynchronous tasks. It supports chaining, error handling,
+ * and a clear lifecycle (pending, fulfilled, rejected).
  *
- * Promises can be in one of three states: pending, resolved (fulfilled), or
- * rejected. Once settled (resolved or rejected), a promise cannot change state.
+ * @template TValue
+ *
+ * @implements PromiseInterface<TValue>
  */
 class Promise implements PromiseInterface
 {
@@ -103,24 +103,7 @@ class Promise implements PromiseInterface
     }
 
     /**
-     * Attach fulfillment and rejection handlers to the promise.
-     *
-     * Returns a new promise that will be resolved with the return value
-     * of the executed handler. This enables promise chaining.
-     *
-     * @param  callable|null  $onFulfilled  Handler for when promise is resolved
-     * @param  callable|null  $onRejected  Handler for when promise is rejected
-     * @return PromiseInterface A new promise for the chained operation
-     */
-    /**
-     * Attach fulfillment and rejection handlers to the promise.
-     *
-     * Returns a new promise that will be resolved with the return value
-     * of the executed handler. This enables promise chaining.
-     *
-     * @param  callable|null  $onFulfilled  Handler for when promise is resolved
-     * @param  callable|null  $onRejected  Handler for when promise is rejected
-     * @return PromiseInterface A new promise for the chained operation
+     * {@inheritdoc}
      */
     public function then(?callable $onFulfilled = null, ?callable $onRejected = null): PromiseInterface
     {
@@ -198,13 +181,7 @@ class Promise implements PromiseInterface
     }
 
     /**
-     * Attach a rejection handler to the promise.
-     *
-     * This is a convenience method equivalent to calling then(null, onRejected).
-     * Returns a new promise for chaining.
-     *
-     * @param  callable  $onRejected  Handler for when promise is rejected
-     * @return PromiseInterface A new promise for the chained operation
+     * {@inheritdoc}
      */
     public function catch(callable $onRejected): PromiseInterface
     {
@@ -212,13 +189,7 @@ class Promise implements PromiseInterface
     }
 
     /**
-     * Attach a handler that executes regardless of promise outcome.
-     *
-     * The finally handler receives no arguments and its return value
-     * does not affect the promise chain. It's used for cleanup operations.
-     *
-     * @param  callable  $onFinally  Handler to execute when promise settles
-     * @return PromiseInterface The same promise instance for chaining
+     * {@inheritdoc}
      */
     public function finally(callable $onFinally): PromiseInterface
     {

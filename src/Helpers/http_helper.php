@@ -191,6 +191,7 @@ if (! function_exists('fetch_with_retry')) {
     {
         $request = AsyncHttp::request()->retry($maxRetries, $baseDelay);
         $response = RetryHelperHandler::getRetryLogic($request, $url, $options);
+
         return $response;
     }
 }

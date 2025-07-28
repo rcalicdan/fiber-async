@@ -4,7 +4,6 @@ namespace Rcalicdan\FiberAsync\Http\Handlers;
 
 use Exception;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
-use Rcalicdan\FiberAsync\Http\Exceptions\HttpException;
 use Rcalicdan\FiberAsync\Http\Exceptions\HttpStreamException;
 use Rcalicdan\FiberAsync\Http\Stream;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
@@ -27,10 +26,10 @@ final readonly class StreamingHandler
 
         $headerAccumulator = [];
 
-        $streamingOptions = $options + [
+        $streamingOptions = array_replace($options, [
+            CURLOPT_HEADER => false,
             CURLOPT_WRITEFUNCTION => function ($ch, $data) use ($responseStream, $onChunk) {
                 fwrite($responseStream, $data);
-
                 if ($onChunk) {
                     $onChunk($data);
                 }
@@ -38,7 +37,6 @@ final readonly class StreamingHandler
                 return strlen($data);
             },
             CURLOPT_HEADERFUNCTION => function ($ch, $header) use (&$headerAccumulator) {
-                // This function captures each header line
                 $trimmedHeader = trim($header);
                 if ($trimmedHeader !== '') {
                     $headerAccumulator[] = $trimmedHeader;
@@ -46,12 +44,12 @@ final readonly class StreamingHandler
 
                 return strlen($header);
             },
-        ];
+        ]);
 
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
             $streamingOptions,
-            function ($error, $response, $httpCode, $headers = []) use ($promise, $responseStream, &$headerAccumulator) { // Pass accumulator by reference
+            function ($error, $response, $httpCode, $headers = []) use ($promise, $responseStream, &$headerAccumulator) {
                 if ($promise->isCancelled()) {
                     fclose($responseStream);
 
@@ -93,7 +91,8 @@ final readonly class StreamingHandler
             return $promise;
         }
 
-        $downloadOptions = $options + [
+        $downloadOptions = array_replace($options, [
+            CURLOPT_HEADER => false,
             CURLOPT_WRITEFUNCTION => function ($ch, $data) use ($file) {
                 return fwrite($file, $data);
             },
@@ -105,7 +104,7 @@ final readonly class StreamingHandler
 
                 return 0;
             },
-        ];
+        ]);
 
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,

@@ -2,187 +2,259 @@
 
 namespace Rcalicdan\FiberAsync\Http;
 
+use Rcalicdan\FiberAsync\Http\Interfaces\ResponseInterface;
+use Rcalicdan\FiberAsync\Http\Interfaces\StreamInterface;
+
 /**
- * Represents an immutable HTTP response.
+ * Represents an HTTP response.
  *
- * This class encapsulates the response body, status code, and headers from
- * an HTTP request, providing convenient methods to access and interpret the data.
- *
- * @psalm-immutable
+ * This class provides an immutable, PSR-7 compatible representation of an HTTP response,
+ * along with several convenient helper methods for inspecting the response status,
+ * headers, and body.
  */
-class Response
+class Response extends Message implements ResponseInterface
 {
     /**
-     * The raw HTTP response body.
-     * @var string
+     * @var array<int, string> Map of standard HTTP status code/reason phrases.
      */
-    protected string $body;
+    private const PHRASES = [
+        100 => 'Continue',
+        101 => 'Switching Protocols',
+        102 => 'Processing',
+        200 => 'OK',
+        201 => 'Created',
+        202 => 'Accepted',
+        203 => 'Non-Authoritative Information',
+        204 => 'No Content',
+        205 => 'Reset Content',
+        206 => 'Partial Content',
+        207 => 'Multi-status',
+        208 => 'Already Reported',
+        300 => 'Multiple Choices',
+        301 => 'Moved Permanently',
+        302 => 'Found',
+        303 => 'See Other',
+        304 => 'Not Modified',
+        305 => 'Use Proxy',
+        307 => 'Temporary Redirect',
+        400 => 'Bad Request',
+        401 => 'Unauthorized',
+        402 => 'Payment Required',
+        403 => 'Forbidden',
+        404 => 'Not Found',
+        405 => 'Method Not Allowed',
+        406 => 'Not Acceptable',
+        407 => 'Proxy Authentication Required',
+        408 => 'Request Time-out',
+        409 => 'Conflict',
+        410 => 'Gone',
+        411 => 'Length Required',
+        412 => 'Precondition Failed',
+        413 => 'Request Entity Too Large',
+        414 => 'Request-URI Too Large',
+        415 => 'Unsupported Media Type',
+        416 => 'Requested range not satisfiable',
+        417 => 'Expectation Failed',
+        418 => 'I\'m a teapot',
+        422 => 'Unprocessable Entity',
+        423 => 'Locked',
+        424 => 'Failed Dependency',
+        426 => 'Upgrade Required',
+        428 => 'Precondition Required',
+        429 => 'Too Many Requests',
+        431 => 'Request Header Fields Too Large',
+        500 => 'Internal Server Error',
+        501 => 'Not Implemented',
+        502 => 'Bad Gateway',
+        503 => 'Service Unavailable',
+        504 => 'Gateway Time-out',
+        505 => 'HTTP Version not supported',
+        506 => 'Variant Also Negotiates',
+        507 => 'Insufficient Storage',
+        508 => 'Loop Detected',
+        511 => 'Network Authentication Required',
+    ];
+
+    private int $statusCode;
+    private string $reasonPhrase;
 
     /**
-     * The HTTP status code.
-     * @var int
-     */
-    protected int $status;
-
-    /**
-     * The raw, unprocessed headers from the HTTP response.
-     * @var array
-     */
-    protected array $headers;
-
-    /**
-     * The parsed, associative array of headers (lowercase keys).
-     * @var array<string, string>
-     */
-    private array $parsedHeaders = [];
-
-    /**
-     * Initializes the Response object.
+     * Initializes a new Response instance.
      *
-     * @param string $body The raw response body.
-     * @param int $status The HTTP status code.
-     * @param array $headers The raw array of header strings.
+     * @param  string|StreamInterface  $body  The response body. Can be a string or a StreamInterface object.
+     * @param  int  $status  The HTTP status code.
+     * @param  array<string, string|string[]>  $headers  An associative array of response headers.
      */
-    public function __construct(string $body, int $status, array $headers = [])
+    public function __construct($body = 'php://memory', int $status = 200, array $headers = [])
     {
+        $this->statusCode = $status;
+        $this->reasonPhrase = self::PHRASES[$status] ?? 'Unknown Status Code';
+
+        if (! ($body instanceof StreamInterface)) {
+            if (is_string($body)) {
+                $resource = fopen('php://temp', 'r+');
+                if ($body !== '') {
+                    fwrite($resource, $body);
+                    rewind($resource);
+                }
+                $body = new Stream($resource);
+            } else {
+                // Default to an empty stream if body is not a recognizable type
+                $body = new Stream(fopen('php://temp', 'r+'));
+            }
+        }
+
         $this->body = $body;
-        $this->status = $status;
-        $this->headers = $headers;
-        $this->parseHeaders();
+        $this->setHeaders($headers);
     }
 
     /**
-     * Gets the raw response body as a string.
+     * {@inheritdoc}
+     */
+    public function getStatusCode(): int
+    {
+        return $this->statusCode;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getReasonPhrase(): string
+    {
+        return $this->reasonPhrase;
+    }
+
+    /**
+     * {@inheritdoc}
      *
-     * @return string
+     * @throws \InvalidArgumentException For invalid status code arguments.
+     */
+    public function withStatus(int $code, string $reasonPhrase = ''): ResponseInterface
+    {
+        if ($code < 100 || $code >= 600) {
+            throw new \InvalidArgumentException('Status code must be an integer value between 1xx and 5xx.');
+        }
+
+        $new = clone $this;
+        $new->statusCode = $code;
+        if ($reasonPhrase === '' && isset(self::PHRASES[$code])) {
+            $reasonPhrase = self::PHRASES[$code];
+        }
+        $new->reasonPhrase = $reasonPhrase;
+
+        return $new;
+    }
+
+    /**
+     * Get the response body as a string.
+     *
+     * @return string The full response body.
      */
     public function body(): string
     {
-        return $this->body;
+        return (string) $this->body;
     }
 
     /**
-     * Gets the raw response body as a string. (Alias for body())
-     *
-     * @return string
+     * {@inheritdoc}
      */
-    public function getBody(): string
+    public function getBody(): StreamInterface
     {
         return $this->body;
     }
 
     /**
-     * Decodes the JSON response body into an associative array.
-     * Returns an empty array if the body is not valid JSON.
+     * Get the response body decoded from JSON.
      *
-     * @return array
+     * @return array The decoded JSON data. Returns an empty array on failure.
      */
     public function json(): array
     {
-        return json_decode($this->body, true) ?? [];
+        return json_decode((string) $this->body, true) ?? [];
     }
 
     /**
-     * Decodes the JSON response body into an associative array. (Alias for json())
-     * Returns an empty array if the body is not valid JSON.
+     * Alias for `json()`.
      *
-     * @return array
+     * @return array The decoded JSON data.
      */
     public function getJson(): array
     {
-        return json_decode($this->body, true) ?? [];
+        return $this->json();
     }
 
     /**
-     * Gets the HTTP status code.
+     * Get the HTTP status code.
      *
-     * @return int
+     * @return int The status code.
      */
     public function status(): int
     {
-        return $this->status;
+        return $this->statusCode;
     }
 
     /**
-     * Gets the HTTP status code. (Alias for status())
+     * Alias for `status()`.
      *
-     * @return int
+     * @return int The status code.
      */
     public function getStatus(): int
     {
-        return $this->status;
+        return $this->statusCode;
     }
 
     /**
-     * Gets all parsed response headers as an associative array.
-     * Header names are normalized to lowercase.
+     * Get all response headers.
      *
-     * @return array<string, string>
-     */
-    public function getHeaders(): array
-    {
-        return $this->parsedHeaders;
-    }
-
-    /**
-     * Gets a single header value by name.
-     * The lookup is case-insensitive. Returns null if the header is not found.
-     *
-     * @param string $name The name of the header.
-     * @return string|null
-     */
-    public function getHeader(string $name): ?string
-    {
-        return $this->parsedHeaders[strtolower($name)] ?? null;
-    }
-
-    /**
-     * Checks if the response was successful (status code 200-299).
-     *
-     * @return bool
-     */
-    public function ok(): bool
-    {
-        return $this->status >= 200 && $this->status < 300;
-    }
-
-    /**
-     * Gets all parsed response headers as an associative array. (Alias for getHeaders())
-     * Header names are normalized to lowercase.
-     *
-     * @return array<string, string>
+     * @return array<string, string> An associative array of header names to values.
      */
     public function headers(): array
     {
-        return $this->parsedHeaders;
+        $headers = [];
+        foreach ($this->headers as $name => $values) {
+            $headers[strtolower($name)] = is_array($values) ? implode(', ', $values) : $values;
+        }
+
+        return $headers;
     }
 
     /**
-     * Gets a single header value by name. (Alias for getHeader())
-     * The lookup is case-insensitive. Returns null if the header is not found.
+     * Get a single response header by name.
      *
-     * @param string $name The name of the header.
-     * @return string|null
+     * @param  string  $name  The case-insensitive header name.
+     * @return string|null The header value, or null if the header does not exist.
      */
     public function header(string $name): ?string
     {
-        return $this->parsedHeaders[strtolower($name)] ?? null;
+        $header = $this->getHeaderLine($name);
+
+        return $header !== '' ? $header : null;
     }
 
     /**
-     * Checks if the response was successful (status code 200-299). (Alias for ok())
+     * Determine if the response has a successful status code (2xx).
      *
-     * @return bool
+     * @return bool True if the status code is between 200 and 299.
+     */
+    public function ok(): bool
+    {
+        return $this->statusCode >= 200 && $this->statusCode < 300;
+    }
+
+    /**
+     * Alias for `ok()`.
+     *
+     * @return bool True if the response was successful.
      */
     public function successful(): bool
     {
-        return $this->status >= 200 && $this->status < 300;
+        return $this->ok();
     }
 
     /**
-     * Checks if the response was not successful (status code is not 2xx).
+     * Determine if the response indicates a client or server error.
      *
-     * @return bool
+     * @return bool True if the status code is 400 or greater.
      */
     public function failed(): bool
     {
@@ -190,38 +262,22 @@ class Response
     }
 
     /**
-     * Checks if the response indicates a client error (status code 400-499).
+     * Determine if the response has a client error status code (4xx).
      *
-     * @return bool
+     * @return bool True if the status code is between 400 and 499.
      */
     public function clientError(): bool
     {
-        return $this->status >= 400 && $this->status < 500;
+        return $this->statusCode >= 400 && $this->statusCode < 500;
     }
 
     /**
-     * Checks if the response indicates a server error (status code 500-599).
+     * Determine if the response has a server error status code (5xx).
      *
-     * @return bool
+     * @return bool True if the status code is 500 or greater.
      */
     public function serverError(): bool
     {
-        return $this->status >= 500;
-    }
-
-    /**
-     * Parses the raw header array into a lowercase, associative array.
-     * This is called automatically by the constructor.
-     *
-     * @return void
-     */
-    private function parseHeaders(): void
-    {
-        foreach ($this->headers as $header) {
-            if (strpos($header, ':') !== false) {
-                [$name, $value] = explode(':', $header, 2);
-                $this->parsedHeaders[strtolower(trim($name))] = trim($value);
-            }
-        }
+        return $this->statusCode >= 500;
     }
 }
