@@ -11,7 +11,7 @@ use Rcalicdan\FiberAsync\Http\Response;
 /**
  * A test-only, in-memory PSR-16 cache that tracks all operations.
  */
-class TrackableCache implements CacheInterface
+class TrackableCacheTest implements CacheInterface
 {
     private array $storage = [];
     private array $operations = [];
@@ -70,7 +70,7 @@ class TrackableCache implements CacheInterface
 describe('HTTP Client Cache Invalidation', function () {
 
     test('invalidates cache for a GET request after a successful PUT request', function () {
-        $trackableCache = new TrackableCache();
+        $trackableCache = new TrackableCacheTest();
         $cacheConfig = new CacheConfig(cache: $trackableCache);
         $url = 'https://jsonplaceholder.typicode.com/posts/1'; // Use a REAL endpoint here
 
@@ -107,7 +107,7 @@ describe('HTTP Client Cache Invalidation', function () {
 
         AsyncHttp::setInstance($handlerMock);
 
-        $trackableCache = new TrackableCache();
+        $trackableCache = new TrackableCacheTest();
         $cacheConfig = new CacheConfig(cache: $trackableCache);
         $url = 'https://api.example.com/resource/42'; 
 
