@@ -113,7 +113,6 @@ class AsyncPdoPool
      */
     private function createConnection(): PDO
     {
-        // This logic is borrowed from your PDOManager to ensure consistency.
         $config = $this->dbConfig;
         $dsn = $this->buildDSN($config);
 
@@ -125,22 +124,136 @@ class AsyncPdoPool
         );
     }
 
+    /**
+     * Builds a DSN string for PDO based on the provided configuration.
+     *
+     * @param array $config The database configuration array
+     * @return string The DSN string
+     * @throws \InvalidArgumentException If the driver is not supported
+     */
     private function buildDSN(array $config): string
     {
-        switch ($config['driver']) {
-            case 'mysql':
-                return sprintf(
-                    'mysql:host=%s;port=%d;dbname=%s;charset=%s',
-                    $config['host'] ?? 'localhost',
-                    $config['port'] ?? 3306,
-                    $config['database'] ?? '',
-                    $config['charset'] ?? 'utf8mb4'
-                );
-            case 'sqlite':
-                return 'sqlite:'.($config['database'] ?? ':memory:');
-                // Add other drivers as needed
-            default:
-                throw new \InvalidArgumentException("Unsupported database driver for pool: {$config['driver']}");
+        return match ($config['driver']) {
+            'mysql' => sprintf(
+                'mysql:host=%s;port=%d;dbname=%s;charset=%s',
+                $config['host'] ?? 'localhost',
+                $config['port'] ?? 3306,
+                $config['database'] ?? '',
+                $config['charset'] ?? 'utf8mb4'
+            ),
+            
+            'pgsql', 'postgresql' => sprintf(
+                'pgsql:host=%s;port=%d;dbname=%s',
+                $config['host'] ?? 'localhost',
+                $config['port'] ?? 5432,
+                $config['database'] ?? ''
+            ),
+            
+            'sqlite' => 'sqlite:' . ($config['database'] ?? ':memory:'),
+            
+            'sqlsrv', 'mssql' => $this->buildSqlSrvDSN($config),
+            
+            'oci', 'oracle' => $this->buildOciDSN($config),
+            
+            'ibm', 'db2' => $this->buildIbmDSN($config),
+            
+            'odbc' => 'odbc:' . ($config['dsn'] ?? $config['database'] ?? ''),
+            
+            'firebird' => 'firebird:dbname=' . ($config['database'] ?? ''),
+            
+            'informix' => $this->buildInformixDSN($config),
+            
+            default => throw new \InvalidArgumentException("Unsupported database driver for pool: {$config['driver']}")
+        };
+    }
+
+    /**
+     * Builds a SQL Server DSN string.
+     */
+    private function buildSqlSrvDSN(array $config): string
+    {
+        $dsn = 'sqlsrv:server=' . ($config['host'] ?? 'localhost');
+        
+        if (isset($config['port']) && $config['port'] != 1433) {
+            $dsn .= ',' . $config['port'];
         }
+        
+        if (isset($config['database'])) {
+            $dsn .= ';Database=' . $config['database'];
+        }
+        
+        return $dsn;
+    }
+
+    /**
+     * Builds an Oracle DSN string.
+     */
+    private function buildOciDSN(array $config): string
+    {
+        $dsn = 'oci:dbname=';
+        
+        if (isset($config['host'])) {
+            $dsn .= '//'.$config['host'];
+            
+            if (isset($config['port'])) {
+                $dsn .= ':'.$config['port'];
+            }
+            
+            $dsn .= '/';
+        }
+        
+        $dsn .= $config['database'] ?? '';
+        
+        if (isset($config['charset'])) {
+            $dsn .= ';charset='.$config['charset'];
+        }
+        
+        return $dsn;
+    }
+
+    /**
+     * Builds an IBM DB2 DSN string.
+     */
+    private function buildIbmDSN(array $config): string
+    {
+        $dsn = 'ibm:';
+        
+        if (isset($config['database'])) {
+            $dsn .= $config['database'];
+        } elseif (isset($config['dsn'])) {
+            $dsn .= $config['dsn'];
+        }
+        
+        return $dsn;
+    }
+
+    /**
+     * Builds an Informix DSN string.
+     */
+    private function buildInformixDSN(array $config): string
+    {
+        $dsn = 'informix:';
+        
+        if (isset($config['host'])) {
+            $dsn .= 'host=' . $config['host'] . ';';
+        }
+        
+        if (isset($config['database'])) {
+            $dsn .= 'database=' . $config['database'] . ';';
+        }
+        
+        if (isset($config['server'])) {
+            $dsn .= 'server=' . $config['server'] . ';';
+        }
+        
+        if (isset($config['protocol'])) {
+            $dsn .= 'protocol=' . $config['protocol'] . ';';
+        }
+        
+        if (isset($config['service'])) {
+            $dsn .= 'service=' . $config['service'] . ';';
+        }
+        
+        return $dsn;
     }
 }
