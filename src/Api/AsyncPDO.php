@@ -6,7 +6,6 @@ use PDO;
 use Rcalicdan\FiberAsync\Async\Handlers\PromiseCollectionHandler;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\PDO\AsyncPdoPool;
-
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Throwable;
@@ -28,9 +27,6 @@ final class AsyncPDO
 
         self::$pool = new AsyncPdoPool($dbConfig, $poolSize);
         self::$isInitialized = true;
-
-        $loop = EventLoop::getInstance();
-        $loop->configureDatabase($dbConfig);
     }
 
     /**

@@ -5,7 +5,6 @@ namespace Rcalicdan\FiberAsync\EventLoop\Handlers;
 use Rcalicdan\FiberAsync\EventLoop\Managers\FiberManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\FileManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\HttpRequestManager;
-use Rcalicdan\FiberAsync\EventLoop\Managers\PDOManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\SocketManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\StreamManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\TimerManager;
@@ -19,7 +18,6 @@ final readonly class WorkHandler
     private TickHandler $tickHandler;
     private FileManager $fileManager;
     private SocketManager $socketManager;
-    private PDOManager $pdoManager;
 
     public function __construct(
         TimerManager $timerManager,
@@ -29,7 +27,6 @@ final readonly class WorkHandler
         TickHandler $tickHandler,
         FileManager $fileManager,
         SocketManager $socketManager,
-        PDOManager $pdoManager,
     ) {
         $this->timerManager = $timerManager;
         $this->httpRequestManager = $httpRequestManager;
@@ -38,7 +35,6 @@ final readonly class WorkHandler
         $this->tickHandler = $tickHandler;
         $this->fileManager = $fileManager;
         $this->socketManager = $socketManager;
-        $this->pdoManager = $pdoManager;
     }
 
     public function hasWork(): bool
@@ -50,8 +46,7 @@ final readonly class WorkHandler
             $this->fileManager->hasWork() ||
             $this->streamManager->hasWatchers() ||
             $this->socketManager->hasWatchers() ||
-            $this->fiberManager->hasFibers() ||
-            $this->pdoManager->hasPendingOperations();
+            $this->fiberManager->hasFibers();
     }
 
     public function processWork(): bool
@@ -102,10 +97,6 @@ final readonly class WorkHandler
         }
 
         if ($this->fileManager->processFileOperations()) {
-            $workDone = true;
-        }
-
-        if ($this->pdoManager->processOperations()) {
             $workDone = true;
         }
 
