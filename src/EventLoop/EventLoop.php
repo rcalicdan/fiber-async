@@ -11,11 +11,9 @@ use Rcalicdan\FiberAsync\EventLoop\Interfaces\EventLoopInterface;
 use Rcalicdan\FiberAsync\EventLoop\Managers\FiberManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\FileManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\HttpRequestManager;
-use Rcalicdan\FiberAsync\EventLoop\Managers\PDOManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\SocketManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\StreamManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\TimerManager;
-use Rcalicdan\FiberAsync\EventLoop\ValueObjects\PDOOperation;
 use Rcalicdan\FiberAsync\EventLoop\ValueObjects\StreamWatcher;
 
 /**
@@ -86,12 +84,10 @@ class EventLoop implements EventLoopInterface
      */
     private FileManager $fileManager;
     private SocketManager $socketManager;
-    private PDOManager $pdoManager;
 
     private int $iterationCount = 0;
     private float $lastOptimizationCheck = 0;
     private const OPTIMIZATION_INTERVAL = 1.0;
-    private array $pdoLatencyConfig = [];
 
     /**
      * Initialize the event loop with all required managers and handlers.
@@ -111,9 +107,6 @@ class EventLoop implements EventLoopInterface
         $this->fileManager = new FileManager;
         $this->socketManager = new SocketManager;
 
-        // The PDOManager is created here, but it's "empty" and unconfigured.
-        $this->pdoManager = new PDOManager;
-
         $this->workHandler = new WorkHandler(
             timerManager: $this->timerManager,
             httpRequestManager: $this->httpRequestManager,
@@ -122,41 +115,12 @@ class EventLoop implements EventLoopInterface
             tickHandler: $this->tickHandler,
             fileManager: $this->fileManager,
             socketManager: $this->socketManager,
-            pdoManager: $this->pdoManager
         );
 
         $this->sleepHandler = new SleepHandler(
             $this->timerManager,
             $this->fiberManager
         );
-    }
-
-    public function configureDatabase(array $dbConfig): void
-    {
-        // It delegates the configuration to the manager it owns.
-        $this->pdoManager->initialize($dbConfig);
-    }
-
-    public function addPDOOperation(string $type, array $payload, callable $callback, array $options = []): string
-    {
-        $operation = new PDOOperation($type, $payload, $callback, $options);
-
-        return $this->pdoManager->addOperation($operation);
-    }
-
-    public function cancelPDOOperation(string $operationId): bool
-    {
-        return $this->pdoManager->cancelOperation($operationId);
-    }
-
-    public function setPDOLatencyConfig(array $config): void
-    {
-        $this->pdoLatencyConfig = $config;
-    }
-
-    public function getPDOLatencyConfig(): array
-    {
-        return $this->pdoLatencyConfig;
     }
 
     public function getSocketManager(): SocketManager

@@ -6,15 +6,12 @@ use Rcalicdan\FiberAsync\Async\AsyncOperations;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
- * Static facade for timer-based asynchronous operations.
+ * Static API for timer-based asynchronous operations.
  *
- * This facade provides convenient methods for creating time-based promises
+ * This API provides convenient methods for creating time-based promises
  * and managing temporal aspects of asynchronous workflows. It focuses on
  * operations that involve time delays, timeouts, and scheduling without
  * blocking the event loop.
- *
- * For core async operations and fiber management, see the Async class.
- * For promise creation and collection utilities, see the Promise class.
  */
 final class Timer
 {

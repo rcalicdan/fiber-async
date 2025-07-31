@@ -7,9 +7,9 @@ use Rcalicdan\FiberAsync\Loop\LoopOperations;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
- * Static facade for event loop management and high-level async execution.
+ * Static API for event loop management and high-level async execution.
  *
- * This facade provides convenient methods for running async operations with
+ * This API provides convenient methods for running async operations with
  * automatic event loop lifecycle management. It handles starting, running,
  * and stopping the event loop automatically, making it ideal for simple
  * async workflows and batch processing.

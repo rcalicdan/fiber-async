@@ -7,9 +7,9 @@ use Rcalicdan\FiberAsync\Loop\LoopOperations;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
- * Static facade for core asynchronous operations and fiber management.
+ * Static API for core asynchronous operations and fiber management.
  *
- * This facade provides a simplified interface to fiber-based asynchronous programming
+ * This API provides a simplified interface to fiber-based asynchronous programming
  * capabilities, focusing on execution control, function transformation, and async
  * workflow management. It handles automatic initialization of the underlying async
  * infrastructure and manages singleton instances internally.

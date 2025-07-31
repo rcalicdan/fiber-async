@@ -8,7 +8,7 @@ use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
- * Async Query Builder - CodeIgniter 4 style query builder for async operations
+ * Async Query Builder for easy way to write asynchonous sql queries
  *
  * Usage:
  * AsyncDb::table('users')->select('id, name')->where('active', 1)->get()

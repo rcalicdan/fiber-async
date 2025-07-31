@@ -7,9 +7,9 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\QueryBuilder\AsyncQueryBuilder;
 
 /**
- * AsyncDb Facade - Main entry point for auto-configured async database operations.
+ * AsyncDb API - Main entry point for auto-configured async database operations.
  *
- * This facade automatically loads configuration from .env and config/database.php
+ * This API automatically loads configuration from .env and config/database.php
  * the first time it is used, providing a zero-setup experience for the developer.
  */
 class AsyncDB

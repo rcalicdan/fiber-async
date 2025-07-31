@@ -6,9 +6,9 @@ use Rcalicdan\FiberAsync\File\AsyncFileOperations;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
- * Static facade for asynchronous file and directory operations.
+ * Static API for asynchronous file and directory operations.
  *
- * This facade provides a comprehensive set of file system operations that
+ * This API provides a comprehensive set of file system operations that
  * execute asynchronously without blocking the event loop. It includes file
  * reading, writing, directory management, and file watching capabilities.
  */
