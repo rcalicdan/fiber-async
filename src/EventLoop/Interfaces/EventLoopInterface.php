@@ -29,14 +29,6 @@ interface EventLoopInterface
      */
     public function addHttpRequest(string $url, array $options, callable $callback): string;
 
-    // /**
-    //  * Watches a stream for readability and executes callback when ready.
-    //  *
-    //  * @param  resource  $stream  The stream resource to watch
-    //  * @param  callable  $callback  Callback to execute when stream is readable
-    //  */
-    // public function addStreamWatcher($stream, callable $callback): void;
-
     /**
      * Registers a fiber with the event loop for management.
      *
