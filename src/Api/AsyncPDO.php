@@ -4,7 +4,6 @@ namespace Rcalicdan\FiberAsync\Api;
 
 use PDO;
 use Rcalicdan\FiberAsync\Async\Handlers\PromiseCollectionHandler;
-use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\PDO\AsyncPdoPool;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
@@ -66,8 +65,6 @@ final class AsyncPDO
         }
         self::$pool = null;
         self::$isInitialized = false;
-
-        EventLoop::reset();
     }
 
     /**
