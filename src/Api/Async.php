@@ -93,7 +93,7 @@ final class Async
      * @param  callable  $asyncFunction  The function to convert to async
      * @return callable An async version that returns a Promise
      */
-    public static function async(callable $asyncFunction): callable
+    public static function async(callable $asyncFunction): callable|PromiseInterface
     {
         return self::getAsyncOperations()->async($asyncFunction);
     }

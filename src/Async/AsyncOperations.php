@@ -120,7 +120,7 @@ class AsyncOperations implements AsyncOperationsInterface
      * @param  callable  $asyncFunction  The function to convert to async
      * @return callable An async version of the provided function
      */
-    public function async(callable $asyncFunction): callable
+    public function async(callable $asyncFunction): callable|PromiseInterface
     {
         return $this->executionHandler->async($asyncFunction);
     }

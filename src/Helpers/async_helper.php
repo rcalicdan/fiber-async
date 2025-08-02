@@ -37,7 +37,7 @@ if (! function_exists('async')) {
      *     return $result;
      * });
      */
-    function async(callable $asyncFunction): callable
+    function async(callable $asyncFunction): callable|PromiseInterface
     {
         return Async::async($asyncFunction);
     }

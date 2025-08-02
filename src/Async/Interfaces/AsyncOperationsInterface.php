@@ -42,9 +42,9 @@ interface AsyncOperationsInterface
      * and return a promise that resolves with the function's result.
      *
      * @param  callable  $asyncFunction  The function to wrap asynchronously
-     * @return callable A callable that returns a PromiseInterface
+     * @return callable|PromiseInterface A callable that returns a PromiseInterface
      */
-    public function async(callable $asyncFunction): callable;
+    public function async(callable $asyncFunction): callable|PromiseInterface;
 
     /**
      * Converts a synchronous function into an asynchronous one.

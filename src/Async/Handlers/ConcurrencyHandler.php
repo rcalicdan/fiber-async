@@ -2,26 +2,16 @@
 
 namespace Rcalicdan\FiberAsync\Async\Handlers;
 
-use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Promise;
 use RuntimeException;
+use InvalidArgumentException;
 use Throwable;
 
-/**
- * Handles concurrent execution of multiple tasks with concurrency limiting.
- *
- * This handler manages the execution of multiple asynchronous tasks while
- * limiting the number of tasks that run simultaneously. This is useful for
- * controlling resource usage and preventing overwhelming external services.
- */
 final readonly class ConcurrencyHandler
 {
     private AsyncExecutionHandler $executionHandler;
 
-    /**
-     * @param  AsyncExecutionHandler  $executionHandler  Handler for async execution
-     */
     public function __construct(AsyncExecutionHandler $executionHandler)
     {
         $this->executionHandler = $executionHandler;
@@ -30,32 +20,40 @@ final readonly class ConcurrencyHandler
     /**
      * Execute multiple tasks concurrently with a specified concurrency limit.
      *
-     * This method runs multiple tasks simultaneously while ensuring that no more
-     * than the specified number of tasks run at the same time. Tasks can be either
-     * callable functions or existing Promise instances.
+     * IMPORTANT: Tasks must be callables that return promises, NOT pre-created promises.
+     * This ensures proper concurrency control by starting tasks only when allowed.
      *
-     * @param  array  $tasks  Array of callable tasks or Promise instances
-     * @param  int  $concurrency  Maximum number of tasks to run simultaneously (default: 10)
+     * @param  array  $tasks  Array of callable tasks (NOT promises!)
+     * @param  int  $concurrency  Maximum number of tasks to run simultaneously
      * @return PromiseInterface Promise that resolves with an array of all results
      *
+     * @throws InvalidArgumentException If tasks contain non-callables or pre-created promises
      * @throws RuntimeException If a task doesn't return a Promise
      */
     public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {
         return new Promise(function ($resolve, $reject) use ($tasks, $concurrency) {
             if ($concurrency <= 0) {
-                $reject(new \InvalidArgumentException('Concurrency limit must be greater than 0'));
-
+                $reject(new InvalidArgumentException('Concurrency limit must be greater than 0'));
                 return;
             }
 
             if (empty($tasks)) {
                 $resolve([]);
-
                 return;
             }
 
-            // Convert tasks to indexed array and preserve original keys
+            foreach ($tasks as $index => $task) {
+                if (!is_callable($task)) {
+                    $reject(new InvalidArgumentException(
+                        "Task at index '$index' must be a callable. " .
+                            "Did you pass a pre-created Promise instead of a callable? " .
+                            "Use fn() => yourAsyncFunction() instead of yourAsyncFunction()."
+                    ));
+                    return;
+                }
+            }
+
             $taskList = array_values($tasks);
             $originalKeys = array_keys($tasks);
 
@@ -78,7 +76,6 @@ final readonly class ConcurrencyHandler
                 $resolve,
                 $reject
             ) {
-                // Start as many tasks as we can up to the concurrency limit
                 while ($running < $concurrency && $taskIndex < $total) {
                     $currentIndex = $taskIndex++;
                     $task = $taskList[$currentIndex];
@@ -86,17 +83,17 @@ final readonly class ConcurrencyHandler
                     $running++;
 
                     try {
-                        $promise = is_callable($task)
-                            ? $this->executionHandler->async($task)()
-                            : $task;
+                        $promise = $this->executionHandler->async($task)();
 
-                        if (! ($promise instanceof PromiseInterface)) {
-                            throw new RuntimeException('Task must return a Promise or be a callable that returns a Promise');
+                        if (!($promise instanceof PromiseInterface)) {
+                            throw new RuntimeException(
+                                "Task at index '$originalKey' must return a Promise. " .
+                                    "Make sure your callable returns a Promise-based async operation."
+                            );
                         }
                     } catch (Throwable $e) {
                         $running--;
                         $reject($e);
-
                         return;
                     }
 
@@ -117,53 +114,57 @@ final readonly class ConcurrencyHandler
                             if ($completed === $total) {
                                 $resolve($results);
                             } else {
-                                // Schedule next task processing on next tick
-                                EventLoop::getInstance()->nextTick($processNext);
+                                // Process next task immediately instead of nextTick
+                                $processNext();
                             }
                         })
                         ->catch(function ($error) use (&$running, $reject) {
                             $running--;
                             $reject($error);
-                        })
-                    ;
+                        });
                 }
             };
 
             // Start initial batch of tasks
-            EventLoop::getInstance()->nextTick($processNext);
+            $processNext();
         });
     }
 
     /**
      * Execute tasks in sequential batches with concurrency within each batch.
      *
-     * This method processes tasks in batches sequentially, where each batch
-     * runs tasks concurrently up to the specified limit, but waits for the
-     * entire batch to complete before starting the next batch.
+     * IMPORTANT: Tasks must be callables that return promises, NOT pre-created promises.
      *
-     * @param  array  $tasks  Array of callable tasks or Promise instances
-     * @param  int  $batchSize  Number of tasks per batch (default: 10)
-     * @param  int  $concurrency  Maximum concurrent tasks within each batch (default: same as batch size)
+     * @param  array  $tasks  Array of callable tasks (NOT promises!)
+     * @param  int  $batchSize  Number of tasks per batch
+     * @param  int  $concurrency  Maximum concurrent tasks within each batch
      * @return PromiseInterface Promise that resolves with an array of all results
      */
     public function batch(array $tasks, int $batchSize = 10, ?int $concurrency = null): PromiseInterface
     {
         return new Promise(function ($resolve, $reject) use ($tasks, $batchSize, $concurrency) {
             if ($batchSize <= 0) {
-                $reject(new \InvalidArgumentException('Batch size must be greater than 0'));
-
+                $reject(new InvalidArgumentException('Batch size must be greater than 0'));
                 return;
             }
 
             if (empty($tasks)) {
                 $resolve([]);
-
                 return;
             }
 
-            $concurrency = $concurrency ?? $batchSize;
+            foreach ($tasks as $index => $task) {
+                if (!is_callable($task)) {
+                    $reject(new InvalidArgumentException(
+                        "Task at index '$index' must be a callable. " .
+                            "Did you pass a pre-created Promise instead of a callable? " .
+                            "Use fn() => yourAsyncFunction() instead of yourAsyncFunction()."
+                    ));
+                    return;
+                }
+            }
 
-            // Preserve original keys
+            $concurrency = $concurrency ?? $batchSize;
             $originalKeys = array_keys($tasks);
             $taskValues = array_values($tasks);
             $batches = array_chunk($taskValues, $batchSize, false);
@@ -186,13 +187,11 @@ final readonly class ConcurrencyHandler
             ) {
                 if ($batchIndex >= $totalBatches) {
                     $resolve($allResults);
-
                     return;
                 }
 
                 $currentBatch = $batches[$batchIndex];
                 $currentKeys = $keyBatches[$batchIndex];
-
                 $batchTasks = array_combine($currentKeys, $currentBatch);
 
                 $this->concurrent($batchTasks, $concurrency)
@@ -203,13 +202,12 @@ final readonly class ConcurrencyHandler
                     ) {
                         $allResults = array_merge($allResults, $batchResults);
                         $batchIndex++;
-                        EventLoop::getInstance()->nextTick($processNextBatch);
+                        $processNextBatch();
                     })
-                    ->catch($reject)
-                ;
+                    ->catch($reject);
             };
 
-            EventLoop::getInstance()->nextTick($processNextBatch);
+            $processNextBatch();
         });
     }
 }
