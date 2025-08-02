@@ -19,39 +19,43 @@ final readonly class LoopExecutionHandler
 
     public function run(callable|PromiseInterface $asyncOperation): mixed
     {
-        $loop = EventLoop::getInstance();
-        $result = null;
-        $error = null;
-        $completed = false;
+        try {
+            $loop = EventLoop::getInstance();
+            $result = null;
+            $error = null;
+            $completed = false;
 
-        $promise = is_callable($asyncOperation)
-            ? $this->asyncOps->async($asyncOperation)()
-            : $asyncOperation;
+            $promise = is_callable($asyncOperation)
+                ? $this->asyncOps->async($asyncOperation)()
+                : $asyncOperation;
 
-        $promise
-            ->then(function ($value) use (&$result, &$completed) {
-                $result = $value;
-                $completed = true;
-            })
-            ->catch(function ($reason) use (&$error, &$completed) {
-                $error = $reason;
-                $completed = true;
-            })
-        ;
+            $promise
+                ->then(function ($value) use (&$result, &$completed) {
+                    $result = $value;
+                    $completed = true;
+                })
+                ->catch(function ($reason) use (&$error, &$completed) {
+                    $error = $reason;
+                    $completed = true;
+                })
+            ;
 
-        while (! $completed) {
-            $loop->run();
+            while (! $completed) {
+                $loop->run();
 
-            if (! $completed) {
-                usleep(100);
+                if (! $completed) {
+                    usleep(100);
+                }
             }
-        }
 
-        if ($error !== null) {
-            throw $error instanceof Throwable ? $error : new Exception((string) $error);
-        }
+            if ($error !== null) {
+                throw $error instanceof Throwable ? $error : new Exception((string) $error);
+            }
 
-        return $result;
+            return $result;
+        } finally {
+            EventLoop::reset();
+        }
     }
 
     public function createPromiseFromOperation(callable|PromiseInterface $operation): PromiseInterface

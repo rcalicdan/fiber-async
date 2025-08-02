@@ -6,30 +6,42 @@ use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 
 echo "=== EXACT ORIGINAL PARAMETERS TEST ===\n";
+function getRandomFloat($min = 0, $max = 1) {
+    return $min + mt_rand() / mt_getrandmax() * ($max - $min);
+}
 
-for ($round = 1; $round <= 50; $round++) {
+for ($round = 1; $round <= 500; $round++) {
+    // start time measurement
+    $startTime = microtime(true);
+
     $before = memory_get_usage(true);
     
-    // Exact same parameters as your failing test
     $promises = [];
-    for ($i = 0; $i < 5; $i++) { // 30 requests
-        $promises[] = http_get('https://jsonplaceholder.typicode.com/posts/1');
+    for ($i = 0; $i < 50; $i++) { 
+        $promises[] = delay(getRandomFloat(0.1, 1));
     }
     
     $responses = run(function() use ($promises) {
-        return await(Promise::concurrent($promises, 10)); // Concurrency 10
+        return await(Promise::all($promises)); // Concurrency 10
     });
     
     $after = memory_get_usage(true);
     
-    CleanupManager::cleanup();
-    
+    // (no explicit cleanup call here, so cleaned == after)
     $cleaned = memory_get_usage(true);
     
-    echo "Round $round: Before=" . formatBytes($before) . 
-         " After=" . formatBytes($after) . 
-         " Cleaned=" . formatBytes($cleaned) . 
-         " Net=" . formatBytes($cleaned - $before) . "\n";
+    // end time measurement
+    $duration = microtime(true) - $startTime;
+
+    echo sprintf(
+        "Round %d: Before=%s After=%s Cleaned=%s Net=%s Time=%.2f s\n",
+        $round,
+        formatBytes($before),
+        formatBytes($after),
+        formatBytes($cleaned),
+        formatBytes($cleaned - $before),
+        $duration
+    );
 }
 
 function formatBytes($size, $precision = 2)
