@@ -257,19 +257,17 @@ if (! function_exists('asyncify')) {
 
 if (! function_exists('concurrent')) {
     /**
-     * Execute multiple tasks concurrently with a concurrency limit.
+     * Execute multiple tasks concurrently with a specified concurrency limit.
      *
-     * Processes an array of tasks (callables or promises) in batches to avoid
-     * overwhelming the system. This is essential for handling large numbers
-     * of concurrent operations without exhausting system resources.
+     * IMPORTANT: For proper concurrency control, tasks should be callables that return
+     * Promises, not pre-created Promise instances. Pre-created Promises are already
+     * running and cannot be subject to concurrency limiting.
      *
-     * @param  array  $tasks  Array of tasks (callables or promises) to execute
-     * @param  int  $concurrency  Maximum number of concurrent executions
-     * @return PromiseInterface A promise that resolves with all task results
-     *
-     * @example
-     * $tasks = array_map(fn($url) => fn() => http_get($url), $urls);
-     * $results = await(concurrent($tasks, 5));
+     * @param array $tasks Array of callables that return Promises, or Promise instances
+     *                     Note: Promise instances will be awaited but cannot be truly
+     *                     limited since they're already running
+     * @param int $concurrency Maximum number of tasks to run simultaneously
+     * @return PromiseInterface Promise that resolves with an array of all results
      */
     function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {

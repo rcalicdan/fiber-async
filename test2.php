@@ -4,30 +4,40 @@ use Rcalicdan\FiberAsync\Api\Promise;
 
 require "vendor/autoload.php";
 
-// This should now work correctly
-foreach ([1, 2, 3] as $concurrency) {
-    $startTime = microtime(true);
-    run(function () use ($concurrency) {
-        $task = Promise::concurrent([
-            fn() => await(delay(1)),  
-            fn() => await(delay(5)),    
-            fn() => await(delay(3)),  
-        ], $concurrency);
-        await($task);
-    });
-    $endTime = microtime(true);
-    echo "Concurrency $concurrency: " . ($endTime - $startTime) . " seconds\n";
-}
+$startTime = microtime(true);
+run(function () {
+    $promises = [
+        fn() => delay(1),
+        fn() => delay(5), 
+        fn() => delay(3),
+    ];
+    
+    $task = Promise::concurrent($promises, 1);
+    await($task);
+});
+$endTime = microtime(true);
+echo "Test 1 - Should be ~9 seconds: " . ($endTime - $startTime) . "\n";
 
-// This should throw a clear error
-try {
-    run(function () {
-        $task = Promise::concurrent([
-            delay(1),  // ❌ Pre-created promise
-            delay(5),  // ❌ Pre-created promise
-        ], 2);
-        await($task);
-    });
-} catch (Exception $e) {
-    echo "Error (as expected): " . $e->getMessage() . "\n";
-}
+$startTime = microtime(true);
+run(function () {
+    $task = Promise::concurrent([
+        delay(1),
+        delay(5),
+        delay(3),
+    ], 1);
+    await($task);
+});
+$endTime = microtime(true);
+echo "Test 2 - Should be ~9 seconds: " . ($endTime - $startTime) . "\n";
+
+$startTime = microtime(true);
+run(function () {
+    $task = Promise::concurrent([
+        fn() => await(delay(1)),
+        fn() => await(delay(5)),
+        fn() => await(delay(3)),
+    ], 1);
+    await($task);
+});
+$endTime = microtime(true);
+echo "Test 3 - Should be ~9 seconds: " . ($endTime - $startTime) . "\n";
