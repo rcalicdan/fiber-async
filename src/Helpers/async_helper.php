@@ -284,7 +284,9 @@ if (! function_exists('batch')) {
      * processing large datasets or performing operations that require
      * significant resources without overwhelming the system.
      *
-     * @param  array  $tasks  Array of tasks (callables or promises) to execute
+     * @param array $tasks Array of callables that return Promises, or Promise instances
+     *                     Note: Promise instances will be awaited but cannot be truly
+     *                     limited since they're already running
      * @param  int  $batchSize  Size of each batch to process concurrently
      * @param  int  $concurrency  Maximum number of concurrent executions per batch
      * @return PromiseInterface A promise that resolves with all results

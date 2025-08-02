@@ -1,43 +1,45 @@
 <?php
-
-use Rcalicdan\FiberAsync\Api\Promise;
-
 require "vendor/autoload.php";
 
-$startTime = microtime(true);
-run(function () {
-    $promises = [
-        fn() => delay(1),
-        fn() => delay(5), 
-        fn() => delay(3),
-    ];
+use Rcalicdan\FiberAsync\Api\CleanupManager;
+use Rcalicdan\FiberAsync\Api\Promise;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
+
+echo "=== EXACT ORIGINAL PARAMETERS TEST ===\n";
+
+for ($round = 1; $round <= 50; $round++) {
+    $before = memory_get_usage(true);
     
-    $task = Promise::concurrent($promises, 1);
-    await($task);
-});
-$endTime = microtime(true);
-echo "Test 1 - Should be ~9 seconds: " . ($endTime - $startTime) . "\n";
+    // Exact same parameters as your failing test
+    $promises = [];
+    for ($i = 0; $i < 5; $i++) { // 30 requests
+        $promises[] = http_get('https://jsonplaceholder.typicode.com/posts/1');
+    }
+    
+    $responses = run(function() use ($promises) {
+        return await(Promise::concurrent($promises, 10)); // Concurrency 10
+    });
+    
+    $after = memory_get_usage(true);
+    
+    CleanupManager::cleanup();
+    
+    $cleaned = memory_get_usage(true);
+    
+    echo "Round $round: Before=" . formatBytes($before) . 
+         " After=" . formatBytes($after) . 
+         " Cleaned=" . formatBytes($cleaned) . 
+         " Net=" . formatBytes($cleaned - $before) . "\n";
+}
 
-$startTime = microtime(true);
-run(function () {
-    $task = Promise::concurrent([
-        delay(1),
-        delay(5),
-        delay(3),
-    ], 1);
-    await($task);
-});
-$endTime = microtime(true);
-echo "Test 2 - Should be ~9 seconds: " . ($endTime - $startTime) . "\n";
-
-$startTime = microtime(true);
-run(function () {
-    $task = Promise::concurrent([
-        fn() => await(delay(1)),
-        fn() => await(delay(5)),
-        fn() => await(delay(3)),
-    ], 1);
-    await($task);
-});
-$endTime = microtime(true);
-echo "Test 3 - Should be ~9 seconds: " . ($endTime - $startTime) . "\n";
+function formatBytes($size, $precision = 2)
+{
+    if ($size === 0) return "0 B";
+    if ($size < 0) return "-" . formatBytes(abs($size), $precision);
+    
+    $units = ['B', 'KB', 'MB', 'GB'];
+    for ($i = 0; $size > 1024 && $i < count($units) - 1; $i++) {
+        $size /= 1024;
+    }
+    return round($size, $precision) . ' ' . $units[$i];
+}
