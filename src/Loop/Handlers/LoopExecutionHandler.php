@@ -6,11 +6,13 @@ use Exception;
 use Rcalicdan\FiberAsync\Async\AsyncOperations;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use RuntimeException;
 use Throwable;
 
-final readonly class LoopExecutionHandler
+final class LoopExecutionHandler
 {
     private AsyncOperations $asyncOps;
+    private static bool $isRunning = false;
 
     public function __construct(AsyncOperations $asyncOps)
     {
@@ -19,7 +21,12 @@ final readonly class LoopExecutionHandler
 
     public function run(callable|PromiseInterface $asyncOperation): mixed
     {
+        if (self::$isRunning) {
+            throw new RuntimeException('Cannot call run() while already running. Use await() instead.');
+        }
+        
         try {
+            self::$isRunning = true;
             $loop = EventLoop::getInstance();
             $result = null;
             $error = null;
@@ -54,6 +61,7 @@ final readonly class LoopExecutionHandler
 
             return $result;
         } finally {
+            self::$isRunning = false;
             EventLoop::reset();
         }
     }

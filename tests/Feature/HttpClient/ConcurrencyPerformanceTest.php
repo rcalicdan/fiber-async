@@ -62,7 +62,7 @@ describe('Async Performance and Concurrency', function () {
             for ($i = 0; $i < 100; $i++) {
                 $tasks[] = fn () => await(delay(0.001));
             }
-            run_concurrent($tasks, 10);
+            await(concurrent($tasks, 10));
         });
 
         $memoryIncrease = memory_get_usage() - $initialMemory;
