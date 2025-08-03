@@ -52,7 +52,6 @@ class LoopOperations implements LoopOperationsInterface
     /**
      * @var BenchmarkHandler Provides performance measurement capabilities
      */
-    private BenchmarkHandler $benchmarkHandler;
 
     /**
      * Initialize loop operations with all required handlers.
@@ -66,7 +65,6 @@ class LoopOperations implements LoopOperationsInterface
         $this->concurrentHandler = new ConcurrentExecutionHandler($this->asyncOps, $this->executionHandler);
         $this->taskHandler = new TaskExecutionHandler($this->asyncOps, $this->executionHandler);
         $this->timeoutHandler = new TimeoutHandler($this->asyncOps, $this->executionHandler);
-        $this->benchmarkHandler = new BenchmarkHandler($this->executionHandler);
     }
 
     /**
@@ -168,33 +166,5 @@ class LoopOperations implements LoopOperationsInterface
     public function runBatch(array $asyncOperations, int $batch, ?int $concurrency = null): array
     {
         return $this->concurrentHandler->runBatch($asyncOperations, $batch, $concurrency);
-    }
-
-    /**
-     * Run an async operation and measure its execution time.
-     *
-     * Returns both the operation result and performance metrics including
-     * execution time, memory usage, and other benchmarking data.
-     *
-     * @param  callable|PromiseInterface  $asyncOperation  The operation to benchmark
-     * @return array Array containing 'result' and 'benchmark' keys with timing data
-     */
-    public function benchmark(callable|PromiseInterface $asyncOperation): array
-    {
-        return $this->benchmarkHandler->benchmark($asyncOperation);
-    }
-
-    /**
-     * Format benchmark results into a human-readable string.
-     *
-     * Takes the array returned by benchmark() and formats it into a
-     * readable string with execution time and performance metrics.
-     *
-     * @param  array  $benchmarkResult  The result array from benchmark()
-     * @return string Formatted benchmark information
-     */
-    public function formatBenchmark(array $benchmarkResult): string
-    {
-        return $this->benchmarkHandler->formatBenchmarkResult($benchmarkResult);
     }
 }

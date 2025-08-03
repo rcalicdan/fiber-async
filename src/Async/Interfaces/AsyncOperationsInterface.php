@@ -47,17 +47,6 @@ interface AsyncOperationsInterface
     public function async(callable $asyncFunction): callable|PromiseInterface;
 
     /**
-     * Converts a synchronous function into an asynchronous one.
-     *
-     * Similar to async() but specifically designed for converting sync functions
-     * to async versions that can be awaited.
-     *
-     * @param  callable  $syncFunction  The synchronous function to convert
-     * @return callable An asynchronous version of the function
-     */
-    public function asyncify(callable $syncFunction): callable;
-
-    /**
      * Wraps an async function with error handling.
      *
      * If the async function throws an exception, it will be caught and

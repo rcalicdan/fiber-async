@@ -132,20 +132,4 @@ final class Async
     {
         return self::getAsyncOperations()->tryAsync($asyncFunction);
     }
-
-    /**
-     * Convert a synchronous function to work in async contexts.
-     *
-     * Wraps a synchronous function so it can be used alongside async operations
-     * without blocking the event loop. The function will be executed in a way
-     * that doesn't interfere with concurrent async operations, making it safe
-     * to use within fiber-based async workflows.
-     *
-     * @param  callable  $syncFunction  The synchronous function to wrap
-     * @return callable An async-compatible version of the function
-     */
-    public static function asyncify(callable $syncFunction): callable
-    {
-        return self::getAsyncOperations()->asyncify($syncFunction);
-    }
 }

@@ -58,8 +58,6 @@ final readonly class TaskExecutionHandler
      */
     public function asyncSleep(float $seconds): void
     {
-        $this->executionHandler->run(function () use ($seconds) {
-            $this->asyncOps->await($this->asyncOps->delay($seconds));
-        });
+        $this->asyncOps->await($this->asyncOps->delay($seconds));
     }
 }

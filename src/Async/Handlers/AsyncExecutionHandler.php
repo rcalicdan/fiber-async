@@ -44,33 +44,6 @@ final readonly class AsyncExecutionHandler
     }
 
     /**
-     * Convert a synchronous function into an asynchronous version.
-     *
-     * This is an alias for async() but with a name that emphasizes the
-     * conversion from synchronous to asynchronous execution.
-     *
-     * @param  callable  $syncFunction  The synchronous function to convert
-     * @return callable A function that returns a Promise when called
-     */
-    public function asyncify(callable $syncFunction): callable
-    {
-        return function (...$args) use ($syncFunction) {
-            return new Promise(function ($resolve, $reject) use ($syncFunction, $args) {
-                $fiber = new Fiber(function () use ($syncFunction, $args, $resolve, $reject) {
-                    try {
-                        $result = $syncFunction(...$args);
-                        $resolve($result);
-                    } catch (Throwable $e) {
-                        $reject($e);
-                    }
-                });
-
-                EventLoop::getInstance()->addFiber($fiber);
-            });
-        };
-    }
-
-    /**
      * Create an async function that automatically awaits Promise results.
      *
      * This creates an async function that will automatically await any Promise

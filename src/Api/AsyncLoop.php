@@ -158,15 +158,4 @@ final class AsyncLoop
     {
         self::getLoopOperations()->asyncSleep($seconds);
     }
-
-    /**
-     * Run an async operation and measure its performance metrics.
-     *
-     * @param  callable|PromiseInterface  $asyncOperation  The operation to benchmark
-     * @return array Array containing 'result' and 'benchmark' keys with performance data
-     */
-    public static function benchmark(callable|PromiseInterface $asyncOperation): array
-    {
-        return self::getLoopOperations()->benchmark($asyncOperation);
-    }
 }
