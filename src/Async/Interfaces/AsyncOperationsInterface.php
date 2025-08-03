@@ -42,9 +42,9 @@ interface AsyncOperationsInterface
      * and return a promise that resolves with the function's result.
      *
      * @param  callable  $asyncFunction  The function to wrap asynchronously
-     * @return callable|PromiseInterface A callable that returns a PromiseInterface
+     * @return callable A callable that returns a PromiseInterface
      */
-    public function async(callable $asyncFunction): callable|PromiseInterface;
+    public function async(callable $asyncFunction): callable;
 
     /**
      * Wraps an async function with error handling.
@@ -111,4 +111,17 @@ interface AsyncOperationsInterface
      * @return PromiseInterface A promise that resolves when all tasks complete
      */
     public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface;
+
+    /**
+     * Execute multiple tasks in batches with a concurrency limit.
+     *
+     * This method processes tasks in smaller batches, allowing for
+     * controlled concurrency and resource management.
+     *
+     * @param  array  $tasks  Array of tasks (callables or promises) to execute
+     * @param  int  $batchSize  Size of each batch to process concurrently
+     * @param  int  $concurrency  Maximum number of concurrent executions per batch
+     * @return PromiseInterface A promise that resolves with all results
+     */
+    public function batch(array $tasks, int $batchSize = 10, ?int $concurrency = null): PromiseInterface;
 }

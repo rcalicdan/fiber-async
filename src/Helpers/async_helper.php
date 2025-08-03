@@ -37,7 +37,7 @@ if (! function_exists('async')) {
      *     return $result;
      * });
      */
-    function async(callable $asyncFunction): callable|PromiseInterface
+    function async(callable $asyncFunction): callable
     {
         return Async::async($asyncFunction);
     }
@@ -231,27 +231,6 @@ if (! function_exists('try_async')) {
     function try_async(callable $asyncFunction): callable
     {
         return Async::tryAsync($asyncFunction);
-    }
-}
-
-if (! function_exists('asyncify')) {
-    /**
-     * Convert a synchronous function to work in async contexts.
-     *
-     * Wraps a synchronous function so it can be used alongside async operations
-     * without blocking the event loop. The function will be executed in a way
-     * that doesn't interfere with concurrent async operations.
-     *
-     * @param  callable  $syncFunction  The synchronous function to wrap
-     * @return callable An async-compatible version of the function
-     *
-     * @example
-     * $asyncFileRead = asyncify('file_get_contents');
-     * $content = await($asyncFileRead('file.txt'));
-     */
-    function asyncify(callable $syncFunction): callable
-    {
-        return Async::asyncify($syncFunction);
     }
 }
 
