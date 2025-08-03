@@ -212,28 +212,6 @@ if (! function_exists('reject')) {
     }
 }
 
-if (! function_exists('try_async')) {
-    /**
-     * Create a safe async function with automatic error handling.
-     *
-     * The returned function will catch any exceptions thrown during execution
-     * and convert them to rejected promises, preventing uncaught exceptions
-     * from crashing the event loop.
-     *
-     * @param  callable  $asyncFunction  The async function to make safe
-     * @return callable A safe version that always returns a promise
-     *
-     * @example
-     * $safeFunc = try_async(function() {
-     *     throw new Exception('This will be caught');
-     * });
-     */
-    function try_async(callable $asyncFunction): callable
-    {
-        return Async::tryAsync($asyncFunction);
-    }
-}
-
 if (! function_exists('concurrent')) {
     /**
      * Execute multiple tasks concurrently with a specified concurrency limit.

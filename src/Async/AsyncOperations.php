@@ -126,20 +126,6 @@ class AsyncOperations implements AsyncOperationsInterface
     }
 
     /**
-     * Create a safe async function with error handling.
-     *
-     * The returned function will catch exceptions and convert them
-     * to rejected promises, preventing uncaught exceptions.
-     *
-     * @param  callable  $asyncFunction  The async function to make safe
-     * @return callable A safe version of the async function
-     */
-    public function tryAsync(callable $asyncFunction): callable
-    {
-        return $this->executionHandler->tryAsync($asyncFunction, $this->contextHandler, $this->awaitHandler);
-    }
-
-    /**
      * Await a promise and return its resolved value.
      *
      * This function suspends the current fiber until the promise

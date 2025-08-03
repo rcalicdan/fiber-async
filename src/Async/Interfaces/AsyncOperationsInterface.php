@@ -47,17 +47,6 @@ interface AsyncOperationsInterface
     public function async(callable $asyncFunction): callable;
 
     /**
-     * Wraps an async function with error handling.
-     *
-     * If the async function throws an exception, it will be caught and
-     * the returned promise will be rejected with that exception.
-     *
-     * @param  callable  $asyncFunction  The async function to wrap with error handling
-     * @return callable A callable that returns a promise with built-in error handling
-     */
-    public function tryAsync(callable $asyncFunction): callable;
-
-    /**
      * Suspends execution until the promise is resolved or rejected.
      *
      * This method should only be called within a fiber context.

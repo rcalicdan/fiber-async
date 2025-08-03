@@ -42,27 +42,4 @@ final readonly class AsyncExecutionHandler
             });
         };
     }
-
-    /**
-     * Create an async function that automatically awaits Promise results.
-     *
-     * This creates an async function that will automatically await any Promise
-     * returned by the wrapped function, providing a more convenient API for
-     * chaining async operations.
-     *
-     * @param  callable  $asyncFunction  The async function to wrap
-     * @param  FiberContextHandler  $contextHandler  Handler for fiber context validation
-     * @param  AwaitHandler  $awaitHandler  Handler for awaiting Promise results
-     * @return callable A function that automatically awaits results
-     */
-    public function tryAsync(callable $asyncFunction, FiberContextHandler $contextHandler, AwaitHandler $awaitHandler): callable
-    {
-        return $this->async(function (...$args) use ($asyncFunction, $awaitHandler) {
-            try {
-                return $awaitHandler->await($asyncFunction(...$args));
-            } catch (Throwable $e) {
-                throw $e; // Re-throw to be caught by calling code
-            }
-        });
-    }
 }
