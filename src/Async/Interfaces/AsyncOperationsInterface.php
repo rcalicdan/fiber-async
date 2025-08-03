@@ -47,28 +47,6 @@ interface AsyncOperationsInterface
     public function async(callable $asyncFunction): callable;
 
     /**
-     * Converts a synchronous function into an asynchronous one.
-     *
-     * Similar to async() but specifically designed for converting sync functions
-     * to async versions that can be awaited.
-     *
-     * @param  callable  $syncFunction  The synchronous function to convert
-     * @return callable An asynchronous version of the function
-     */
-    public function asyncify(callable $syncFunction): callable;
-
-    /**
-     * Wraps an async function with error handling.
-     *
-     * If the async function throws an exception, it will be caught and
-     * the returned promise will be rejected with that exception.
-     *
-     * @param  callable  $asyncFunction  The async function to wrap with error handling
-     * @return callable A callable that returns a promise with built-in error handling
-     */
-    public function tryAsync(callable $asyncFunction): callable;
-
-    /**
      * Suspends execution until the promise is resolved or rejected.
      *
      * This method should only be called within a fiber context.
@@ -122,4 +100,17 @@ interface AsyncOperationsInterface
      * @return PromiseInterface A promise that resolves when all tasks complete
      */
     public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface;
+
+    /**
+     * Execute multiple tasks in batches with a concurrency limit.
+     *
+     * This method processes tasks in smaller batches, allowing for
+     * controlled concurrency and resource management.
+     *
+     * @param  array  $tasks  Array of tasks (callables or promises) to execute
+     * @param  int  $batchSize  Size of each batch to process concurrently
+     * @param  int  $concurrency  Maximum number of concurrent executions per batch
+     * @return PromiseInterface A promise that resolves with all results
+     */
+    public function batch(array $tasks, int $batchSize = 10, ?int $concurrency = null): PromiseInterface;
 }

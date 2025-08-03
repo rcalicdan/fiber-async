@@ -73,20 +73,4 @@ interface LoopOperationsInterface
      * @throws \Exception If the operation times out
      */
     public function runWithTimeout(callable|PromiseInterface $asyncOperation, float $timeout): mixed;
-
-    /**
-     * Benchmarks an async operation and returns performance metrics.
-     *
-     * @param  callable|PromiseInterface  $asyncOperation  The operation to benchmark
-     * @return array Benchmark results including execution time, memory usage, etc.
-     */
-    public function benchmark(callable|PromiseInterface $asyncOperation): array;
-
-    /**
-     * Formats benchmark results into a human-readable string.
-     *
-     * @param  array  $benchmarkResult  The benchmark data from benchmark() method
-     * @return string Formatted benchmark report
-     */
-    public function formatBenchmark(array $benchmarkResult): string;
 }

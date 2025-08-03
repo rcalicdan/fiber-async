@@ -27,14 +27,14 @@ describe('Async Performance and Concurrency', function () {
         $sequentialTime = microtime(true) - $sequentialStart;
         $concurrentStart = microtime(true);
         run(function () use ($urls) {
-            $tasks = array_map(fn ($url) => fn () => await(fetch($url)), $urls);
+            $tasks = array_map(fn($url) => fn() => await(fetch($url)), $urls);
             await(all($tasks));
         });
         $concurrentTime = microtime(true) - $concurrentStart;
         $improvement = round($sequentialTime / $concurrentTime, 2);
         echo "\n\n📊 HTTP Requests Performance:\n";
-        echo '  • Sequential: '.round($sequentialTime, 4)."s\n";
-        echo '  • Concurrent: '.round($concurrentTime, 4)."s\n";
+        echo '  • Sequential: ' . round($sequentialTime, 4) . "s\n";
+        echo '  • Concurrent: ' . round($concurrentTime, 4) . "s\n";
         echo "  • Improvement: {$improvement}x faster\n";
 
         expect($concurrentTime)->toBeLessThan($sequentialTime);
@@ -42,14 +42,10 @@ describe('Async Performance and Concurrency', function () {
     })->group('performance');
 
     test('run_concurrent preserves string keys', function () {
-        $results = run(function () {
-            $tasks = [
-                'posts' => fn () => await(fetch('https://jsonplaceholder.typicode.com/posts/1')),
-                'users' => fn () => await(fetch('https://jsonplaceholder.typicode.com/users/1')),
-            ];
-
-            return run_concurrent($tasks, 2);
-        });
+        $results = run_concurrent([
+            'posts' => fn() => await(fetch('https://jsonplaceholder.typicode.com/posts/1')),
+            'users' => fn() => await(fetch('https://jsonplaceholder.typicode.com/users/1')),
+        ]);
 
         expect($results)->toHaveKeys(['posts', 'users']);
     });
@@ -60,9 +56,9 @@ describe('Async Performance and Concurrency', function () {
         run(function () {
             $tasks = [];
             for ($i = 0; $i < 100; $i++) {
-                $tasks[] = fn () => await(delay(0.001));
+                $tasks[] = fn() => await(delay(0.001));
             }
-            run_concurrent($tasks, 10);
+            await(concurrent($tasks, 10));
         });
 
         $memoryIncrease = memory_get_usage() - $initialMemory;
@@ -97,7 +93,7 @@ describe('Async Performance and Concurrency', function () {
         $duration = microtime(true) - $start;
 
         expect($completed)->toBe($totalOperations);
-        echo "\n⚡ Batch of 500 ops (100 at a time): ".round($duration, 4)."s\n";
+        echo "\n⚡ Batch of 500 ops (100 at a time): " . round($duration, 4) . "s\n";
         expect($duration)->toBeLessThan(2.0);
     })->group('performance');
 });

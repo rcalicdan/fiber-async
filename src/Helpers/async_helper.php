@@ -212,64 +212,19 @@ if (! function_exists('reject')) {
     }
 }
 
-if (! function_exists('try_async')) {
-    /**
-     * Create a safe async function with automatic error handling.
-     *
-     * The returned function will catch any exceptions thrown during execution
-     * and convert them to rejected promises, preventing uncaught exceptions
-     * from crashing the event loop.
-     *
-     * @param  callable  $asyncFunction  The async function to make safe
-     * @return callable A safe version that always returns a promise
-     *
-     * @example
-     * $safeFunc = try_async(function() {
-     *     throw new Exception('This will be caught');
-     * });
-     */
-    function try_async(callable $asyncFunction): callable
-    {
-        return Async::tryAsync($asyncFunction);
-    }
-}
-
-if (! function_exists('asyncify')) {
-    /**
-     * Convert a synchronous function to work in async contexts.
-     *
-     * Wraps a synchronous function so it can be used alongside async operations
-     * without blocking the event loop. The function will be executed in a way
-     * that doesn't interfere with concurrent async operations.
-     *
-     * @param  callable  $syncFunction  The synchronous function to wrap
-     * @return callable An async-compatible version of the function
-     *
-     * @example
-     * $asyncFileRead = asyncify('file_get_contents');
-     * $content = await($asyncFileRead('file.txt'));
-     */
-    function asyncify(callable $syncFunction): callable
-    {
-        return Async::asyncify($syncFunction);
-    }
-}
-
 if (! function_exists('concurrent')) {
     /**
-     * Execute multiple tasks concurrently with a concurrency limit.
+     * Execute multiple tasks concurrently with a specified concurrency limit.
      *
-     * Processes an array of tasks (callables or promises) in batches to avoid
-     * overwhelming the system. This is essential for handling large numbers
-     * of concurrent operations without exhausting system resources.
+     * IMPORTANT: For proper concurrency control, tasks should be callables that return
+     * Promises, not pre-created Promise instances. Pre-created Promises are already
+     * running and cannot be subject to concurrency limiting.
      *
-     * @param  array  $tasks  Array of tasks (callables or promises) to execute
-     * @param  int  $concurrency  Maximum number of concurrent executions
-     * @return PromiseInterface A promise that resolves with all task results
-     *
-     * @example
-     * $tasks = array_map(fn($url) => fn() => http_get($url), $urls);
-     * $results = await(concurrent($tasks, 5));
+     * @param array $tasks Array of callables that return Promises, or Promise instances
+     *                     Note: Promise instances will be awaited but cannot be truly
+     *                     limited since they're already running
+     * @param int $concurrency Maximum number of tasks to run simultaneously
+     * @return PromiseInterface Promise that resolves with an array of all results
      */
     function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {
@@ -286,7 +241,9 @@ if (! function_exists('batch')) {
      * processing large datasets or performing operations that require
      * significant resources without overwhelming the system.
      *
-     * @param  array  $tasks  Array of tasks (callables or promises) to execute
+     * @param array $tasks Array of callables that return Promises, or Promise instances
+     *                     Note: Promise instances will be awaited but cannot be truly
+     *                     limited since they're already running
      * @param  int  $batchSize  Size of each batch to process concurrently
      * @param  int  $concurrency  Maximum number of concurrent executions per batch
      * @return PromiseInterface A promise that resolves with all results

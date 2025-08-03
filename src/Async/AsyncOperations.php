@@ -126,34 +126,6 @@ class AsyncOperations implements AsyncOperationsInterface
     }
 
     /**
-     * Convert a synchronous function to work in async contexts.
-     *
-     * This wraps a sync function so it can be used alongside async
-     * operations without blocking the event loop.
-     *
-     * @param  callable  $syncFunction  The synchronous function to wrap
-     * @return callable An async-compatible version of the function
-     */
-    public function asyncify(callable $syncFunction): callable
-    {
-        return $this->executionHandler->asyncify($syncFunction);
-    }
-
-    /**
-     * Create a safe async function with error handling.
-     *
-     * The returned function will catch exceptions and convert them
-     * to rejected promises, preventing uncaught exceptions.
-     *
-     * @param  callable  $asyncFunction  The async function to make safe
-     * @return callable A safe version of the async function
-     */
-    public function tryAsync(callable $asyncFunction): callable
-    {
-        return $this->executionHandler->tryAsync($asyncFunction, $this->contextHandler, $this->awaitHandler);
-    }
-
-    /**
      * Await a promise and return its resolved value.
      *
      * This function suspends the current fiber until the promise

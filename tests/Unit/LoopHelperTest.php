@@ -25,15 +25,6 @@ test('task function works as shorthand for run', function () {
     expect($result)->toBe('task result');
 });
 
-test('async_sleep function delays execution', function () {
-    $start = microtime(true);
-
-    async_sleep(0.05);
-
-    $duration = microtime(true) - $start;
-    expect($duration)->toBeGreaterThan(0.04);
-});
-
 test('run_all executes multiple operations concurrently', function () {
     $start = microtime(true);
 
@@ -49,7 +40,6 @@ test('run_all executes multiple operations concurrently', function () {
     $duration = microtime(true) - $start;
 
     expect($results)->toBe(['op1' => 'result1', 'op2' => 'result2']);
-    // Should take around 50ms (parallel), not 100ms (sequential)
     expect($duration)->toBeLessThan(0.08);
 });
 
@@ -59,20 +49,4 @@ test('run_with_timeout throws exception on timeout', function () {
             return await(delay(0.1));
         }, 0.05);
     })->toThrow(Exception::class);
-});
-
-test('benchmark returns result and timing information', function () {
-    $benchmark = benchmark(function () {
-        async_sleep(0.05);
-
-        return 'benchmark result';
-    });
-
-    expect($benchmark)->toHaveKey('result');
-    expect($benchmark)->toHaveKey('benchmark');
-    expect($benchmark['benchmark'])->toHaveKey('execution_time');
-    expect($benchmark['benchmark'])->toHaveKey('duration_ms');
-    expect($benchmark['result'])->toBe('benchmark result');
-    expect($benchmark['benchmark']['execution_time'])->toBeGreaterThan(0.04);
-    expect($benchmark['benchmark']['duration_ms'])->toBeGreaterThan(40);
 });

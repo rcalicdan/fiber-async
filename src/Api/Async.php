@@ -116,36 +116,4 @@ final class Async
     {
         return self::getAsyncOperations()->await($promise);
     }
-
-    /**
-     * Create a safe async function with automatic error handling.
-     *
-     * The returned function will catch any exceptions thrown during execution
-     * and convert them to rejected promises, preventing uncaught exceptions
-     * from crashing the event loop. This is essential for building robust
-     * async applications that can gracefully handle errors.
-     *
-     * @param  callable  $asyncFunction  The async function to make safe
-     * @return callable A safe version that always returns a promise
-     */
-    public static function tryAsync(callable $asyncFunction): callable
-    {
-        return self::getAsyncOperations()->tryAsync($asyncFunction);
-    }
-
-    /**
-     * Convert a synchronous function to work in async contexts.
-     *
-     * Wraps a synchronous function so it can be used alongside async operations
-     * without blocking the event loop. The function will be executed in a way
-     * that doesn't interfere with concurrent async operations, making it safe
-     * to use within fiber-based async workflows.
-     *
-     * @param  callable  $syncFunction  The synchronous function to wrap
-     * @return callable An async-compatible version of the function
-     */
-    public static function asyncify(callable $syncFunction): callable
-    {
-        return self::getAsyncOperations()->asyncify($syncFunction);
-    }
 }

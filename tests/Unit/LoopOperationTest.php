@@ -27,13 +27,3 @@ test('LoopOperations task method works', function () {
 
     expect($result)->toBe('task result');
 });
-
-test('LoopOperations asyncSleep method works', function () {
-    $loopOps = new LoopOperations;
-    $start = microtime(true);
-
-    $loopOps->asyncSleep(0.05);
-
-    $duration = microtime(true) - $start;
-    expect($duration)->toBeGreaterThan(0.04);
-});

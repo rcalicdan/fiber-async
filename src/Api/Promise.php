@@ -142,17 +142,17 @@ final class Promise
     }
 
     /**
-     * Execute multiple tasks concurrently with a concurrency limit.
+     * Execute multiple tasks concurrently with a specified concurrency limit.
      *
-     * Processes an array of tasks (callables or promises) in controlled batches
-     * to avoid overwhelming the system resources. This is essential for handling
-     * large numbers of concurrent operations without exhausting memory, file
-     * descriptors, or network connections. Unlike Promise::all(), this method
-     * provides backpressure control.
+     * IMPORTANT: For proper concurrency control, tasks should be callables that return
+     * Promises, not pre-created Promise instances. Pre-created Promises are already
+     * running and cannot be subject to concurrency limiting.
      *
-     * @param  array  $tasks  Array of tasks (callables or promises) to execute
-     * @param  int  $concurrency  Maximum number of concurrent executions (default: 10)
-     * @return PromiseInterface A promise that resolves with all task results
+     * @param array $tasks Array of callables that return Promises, or Promise instances
+     *                     Note: Promise instances will be awaited but cannot be truly
+     *                     limited since they're already running
+     * @param int $concurrency Maximum number of tasks to run simultaneously
+     * @return PromiseInterface Promise that resolves with an array of all results
      */
     public static function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {
@@ -167,7 +167,9 @@ final class Promise
      * processing large datasets or performing operations that require
      * significant resources without overwhelming the system.
      *
-     * @param  array  $tasks  Array of tasks (callables or promises) to execute
+     * @param array $tasks Array of callables that return Promises, or Promise instances
+     *                     Note: Promise instances will be awaited but cannot be truly
+     *                     limited since they're already running
      * @param  int  $batchSize  Size of each batch to process concurrently (default: 10)
      * @param  int  $concurrency  Maximum number of concurrent executions (default: 10)
      * @return PromiseInterface A promise that resolves with all task results

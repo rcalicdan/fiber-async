@@ -18,6 +18,7 @@ use Throwable;
 final readonly class ConcurrencyHandler
 {
     private AsyncExecutionHandler $executionHandler;
+    private AwaitHandler $awaitHandler;
 
     /**
      * @param  AsyncExecutionHandler  $executionHandler  Handler for async execution
@@ -25,6 +26,7 @@ final readonly class ConcurrencyHandler
     public function __construct(AsyncExecutionHandler $executionHandler)
     {
         $this->executionHandler = $executionHandler;
+        $this->awaitHandler = new AwaitHandler(new FiberContextHandler);
     }
 
     /**
@@ -32,7 +34,8 @@ final readonly class ConcurrencyHandler
      *
      * This method runs multiple tasks simultaneously while ensuring that no more
      * than the specified number of tasks run at the same time. Tasks can be either
-     * callable functions or existing Promise instances.
+     * callable functions or existing Promise instances. Promise instances will be
+     * automatically wrapped to ensure proper concurrency control.
      *
      * @param  array  $tasks  Array of callable tasks or Promise instances
      * @param  int  $concurrency  Maximum number of tasks to run simultaneously (default: 10)
@@ -45,13 +48,11 @@ final readonly class ConcurrencyHandler
         return new Promise(function ($resolve, $reject) use ($tasks, $concurrency) {
             if ($concurrency <= 0) {
                 $reject(new \InvalidArgumentException('Concurrency limit must be greater than 0'));
-
                 return;
             }
 
             if (empty($tasks)) {
                 $resolve([]);
-
                 return;
             }
 
@@ -59,15 +60,21 @@ final readonly class ConcurrencyHandler
             $taskList = array_values($tasks);
             $originalKeys = array_keys($tasks);
 
+            // Process tasks to ensure proper async wrapping
+            $processedTasks = [];
+            foreach ($taskList as $index => $task) {
+                $processedTasks[$index] = $this->wrapTaskForConcurrency($task);
+            }
+
             $results = [];
             $running = 0;
             $completed = 0;
-            $total = count($taskList);
+            $total = count($processedTasks);
             $taskIndex = 0;
 
             $processNext = function () use (
                 &$processNext,
-                &$taskList,
+                &$processedTasks,
                 &$originalKeys,
                 &$running,
                 &$completed,
@@ -81,14 +88,12 @@ final readonly class ConcurrencyHandler
                 // Start as many tasks as we can up to the concurrency limit
                 while ($running < $concurrency && $taskIndex < $total) {
                     $currentIndex = $taskIndex++;
-                    $task = $taskList[$currentIndex];
+                    $task = $processedTasks[$currentIndex];
                     $originalKey = $originalKeys[$currentIndex];
                     $running++;
 
                     try {
-                        $promise = is_callable($task)
-                            ? $this->executionHandler->async($task)()
-                            : $task;
+                        $promise = $this->executionHandler->async($task)();
 
                         if (! ($promise instanceof PromiseInterface)) {
                             throw new RuntimeException('Task must return a Promise or be a callable that returns a Promise');
@@ -96,7 +101,6 @@ final readonly class ConcurrencyHandler
                     } catch (Throwable $e) {
                         $running--;
                         $reject($e);
-
                         return;
                     }
 
@@ -124,8 +128,7 @@ final readonly class ConcurrencyHandler
                         ->catch(function ($error) use (&$running, $reject) {
                             $running--;
                             $reject($error);
-                        })
-                    ;
+                        });
                 }
             };
 
@@ -139,7 +142,8 @@ final readonly class ConcurrencyHandler
      *
      * This method processes tasks in batches sequentially, where each batch
      * runs tasks concurrently up to the specified limit, but waits for the
-     * entire batch to complete before starting the next batch.
+     * entire batch to complete before starting the next batch. Promise instances
+     * will be automatically wrapped to ensure proper concurrency control.
      *
      * @param  array  $tasks  Array of callable tasks or Promise instances
      * @param  int  $batchSize  Number of tasks per batch (default: 10)
@@ -151,22 +155,27 @@ final readonly class ConcurrencyHandler
         return new Promise(function ($resolve, $reject) use ($tasks, $batchSize, $concurrency) {
             if ($batchSize <= 0) {
                 $reject(new \InvalidArgumentException('Batch size must be greater than 0'));
-
                 return;
             }
 
             if (empty($tasks)) {
                 $resolve([]);
-
                 return;
             }
 
             $concurrency = $concurrency ?? $batchSize;
 
-            // Preserve original keys
+            // Preserve original keys and wrap tasks
             $originalKeys = array_keys($tasks);
             $taskValues = array_values($tasks);
-            $batches = array_chunk($taskValues, $batchSize, false);
+
+            // Process tasks to ensure proper async wrapping
+            $processedTasks = [];
+            foreach ($taskValues as $index => $task) {
+                $processedTasks[$index] = $this->wrapTaskForConcurrency($task);
+            }
+
+            $batches = array_chunk($processedTasks, $batchSize, false);
             $keyBatches = array_chunk($originalKeys, $batchSize, false);
 
             $allResults = [];
@@ -186,7 +195,6 @@ final readonly class ConcurrencyHandler
             ) {
                 if ($batchIndex >= $totalBatches) {
                     $resolve($allResults);
-
                     return;
                 }
 
@@ -205,11 +213,44 @@ final readonly class ConcurrencyHandler
                         $batchIndex++;
                         EventLoop::getInstance()->nextTick($processNextBatch);
                     })
-                    ->catch($reject)
-                ;
+                    ->catch($reject);
             };
 
             EventLoop::getInstance()->nextTick($processNextBatch);
         });
+    }
+
+    /**
+     * Wrap a task to ensure proper concurrency control.
+     *
+     * This method ensures all tasks use the await pattern for proper fiber-based concurrency:
+     * - All callables are wrapped to ensure their results are awaited
+     * - Promise instances are wrapped with await
+     * - Other types are wrapped in a callable
+     *
+     * @param mixed $task The task to wrap
+     * @return callable A callable that properly defers execution
+     */
+    private function wrapTaskForConcurrency(mixed $task): callable
+    {
+        if (is_callable($task)) {
+            return function () use ($task) {
+                $result = $task();
+                if ($result instanceof PromiseInterface) {
+                    return $this->awaitHandler->await($result);
+                }
+                return $result;
+            };
+        }
+
+        if ($task instanceof PromiseInterface) {
+            return function () use ($task) {
+                return $this->awaitHandler->await($task);
+            };
+        }
+
+        return function () use ($task) {
+            return $task;
+        };
     }
 }

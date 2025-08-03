@@ -122,20 +122,3 @@ if (! function_exists('run_batch')) {
         return AsyncLoop::runBatch($asyncOperations, $batch, $concurrency);
     }
 }
-
-if (! function_exists('benchmark')) {
-    /**
-     * Run an async operation and measure its performance metrics.
-     *
-     * Executes the operation while collecting timing and performance data.
-     * Returns both the operation result and detailed benchmark information
-     * including execution time, memory usage, and other performance metrics.
-     *
-     * @param  callable|PromiseInterface  $asyncOperation  The operation to benchmark
-     * @return array Array containing 'result' and 'benchmark' keys with performance data
-     */
-    function benchmark(callable|PromiseInterface $asyncOperation): array
-    {
-        return AsyncLoop::benchmark($asyncOperation);
-    }
-}
