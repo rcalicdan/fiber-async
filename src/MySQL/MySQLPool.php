@@ -31,7 +31,6 @@ class MySQLPool
      */
     public function get(): PromiseInterface
     {
-        // If an idle connection is available, use it
         if (!$this->pool->isEmpty()) {
             return Promise::resolve($this->pool->dequeue());
         }
