@@ -5,7 +5,7 @@ use Rcalicdan\FiberAsync\Api\AsyncPDO;
 
 require "vendor/autoload.php";
 
-const POOL_SIZE = 30;
+const POOL_SIZE = 50;
 
 function formatBytes($bytes, $precision = 2) {
     $units = array('B', 'KB', 'MB', 'GB', 'TB');
@@ -144,7 +144,7 @@ function runMultipleRounds($name, $client, $queryCount, $poolSize, $rounds = 3) 
 }
 
 // Test configurations
-$testCounts = [3000];
+$testCounts = [500];
 $rounds = 10;
 
 echo "PHP Async MySQL Client Benchmark\n";
