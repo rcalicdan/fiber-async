@@ -3,6 +3,7 @@
 namespace Rcalicdan\FiberAsync\PDO;
 
 use PDO;
+use PDOException;
 use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Promise as AsyncPromise;
@@ -129,10 +130,14 @@ class AsyncPdoPool
      *
      * @param array $config The database configuration array
      * @return string The DSN string
-     * @throws \InvalidArgumentException If the driver is not supported
+     * @throws PDOException If the driver is not set or not supported
      */
     private function buildDSN(array $config): string
     {
+        if (!isset($config['driver']) || empty($config['driver'])) {
+            throw new PDOException("Database driver is not set in configuration");
+        }
+
         return match ($config['driver']) {
             'mysql' => sprintf(
                 'mysql:host=%s;port=%d;dbname=%s;charset=%s',
@@ -141,29 +146,29 @@ class AsyncPdoPool
                 $config['database'] ?? '',
                 $config['charset'] ?? 'utf8mb4'
             ),
-            
+
             'pgsql', 'postgresql' => sprintf(
                 'pgsql:host=%s;port=%d;dbname=%s',
                 $config['host'] ?? 'localhost',
                 $config['port'] ?? 5432,
                 $config['database'] ?? ''
             ),
-            
+
             'sqlite' => 'sqlite:' . ($config['database'] ?? ':memory:'),
-            
+
             'sqlsrv', 'mssql' => $this->buildSqlSrvDSN($config),
-            
+
             'oci', 'oracle' => $this->buildOciDSN($config),
-            
+
             'ibm', 'db2' => $this->buildIbmDSN($config),
-            
+
             'odbc' => 'odbc:' . ($config['dsn'] ?? $config['database'] ?? ''),
-            
+
             'firebird' => 'firebird:dbname=' . ($config['database'] ?? ''),
-            
+
             'informix' => $this->buildInformixDSN($config),
-            
-            default => throw new \InvalidArgumentException("Unsupported database driver for pool: {$config['driver']}")
+
+            default => throw new PDOException("Unsupported database driver for pool: {$config['driver']}")
         };
     }
 
@@ -173,15 +178,15 @@ class AsyncPdoPool
     private function buildSqlSrvDSN(array $config): string
     {
         $dsn = 'sqlsrv:server=' . ($config['host'] ?? 'localhost');
-        
+
         if (isset($config['port']) && $config['port'] != 1433) {
             $dsn .= ',' . $config['port'];
         }
-        
+
         if (isset($config['database'])) {
             $dsn .= ';Database=' . $config['database'];
         }
-        
+
         return $dsn;
     }
 
@@ -191,23 +196,23 @@ class AsyncPdoPool
     private function buildOciDSN(array $config): string
     {
         $dsn = 'oci:dbname=';
-        
+
         if (isset($config['host'])) {
-            $dsn .= '//'.$config['host'];
-            
+            $dsn .= '//' . $config['host'];
+
             if (isset($config['port'])) {
-                $dsn .= ':'.$config['port'];
+                $dsn .= ':' . $config['port'];
             }
-            
+
             $dsn .= '/';
         }
-        
+
         $dsn .= $config['database'] ?? '';
-        
+
         if (isset($config['charset'])) {
-            $dsn .= ';charset='.$config['charset'];
+            $dsn .= ';charset=' . $config['charset'];
         }
-        
+
         return $dsn;
     }
 
@@ -217,13 +222,13 @@ class AsyncPdoPool
     private function buildIbmDSN(array $config): string
     {
         $dsn = 'ibm:';
-        
+
         if (isset($config['database'])) {
             $dsn .= $config['database'];
         } elseif (isset($config['dsn'])) {
             $dsn .= $config['dsn'];
         }
-        
+
         return $dsn;
     }
 
@@ -233,27 +238,27 @@ class AsyncPdoPool
     private function buildInformixDSN(array $config): string
     {
         $dsn = 'informix:';
-        
+
         if (isset($config['host'])) {
             $dsn .= 'host=' . $config['host'] . ';';
         }
-        
+
         if (isset($config['database'])) {
             $dsn .= 'database=' . $config['database'] . ';';
         }
-        
+
         if (isset($config['server'])) {
             $dsn .= 'server=' . $config['server'] . ';';
         }
-        
+
         if (isset($config['protocol'])) {
             $dsn .= 'protocol=' . $config['protocol'] . ';';
         }
-        
+
         if (isset($config['service'])) {
             $dsn .= 'service=' . $config['service'] . ';';
         }
-        
+
         return $dsn;
     }
 }
