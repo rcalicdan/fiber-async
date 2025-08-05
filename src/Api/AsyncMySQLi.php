@@ -8,6 +8,7 @@ use mysqli_result;
 use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\MySQLi\AsyncMySQLiPool;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Throwable;
 
 final class AsyncMySQLi
 {
@@ -80,7 +81,7 @@ final class AsyncMySQLi
                     if (stripos(trim($sql), 'SELECT') === 0 || stripos(trim($sql), 'SHOW') === 0 || stripos(trim($sql), 'DESCRIBE') === 0) {
                         $result = $stmt->get_result();
                     } else {
-                        $result = true; 
+                        $result = true;
                     }
 
                     return self::processResult($result, $resultType, $stmt, $mysqli);
@@ -180,7 +181,7 @@ final class AsyncMySQLi
         if (!($result instanceof mysqli_result)) {
             return null;
         }
-        
+
         $row = $result->fetch_row();
         return $row ? $row[0] : null;
     }
