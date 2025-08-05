@@ -5,7 +5,7 @@ use Rcalicdan\FiberAsync\Api\AsyncPDO;
 
 require "vendor/autoload.php";
 
-const POOL_SIZE = 50;
+const POOL_SIZE = 30;
 
 function formatBytes($bytes, $precision = 2) {
     $units = array('B', 'KB', 'MB', 'GB', 'TB');
@@ -47,7 +47,6 @@ function runBenchmark($name, $client, $queryCount, $poolSize) {
             ], POOL_SIZE);
         }
         
-        // Track peak after initialization
         $currentMemory = memory_get_usage();
         if ($currentMemory > $peakMemoryTracker) {
             $peakMemoryTracker = $currentMemory;
@@ -63,7 +62,6 @@ function runBenchmark($name, $client, $queryCount, $poolSize) {
                 }
                 await(delay(0.001));
                 
-                // Track peak memory during each query
                 $currentMemory = memory_get_usage();
                 if ($currentMemory > $peakMemoryTracker) {
                     $peakMemoryTracker = $currentMemory;
@@ -73,7 +71,6 @@ function runBenchmark($name, $client, $queryCount, $poolSize) {
         
         await(all($queries));
         
-        // Final peak check after all queries
         $currentMemory = memory_get_usage();
         if ($currentMemory > $peakMemoryTracker) {
             $peakMemoryTracker = $currentMemory;
@@ -147,8 +144,8 @@ function runMultipleRounds($name, $client, $queryCount, $poolSize, $rounds = 3) 
 }
 
 // Test configurations
-$testCounts = [500, 1000, 3000];
-$rounds = 5;
+$testCounts = [3000];
+$rounds = 10;
 
 echo "PHP Async MySQL Client Benchmark\n";
 echo "================================\n";
