@@ -5,7 +5,7 @@ use Rcalicdan\FiberAsync\Api\AsyncPDO;
 
 require "vendor/autoload.php";
 
-const POOL_SIZE = 50;
+const POOL_SIZE = 20;
 
 function formatBytes($bytes, $precision = 2) {
     $units = array('B', 'KB', 'MB', 'GB', 'TB');
@@ -144,8 +144,8 @@ function runMultipleRounds($name, $client, $queryCount, $poolSize, $rounds = 3) 
 }
 
 // Test configurations
-$testCounts = [500];
-$rounds = 10;
+$testCounts = [100];
+$rounds = 100;
 
 echo "PHP Async MySQL Client Benchmark\n";
 echo "================================\n";
@@ -155,11 +155,11 @@ echo "Started at: " . date('Y-m-d H:i:s') . "\n";
 
 $allResults = [];
 
-// Test AsyncMySQL
-foreach ($testCounts as $count) {
-    $results = runMultipleRounds('AsyncMySQL', 'AsyncMySQL', $count, POOL_SIZE, $rounds);
-    $allResults['AsyncMySQL'][$count] = $results;
-}
+// // Test AsyncMySQL
+// foreach ($testCounts as $count) {
+//     $results = runMultipleRounds('AsyncMySQL', 'AsyncMySQL', $count, POOL_SIZE, $rounds);
+//     $allResults['AsyncMySQL'][$count] = $results;
+// }
 
 // Test AsyncPDO
 foreach ($testCounts as $count) {
@@ -176,7 +176,7 @@ printf("%-15s %-10s %-15s %-15s %-15s %-15s\n",
     "Client", "Queries", "Avg Time (s)", "Avg QPS", "Avg Memory", "Avg Peak Mem");
 echo str_repeat("-", 80) . "\n";
 
-foreach (['AsyncMySQL', 'AsyncPDO'] as $client) {
+foreach (['AsyncPDO'] as $client) {
     foreach ($testCounts as $count) {
         $result = $allResults[$client][$count];
         printf("%-15s %-10d %-15.4f %-15.2f %-15s %-15s\n",

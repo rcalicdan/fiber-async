@@ -88,6 +88,7 @@ class EventLoop implements EventLoopInterface
     private int $iterationCount = 0;
     private float $lastOptimizationCheck = 0;
     private const OPTIMIZATION_INTERVAL = 1.0;
+    private const MAX_ITERATIONS = 1000000; // Reset counter at 1M iterations
 
     /**
      * Initialize the event loop with all required managers and handlers.
@@ -265,6 +266,11 @@ class EventLoop implements EventLoopInterface
                 $sleepTime = $this->sleepHandler->calculateOptimalSleep();
                 $this->sleepHandler->sleep($sleepTime);
             }
+
+            // Reset iteration counter to prevent overflow
+            if ($this->iterationCount >= self::MAX_ITERATIONS) {
+                $this->iterationCount = 0;
+            }
         }
     }
 
@@ -365,6 +371,14 @@ class EventLoop implements EventLoopInterface
     public function removeFileWatcher(string $watcherId): bool
     {
         return $this->fileManager->removeFileWatcher($watcherId);
+    }
+
+    /**
+     * Get current iteration count (useful for debugging/monitoring)
+     */
+    public function getIterationCount(): int
+    {
+        return $this->iterationCount;
     }
 
     /**
