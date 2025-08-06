@@ -204,9 +204,8 @@ class AsyncPdoPool
         // Validate driver-specific requirements
         $this->validateDriverSpecificConfig($dbConfig);
 
-        // Validate common optional fields
         if (isset($dbConfig['port']) && (!is_int($dbConfig['port']) || $dbConfig['port'] <= 0)) {
-            throw new \InvalidArgumentException('Database port must be a positive integer');
+            throw new \InvalidArgumentException("Database port must be a positive integer: {$dbConfig['port']}");
         }
 
         if (isset($dbConfig['host']) && !is_string($dbConfig['host'])) {
