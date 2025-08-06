@@ -6,7 +6,9 @@ use mysqli;
 use mysqli_stmt;
 use mysqli_result;
 use Rcalicdan\FiberAsync\Api\Async;
+use Rcalicdan\FiberAsync\Async\Handlers\PromiseCollectionHandler;
 use Rcalicdan\FiberAsync\MySQLi\AsyncMySQLiPool;
+use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Throwable;
 
@@ -34,6 +36,22 @@ final class AsyncMySQLi
         self::$isInitialized = false;
     }
 
+    public static function run(callable $callback): PromiseInterface
+    {
+        return Async::async(function () use ($callback) {
+            $mysqli = null;
+
+            try {
+                $mysqli = await(self::getPool()->get());
+                return $callback($mysqli);
+            } finally {
+                if ($mysqli) {
+                    self::getPool()->release($mysqli);
+                }
+            }
+        })();
+    }
+
     public static function query(string $sql, array $params = [], string $types = ''): PromiseInterface
     {
         return self::executeAsyncQuery($sql, $params, $types, 'fetchAll');
@@ -52,6 +70,163 @@ final class AsyncMySQLi
     public static function fetchValue(string $sql, array $params = [], string $types = ''): PromiseInterface
     {
         return self::executeAsyncQuery($sql, $params, $types, 'fetchValue');
+    }
+
+    public static function transaction(callable $callback): PromiseInterface
+    {
+        return self::run(function (mysqli $mysqli) use ($callback) {
+            $mysqli->autocommit(false);
+            $mysqli->begin_transaction();
+
+            try {
+                $result = $callback($mysqli);
+                $mysqli->commit();
+                $mysqli->autocommit(true);
+
+                return $result;
+            } catch (Throwable $e) {
+                $mysqli->rollback();
+                $mysqli->autocommit(true);
+
+                throw $e;
+            }
+        });
+    }
+
+    public static function raceTransactions(array $transactions): PromiseInterface
+    {
+        return Async::async(function () use ($transactions) {
+            $transactionPromises = [];
+            $mysqliConnections = [];
+            $cancellablePromises = [];
+
+            foreach ($transactions as $index => $transactionCallback) {
+                $cancellablePromise = self::startCancellableRacingTransaction($transactionCallback, $index, $mysqliConnections);
+                $transactionPromises[$index] = $cancellablePromise;
+                $cancellablePromises[$index] = $cancellablePromise;
+            }
+
+            $collectionHandler = new PromiseCollectionHandler;
+
+            try {
+                $winnerResult = await($collectionHandler->race($transactionPromises));
+
+                self::cancelLosingTransactions($cancellablePromises, $winnerResult['winner_index']);
+
+                await(self::finalizeRacingTransactions($mysqliConnections, $winnerResult['winner_index']));
+
+                return $winnerResult['result'];
+            } catch (Throwable $e) {
+                self::cancelAllTransactions($cancellablePromises);
+                await(self::rollbackAllTransactions($mysqliConnections));
+
+                throw $e;
+            }
+        })();
+    }
+
+    private static function startCancellableRacingTransaction(callable $transactionCallback, int $index, array &$mysqliConnections): CancellablePromise
+    {
+        $cancellablePromise = new CancellablePromise(function ($resolve, $reject) use ($transactionCallback, $index, &$mysqliConnections) {
+            $mysqli = await(self::getPool()->get());
+            $mysqliConnections[$index] = $mysqli;
+
+            $mysqli->autocommit(false);
+            $mysqli->begin_transaction();
+
+            try {
+                $result = $transactionCallback($mysqli);
+
+                $resolve([
+                    'result' => $result,
+                    'winner_index' => $index,
+                    'success' => true,
+                ]);
+            } catch (Throwable $e) {
+                throw $e;
+            }
+        });
+
+        $cancellablePromise->setCancelHandler(function () use ($index, &$mysqliConnections) {
+            if (isset($mysqliConnections[$index])) {
+                $mysqli = $mysqliConnections[$index];
+
+                try {
+                    $mysqli->rollback();
+                    $mysqli->autocommit(true);
+                    self::getPool()->release($mysqli);
+                } catch (Throwable $e) {
+                    error_log("Failed to cancel transaction {$index}: ".$e->getMessage());
+                    self::getPool()->release($mysqli);
+                }
+            }
+        });
+
+        return $cancellablePromise;
+    }
+
+    private static function cancelLosingTransactions(array $cancellablePromises, int $winnerIndex): void
+    {
+        foreach ($cancellablePromises as $index => $promise) {
+            if ($index !== $winnerIndex && ! $promise->isCancelled()) {
+                $promise->cancel();
+            }
+        }
+    }
+
+    private static function cancelAllTransactions(array $cancellablePromises): void
+    {
+        foreach ($cancellablePromises as $promise) {
+            if (! $promise->isCancelled()) {
+                $promise->cancel();
+            }
+        }
+    }
+
+    private static function finalizeRacingTransactions(array $mysqliConnections, int $winnerIndex): PromiseInterface
+    {
+        return Async::async(function () use ($mysqliConnections, $winnerIndex) {
+            if (isset($mysqliConnections[$winnerIndex])) {
+                $mysqli = $mysqliConnections[$winnerIndex];
+
+                try {
+                    $mysqli->commit();
+                    $mysqli->autocommit(true);
+                    echo "Transaction $winnerIndex: Winner committed!\n";
+                    self::getPool()->release($mysqli);
+                } catch (Throwable $e) {
+                    error_log("Failed to commit winner transaction {$winnerIndex}: ".$e->getMessage());
+                    $mysqli->rollback();
+                    $mysqli->autocommit(true);
+                    self::getPool()->release($mysqli);
+
+                    throw $e;
+                }
+            }
+        })();
+    }
+
+    private static function rollbackAllTransactions(array $mysqliConnections): PromiseInterface
+    {
+        return Async::async(function () use ($mysqliConnections) {
+            $rollbackPromises = [];
+
+            foreach ($mysqliConnections as $index => $mysqli) {
+                $rollbackPromises[] = Async::async(function () use ($mysqli, $index) {
+                    try {
+                        $mysqli->rollback();
+                        $mysqli->autocommit(true);
+                        self::getPool()->release($mysqli);
+                    } catch (Throwable $e) {
+                        error_log("Failed to rollback transaction {$index}: ".$e->getMessage());
+                        self::getPool()->release($mysqli);
+                    }
+                })();
+            }
+
+            $collectionHandler = new PromiseCollectionHandler;
+            await($collectionHandler->all($rollbackPromises));
+        })();
     }
 
     private static function executeAsyncQuery(string $sql, array $params, string $types, string $resultType): PromiseInterface
@@ -100,9 +275,6 @@ final class AsyncMySQLi
         })();
     }
 
-    /**
-     * Fixed async waiting that properly handles mysqli_poll array modifications
-     */
     private static function waitForAsyncCompletion(mysqli $mysqli, ?mysqli_stmt $stmt = null): PromiseInterface
     {
         return Async::async(function () use ($mysqli, $stmt) {
