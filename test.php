@@ -1,33 +1,49 @@
 <?php
 
-use Rcalicdan\FiberAsync\Api\AsyncMySQL;
-use Rcalicdan\FiberAsync\Api\AsyncPDO;
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 require "vendor/autoload.php";
 
-const POOL_SIZE = 20;
-const QUERY_SIZE = 100;
 
+$startTime = microtime(true);
+$todos = run(function () {
+    $result = await(http()->cache()->get('https://jsonplaceholder.typicode.com/todos'));
 
-AsyncMySQL::init([
-    'host' => 'localhost',
-    'username' => 'hey',
-    'password' => '1234',
-    'database' => 'yo',
-    'port' => 3306
-], POOL_SIZE);
+    return $result->json();
+});
+$endTime = microtime(true);
+$executionTime = $endTime - $startTime;
+echo "\nExecution time: " . $executionTime . " seconds";
 
-for ($i = 1; $i < 10; $i++) {
-    echo "Round " . $i . "\n";
-    $startTime = microtime(true);
-    run(function () {
-        $task = [];
-        for ($i = 0; $i < QUERY_SIZE; $i++) {
-            $task[] = AsyncMySQL::query("select sleep(1)");
-        }
+foreach ($todos as $todo) {
+    echo $todo['userId'] . ' - ' . $todo['title'] . "\n";
+}
+echo "\nTotal todos: " . count($todos);
 
-        await(all($task));
-    });
-    $endTime = microtime(true);
-    echo "Total Time: " . $endTime - $startTime . "\n";
+function chatCompletion(array $messages, string $apiKey, bool $stream = false): PromiseInterface
+{
+    $request = http()
+        ->bearerToken($apiKey)
+        ->retry(3, 2.0)
+        ->timeout(180)
+        ->cache($stream ? 0 : 1800);
+
+    $payload = [
+        'model' => 'gpt-4',
+        'messages' => $messages,
+        'stream' => $stream
+    ];
+
+    if ($stream) {
+        return $request->streamPost(
+            'https://api.openai.com/v1/chat/completions',
+            json_encode($payload),
+            function ($chunk) {
+                // Parse SSE chunks and emit events
+                $this->parseStreamChunk($chunk);
+            }
+        );
+    }
+
+    return $request->post('https://api.openai.com/v1/chat/completions', $payload);
 }

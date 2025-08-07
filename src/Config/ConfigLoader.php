@@ -95,7 +95,7 @@ final class ConfigLoader
                 $dotenv = Dotenv::createImmutable($this->rootPath);
                 $dotenv->load();
             } catch (\Throwable $e) {
-                //
+                throw new Exception("Error loading .env file: {$e->getMessage()}");
             }
         } else {
             throw new Exception("Env file not found at: $envFile");
