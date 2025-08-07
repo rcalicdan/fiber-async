@@ -23,7 +23,6 @@
     "require": {
         "php": "^8.2",
         "vlucas/phpdotenv": "^5.6",
-          "ext-sockets": "*",
         "rcalicdan/mysql-binary-protocol": "^1.0",
         "symfony/cache": "^7.3"
     },
@@ -31,7 +30,9 @@
         "laravel/pint": "^1.10",
         "pestphp/pest": "^3.0",
         "guzzlehttp/guzzle": "*",
-        "mockery/mockery": "^1.6"
+        "mockery/mockery": "^1.6",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-strict-rules": "^2.0"
     },
     "autoload-dev": {
         "psr-4": {

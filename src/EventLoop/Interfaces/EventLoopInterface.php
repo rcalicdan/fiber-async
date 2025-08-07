@@ -20,19 +20,18 @@ interface EventLoopInterface
     public function addTimer(float $delay, callable $callback): string;
 
     /**
-     * Schedules an HTTP request to be executed asynchronously.
+     * Schedule an asynchronous HTTP request.
      *
      * @param  string  $url  The URL to request
-     * @param  array  $options  Request options (method, headers, body, etc.)
-     * @param  callable  $callback  Callback to handle the response with signature:
-     *                              function(?string $error, ?string $response, ?int $httpCode): void
+     * @param  array<string, mixed>  $options  HTTP request options (headers, method, body, etc.)
+     * @param  callable  $callback  Function to execute when request completes
      */
     public function addHttpRequest(string $url, array $options, callable $callback): string;
 
     /**
-     * Registers a fiber with the event loop for management.
+     * Add a fiber to be managed by the event loop.
      *
-     * @param  \Fiber  $fiber  The fiber to add to the loop
+     * @param  \Fiber<mixed, mixed, mixed, mixed>  $fiber  The fiber instance to add to the loop
      */
     public function addFiber(\Fiber $fiber): void;
 

@@ -8,12 +8,18 @@ class FileOperation
     private string $type;
     private string $path;
     private mixed $data;
+    /** @var callable */
     private $callback;
+    /** @var array<string, mixed> */
     private array $options;
     private float $createdAt;
     private bool $cancelled = false;
+    /** @var callable|null */
     private $scheduledCallback = null;
 
+    /**
+     * @param array<string, mixed> $options
+     */
     public function __construct(
         string $type,
         string $path,
@@ -55,6 +61,9 @@ class FileOperation
         return $this->callback;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getOptions(): array
     {
         return $this->options;

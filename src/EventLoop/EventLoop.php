@@ -173,7 +173,7 @@ class EventLoop implements EventLoopInterface
      * Schedule an asynchronous HTTP request.
      *
      * @param  string  $url  The URL to request
-     * @param  array  $options  HTTP request options (headers, method, body, etc.)
+     * @param  array<string, mixed>  $options  HTTP request options (headers, method, body, etc.)
      * @param  callable  $callback  Function to execute when request completes
      */
     public function addHttpRequest(string $url, array $options, callable $callback): string
@@ -211,7 +211,7 @@ class EventLoop implements EventLoopInterface
     /**
      * Add a fiber to be managed by the event loop.
      *
-     * @param  \Fiber  $fiber  The fiber instance to add to the loop
+     * @param  \Fiber<mixed, mixed, mixed, mixed>  $fiber  The fiber instance to add to the loop
      */
     public function addFiber(\Fiber $fiber): void
     {
@@ -338,6 +338,8 @@ class EventLoop implements EventLoopInterface
 
     /**
      * Schedule an asynchronous file operation
+     *
+     * @param  array<string, mixed>  $options
      */
     public function addFileOperation(
         string $type,
@@ -359,6 +361,8 @@ class EventLoop implements EventLoopInterface
 
     /**
      * Add a file watcher
+     *
+     * @param  array<string, mixed>  $options
      */
     public function addFileWatcher(string $path, callable $callback, array $options = []): string
     {
