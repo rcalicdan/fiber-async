@@ -4,7 +4,6 @@ namespace Rcalicdan\FiberAsync\Api;
 
 use PgSql\Connection;
 use PgSql\Result;
-use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Async\Handlers\PromiseCollectionHandler;
 use Rcalicdan\FiberAsync\PostgreSQL\AsyncPostgreSQLPool;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
@@ -42,6 +41,7 @@ final class AsyncPostgreSQL
 
             try {
                 $connection = await(self::getPool()->get());
+
                 return $callback($connection);
             } finally {
                 if ($connection) {
@@ -226,11 +226,11 @@ final class AsyncPostgreSQL
             $connection = await(self::getPool()->get());
 
             try {
-                if (!empty($params)) {
+                if (! empty($params)) {
                     $result = pg_query_params($connection, $sql, $params);
                 } else {
-                    if (!pg_send_query($connection, $sql)) {
-                        throw new \RuntimeException("Failed to send query: " . pg_last_error($connection));
+                    if (! pg_send_query($connection, $sql)) {
+                        throw new \RuntimeException('Failed to send query: '.pg_last_error($connection));
                     }
 
                     $result = await(self::waitForAsyncCompletion($connection));
@@ -262,7 +262,8 @@ final class AsyncPostgreSQL
     {
         if ($result === false) {
             $error = pg_last_error($connection);
-            throw new \RuntimeException("Query execution failed: " . ($error ?: 'Unknown error'));
+
+            throw new \RuntimeException('Query execution failed: '.($error ?: 'Unknown error'));
         }
 
         return match ($resultType) {
@@ -287,6 +288,7 @@ final class AsyncPostgreSQL
     private static function handleFetchValue(Result $result): mixed
     {
         $row = pg_fetch_row($result);
+
         return $row ? $row[0] : null;
     }
 
@@ -297,7 +299,7 @@ final class AsyncPostgreSQL
 
     private static function getPool(): AsyncPostgreSQLPool
     {
-        if (!self::$isInitialized) {
+        if (! self::$isInitialized) {
             throw new \RuntimeException(
                 'AsyncPostgreSQL has not been initialized. Please call AsyncPostgreSQL::init() at application startup.'
             );

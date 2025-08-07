@@ -1,9 +1,7 @@
 <?php
 
-
 use Rcalicdan\FiberAsync\Http\Exceptions\HttpException;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
-
 
 describe('HTTP Client Retry Logic', function () {
 
@@ -14,6 +12,7 @@ describe('HTTP Client Retry Logic', function () {
         $e = null;
 
         $start = microtime(true);
+
         try {
             run(fn () => await(
                 http()
@@ -45,9 +44,9 @@ describe('HTTP Client Retry Logic', function () {
     test('custom RetryConfig is respected', function () {
         $start = microtime(true);
         $customRetryConfig = new RetryConfig(
-            maxRetries: 1, 
+            maxRetries: 1,
             baseDelay: 0.2,
-            retryableStatusCodes: [418] 
+            retryableStatusCodes: [418]
         );
         $e = null;
 
@@ -68,7 +67,7 @@ describe('HTTP Client Retry Logic', function () {
     });
 
     test('retries on a DNS failure exception', function () {
-        $maxRetries = 1; 
+        $maxRetries = 1;
         $baseDelay = 0.1;
         $start = microtime(true);
         $e = null;
@@ -86,6 +85,6 @@ describe('HTTP Client Retry Logic', function () {
 
         expect($e)->toBeInstanceOf(HttpException::class);
         expect($duration)->toBeGreaterThan(0.08);
-        expect($e->getMessage())->toContain("after " . ($maxRetries + 1) . " attempts");
+        expect($e->getMessage())->toContain('after '.($maxRetries + 1).' attempts');
     });
 });

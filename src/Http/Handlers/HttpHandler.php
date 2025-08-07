@@ -163,12 +163,12 @@ class HttpHandler
      * This method is the single source of truth for cache key generation,
      * ensuring consistency between caching and invalidation logic.
      *
-     * @param string $url The URL to generate a cache key for.
+     * @param  string  $url  The URL to generate a cache key for.
      * @return string The unique cache key.
      */
     public static function generateCacheKey(string $url): string
     {
-        return 'http_' . sha1($url);
+        return 'http_'.sha1($url);
     }
 
     /**
@@ -181,6 +181,7 @@ class HttpHandler
             $psr6Cache = new FilesystemAdapter('http', 0, 'cache');
             self::$defaultCache = new Psr16Cache($psr6Cache);
         }
+
         return self::$defaultCache;
     }
 
@@ -206,10 +207,10 @@ class HttpHandler
 
             if ($cachedItem && $cacheConfig->respectServerHeaders) {
                 if (isset($cachedItem['headers']['etag'])) {
-                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-None-Match: ' . $cachedItem['headers']['etag'][0];
+                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-None-Match: '.$cachedItem['headers']['etag'][0];
                 }
                 if (isset($cachedItem['headers']['last-modified'])) {
-                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-Modified-Since: ' . $cachedItem['headers']['last-modified'][0];
+                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-Modified-Since: '.$cachedItem['headers']['last-modified'][0];
                 }
             }
 
@@ -219,6 +220,7 @@ class HttpHandler
                 $newExpiry = $this->calculateExpiry($response, $cacheConfig);
                 $cachedItem['expires_at'] = $newExpiry;
                 $cache->set($cacheKey, $cachedItem, $newExpiry > time() ? $newExpiry - time() : 0);
+
                 return new Response($cachedItem['body'], 200, $cachedItem['headers']);
             }
 
@@ -227,9 +229,9 @@ class HttpHandler
                 if ($expiry > time()) {
                     $ttl = $expiry - time();
                     $cache->set($cacheKey, [
-                        'body'       => (string) $response->getBody(),
-                        'status'     => $response->status(),
-                        'headers'    => $response->getHeaders(),
+                        'body' => (string) $response->getBody(),
+                        'status' => $response->status(),
+                        'headers' => $response->getHeaders(),
                         'expires_at' => $expiry,
                     ], $ttl);
                 }
@@ -247,6 +249,7 @@ class HttpHandler
         if ($retryConfig) {
             return $this->fetchWithRetry($url, $curlOptions, $retryConfig);
         }
+
         return $this->fetch($url, $curlOptions);
     }
 
@@ -290,9 +293,9 @@ class HttpHandler
     /**
      * Sends a request with automatic retry logic on failure.
      *
-     * @param string $url The target URL.
-     * @param array $options An array of cURL options.
-     * @param RetryConfig $retryConfig Configuration object for retry behavior.
+     * @param  string  $url  The target URL.
+     * @param  array  $options  An array of cURL options.
+     * @param  RetryConfig  $retryConfig  Configuration object for retry behavior.
      * @return PromiseInterface<Response> A promise that resolves with a Response object or rejects with an HttpException on final failure.
      */
     public function fetchWithRetry(string $url, array $options, RetryConfig $retryConfig): PromiseInterface
@@ -319,6 +322,7 @@ class HttpHandler
                         $attempt++;
                         $delay = $retryConfig->getDelay($attempt);
                         EventLoop::getInstance()->addTimer($delay, $executeRequest);
+
                         return;
                     }
 

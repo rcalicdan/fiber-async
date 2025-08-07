@@ -24,7 +24,7 @@ final class LoopExecutionHandler
         if (self::$isRunning) {
             throw new RuntimeException('Cannot call run() while already running. Use await() instead.');
         }
-        
+
         try {
             self::$isRunning = true;
             $loop = EventLoop::getInstance();

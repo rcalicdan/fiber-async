@@ -30,9 +30,10 @@ class AsyncPostgreSQLPool
 
     public function get(): PromiseInterface
     {
-        if (!$this->pool->isEmpty()) {
+        if (! $this->pool->isEmpty()) {
             $connection = $this->pool->dequeue();
             $this->lastConnection = $connection;
+
             return Promise::resolve($connection);
         }
 
@@ -46,6 +47,7 @@ class AsyncPostgreSQLPool
                 return Promise::resolve($connection);
             } catch (\Throwable $e) {
                 $this->activeConnections--;
+
                 return Promise::reject($e);
             }
         }
@@ -58,13 +60,13 @@ class AsyncPostgreSQLPool
 
     public function release(Connection $connection): void
     {
-        if (!$this->isConnectionAlive($connection)) {
+        if (! $this->isConnectionAlive($connection)) {
             $this->activeConnections--;
-            
-            if (!$this->waiters->isEmpty() && $this->activeConnections < $this->maxSize) {
+
+            if (! $this->waiters->isEmpty() && $this->activeConnections < $this->maxSize) {
                 $this->activeConnections++;
                 $promise = $this->waiters->dequeue();
-                
+
                 try {
                     $newConnection = $this->createConnection();
                     $this->lastConnection = $newConnection;
@@ -74,12 +76,13 @@ class AsyncPostgreSQLPool
                     $promise->reject($e);
                 }
             }
+
             return;
         }
 
         $this->resetConnectionState($connection);
 
-        if (!$this->waiters->isEmpty()) {
+        if (! $this->waiters->isEmpty()) {
             $promise = $this->waiters->dequeue();
             $this->lastConnection = $connection;
             $promise->resolve($connection);
@@ -106,14 +109,14 @@ class AsyncPostgreSQLPool
 
     public function close(): void
     {
-        while (!$this->pool->isEmpty()) {
+        while (! $this->pool->isEmpty()) {
             $connection = $this->pool->dequeue();
             if ($this->isConnectionAlive($connection)) {
                 pg_close($connection);
             }
         }
 
-        while (!$this->waiters->isEmpty()) {
+        while (! $this->waiters->isEmpty()) {
             $promise = $this->waiters->dequeue();
             $promise->reject(new \RuntimeException('Pool is being closed'));
         }
@@ -134,7 +137,7 @@ class AsyncPostgreSQLPool
         $requiredFields = ['host', 'username', 'database'];
 
         foreach ($requiredFields as $field) {
-            if (!array_key_exists($field, $dbConfig)) {
+            if (! array_key_exists($field, $dbConfig)) {
                 throw new \InvalidArgumentException("Missing required database configuration field: '{$field}'");
             }
 
@@ -143,15 +146,15 @@ class AsyncPostgreSQLPool
             }
         }
 
-        if (isset($dbConfig['port']) && (!is_int($dbConfig['port']) || $dbConfig['port'] <= 0)) {
+        if (isset($dbConfig['port']) && (! is_int($dbConfig['port']) || $dbConfig['port'] <= 0)) {
             throw new \InvalidArgumentException('Database port must be a positive integer');
         }
 
-        if (isset($dbConfig['host']) && !is_string($dbConfig['host'])) {
+        if (isset($dbConfig['host']) && ! is_string($dbConfig['host'])) {
             throw new \InvalidArgumentException('Database host must be a string');
         }
 
-        if (isset($dbConfig['sslmode']) && !in_array($dbConfig['sslmode'], ['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full'])) {
+        if (isset($dbConfig['sslmode']) && ! in_array($dbConfig['sslmode'], ['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full'])) {
             throw new \InvalidArgumentException('Invalid sslmode value');
         }
     }
@@ -159,11 +162,11 @@ class AsyncPostgreSQLPool
     private function createConnection(): Connection
     {
         $config = $this->dbConfig;
-        
+
         $connectionString = $this->buildConnectionString($config);
-        
+
         $connection = pg_connect($connectionString, PGSQL_CONNECT_FORCE_NEW);
-        
+
         if ($connection === false) {
             throw new \RuntimeException('PostgreSQL Connection failed');
         }
@@ -172,7 +175,8 @@ class AsyncPostgreSQLPool
         if ($status !== PGSQL_CONNECTION_OK) {
             $error = pg_last_error($connection);
             pg_close($connection);
-            throw new \RuntimeException('PostgreSQL Connection failed: ' . ($error ?: 'Unknown error'));
+
+            throw new \RuntimeException('PostgreSQL Connection failed: '.($error ?: 'Unknown error'));
         }
 
         return $connection;
@@ -181,25 +185,25 @@ class AsyncPostgreSQLPool
     private function buildConnectionString(array $config): string
     {
         $parts = [];
-        
-        $parts[] = 'host=' . $config['host'];
-        $parts[] = 'user=' . $config['username'];
-        $parts[] = 'dbname=' . $config['database'];
-        
+
+        $parts[] = 'host='.$config['host'];
+        $parts[] = 'user='.$config['username'];
+        $parts[] = 'dbname='.$config['database'];
+
         if (isset($config['password'])) {
-            $parts[] = 'password=' . $config['password'];
+            $parts[] = 'password='.$config['password'];
         }
-        
+
         if (isset($config['port'])) {
-            $parts[] = 'port=' . $config['port'];
+            $parts[] = 'port='.$config['port'];
         }
-        
+
         if (isset($config['sslmode'])) {
-            $parts[] = 'sslmode=' . $config['sslmode'];
+            $parts[] = 'sslmode='.$config['sslmode'];
         }
-        
+
         if (isset($config['connect_timeout'])) {
-            $parts[] = 'connect_timeout=' . $config['connect_timeout'];
+            $parts[] = 'connect_timeout='.$config['connect_timeout'];
         }
 
         return implode(' ', $parts);
@@ -209,6 +213,7 @@ class AsyncPostgreSQLPool
     {
         try {
             $status = pg_connection_status($connection);
+
             return $status === PGSQL_CONNECTION_OK;
         } catch (\Throwable $e) {
             return false;

@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace Rcalicdan\FiberAsync\MySQL;
 
@@ -34,6 +34,7 @@ class PooledTransaction
         return async(function () {
             try {
                 $result = await($this->client->commit());
+
                 return $result;
             } finally {
                 $this->releaseConnection();
@@ -46,6 +47,7 @@ class PooledTransaction
         return async(function () {
             try {
                 $result = await($this->client->rollback());
+
                 return $result;
             } finally {
                 $this->releaseConnection();
@@ -70,7 +72,7 @@ class PooledTransaction
 
     private function releaseConnection(): void
     {
-        if (!$this->released) {
+        if (! $this->released) {
             $this->pool->release($this->client);
             $this->released = true;
         }

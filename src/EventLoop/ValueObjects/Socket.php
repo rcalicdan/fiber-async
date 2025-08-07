@@ -40,17 +40,17 @@ class Socket
     /**
      * Creates a new Socket instance.
      *
-     * @param resource                $resource   The socket resource
-     * @param AsyncSocketOperations   $operations Handler for async operations
-     * 
+     * @param  resource  $resource  The socket resource
+     * @param  AsyncSocketOperations  $operations  Handler for async operations
+     *
      * @throws \TypeError If resource is not a valid resource type
      */
     public function __construct($resource, AsyncSocketOperations $operations)
     {
-        if (!is_resource($resource)) {
-            throw new \TypeError('Expected resource, got ' . gettype($resource));
+        if (! is_resource($resource)) {
+            throw new \TypeError('Expected resource, got '.gettype($resource));
         }
-        
+
         $this->resource = $resource;
         $this->operations = $operations;
         stream_set_blocking($this->resource, false);
@@ -59,11 +59,10 @@ class Socket
     /**
      * Asynchronously reads data from the socket.
      *
-     * @param int|null   $length  Maximum number of bytes to read (default: 8192)
-     * @param float|null $timeout Timeout in seconds (default: 10.0)
-     * 
+     * @param  int|null  $length  Maximum number of bytes to read (default: 8192)
+     * @param  float|null  $timeout  Timeout in seconds (default: 10.0)
      * @return PromiseInterface<string> Promise that resolves with the read data
-     * 
+     *
      * @throws SocketException If the socket is closed
      */
     public function read(?int $length = null, ?float $timeout = 10.0): PromiseInterface
@@ -72,7 +71,7 @@ class Socket
             return $this->operations->getAsyncOps()->reject(new SocketException('Socket is closed.'));
         }
 
-        $readLength = $length ?? self::DEFAULT_BYTE_SIZE; 
+        $readLength = $length ?? self::DEFAULT_BYTE_SIZE;
 
         return $this->operations->read($this, $readLength, $timeout);
     }
@@ -80,11 +79,10 @@ class Socket
     /**
      * Asynchronously writes data to the socket.
      *
-     * @param string     $data    The data to write
-     * @param float|null $timeout Timeout in seconds (default: 10.0)
-     * 
+     * @param  string  $data  The data to write
+     * @param  float|null  $timeout  Timeout in seconds (default: 10.0)
      * @return PromiseInterface<int> Promise that resolves with the number of bytes written
-     * 
+     *
      * @throws SocketException If the socket is closed
      */
     public function write(string $data, ?float $timeout = 10.0): PromiseInterface
@@ -101,8 +99,6 @@ class Socket
      *
      * This method ensures the socket is properly closed and cleaned up.
      * It's safe to call multiple times - subsequent calls will be ignored.
-     *
-     * @return void
      */
     public function close(): void
     {

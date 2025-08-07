@@ -39,15 +39,15 @@ final class PacketBuilder
         $database = $this->connectionParams['database'] ?? '';
 
         return $this->buildHandshakeHeader()
-            . $user . "\x00"
-            . $this->buildPasswordSection($password, $nonce)
-            . $this->buildDatabaseSection($database)
-            . $this->buildAuthPluginSection();
+            .$user."\x00"
+            .$this->buildPasswordSection($password, $nonce)
+            .$this->buildDatabaseSection($database)
+            .$this->buildAuthPluginSection();
     }
 
     public function buildQueryPacket(string $sql): string
     {
-        return self::COMMANDS['query'] . $sql;
+        return self::COMMANDS['query'].$sql;
     }
 
     public function buildQuitPacket(): string
@@ -57,29 +57,29 @@ final class PacketBuilder
 
     public function buildStmtPreparePacket(string $sql): string
     {
-        return self::COMMANDS['stmt_prepare'] . $sql;
+        return self::COMMANDS['stmt_prepare'].$sql;
     }
 
     public function buildStmtClosePacket(int $statementId): string
     {
-        return self::COMMANDS['stmt_close'] . pack('V', $statementId);
+        return self::COMMANDS['stmt_close'].pack('V', $statementId);
     }
 
     public function buildStmtExecutePacket(int $statementId, array $params): string
     {
         $packet = self::COMMANDS['stmt_execute']
-            . pack('V', $statementId)    // Statement ID
-            . "\x00"                     // Flags
-            . pack('V', 1);              // Iteration count
+            .pack('V', $statementId)    // Statement ID
+            ."\x00"                     // Flags
+            .pack('V', 1);              // Iteration count
 
         if (empty($params)) {
             return $packet;
         }
 
         $packet .= $this->buildNullBitmap($params)
-            . "\x01"                     // New params bound flag
-            . $this->buildParameterTypes($params)
-            . $this->buildParameterValues($params);
+            ."\x01"                     // New params bound flag
+            .$this->buildParameterTypes($params)
+            .$this->buildParameterValues($params);
 
         return $packet;
     }
@@ -87,9 +87,9 @@ final class PacketBuilder
     private function buildHandshakeHeader(): string
     {
         return pack('V', $this->clientCapabilities)
-            . pack('V', 0x01000000)      // Max packet size
-            . pack('C', 45)              // Charset
-            . str_repeat("\x00", 23);    // Reserved bytes
+            .pack('V', 0x01000000)      // Max packet size
+            .pack('C', 45)              // Charset
+            .str_repeat("\x00", 23);    // Reserved bytes
     }
 
     private function buildPasswordSection(string $password, string $nonce): string
@@ -100,20 +100,20 @@ final class PacketBuilder
 
         $scrambledPassword = Auth::scrambleCachingSha2Password($password, $nonce);
 
-        return pack('C', strlen($scrambledPassword)) . $scrambledPassword;
+        return pack('C', strlen($scrambledPassword)).$scrambledPassword;
     }
 
     private function buildDatabaseSection(string $database): string
     {
         return ($this->clientCapabilities & CapabilityFlags::CLIENT_CONNECT_WITH_DB) && $database !== ''
-            ? $database . "\x00"
+            ? $database."\x00"
             : '';
     }
 
     private function buildAuthPluginSection(): string
     {
         return ($this->clientCapabilities & CapabilityFlags::CLIENT_PLUGIN_AUTH)
-            ? self::DEFAULT_AUTH_PLUGIN . "\x00"
+            ? self::DEFAULT_AUTH_PLUGIN."\x00"
             : '';
     }
 
@@ -191,10 +191,10 @@ final class PacketBuilder
         $len = strlen($str);
 
         return match (true) {
-            $len < 251 => chr($len) . $str,
-            $len < 65536 => "\xfc" . pack('v', $len) . $str,
-            $len < 16777216 => "\xfd" . substr(pack('V', $len), 0, 3) . $str,
-            default => "\xfe" . pack('P', $len) . $str,
+            $len < 251 => chr($len).$str,
+            $len < 65536 => "\xfc".pack('v', $len).$str,
+            $len < 16777216 => "\xfd".substr(pack('V', $len), 0, 3).$str,
+            default => "\xfe".pack('P', $len).$str,
         };
     }
 }

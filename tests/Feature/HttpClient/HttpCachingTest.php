@@ -98,7 +98,6 @@ class TrackableCache implements CacheInterface
     }
 }
 
-
 beforeEach(function () {
     AsyncHttp::reset();
     clearFilesystemCache();

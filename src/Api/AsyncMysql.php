@@ -2,8 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\Api;
 
-use Rcalicdan\FiberAsync\MySQL\MySQLPool;
 use Rcalicdan\FiberAsync\MySQL\MySQLClient;
+use Rcalicdan\FiberAsync\MySQL\MySQLPool;
 use Rcalicdan\FiberAsync\MySQL\PooledPreparedStatement;
 use Rcalicdan\FiberAsync\MySQL\PooledTransaction;
 use Rcalicdan\FiberAsync\MySQL\Transaction;
@@ -52,6 +52,7 @@ final class AsyncMySQL
 
             try {
                 $client = await(self::getPool()->get());
+
                 return $callback($client);
             } finally {
                 if ($client) {
@@ -78,7 +79,7 @@ final class AsyncMySQL
     {
         return self::run(function (MySQLClient $client) use ($sql) {
             $stmt = await($client->prepare($sql));
-            
+
             return new PooledPreparedStatement($stmt, $client, self::$pool);
         });
     }
@@ -90,16 +91,17 @@ final class AsyncMySQL
     {
         return self::run(function (MySQLClient $client) use ($callback, $isolationLevel) {
             await($client->beginTransaction($isolationLevel));
-            
+
             try {
                 $transaction = new Transaction($client);
                 $result = $callback($transaction);
-                
+
                 if ($result instanceof PromiseInterface) {
                     $result = await($result);
                 }
-                
+
                 await($transaction->commit());
+
                 return $result;
             } catch (\Throwable $e) {
                 try {
@@ -107,6 +109,7 @@ final class AsyncMySQL
                 } catch (\Throwable $rollbackError) {
                     // Log rollback error if needed
                 }
+
                 throw $e;
             }
         });
@@ -119,14 +122,14 @@ final class AsyncMySQL
     {
         return self::run(function (MySQLClient $client) use ($isolationLevel) {
             await($client->beginTransaction($isolationLevel));
-            
+
             return new PooledTransaction($client, self::$pool);
         });
     }
 
     private static function getPool(): MySQLPool
     {
-        if (!self::$isInitialized) {
+        if (! self::$isInitialized) {
             throw new \RuntimeException(
                 'AsyncMySQL has not been initialized. Please call AsyncMySQL::init() first.'
             );

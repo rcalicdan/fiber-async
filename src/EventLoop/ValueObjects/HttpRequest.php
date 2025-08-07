@@ -38,9 +38,9 @@ class HttpRequest implements AsyncHttpRequestInterface
     /**
      * Creates a new HTTP request instance.
      *
-     * @param string                                                         $url      The URL to request
-     * @param array<int|string, mixed>                                       $options  cURL options array
-     * @param callable(?string, ?string, ?int, array<string, mixed>): void  $callback Callback to execute on completion
+     * @param  string  $url  The URL to request
+     * @param  array<int|string, mixed>  $options  cURL options array
+     * @param  callable(?string, ?string, ?int, array<string, mixed>): void  $callback  Callback to execute on completion
      */
     public function __construct(string $url, array $options, callable $callback)
     {
@@ -52,10 +52,9 @@ class HttpRequest implements AsyncHttpRequestInterface
     /**
      * Creates and configures a cURL handle with the provided options.
      *
-     * @param array<int|string, mixed> $options cURL options to apply
-     * 
+     * @param  array<int|string, mixed>  $options  cURL options to apply
      * @return \CurlHandle The configured cURL handle
-     * 
+     *
      * @throws \RuntimeException If cURL initialization fails
      */
     private function createCurlHandle(array $options): \CurlHandle
@@ -99,13 +98,11 @@ class HttpRequest implements AsyncHttpRequestInterface
     /**
      * Executes the callback function with the request results.
      *
-     * @param string|null                $error    Error message if the request failed, null on success
-     * @param string|null                $response Response body from the server
-     * @param int|null                   $httpCode HTTP status code from the response
-     * @param array<string, mixed>       $headers  Response headers as key-value pairs
-     * 
-     * @return void
-     * 
+     * @param  string|null  $error  Error message if the request failed, null on success
+     * @param  string|null  $response  Response body from the server
+     * @param  int|null  $httpCode  HTTP status code from the response
+     * @param  array<string, mixed>  $headers  Response headers as key-value pairs
+     *
      * @throws \Throwable Any exception thrown by the callback is propagated
      */
     public function executeCallback(?string $error, ?string $response, ?int $httpCode, array $headers = []): void
@@ -116,9 +113,7 @@ class HttpRequest implements AsyncHttpRequestInterface
     /**
      * Sets the unique identifier for this request.
      *
-     * @param string $id The unique identifier
-     * 
-     * @return void
+     * @param  string  $id  The unique identifier
      */
     public function setId(string $id): void
     {

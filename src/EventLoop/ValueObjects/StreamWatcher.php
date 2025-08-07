@@ -48,20 +48,20 @@ class StreamWatcher
     /**
      * Creates a new stream watcher instance.
      *
-     * @param resource                  $stream   The stream resource to watch
-     * @param callable(resource): void  $callback Callback to execute when stream is ready
-     * @param string                    $type     Type of operation (TYPE_READ or TYPE_WRITE)
-     * 
+     * @param  resource  $stream  The stream resource to watch
+     * @param  callable(resource): void  $callback  Callback to execute when stream is ready
+     * @param  string  $type  Type of operation (TYPE_READ or TYPE_WRITE)
+     *
      * @throws \TypeError If stream is not a valid resource type
      * @throws \InvalidArgumentException If type is not valid
      */
     public function __construct($stream, callable $callback, string $type = self::TYPE_READ)
     {
-        if (!is_resource($stream)) {
-            throw new \TypeError('Expected resource, got ' . gettype($stream));
+        if (! is_resource($stream)) {
+            throw new \TypeError('Expected resource, got '.gettype($stream));
         }
 
-        if (!in_array($type, [self::TYPE_READ, self::TYPE_WRITE], true)) {
+        if (! in_array($type, [self::TYPE_READ, self::TYPE_WRITE], true)) {
             throw new \InvalidArgumentException('Type must be either TYPE_READ or TYPE_WRITE');
         }
 
@@ -117,8 +117,7 @@ class StreamWatcher
      * This method is called when the stream becomes ready for the
      * specified operation (read or write).
      *
-     * @return void
-     * 
+     *
      * @throws \Throwable Any exception thrown by the callback is propagated
      */
     public function execute(): void

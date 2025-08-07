@@ -2,8 +2,7 @@
 
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
-require "vendor/autoload.php";
-
+require 'vendor/autoload.php';
 
 $startTime = microtime(true);
 $todos = run(function () {
@@ -13,12 +12,12 @@ $todos = run(function () {
 });
 $endTime = microtime(true);
 $executionTime = $endTime - $startTime;
-echo "\nExecution time: " . $executionTime . " seconds";
+echo "\nExecution time: ".$executionTime.' seconds';
 
 foreach ($todos as $todo) {
-    echo $todo['userId'] . ' - ' . $todo['title'] . "\n";
+    echo $todo['userId'].' - '.$todo['title']."\n";
 }
-echo "\nTotal todos: " . count($todos);
+echo "\nTotal todos: ".count($todos);
 
 function chatCompletion(array $messages, string $apiKey, bool $stream = false): PromiseInterface
 {
@@ -26,12 +25,13 @@ function chatCompletion(array $messages, string $apiKey, bool $stream = false): 
         ->bearerToken($apiKey)
         ->retry(3, 2.0)
         ->timeout(180)
-        ->cache($stream ? 0 : 1800);
+        ->cache($stream ? 0 : 1800)
+    ;
 
     $payload = [
         'model' => 'gpt-4',
         'messages' => $messages,
-        'stream' => $stream
+        'stream' => $stream,
     ];
 
     if ($stream) {

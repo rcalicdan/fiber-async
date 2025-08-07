@@ -18,7 +18,7 @@ class FileOperation
     private $scheduledCallback = null;
 
     /**
-     * @param array<string, mixed> $options
+     * @param  array<string, mixed>  $options
      */
     public function __construct(
         string $type,

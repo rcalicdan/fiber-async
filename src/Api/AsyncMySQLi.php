@@ -3,9 +3,8 @@
 namespace Rcalicdan\FiberAsync\Api;
 
 use mysqli;
-use mysqli_stmt;
 use mysqli_result;
-use Rcalicdan\FiberAsync\Api\Async;
+use mysqli_stmt;
 use Rcalicdan\FiberAsync\Async\Handlers\PromiseCollectionHandler;
 use Rcalicdan\FiberAsync\MySQLi\AsyncMySQLiPool;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
@@ -43,6 +42,7 @@ final class AsyncMySQLi
 
             try {
                 $mysqli = await(self::getPool()->get());
+
                 return $callback($mysqli);
             } finally {
                 if ($mysqli) {
@@ -235,22 +235,22 @@ final class AsyncMySQLi
             $mysqli = await(self::getPool()->get());
 
             try {
-                if (!empty($params)) {
+                if (! empty($params)) {
                     $stmt = $mysqli->prepare($sql);
-                    if (!$stmt) {
-                        throw new \RuntimeException("Prepare failed: " . $mysqli->error);
+                    if (! $stmt) {
+                        throw new \RuntimeException('Prepare failed: '.$mysqli->error);
                     }
 
                     if (empty($types)) {
                         $types = str_repeat('s', count($params));
                     }
 
-                    if (!$stmt->bind_param($types, ...$params)) {
-                        throw new \RuntimeException("Bind param failed: " . $stmt->error);
+                    if (! $stmt->bind_param($types, ...$params)) {
+                        throw new \RuntimeException('Bind param failed: '.$stmt->error);
                     }
 
-                    if (!$stmt->execute()) {
-                        throw new \RuntimeException("Execute failed: " . $stmt->error);
+                    if (! $stmt->execute()) {
+                        throw new \RuntimeException('Execute failed: '.$stmt->error);
                     }
 
                     if (stripos(trim($sql), 'SELECT') === 0 || stripos(trim($sql), 'SHOW') === 0 || stripos(trim($sql), 'DESCRIBE') === 0) {
@@ -261,8 +261,8 @@ final class AsyncMySQLi
 
                     return self::processResult($result, $resultType, $stmt, $mysqli);
                 } else {
-                    if (!$mysqli->query($sql, MYSQLI_ASYNC)) {
-                        throw new \RuntimeException("Query failed: " . $mysqli->error);
+                    if (! $mysqli->query($sql, MYSQLI_ASYNC)) {
+                        throw new \RuntimeException('Query failed: '.$mysqli->error);
                     }
 
                     $result = await(self::waitForAsyncCompletion($mysqli));
@@ -289,7 +289,7 @@ final class AsyncMySQLi
             }
 
             if ($ready === false) {
-                throw new \RuntimeException("MySQLi poll failed immediately");
+                throw new \RuntimeException('MySQLi poll failed immediately');
             }
 
             $pollInterval = 100;
@@ -303,7 +303,7 @@ final class AsyncMySQLi
                 $ready = mysqli_poll($links, $errors, $reject, 0, $pollInterval);
 
                 if ($ready === false) {
-                    throw new \RuntimeException("MySQLi poll failed during wait");
+                    throw new \RuntimeException('MySQLi poll failed during wait');
                 }
 
                 if ($ready > 0) {
@@ -320,7 +320,8 @@ final class AsyncMySQLi
     {
         if ($result === false) {
             $error = $stmt?->error ?? $mysqli?->error ?? 'Unknown error';
-            throw new \RuntimeException("Query execution failed: " . $error);
+
+            throw new \RuntimeException('Query execution failed: '.$error);
         }
 
         return match ($resultType) {
@@ -337,6 +338,7 @@ final class AsyncMySQLi
         if ($result instanceof mysqli_result) {
             return $result->fetch_all(MYSQLI_ASSOC);
         }
+
         return [];
     }
 
@@ -345,16 +347,18 @@ final class AsyncMySQLi
         if ($result instanceof mysqli_result) {
             return $result->fetch_assoc();
         }
+
         return null;
     }
 
     private static function handleFetchValue($result): mixed
     {
-        if (!($result instanceof mysqli_result)) {
+        if (! ($result instanceof mysqli_result)) {
             return null;
         }
 
         $row = $result->fetch_row();
+
         return $row ? $row[0] : null;
     }
 
@@ -366,12 +370,13 @@ final class AsyncMySQLi
         if ($mysqli) {
             return $mysqli->affected_rows;
         }
+
         return 0;
     }
 
     private static function getPool(): AsyncMySQLiPool
     {
-        if (!self::$isInitialized) {
+        if (! self::$isInitialized) {
             throw new \RuntimeException(
                 'AsyncMySQLi has not been initialized. Please call AsyncMySQLi::init() at application startup.'
             );

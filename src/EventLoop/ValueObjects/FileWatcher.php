@@ -9,8 +9,8 @@ namespace Rcalicdan\FiberAsync\EventLoop\ValueObjects;
  * and size changes using a polling mechanism. It's designed to work efficiently
  * within an event loop system for asynchronous file monitoring.
  *
- * @package Rcalicdan\FiberAsync\EventLoop\ValueObjects
  * @author  Your Name
+ *
  * @since   1.0.0
  */
 class FileWatcher
@@ -57,13 +57,13 @@ class FileWatcher
     /**
      * Creates a new file watcher instance.
      *
-     * @param string                        $path     Path to the file to watch
-     * @param callable(string, string): void $callback Callback to execute on file changes
-     * @param array<string, mixed>          $options  Configuration options
-     *                                                - polling_interval: float - Time between checks in seconds (default: 0.1)
-     *                                                - watch_size: bool - Whether to watch file size changes (default: true)
-     *                                                - watch_content: bool - Whether to watch content hash (default: false)
-     * 
+     * @param  string  $path  Path to the file to watch
+     * @param  callable(string, string): void  $callback  Callback to execute on file changes
+     * @param  array<string, mixed>  $options  Configuration options
+     *                                         - polling_interval: float - Time between checks in seconds (default: 0.1)
+     *                                         - watch_size: bool - Whether to watch file size changes (default: true)
+     *                                         - watch_content: bool - Whether to watch content hash (default: false)
+     *
      * @throws \InvalidArgumentException If the callback is not callable
      */
     public function __construct(string $path, callable $callback, array $options = [])
@@ -140,6 +140,7 @@ class FileWatcher
     public function getPollingInterval(): float
     {
         $interval = $this->options['polling_interval'];
+
         return is_float($interval) || is_int($interval) ? (float) $interval : 0.1;
     }
 
@@ -156,9 +157,7 @@ class FileWatcher
     /**
      * Updates the last modification time.
      *
-     * @param float $time The new modification time as Unix timestamp
-     * 
-     * @return void
+     * @param  float  $time  The new modification time as Unix timestamp
      */
     public function updateLastModified(float $time): void
     {
@@ -244,11 +243,9 @@ class FileWatcher
     /**
      * Executes the callback function with error handling.
      *
-     * @param string $event The type of event that occurred (e.g., 'modified', 'deleted')
-     * @param string $path  The path of the file that changed
-     * 
-     * @return void
-     * 
+     * @param  string  $event  The type of event that occurred (e.g., 'modified', 'deleted')
+     * @param  string  $path  The path of the file that changed
+     *
      * @throws \Throwable Any exception thrown by the callback is caught and logged
      */
     public function executeCallback(string $event, string $path): void
@@ -256,7 +253,7 @@ class FileWatcher
         try {
             ($this->callback)($event, $path);
         } catch (\Throwable $e) {
-            error_log('File watcher callback error: ' . $e->getMessage());
+            error_log('File watcher callback error: '.$e->getMessage());
         }
     }
 }

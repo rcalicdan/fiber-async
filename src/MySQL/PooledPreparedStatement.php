@@ -2,9 +2,6 @@
 
 namespace Rcalicdan\FiberAsync\MySQL;
 
-use Rcalicdan\FiberAsync\MySQL\MySQLClient;
-use Rcalicdan\FiberAsync\MySQL\MySQLPool;
-use Rcalicdan\FiberAsync\MySQL\PreparedStatement;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -31,6 +28,7 @@ class PooledPreparedStatement
                 return await($this->statement->execute($params));
             } catch (\Throwable $e) {
                 $this->releaseConnection();
+
                 throw $e;
             }
         })();
@@ -49,7 +47,7 @@ class PooledPreparedStatement
 
     private function releaseConnection(): void
     {
-        if (!$this->released) {
+        if (! $this->released) {
             $this->pool->release($this->client);
             $this->released = true;
         }
@@ -60,4 +58,3 @@ class PooledPreparedStatement
         $this->releaseConnection();
     }
 }
-

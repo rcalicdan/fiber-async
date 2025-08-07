@@ -10,7 +10,6 @@ use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Api\AsyncHttp;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 
-
 pest()->extend(Tests\TestCase::class)->in('Feature', 'Integration');
 pest()->extend(Tests\TestCase::class)->in('Unit');
 pest()->extend(Tests\TestCase::class)->in('Performance');
@@ -51,8 +50,8 @@ function resetEventLoop()
  */
 function clearFilesystemCache()
 {
-    $cacheDir = getcwd() . '/cache/http';
-    if (!is_dir($cacheDir)) {
+    $cacheDir = getcwd().'/cache/http';
+    if (! is_dir($cacheDir)) {
         return;
     }
     $files = new RecursiveIteratorIterator(
@@ -64,7 +63,6 @@ function clearFilesystemCache()
     }
     @rmdir($cacheDir);
 }
-
 
 function something()
 {

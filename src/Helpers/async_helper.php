@@ -220,10 +220,10 @@ if (! function_exists('concurrent')) {
      * Promises, not pre-created Promise instances. Pre-created Promises are already
      * running and cannot be subject to concurrency limiting.
      *
-     * @param array $tasks Array of callables that return Promises, or Promise instances
-     *                     Note: Promise instances will be awaited but cannot be truly
-     *                     limited since they're already running
-     * @param int $concurrency Maximum number of tasks to run simultaneously
+     * @param  array  $tasks  Array of callables that return Promises, or Promise instances
+     *                        Note: Promise instances will be awaited but cannot be truly
+     *                        limited since they're already running
+     * @param  int  $concurrency  Maximum number of tasks to run simultaneously
      * @return PromiseInterface Promise that resolves with an array of all results
      */
     function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
@@ -241,9 +241,9 @@ if (! function_exists('batch')) {
      * processing large datasets or performing operations that require
      * significant resources without overwhelming the system.
      *
-     * @param array $tasks Array of callables that return Promises, or Promise instances
-     *                     Note: Promise instances will be awaited but cannot be truly
-     *                     limited since they're already running
+     * @param  array  $tasks  Array of callables that return Promises, or Promise instances
+     *                        Note: Promise instances will be awaited but cannot be truly
+     *                        limited since they're already running
      * @param  int  $batchSize  Size of each batch to process concurrently
      * @param  int  $concurrency  Maximum number of concurrent executions per batch
      * @return PromiseInterface A promise that resolves with all results

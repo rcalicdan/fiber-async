@@ -28,14 +28,15 @@ class AsyncPdoPool
     /**
      * Creates a new connection pool.
      *
-     * @param array $dbConfig The database configuration array, compatible with PDOManager.
-     * @param int $maxSize The maximum number of concurrent connections allowed.
+     * @param  array  $dbConfig  The database configuration array, compatible with PDOManager.
+     * @param  int  $maxSize  The maximum number of concurrent connections allowed.
+     *
      * @throws \InvalidArgumentException When database configuration is invalid
      */
     public function __construct(array $dbConfig, int $maxSize = 10)
     {
         $this->validateDbConfig($dbConfig);
-        $this->configValidated = true; 
+        $this->configValidated = true;
         $this->dbConfig = $dbConfig;
         $this->maxSize = $maxSize;
         $this->pool = new SplQueue;
@@ -54,9 +55,10 @@ class AsyncPdoPool
     public function get(): PromiseInterface
     {
         // If an idle connection is waiting in the pool, use it.
-        if (!$this->pool->isEmpty()) {
+        if (! $this->pool->isEmpty()) {
             $connection = $this->pool->dequeue();
             $this->lastConnection = $connection;
+
             return Promise::resolve($connection);
         }
 
@@ -91,19 +93,19 @@ class AsyncPdoPool
      * directly to the next waiting fiber. Otherwise, it's returned to the
      * idle pool.
      *
-     * @param PDO $connection The PDO connection to release.
+     * @param  PDO  $connection  The PDO connection to release.
      */
     public function release(PDO $connection): void
     {
         // Check if connection is still alive before reusing
-        if (!$this->isConnectionAlive($connection)) {
+        if (! $this->isConnectionAlive($connection)) {
             $this->activeConnections--;
-            
+
             // If there are waiters, try to create a new connection for them
-            if (!$this->waiters->isEmpty() && $this->activeConnections < $this->maxSize) {
+            if (! $this->waiters->isEmpty() && $this->activeConnections < $this->maxSize) {
                 $this->activeConnections++;
                 $promise = $this->waiters->dequeue();
-                
+
                 try {
                     $newConnection = $this->createConnection();
                     $this->lastConnection = $newConnection;
@@ -113,6 +115,7 @@ class AsyncPdoPool
                     $promise->reject($e);
                 }
             }
+
             return;
         }
 
@@ -120,7 +123,7 @@ class AsyncPdoPool
         $this->resetConnectionState($connection);
 
         // If a fiber is waiting, give this connection to it directly.
-        if (!$this->waiters->isEmpty()) {
+        if (! $this->waiters->isEmpty()) {
             $promise = $this->waiters->dequeue();
             $this->lastConnection = $connection;
             $promise->resolve($connection);
@@ -159,14 +162,14 @@ class AsyncPdoPool
     public function close(): void
     {
         // Close all pooled connections (PDO will handle cleanup automatically)
-        while (!$this->pool->isEmpty()) {
+        while (! $this->pool->isEmpty()) {
             $connection = $this->pool->dequeue();
             // PDO connections are closed when the object is destroyed
             unset($connection);
         }
 
         // Reject all waiting promises
-        while (!$this->waiters->isEmpty()) {
+        while (! $this->waiters->isEmpty()) {
             $promise = $this->waiters->dequeue();
             $promise->reject(new \RuntimeException('Pool is being closed'));
         }
@@ -189,7 +192,7 @@ class AsyncPdoPool
         }
 
         // Check for required driver field
-        if (!array_key_exists('driver', $dbConfig)) {
+        if (! array_key_exists('driver', $dbConfig)) {
             throw new \InvalidArgumentException("Missing required database configuration field: 'driver'");
         }
 
@@ -197,34 +200,34 @@ class AsyncPdoPool
             throw new \InvalidArgumentException("Database configuration field 'driver' cannot be empty");
         }
 
-        if (!is_string($dbConfig['driver'])) {
+        if (! is_string($dbConfig['driver'])) {
             throw new \InvalidArgumentException('Database driver must be a string');
         }
 
         // Validate driver-specific requirements
         $this->validateDriverSpecificConfig($dbConfig);
 
-        if (isset($dbConfig['port']) && (!is_int($dbConfig['port']) || $dbConfig['port'] <= 0)) {
+        if (isset($dbConfig['port']) && (! is_int($dbConfig['port']) || $dbConfig['port'] <= 0)) {
             throw new \InvalidArgumentException("Database port must be a positive integer: {$dbConfig['port']}");
         }
 
-        if (isset($dbConfig['host']) && !is_string($dbConfig['host'])) {
+        if (isset($dbConfig['host']) && ! is_string($dbConfig['host'])) {
             throw new \InvalidArgumentException('Database host must be a string');
         }
 
-        if (isset($dbConfig['username']) && !is_string($dbConfig['username'])) {
+        if (isset($dbConfig['username']) && ! is_string($dbConfig['username'])) {
             throw new \InvalidArgumentException('Database username must be a string');
         }
 
-        if (isset($dbConfig['password']) && !is_string($dbConfig['password'])) {
+        if (isset($dbConfig['password']) && ! is_string($dbConfig['password'])) {
             throw new \InvalidArgumentException('Database password must be a string');
         }
 
-        if (isset($dbConfig['charset']) && !is_string($dbConfig['charset'])) {
+        if (isset($dbConfig['charset']) && ! is_string($dbConfig['charset'])) {
             throw new \InvalidArgumentException('Database charset must be a string');
         }
 
-        if (isset($dbConfig['options']) && !is_array($dbConfig['options'])) {
+        if (isset($dbConfig['options']) && ! is_array($dbConfig['options'])) {
             throw new \InvalidArgumentException('Database options must be an array');
         }
     }
@@ -241,41 +244,49 @@ class AsyncPdoPool
             case 'pgsql':
             case 'postgresql':
                 $this->validateRequiredFields($dbConfig, ['host', 'database']);
+
                 break;
 
             case 'sqlite':
                 $this->validateRequiredFields($dbConfig, ['database']);
+
                 break;
 
             case 'sqlsrv':
             case 'mssql':
                 $this->validateRequiredFields($dbConfig, ['host']);
+
                 break;
 
             case 'oci':
             case 'oracle':
                 $this->validateRequiredFields($dbConfig, ['database']);
+
                 break;
 
             case 'ibm':
             case 'db2':
-                if (!isset($dbConfig['database']) && !isset($dbConfig['dsn'])) {
+                if (! isset($dbConfig['database']) && ! isset($dbConfig['dsn'])) {
                     throw new \InvalidArgumentException("IBM DB2 driver requires either 'database' or 'dsn' field");
                 }
+
                 break;
 
             case 'odbc':
-                if (!isset($dbConfig['database']) && !isset($dbConfig['dsn'])) {
+                if (! isset($dbConfig['database']) && ! isset($dbConfig['dsn'])) {
                     throw new \InvalidArgumentException("ODBC driver requires either 'database' or 'dsn' field");
                 }
+
                 break;
 
             case 'firebird':
                 $this->validateRequiredFields($dbConfig, ['database']);
+
                 break;
 
             case 'informix':
                 $this->validateRequiredFields($dbConfig, ['database']);
+
                 break;
 
             default:
@@ -289,7 +300,7 @@ class AsyncPdoPool
     private function validateRequiredFields(array $dbConfig, array $requiredFields): void
     {
         foreach ($requiredFields as $field) {
-            if (!array_key_exists($field, $dbConfig)) {
+            if (! array_key_exists($field, $dbConfig)) {
                 throw new \InvalidArgumentException("Missing required database configuration field: '{$field}' for driver '{$dbConfig['driver']}'");
             }
 
@@ -319,7 +330,7 @@ class AsyncPdoPool
 
             return $pdo;
         } catch (PDOException $e) {
-            throw new \RuntimeException('PDO Connection failed: ' . $e->getMessage(), 0, $e);
+            throw new \RuntimeException('PDO Connection failed: '.$e->getMessage(), 0, $e);
         }
     }
 
@@ -330,6 +341,7 @@ class AsyncPdoPool
     {
         try {
             $stmt = $connection->query('SELECT 1');
+
             return $stmt !== false;
         } catch (\Throwable $e) {
             return false;
@@ -356,8 +368,9 @@ class AsyncPdoPool
     /**
      * Builds a DSN string for PDO based on the provided configuration.
      *
-     * @param array $config The database configuration array
+     * @param  array  $config  The database configuration array
      * @return string The DSN string
+     *
      * @throws PDOException If the driver is not set or not supported
      */
     private function buildDSN(array $config): string
@@ -365,20 +378,20 @@ class AsyncPdoPool
         return match (strtolower($config['driver'])) {
             'mysql' => sprintf(
                 'mysql:host=%s;port=%d;dbname=%s;charset=%s',
-                $config['host'],           
+                $config['host'],
                 $config['port'] ?? 3306,
-                $config['database'],       
+                $config['database'],
                 $config['charset'] ?? 'utf8mb4'
             ),
 
             'pgsql', 'postgresql' => sprintf(
                 'pgsql:host=%s;port=%d;dbname=%s',
-                $config['host'],           
+                $config['host'],
                 $config['port'] ?? 5432,
-                $config['database']        
+                $config['database']
             ),
 
-            'sqlite' => 'sqlite:' . $config['database'], 
+            'sqlite' => 'sqlite:'.$config['database'],
 
             'sqlsrv', 'mssql' => $this->buildSqlSrvDSN($config),
 
@@ -386,9 +399,9 @@ class AsyncPdoPool
 
             'ibm', 'db2' => $this->buildIbmDSN($config),
 
-            'odbc' => 'odbc:' . ($config['dsn'] ?? $config['database']),
+            'odbc' => 'odbc:'.($config['dsn'] ?? $config['database']),
 
-            'firebird' => 'firebird:dbname=' . $config['database'], 
+            'firebird' => 'firebird:dbname='.$config['database'],
 
             'informix' => $this->buildInformixDSN($config),
 
@@ -401,14 +414,14 @@ class AsyncPdoPool
      */
     private function buildSqlSrvDSN(array $config): string
     {
-        $dsn = 'sqlsrv:server=' . $config['host']; 
+        $dsn = 'sqlsrv:server='.$config['host'];
 
         if (isset($config['port']) && $config['port'] != 1433) {
-            $dsn .= ',' . $config['port'];
+            $dsn .= ','.$config['port'];
         }
 
         if (isset($config['database'])) {
-            $dsn .= ';Database=' . $config['database'];
+            $dsn .= ';Database='.$config['database'];
         }
 
         return $dsn;
@@ -422,19 +435,19 @@ class AsyncPdoPool
         $dsn = 'oci:dbname=';
 
         if (isset($config['host'])) {
-            $dsn .= '//' . $config['host'];
+            $dsn .= '//'.$config['host'];
 
             if (isset($config['port'])) {
-                $dsn .= ':' . $config['port'];
+                $dsn .= ':'.$config['port'];
             }
 
             $dsn .= '/';
         }
 
-        $dsn .= $config['database']; 
+        $dsn .= $config['database'];
 
         if (isset($config['charset'])) {
-            $dsn .= ';charset=' . $config['charset'];
+            $dsn .= ';charset='.$config['charset'];
         }
 
         return $dsn;
@@ -464,21 +477,21 @@ class AsyncPdoPool
         $dsn = 'informix:';
 
         if (isset($config['host'])) {
-            $dsn .= 'host=' . $config['host'] . ';';
+            $dsn .= 'host='.$config['host'].';';
         }
 
-        $dsn .= 'database=' . $config['database'] . ';'; 
+        $dsn .= 'database='.$config['database'].';';
 
         if (isset($config['server'])) {
-            $dsn .= 'server=' . $config['server'] . ';';
+            $dsn .= 'server='.$config['server'].';';
         }
 
         if (isset($config['protocol'])) {
-            $dsn .= 'protocol=' . $config['protocol'] . ';';
+            $dsn .= 'protocol='.$config['protocol'].';';
         }
 
         if (isset($config['service'])) {
-            $dsn .= 'service=' . $config['service'] . ';';
+            $dsn .= 'service='.$config['service'].';';
         }
 
         return $dsn;

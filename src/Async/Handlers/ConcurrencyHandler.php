@@ -48,11 +48,13 @@ final readonly class ConcurrencyHandler
         return new Promise(function ($resolve, $reject) use ($tasks, $concurrency) {
             if ($concurrency <= 0) {
                 $reject(new \InvalidArgumentException('Concurrency limit must be greater than 0'));
+
                 return;
             }
 
             if (empty($tasks)) {
                 $resolve([]);
+
                 return;
             }
 
@@ -101,6 +103,7 @@ final readonly class ConcurrencyHandler
                     } catch (Throwable $e) {
                         $running--;
                         $reject($e);
+
                         return;
                     }
 
@@ -128,7 +131,8 @@ final readonly class ConcurrencyHandler
                         ->catch(function ($error) use (&$running, $reject) {
                             $running--;
                             $reject($error);
-                        });
+                        })
+                    ;
                 }
             };
 
@@ -155,11 +159,13 @@ final readonly class ConcurrencyHandler
         return new Promise(function ($resolve, $reject) use ($tasks, $batchSize, $concurrency) {
             if ($batchSize <= 0) {
                 $reject(new \InvalidArgumentException('Batch size must be greater than 0'));
+
                 return;
             }
 
             if (empty($tasks)) {
                 $resolve([]);
+
                 return;
             }
 
@@ -195,6 +201,7 @@ final readonly class ConcurrencyHandler
             ) {
                 if ($batchIndex >= $totalBatches) {
                     $resolve($allResults);
+
                     return;
                 }
 
@@ -213,7 +220,8 @@ final readonly class ConcurrencyHandler
                         $batchIndex++;
                         EventLoop::getInstance()->nextTick($processNextBatch);
                     })
-                    ->catch($reject);
+                    ->catch($reject)
+                ;
             };
 
             EventLoop::getInstance()->nextTick($processNextBatch);
@@ -228,7 +236,7 @@ final readonly class ConcurrencyHandler
      * - Promise instances are wrapped with await
      * - Other types are wrapped in a callable
      *
-     * @param mixed $task The task to wrap
+     * @param  mixed  $task  The task to wrap
      * @return callable A callable that properly defers execution
      */
     private function wrapTaskForConcurrency(mixed $task): callable
@@ -239,6 +247,7 @@ final readonly class ConcurrencyHandler
                 if ($result instanceof PromiseInterface) {
                     return $this->awaitHandler->await($result);
                 }
+
                 return $result;
             };
         }

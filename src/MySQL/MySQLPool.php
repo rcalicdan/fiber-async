@@ -31,7 +31,7 @@ class MySQLPool
      */
     public function get(): PromiseInterface
     {
-        if (!$this->pool->isEmpty()) {
+        if (! $this->pool->isEmpty()) {
             return Promise::resolve($this->pool->dequeue());
         }
 
@@ -43,9 +43,11 @@ class MySQLPool
                 try {
                     $client = new MySQLClient($this->connectionParams);
                     await($client->connect());
+
                     return $client;
                 } catch (\Throwable $e) {
                     $this->activeConnections--;
+
                     throw $e;
                 }
             })();
@@ -54,6 +56,7 @@ class MySQLPool
         // Pool is full, wait for a connection to be released
         $promise = new AsyncPromise;
         $this->waiters->enqueue($promise);
+
         return $promise;
     }
 
@@ -63,7 +66,7 @@ class MySQLPool
     public function release(MySQLClient $client): void
     {
         // If a fiber is waiting, give this connection directly
-        if (!$this->waiters->isEmpty()) {
+        if (! $this->waiters->isEmpty()) {
             $promise = $this->waiters->dequeue();
             $promise->resolve($client);
         } else {
@@ -78,8 +81,9 @@ class MySQLPool
     public function close(): void
     {
         // Close all idle connections
-        while (!$this->pool->isEmpty()) {
+        while (! $this->pool->isEmpty()) {
             $client = $this->pool->dequeue();
+
             try {
                 await($client->close());
             } catch (\Throwable $e) {
@@ -88,7 +92,7 @@ class MySQLPool
         }
 
         // Reject all waiting promises
-        while (!$this->waiters->isEmpty()) {
+        while (! $this->waiters->isEmpty()) {
             $promise = $this->waiters->dequeue();
             $promise->reject(new \RuntimeException('Pool is closing'));
         }

@@ -5,7 +5,7 @@ namespace Rcalicdan\FiberAsync\EventLoop\Handlers;
 final class ActivityHandler
 {
     private float $lastActivity = 0.0;
-    private int $idleThreshold = 5; 
+    private int $idleThreshold = 5;
     private int $activityCounter = 0;
     private float $avgActivityInterval = 0.0;
 
