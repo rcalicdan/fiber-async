@@ -12,8 +12,6 @@ use Rcalicdan\FiberAsync\Socket\Exceptions\SocketException;
  * This class provides a high-level interface for asynchronous socket operations
  * including reading, writing, and connection management. It wraps a socket resource
  * and delegates operations to the AsyncSocketOperations handler.
- *
- * @package Rcalicdan\FiberAsync\EventLoop\ValueObjects
  */
 class Socket
 {

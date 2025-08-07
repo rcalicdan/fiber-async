@@ -8,8 +8,6 @@ namespace Rcalicdan\FiberAsync\EventLoop\ValueObjects;
  * This class provides functionality to watch stream resources for read or write
  * readiness within an event loop system. It encapsulates the stream resource,
  * callback function, and watch type for asynchronous I/O operations.
- *
- * @package Rcalicdan\FiberAsync\EventLoop\ValueObjects
  */
 class StreamWatcher
 {
