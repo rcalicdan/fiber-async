@@ -2,44 +2,86 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\Handlers;
 
+/**
+ * Handles scheduling of tick and deferred callbacks in batches.
+ */
 final class TickHandler
 {
+    /**
+     * @var list<callable>  Callbacks to run on the next tick.
+     */
     private array $tickCallbacks = [];
+
+    /**
+     * @var list<callable>  Callbacks to run after current tick (deferred).
+     */
     private array $deferredCallbacks = [];
+
+    /**
+     * Maximum number of callbacks to execute in one batch.
+     */
     private const BATCH_SIZE = 100;
 
+    /**
+     * Schedule a callback to run on the next loop tick.
+     *
+     * @param callable $callback
+     * @return void
+     */
     public function addNextTick(callable $callback): void
     {
         $this->tickCallbacks[] = $callback;
     }
 
+    /**
+     * Schedule a callback to run after current tick (deferred).
+     *
+     * @param callable $callback
+     * @return void
+     */
     public function addDeferred(callable $callback): void
     {
         $this->deferredCallbacks[] = $callback;
     }
 
+    /**
+     * Process up to BATCH_SIZE next-tick callbacks.
+     *
+     * @return bool  True if any callbacks were processed.
+     */
     public function processNextTickCallbacks(): bool
     {
-        if (empty($this->tickCallbacks)) {
+        if ($this->tickCallbacks === []) {
             return false;
         }
 
         return $this->processBatch($this->tickCallbacks, 'NextTick');
     }
 
+    /**
+     * Process all deferred callbacks in one go.
+     *
+     * @return bool  True if any callbacks were processed.
+     */
     public function processDeferredCallbacks(): bool
     {
-        if (empty($this->deferredCallbacks)) {
+        if ($this->deferredCallbacks === []) {
             return false;
         }
 
-        // Process all deferred callbacks in one go
         $callbacks = $this->deferredCallbacks;
         $this->deferredCallbacks = [];
 
         return $this->executeBatch($callbacks, 'Deferred');
     }
 
+    /**
+     * Split the callback list into a batch and execute it.
+     *
+     * @param list<callable> $callbacks  Passed by reference; batch is spliced off.
+     * @param string         $type       Label for error logging.
+     * @return bool          True if any callbacks were executed.
+     */
     private function processBatch(array &$callbacks, string $type): bool
     {
         $batchSize = min(self::BATCH_SIZE, count($callbacks));
@@ -48,6 +90,13 @@ final class TickHandler
         return $this->executeBatch($batch, $type);
     }
 
+    /**
+     * Execute a batch of callbacks, catching any exceptions.
+     *
+     * @param list<callable> $callbacks
+     * @param string         $type
+     * @return bool          True if at least one callback ran successfully.
+     */
     private function executeBatch(array $callbacks, string $type): bool
     {
         $processed = false;
@@ -57,20 +106,30 @@ final class TickHandler
                 $callback();
                 $processed = true;
             } catch (\Throwable $e) {
-                error_log("{$type} callback error: ".$e->getMessage());
+                error_log("{$type} callback error: " . $e->getMessage());
             }
         }
 
         return $processed;
     }
 
+    /**
+     * Check if there are any pending next-tick callbacks.
+     *
+     * @return bool
+     */
     public function hasTickCallbacks(): bool
     {
-        return ! empty($this->tickCallbacks);
+        return $this->tickCallbacks !== [];
     }
 
+    /**
+     * Check if there are any pending deferred callbacks.
+     *
+     * @return bool
+     */
     public function hasDeferredCallbacks(): bool
     {
-        return ! empty($this->deferredCallbacks);
+        return $this->deferredCallbacks !== [];
     }
 }
