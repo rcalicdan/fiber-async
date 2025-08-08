@@ -80,11 +80,6 @@ final readonly class AwaitHandler
             }
         }
 
-        // This should never happen in practice, but satisfies PHPStan
-        if (!$hasResult) {
-            throw new Exception('Promise completed without result or error');
-        }
-
         /** @var TValue $result */
         return $result;
     }
