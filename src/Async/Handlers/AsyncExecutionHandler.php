@@ -4,6 +4,7 @@ namespace Rcalicdan\FiberAsync\Async\Handlers;
 
 use Fiber;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Promise;
 use Throwable;
 
@@ -22,13 +23,13 @@ final readonly class AsyncExecutionHandler
      * The returned function, when called, will execute the original function
      * inside a Fiber and return a Promise that resolves with the result.
      *
-     * @param  callable  $asyncFunction  The function to make asynchronous
-     * @return callable A function that returns a Promise when called
+     * @param callable $asyncFunction The function to make asynchronous.
+     * @return callable(...mixed): PromiseInterface<mixed> A function that returns a Promise when called.
      */
     public function async(callable $asyncFunction): callable
     {
-        return function (...$args) use ($asyncFunction) {
-            return new Promise(function ($resolve, $reject) use ($asyncFunction, $args) {
+        return function (...$args) use ($asyncFunction): PromiseInterface {
+            return new Promise(function (callable $resolve, callable $reject) use ($asyncFunction, $args) {
                 $fiber = new Fiber(function () use ($asyncFunction, $args, $resolve, $reject) {
                     try {
                         $result = $asyncFunction(...$args);
