@@ -2,6 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\IOHandlers\Http;
 
+use RuntimeException;
+
 /**
  * Handles cURL multi-handle operations for concurrent HTTP requests.
  *
@@ -27,6 +29,10 @@ final readonly class CurlMultiHandler
         do {
             $mrc = curl_multi_exec($multiHandle, $running);
         } while ($mrc === CURLM_CALL_MULTI_PERFORM);
+
+        if (!is_int($running)) {
+            throw new RuntimeException('curl_multi_exec failed to update the handle count to an integer.');
+        }
 
         return $running;
     }
