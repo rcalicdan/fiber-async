@@ -13,12 +13,15 @@ final readonly class FiberStateHandler
     /**
      * Filter an array of fibers to return only active (non-terminated) ones.
      *
-     * @param  \Fiber[]  $fibers  Array of fibers to filter
-     * @return \Fiber[] Array containing only active fibers
+     * @param  \Fiber<mixed,mixed,mixed,mixed>[]  $fibers  Array of fibers to filter
+     * @return \Fiber<mixed,mixed,mixed,mixed>[]  Array containing only active fibers
      */
     public function filterActiveFibers(array $fibers): array
     {
-        return array_filter($fibers, fn (\Fiber $fiber) => ! $fiber->isTerminated());
+        return array_filter(
+            $fibers,
+            fn (\Fiber $fiber): bool => ! $fiber->isTerminated()
+        );
     }
 
     /**
@@ -26,12 +29,15 @@ final readonly class FiberStateHandler
      *
      * Returns fibers that are suspended but not terminated.
      *
-     * @param  \Fiber[]  $fibers  Array of fibers to filter
-     * @return \Fiber[] Array containing only suspended fibers
+     * @param  \Fiber<mixed,mixed,mixed,mixed>[]  $fibers  Array of fibers to filter
+     * @return \Fiber<mixed,mixed,mixed,mixed>[]  Array containing only suspended fibers
      */
     public function filterSuspendedFibers(array $fibers): array
     {
-        return array_filter($fibers, fn (\Fiber $fiber) => $fiber->isSuspended() && ! $fiber->isTerminated());
+        return array_filter(
+            $fibers,
+            fn (\Fiber $fiber): bool => $fiber->isSuspended() && ! $fiber->isTerminated()
+        );
     }
 
     /**
@@ -39,8 +45,8 @@ final readonly class FiberStateHandler
      *
      * An active fiber is one that is not terminated.
      *
-     * @param  \Fiber[]  $fibers  Array of fibers to check
-     * @return bool True if at least one fiber is active
+     * @param  \Fiber<mixed,mixed,mixed,mixed>[]  $fibers  Array of fibers to check
+     * @return bool  True if at least one fiber is active
      */
     public function hasActiveFibers(array $fibers): bool
     {
@@ -56,17 +62,19 @@ final readonly class FiberStateHandler
     /**
      * Get a human-readable string representation of a fiber's state.
      *
-     * @param  \Fiber  $fiber  The fiber to get state for
-     * @return string One of: 'terminated', 'suspended', 'running', 'not_started'
+     * @param  \Fiber<mixed,mixed,mixed,mixed>  $fiber  The fiber to get state for
+     * @return string  One of: 'terminated', 'suspended', 'running', 'not_started'
      */
     public function getFiberState(\Fiber $fiber): string
     {
         if ($fiber->isTerminated()) {
             return 'terminated';
         }
+
         if ($fiber->isSuspended()) {
             return 'suspended';
         }
+
         if ($fiber->isStarted()) {
             return 'running';
         }
