@@ -3,14 +3,16 @@
 namespace Rcalicdan\FiberAsync\Promise;
 
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 
 /**
  * A promise that can be cancelled to clean up resources.
  * 
  * @template TValue
  * @extends Promise<TValue>
+ * @implements CancellablePromiseInterface<TValue>
  */
-class CancellablePromise extends Promise
+class CancellablePromise extends Promise implements CancellablePromiseInterface
 {
     private ?string $timerId = null;
     private bool $cancelled = false;
@@ -21,13 +23,16 @@ class CancellablePromise extends Promise
     private $cancelHandler = null;
 
     /**
-     * Set the timer ID associated with this promise
+     * {@inheritdoc}
      */
     public function setTimerId(string $timerId): void
     {
         $this->timerId = $timerId;
     }
 
+    /**
+     * {@inheritdoc}
+     */
     public function cancel(): void
     {
         if (! $this->cancelled) {
@@ -50,7 +55,7 @@ class CancellablePromise extends Promise
     }
 
     /**
-     * @param callable(): void $handler
+     * {@inheritdoc}
      */
     public function setCancelHandler(callable $handler): void
     {
@@ -58,7 +63,7 @@ class CancellablePromise extends Promise
     }
 
     /**
-     * Check if the promise has been cancelled
+     * {@inheritdoc}
      */
     public function isCancelled(): bool
     {

@@ -8,6 +8,7 @@ use Rcalicdan\FiberAsync\Promise\Handlers\ExecutorHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\ResolutionHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\StateHandler;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 
 /**
  * A Promise/A+ compliant implementation for managing asynchronous operations.
@@ -48,9 +49,9 @@ class Promise implements PromiseInterface
     private ResolutionHandler $resolutionHandler;
 
     /**
-     * @var CancellablePromise<mixed>|null
+     * @var CancellablePromiseInterface<mixed>|null
      */
-    protected ?CancellablePromise $rootCancellable = null;
+    protected ?CancellablePromiseInterface $rootCancellable = null;
 
     /**
      * Create a new promise with an optional executor function.
@@ -122,7 +123,7 @@ class Promise implements PromiseInterface
              * @param callable(mixed): void $reject
              */
             function (callable $resolve, callable $reject) use ($onFulfilled, $onRejected) {
-                $root = $this instanceof CancellablePromise
+                $root = $this instanceof CancellablePromiseInterface
                     ? $this
                     : $this->rootCancellable;
 
@@ -179,8 +180,7 @@ class Promise implements PromiseInterface
             }
         );
 
-        if ($this instanceof CancellablePromise) {
-          
+        if ($this instanceof CancellablePromiseInterface) {
             $newPromise->rootCancellable = $this;
         } elseif ($this->rootCancellable !== null) {
             $newPromise->rootCancellable = $this->rootCancellable;
@@ -190,9 +190,9 @@ class Promise implements PromiseInterface
     }
 
     /**
-     * @return CancellablePromise<mixed>|null
+     * @return CancellablePromiseInterface<mixed>|null
      */
-    public function getRootCancellable(): ?CancellablePromise
+    public function getRootCancellable(): ?CancellablePromiseInterface
     {
         return $this->rootCancellable;
     }

@@ -7,13 +7,13 @@ require_once __DIR__ . '/vendor/autoload.php';
 for ($i = 0; $i < 100; $i++) {
     $startTime = microtime(true);
     run(function () {
-        $delays = Promise::all([
-            delay(1),
-            delay(1),
-            delay(1),
-            delay(1),
-            delay(1),
-            delay(1),
+        $delays = Promise::race([
+            delay(1)->then(fn()=>print "1\n"),
+            delay(1)->then(fn()=>print "2\n"),
+            delay(1)->then(fn()=>print "3\n"),
+            delay(1)->then(fn()=>print "4\n"),
+            delay(1)->then(fn()=>print "5\n"),
+            delay(1)->then(fn()=>print "6\n"),
         ]);
  
         await($delays);
