@@ -6,11 +6,18 @@ use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 
 /**
  * A promise that can be cancelled to clean up resources.
+ * 
+ * @template TValue
+ * @extends Promise<TValue>
  */
 class CancellablePromise extends Promise
 {
     private ?string $timerId = null;
     private bool $cancelled = false;
+    
+    /**
+     * @var callable(): void|null
+     */
     private $cancelHandler = null;
 
     /**
@@ -26,7 +33,7 @@ class CancellablePromise extends Promise
         if (! $this->cancelled) {
             $this->cancelled = true;
 
-            if ($this->cancelHandler) {
+            if ($this->cancelHandler !== null) {
                 try {
                     ($this->cancelHandler)();
                 } catch (\Throwable $e) {
@@ -42,6 +49,9 @@ class CancellablePromise extends Promise
         }
     }
 
+    /**
+     * @param callable(): void $handler
+     */
     public function setCancelHandler(callable $handler): void
     {
         $this->cancelHandler = $handler;
