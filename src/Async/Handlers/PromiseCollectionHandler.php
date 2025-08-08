@@ -24,12 +24,16 @@ final readonly class PromiseCollectionHandler
         $this->timerHandler = new TimerHandler;
     }
 
+    /**
+     * @param array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>> $promises
+     * @return PromiseInterface<array<int|string, mixed>>
+     */
     public function all(array $promises): PromiseInterface
     {
-        return new Promise(function ($resolve, $reject) use ($promises) {
-            if (empty($promises)) {
+        /** @var Promise<array<int|string, mixed>> */
+        return new Promise(function (callable $resolve, callable $reject) use ($promises): void {
+            if ($promises === []) {
                 $resolve([]);
-
                 return;
             }
 
@@ -49,12 +53,11 @@ final readonly class PromiseCollectionHandler
                     }
                 } catch (Throwable $e) {
                     $reject($e);
-
                     return;
                 }
 
                 $promise
-                    ->then(function ($value) use (&$results, &$completed, $total, $key, $resolve, $hasStringKeys) {
+                    ->then(function ($value) use (&$results, &$completed, $total, $key, $resolve, $hasStringKeys): void {
                         $results[$key] = $value;
                         $completed++;
                         if ($completed === $total) {
@@ -66,29 +69,28 @@ final readonly class PromiseCollectionHandler
                             }
                         }
                     })
-                    ->catch(function ($reason) use ($reject) {
+                    ->catch(function ($reason) use ($reject): void {
                         $reject($reason);
-                    })
-                ;
+                    });
             }
         });
     }
 
     /**
      * Race multiple Promises and return the first to settle.
-     */
-    /**
-     * Race multiple Promises and return the first to settle.
+     * 
+     * @param array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>> $promises
+     * @return PromiseInterface<mixed>
      */
     public function race(array $promises): PromiseInterface
     {
+        /** @var array<int|string, PromiseInterface<mixed>> $promiseInstances */
         $promiseInstances = [];
         $settled = false;
 
-        $cancellablePromise = new CancellablePromise(function ($resolve, $reject) use ($promises, &$promiseInstances, &$settled) {
-            if (empty($promises)) {
+        $cancellablePromise = new CancellablePromise(function (callable $resolve, callable $reject) use ($promises, &$promiseInstances, &$settled): void {
+            if ($promises === []) {
                 $reject(new Exception('No promises provided'));
-
                 return;
             }
 
@@ -114,12 +116,11 @@ final readonly class PromiseCollectionHandler
                         $this->cancelPromiseIfPossible($p);
                     }
                     $reject($e);
-
                     return;
                 }
 
                 $promise
-                    ->then(function ($value) use ($resolve, &$settled, &$promiseInstances, $index) {
+                    ->then(function ($value) use ($resolve, &$settled, &$promiseInstances, $index): void {
                         if ($settled) {
                             return;
                         }
@@ -127,19 +128,18 @@ final readonly class PromiseCollectionHandler
                         $this->handleRaceSettlement($settled, $promiseInstances, $index);
                         $resolve($value);
                     })
-                    ->catch(function ($reason) use ($reject, &$settled, &$promiseInstances, $index) {
+                    ->catch(function ($reason) use ($reject, &$settled, &$promiseInstances, $index): void {
                         if ($settled) {
                             return;
                         }
 
                         $this->handleRaceSettlement($settled, $promiseInstances, $index);
                         $reject($reason);
-                    })
-                ;
+                    });
             }
         });
 
-        $cancellablePromise->setCancelHandler(function () use (&$promiseInstances, &$settled) {
+        $cancellablePromise->setCancelHandler(function () use (&$promiseInstances, &$settled): void {
             $settled = true;
             foreach ($promiseInstances as $promise) {
                 $this->cancelPromiseIfPossible($promise);
@@ -149,6 +149,10 @@ final readonly class PromiseCollectionHandler
         return $cancellablePromise;
     }
 
+    /**
+     * @param callable(): PromiseInterface<mixed>|PromiseInterface<mixed>|array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>> $operations
+     * @return PromiseInterface<mixed>
+     */
     public function timeout(
         callable|PromiseInterface|array $operations,
         float $seconds
@@ -167,25 +171,29 @@ final readonly class PromiseCollectionHandler
 
         $timeoutPromise = $this->timerHandler
             ->delay($seconds)
-            ->then(fn () => throw new Exception("Operation timed out after {$seconds} seconds"))
-        ;
+            ->then(fn () => throw new Exception("Operation timed out after {$seconds} seconds"));
 
-        return $this->race([...$promises, $timeoutPromise]);
+        /** @var array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>> $racePromises */
+        $racePromises = [...$promises, $timeoutPromise];
+        return $this->race($racePromises);
     }
 
     /**
      * Wait for any Promise in a collection to resolve.
+     * 
+     * @param array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>> $promises
+     * @return PromiseInterface<mixed>
      */
     public function any(array $promises): PromiseInterface
     {
+        /** @var array<int|string, PromiseInterface<mixed>> $promiseInstances */
         $promiseInstances = [];
         $settled = false;
 
         $cancellablePromise = new CancellablePromise(
-            function ($resolve, $reject) use ($promises, &$promiseInstances, &$settled) {
-                if (empty($promises)) {
+            function (callable $resolve, callable $reject) use ($promises, &$promiseInstances, &$settled): void {
+                if ($promises === []) {
                     $reject(new Exception('No promises provided'));
-
                     return;
                 }
 
@@ -217,13 +225,12 @@ final readonly class PromiseCollectionHandler
                             $this->cancelPromiseIfPossible($p);
                         }
                         $reject($e);
-
                         return;
                     }
 
                     $promise
                         ->then(
-                            function ($value) use ($resolve, &$settled, &$promiseInstances, $index) {
+                            function ($value) use ($resolve, &$settled, &$promiseInstances, $index): void {
                                 if ($settled) {
                                     return;
                                 }
@@ -240,7 +247,7 @@ final readonly class PromiseCollectionHandler
                                 $total,
                                 $index,
                                 $reject
-                            ) {
+                            ): void {
                                 if ($settled) {
                                     return;
                                 }
@@ -250,23 +257,23 @@ final readonly class PromiseCollectionHandler
 
                                 if ($rejectedCount === $total) {
                                     $settled = true;
+                                    $rejectionsJson = json_encode($rejections);
                                     $reject(
                                         new Exception(
                                             'All promises rejected',
                                             0,
-                                            new Exception(json_encode($rejections))
+                                            new Exception($rejectionsJson !== false ? $rejectionsJson : 'Failed to encode rejections')
                                         )
                                     );
                                 }
                             }
-                        )
-                    ;
+                        );
                 }
             }
         );
 
         $cancellablePromise->setCancelHandler(
-            function () use (&$promiseInstances, &$settled) {
+            function () use (&$promiseInstances, &$settled): void {
                 $settled = true;
                 foreach ($promiseInstances as $promise) {
                     $this->cancelPromiseIfPossible($promise);
@@ -277,7 +284,10 @@ final readonly class PromiseCollectionHandler
         return $cancellablePromise;
     }
 
-    private function handleAnySettlement(bool &$settled, array &$promiseInstances, int $winnerIndex): void
+    /**
+     * @param array<int|string, PromiseInterface<mixed>> $promiseInstances
+     */
+    private function handleAnySettlement(bool &$settled, array &$promiseInstances, int|string $winnerIndex): void
     {
         $settled = true;
 
@@ -289,7 +299,10 @@ final readonly class PromiseCollectionHandler
         }
     }
 
-    private function handleRaceSettlement(bool &$settled, array &$promiseInstances, int $winnerIndex): void
+    /**
+     * @param array<int|string, PromiseInterface<mixed>> $promiseInstances
+     */
+    private function handleRaceSettlement(bool &$settled, array &$promiseInstances, int|string $winnerIndex): void
     {
         $settled = true;
 
@@ -301,18 +314,24 @@ final readonly class PromiseCollectionHandler
         }
     }
 
+    /**
+     * @param PromiseInterface<mixed> $promise
+     */
     private function cancelPromiseIfPossible(PromiseInterface $promise): void
     {
         if ($promise instanceof CancellablePromise && ! $promise->isCancelled()) {
             $promise->cancel();
         } elseif ($promise instanceof Promise) {
             $rootCancellable = $promise->getRootCancellable();
-            if ($rootCancellable && ! $rootCancellable->isCancelled()) {
+            if ($rootCancellable !== null && ! $rootCancellable->isCancelled()) {
                 $rootCancellable->cancel();
             }
         }
     }
 
+    /**
+     * @param array<int|string, mixed> $array
+     */
     private function hasStringKeys(array $array): bool
     {
         return count(array_filter(array_keys($array), 'is_string')) > 0;
