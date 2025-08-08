@@ -33,10 +33,10 @@ final readonly class AwaitHandler
      * If the Promise resolves, returns the resolved value.
      * If the Promise rejects, throws the rejection reason as an exception.
      *
-     * @template T The type of the resolved value of the promise.
+     * @template TValue The type of the resolved value of the promise.
      *
-     * @param  PromiseInterface<T>  $promise  The promise to await.
-     * @return T The resolved value of the promise.
+     * @param  PromiseInterface<TValue>  $promise  The promise to await.
+     * @return TValue The resolved value of the promise.
      *
      * @throws Exception|Throwable If the Promise is rejected
      * @throws \RuntimeException If not called from within a Fiber context
@@ -48,11 +48,13 @@ final readonly class AwaitHandler
         $result = null;
         $error = null;
         $completed = false;
+        $hasResult = false;
 
         $promise
-            ->then(function ($value) use (&$result, &$completed) {
+            ->then(function ($value) use (&$result, &$completed, &$hasResult) {
                 $result = $value;
                 $completed = true;
+                $hasResult = true;
             })
             ->catch(function ($reason) use (&$error, &$completed) {
                 $error = $reason;
@@ -66,9 +68,24 @@ final readonly class AwaitHandler
         }
 
         if ($error !== null) {
-            throw $error instanceof Throwable ? $error : new Exception((string) $error);
+            $errorMessage = match (true) {
+                $error instanceof Throwable => throw $error,
+                is_string($error) => $error,
+                is_object($error) && method_exists($error, '__toString') => (string) $error,
+                default => 'Promise rejected with: ' . var_export($error, true)
+            };
+            
+            if (!($error instanceof Throwable)) {
+                throw new Exception($errorMessage);
+            }
         }
 
+        // This should never happen in practice, but satisfies PHPStan
+        if (!$hasResult) {
+            throw new Exception('Promise completed without result or error');
+        }
+
+        /** @var TValue $result */
         return $result;
     }
 }

@@ -16,9 +16,9 @@ use Rcalicdan\FiberAsync\EventLoop\IOHandlers\Fiber\FiberStateHandler;
  */
 class FiberManager
 {
-    /** @var array<int, Fiber<null, mixed, mixed, mixed>> */
+    /** @var array<int, Fiber<mixed, mixed, mixed, mixed>> */
     private array $fibers = [];
-    /** @var array<int, Fiber<null, mixed, mixed, mixed>> */
+    /** @var array<int, Fiber<mixed, mixed, mixed, mixed>> */
     private array $suspendedFibers = [];
 
     private readonly FiberStartHandler $startHandler;

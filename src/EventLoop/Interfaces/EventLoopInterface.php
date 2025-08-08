@@ -31,7 +31,7 @@ interface EventLoopInterface
      /**
      * Add a fiber to be managed by the event loop.
      *
-     * @param  \Fiber<null, mixed, mixed, mixed>  $fiber  The fiber instance to add to the loop
+     * @param  \Fiber<mixed, mixed, mixed, mixed>  $fiber  The fiber instance to add to the loop
      */
     public function addFiber(\Fiber $fiber): void;
 
