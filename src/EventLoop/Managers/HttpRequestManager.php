@@ -2,41 +2,54 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\Managers;
 
+use CurlMultiHandle;
 use Rcalicdan\FiberAsync\EventLoop\IOHandlers\Http\CurlMultiHandler;
 use Rcalicdan\FiberAsync\EventLoop\IOHandlers\Http\HttpRequestHandler;
 use Rcalicdan\FiberAsync\EventLoop\IOHandlers\Http\HttpResponseHandler;
 use Rcalicdan\FiberAsync\EventLoop\ValueObjects\HttpRequest;
 
+/**
+ * Manages the entire lifecycle of HTTP requests for the event loop.
+ *
+ * This class handles queuing new requests, adding them to a cURL multi-handle for
+ * concurrent processing, and processing their responses or cancellations.
+ */
 class HttpRequestManager
 {
-    /** @var HttpRequest[] */
+    /** @var list<HttpRequest> A queue of requests waiting to be added to the multi-handle. */
     private array $pendingRequests = [];
-    /** @var HttpRequest[] */
-    private array $activeRequests = [];
-    /** @var array<string, HttpRequest> Map of request IDs to requests for cancellation */
-    private array $requestsById = [];
-    private \CurlMultiHandle $multiHandle;
 
-    private HttpRequestHandler $requestHandler;
-    private HttpResponseHandler $responseHandler;
-    private CurlMultiHandler $curlHandler;
+    /** @var array<int, HttpRequest> An associative array of active requests, keyed by their cURL handle ID. */
+    private array $activeRequests = [];
+
+    /** @var array<string, HttpRequest> A map of requests by their unique object hash for cancellation. */
+    private array $requestsById = [];
+
+    private readonly CurlMultiHandle $multiHandle;
+    private readonly HttpRequestHandler $requestHandler;
+    private readonly HttpResponseHandler $responseHandler;
+    private readonly CurlMultiHandler $curlHandler;
 
     public function __construct()
     {
-        $this->requestHandler = new HttpRequestHandler;
-        $this->responseHandler = new HttpResponseHandler;
-        $this->curlHandler = new CurlMultiHandler;
+        $this->requestHandler = new HttpRequestHandler();
+        $this->responseHandler = new HttpResponseHandler();
+        $this->curlHandler = new CurlMultiHandler();
         $this->multiHandle = $this->curlHandler->createMultiHandle();
     }
 
     /**
-     * Add an HTTP request and return a unique request ID for cancellation
+     * Adds an HTTP request to the processing queue.
+     *
+     * @param string $url The URL for the request.
+     * @param array<int, mixed> $options cURL options for the request.
+     * @param callable(string|null, string|null, int|null, array<string, mixed>): void $callback The callback to execute upon completion.
+     * @return string A unique ID for the request, which can be used for cancellation.
      */
     public function addHttpRequest(string $url, array $options, callable $callback): string
     {
-        $requestId = uniqid('http_', true);
         $request = $this->requestHandler->createRequest($url, $options, $callback);
-        $request->setId($requestId); // You'll need to add this method to HttpRequest
+        $requestId = spl_object_hash($request);
 
         $this->pendingRequests[] = $request;
         $this->requestsById[$requestId] = $request;
@@ -45,39 +58,46 @@ class HttpRequestManager
     }
 
     /**
-     * Cancel an HTTP request by its ID
+     * Cancels a pending or active HTTP request by its ID.
+     *
+     * @param string $requestId The unique ID of the request to cancel.
+     * @return bool True if the request was found and canceled, false otherwise.
      */
     public function cancelHttpRequest(string $requestId): bool
     {
-        if (! isset($this->requestsById[$requestId])) {
+        if (!isset($this->requestsById[$requestId])) {
             return false;
         }
 
         $request = $this->requestsById[$requestId];
 
-        $pendingKey = array_search($request, $this->pendingRequests, true);
-        if ($pendingKey !== false) {
-            unset($this->pendingRequests[$pendingKey]);
-            $this->pendingRequests = array_values($this->pendingRequests); // Re-index
-        }
+        $this->pendingRequests = array_values(
+            array_filter(
+                $this->pendingRequests,
+                static fn (HttpRequest $r): bool => spl_object_hash($r) !== $requestId
+            )
+        );
 
         $handle = $request->getHandle();
-        if ($handle && isset($this->activeRequests[(int) $handle])) {
+        $handleId = (int) $handle;
+        if (isset($this->activeRequests[$handleId])) {
             curl_multi_remove_handle($this->multiHandle, $handle);
             curl_close($handle);
-            unset($this->activeRequests[(int) $handle]);
+            unset($this->activeRequests[$handleId]);
         }
 
         unset($this->requestsById[$requestId]);
 
-        $callback = $request->getCallback();
-        if ($callback) {
-            $callback('Request cancelled', null, 0);
-        }
+        $request->getCallback()('Request cancelled', null, 0, []);
 
         return true;
     }
 
+    /**
+     * Processes all pending and active HTTP requests for one event loop tick.
+     *
+     * @return bool True if any work was done (request added or processed), false otherwise.
+     */
     public function processRequests(): bool
     {
         $workDone = false;
@@ -93,46 +113,60 @@ class HttpRequestManager
         return $workDone;
     }
 
+    /**
+     * Moves all pending requests into the active cURL multi-handle.
+     *
+     * @return bool True if at least one request was successfully added.
+     */
     private function addPendingRequests(): bool
     {
-        $added = false;
-        while (! empty($this->pendingRequests)) {
-            $request = array_shift($this->pendingRequests);
-            if ($this->requestHandler->addRequestToMultiHandle($this->multiHandle, $request)) {
-                $this->activeRequests[(int) $request->getHandle()] = $request;
-                $added = true;
-            }
-        }
-
-        return $added;
-    }
-
-    private function processActiveRequests(): bool
-    {
-        if (empty($this->activeRequests)) {
+        if (count($this->pendingRequests) === 0) {
             return false;
         }
 
-        $this->curlHandler->executeMultiHandle($this->multiHandle);
-
-        $completed = $this->responseHandler->processCompletedRequests($this->multiHandle, $this->activeRequests);
-
-        // Clean up completed requests from the ID map
-        foreach ($this->activeRequests as $handle => $request) {
-            if (! $request->getHandle()) { // Request completed
-                $requestId = $request->getId();
-                if ($requestId && isset($this->requestsById[$requestId])) {
-                    unset($this->requestsById[$requestId]);
-                }
+        while (($request = array_shift($this->pendingRequests)) !== null) {
+            if ($this->requestHandler->addRequestToMultiHandle($this->multiHandle, $request)) {
+                $this->activeRequests[(int) $request->getHandle()] = $request;
             }
         }
 
-        return $completed;
+        return true;
     }
 
+    /**
+     * Executes the cURL multi-handle and processes any completed requests.
+     *
+     * @return bool True if at least one request completed during this tick.
+     */
+    private function processActiveRequests(): bool
+    {
+        if (count($this->activeRequests) === 0) {
+            return false;
+        }
+
+        $requestsBefore = $this->activeRequests;
+
+        $this->curlHandler->executeMultiHandle($this->multiHandle);
+        $this->responseHandler->processCompletedRequests($this->multiHandle, $this->activeRequests);
+        $completedRequests = array_diff_key($requestsBefore, $this->activeRequests);
+
+        // Clean up the completed requests from the master ID map.
+        foreach ($completedRequests as $request) {
+            $requestId = spl_object_hash($request);
+            unset($this->requestsById[$requestId]);
+        }
+
+        return count($completedRequests) > 0;
+    }
+
+    /**
+     * Checks if there are any pending or active HTTP requests.
+     *
+     * @return bool True if there are any requests in the system.
+     */
     public function hasRequests(): bool
     {
-        return ! empty($this->pendingRequests) || ! empty($this->activeRequests);
+        return count($this->pendingRequests) > 0 || count($this->activeRequests) > 0;
     }
 
     public function __destruct()

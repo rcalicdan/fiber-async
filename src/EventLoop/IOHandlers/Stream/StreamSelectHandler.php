@@ -9,7 +9,7 @@ final readonly class StreamSelectHandler
     /**
      * Polls an array of stream watchers and returns the streams that are ready.
      *
-     * @param array<int, StreamWatcher> $watchers An array of StreamWatcher objects to monitor.
+     * @param array<string, StreamWatcher> $watchers An associative array of StreamWatcher objects.
      * @return array<resource> An array of stream resources that are ready for I/O.
      */
     public function selectStreams(array $watchers): array
@@ -38,27 +38,38 @@ final readonly class StreamSelectHandler
 
         return array_merge($read, $write);
     }
-    
+
     /**
-     * Processes streams that are ready for I/O operations.
+     * Processes streams that are ready for I/O operations using an efficient lookup.
      *
      * @param array<resource> $readyStreams An array of stream resources that are ready.
-     * @param array<int, StreamWatcher> &$watchers The master array of active watchers.
-     *                                             This array is modified by removing completed
-     *                                             one-shot (write) watchers.
+     * @param array<string, StreamWatcher> &$watchers The master map of active watchers, keyed by string ID.
+     *                                                  This array is modified by reference.
      * @return void
      */
     public function processReadyStreams(array $readyStreams, array &$watchers): void
     {
-        foreach ($readyStreams as $stream) {
-            foreach ($watchers as $key => $watcher) {
-                if (is_resource($watcher->getStream()) && $watcher->getStream() === $stream) {
-                    $watcher->execute();
-                    if ($watcher->getType() === StreamWatcher::TYPE_WRITE) {
-                        unset($watchers[$key]);
-                    }
+        $lookupMap = [];
+        foreach ($watchers as $watcherId => $watcher) {
+            $stream = $watcher->getStream();
+            if (is_resource($stream)) {
+                $lookupMap[(int) $stream] = $watcherId;
+            }
+        }
 
-                    break;
+        foreach ($readyStreams as $stream) {
+            $socketId = (int) $stream;
+
+            if (isset($lookupMap[$socketId])) {
+                $watcherId = $lookupMap[$socketId];
+                // Ensure the watcher still exists in the master list before processing.
+                if (isset($watchers[$watcherId])) {
+                    $watcher = $watchers[$watcherId];
+                    $watcher->execute();
+                    // If the watcher is a one-shot (like a WRITE), remove it.
+                    if ($watcher->getType() === StreamWatcher::TYPE_WRITE) {
+                        unset($watchers[$watcherId]);
+                    }
                 }
             }
         }

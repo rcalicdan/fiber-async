@@ -13,8 +13,8 @@ final readonly class FiberStateHandler
     /**
      * Filter an array of fibers to return only active (non-terminated) ones.
      *
-     * @param  \Fiber<mixed,mixed,mixed,mixed>[]  $fibers  Array of fibers to filter
-     * @return \Fiber<mixed,mixed,mixed,mixed>[]  Array containing only active fibers
+     * @param  \Fiber<null,mixed,mixed,mixed>[]  $fibers  Array of fibers to filter
+     * @return \Fiber<null,mixed,mixed,mixed>[]  Array containing only active fibers
      */
     public function filterActiveFibers(array $fibers): array
     {
@@ -29,8 +29,8 @@ final readonly class FiberStateHandler
      *
      * Returns fibers that are suspended but not terminated.
      *
-     * @param  \Fiber<mixed,mixed,mixed,mixed>[]  $fibers  Array of fibers to filter
-     * @return \Fiber<mixed,mixed,mixed,mixed>[]  Array containing only suspended fibers
+     * @param  \Fiber<null,mixed,mixed,mixed>[]  $fibers  Array of fibers to filter
+     * @return \Fiber<null,mixed,mixed,mixed>[]  Array containing only suspended fibers
      */
     public function filterSuspendedFibers(array $fibers): array
     {
@@ -45,7 +45,7 @@ final readonly class FiberStateHandler
      *
      * An active fiber is one that is not terminated.
      *
-     * @param  \Fiber<mixed,mixed,mixed,mixed>[]  $fibers  Array of fibers to check
+     * @param  \Fiber<null,mixed,mixed,mixed>[]  $fibers  Array of fibers to check
      * @return bool  True if at least one fiber is active
      */
     public function hasActiveFibers(array $fibers): bool
@@ -62,7 +62,7 @@ final readonly class FiberStateHandler
     /**
      * Get a human-readable string representation of a fiber's state.
      *
-     * @param  \Fiber<mixed,mixed,mixed,mixed>  $fiber  The fiber to get state for
+     * @param  \Fiber<null,mixed,mixed,mixed>  $fiber  The fiber to get state for
      * @return string  One of: 'terminated', 'suspended', 'running', 'not_started'
      */
     public function getFiberState(\Fiber $fiber): string

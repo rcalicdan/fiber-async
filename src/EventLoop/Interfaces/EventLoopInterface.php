@@ -23,15 +23,15 @@ interface EventLoopInterface
      * Schedule an asynchronous HTTP request.
      *
      * @param  string  $url  The URL to request
-     * @param  array<string, mixed>  $options  HTTP request options (headers, method, body, etc.)
+     * @param  array<int, mixed>  $options  cURL options for the request, using CURLOPT_* constants.
      * @param  callable  $callback  Function to execute when request completes
      */
     public function addHttpRequest(string $url, array $options, callable $callback): string;
 
-    /**
+     /**
      * Add a fiber to be managed by the event loop.
      *
-     * @param  \Fiber<mixed, mixed, mixed, mixed>  $fiber  The fiber instance to add to the loop
+     * @param  \Fiber<null, mixed, mixed, mixed>  $fiber  The fiber instance to add to the loop
      */
     public function addFiber(\Fiber $fiber): void;
 

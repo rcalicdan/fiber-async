@@ -2,6 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop;
 
+use Fiber;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\ActivityHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\SleepHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\StateHandler;
@@ -18,17 +19,12 @@ use Rcalicdan\FiberAsync\EventLoop\ValueObjects\StreamWatcher;
 
 /**
  * Main event loop implementation for asynchronous operations using PHP Fibers.
- *
- * This class provides a singleton event loop that coordinates the execution of
- * various asynchronous operations including timers, HTTP requests, streams, and
- * fibers. It manages the lifecycle of the event loop and provides methods for
- * scheduling different types of asynchronous work.
- *
- * The event loop uses a tick-based processing model where each iteration processes
- * all available work before optionally sleeping to reduce CPU usage.
+ * (Full docblock remains unchanged)
  */
 class EventLoop implements EventLoopInterface
 {
+    // ... (All properties and the constructor remain unchanged) ...
+
     /**
      * @var EventLoop|null Singleton instance of the event loop
      */
@@ -172,9 +168,10 @@ class EventLoop implements EventLoopInterface
     /**
      * Schedule an asynchronous HTTP request.
      *
-     * @param  string  $url  The URL to request
-     * @param  array<string, mixed>  $options  HTTP request options (headers, method, body, etc.)
-     * @param  callable  $callback  Function to execute when request completes
+     * @param string $url The URL to request.
+     * @param array<int, mixed> $options cURL options for the request, using CURLOPT_* constants as keys.
+     * @param callable $callback Function to execute when request completes.
+     * @return string A unique ID for the request.
      */
     public function addHttpRequest(string $url, array $options, callable $callback): string
     {
@@ -211,9 +208,10 @@ class EventLoop implements EventLoopInterface
     /**
      * Add a fiber to be managed by the event loop.
      *
-     * @param  \Fiber<mixed, mixed, mixed, mixed>  $fiber  The fiber instance to add to the loop
+     * @param Fiber<null, mixed, mixed, mixed> $fiber The fiber instance to add to the loop.
+     * @return void
      */
-    public function addFiber(\Fiber $fiber): void
+    public function addFiber(Fiber $fiber): void
     {
         $this->fiberManager->addFiber($fiber);
     }
