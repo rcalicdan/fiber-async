@@ -24,13 +24,13 @@ final readonly class AsyncExecutionHandler
      * inside a Fiber and return a Promise that resolves with the result.
      *
      * @param callable $asyncFunction The function to make asynchronous.
-     * @return callable(...mixed): PromiseInterface<mixed> A function that returns a Promise when called.
+     * @return callable(): PromiseInterface<mixed> A function that returns a Promise when called.
      */
     public function async(callable $asyncFunction): callable
     {
         return function (...$args) use ($asyncFunction): PromiseInterface {
             return new Promise(function (callable $resolve, callable $reject) use ($asyncFunction, $args) {
-                $fiber = new Fiber(function () use ($asyncFunction, $args, $resolve, $reject) {
+                $fiber = new Fiber(function () use ($asyncFunction, $args, $resolve, $reject): void {
                     try {
                         $result = $asyncFunction(...$args);
                         $resolve($result);

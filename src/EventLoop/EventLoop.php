@@ -19,12 +19,9 @@ use Rcalicdan\FiberAsync\EventLoop\ValueObjects\StreamWatcher;
 
 /**
  * Main event loop implementation for asynchronous operations using PHP Fibers.
- * (Full docblock remains unchanged)
  */
 class EventLoop implements EventLoopInterface
 {
-    // ... (All properties and the constructor remain unchanged) ...
-
     /**
      * @var EventLoop|null Singleton instance of the event loop
      */
