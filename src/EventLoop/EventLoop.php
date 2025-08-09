@@ -271,6 +271,16 @@ class EventLoop implements EventLoopInterface
         }
     }
 
+    /**
+     * Check if the event loop is currently running.
+     *
+     * @return bool True if the loop is running, false otherwise
+     */
+    public function isRunning(): bool
+    {
+        return $this->stateHandler->isRunning();
+    }
+
     private function shouldOptimize(): bool
     {
         $now = microtime(true);

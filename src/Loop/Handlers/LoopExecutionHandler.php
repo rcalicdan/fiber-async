@@ -52,7 +52,6 @@ final class LoopExecutionHandler
 
             while (!$completed) {
                 EventLoop::getInstance()->run();
-                time_nanosleep(0, 100); //sleep to prevent busy wait
             }
 
             if ($error !== null) {
