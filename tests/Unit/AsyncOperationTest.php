@@ -41,7 +41,7 @@ test('AsyncOperations resolve method works', function () {
     $resolved = false;
     $value = null;
 
-    $asyncOps->resolve('test value')->then(function ($val) use (&$resolved, &$value) {
+    $asyncOps->resolved('test value')->then(function ($val) use (&$resolved, &$value) {
         $resolved = true;
         $value = $val;
     });

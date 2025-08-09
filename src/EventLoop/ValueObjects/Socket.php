@@ -68,7 +68,7 @@ class Socket
     public function read(?int $length = null, ?float $timeout = 10.0): PromiseInterface
     {
         if ($this->isClosed) {
-            return $this->operations->getAsyncOps()->reject(new SocketException('Socket is closed.'));
+            return $this->operations->getAsyncOps()->rejected(new SocketException('Socket is closed.'));
         }
 
         $readLength = $length ?? self::DEFAULT_BYTE_SIZE;
@@ -88,7 +88,7 @@ class Socket
     public function write(string $data, ?float $timeout = 10.0): PromiseInterface
     {
         if ($this->isClosed) {
-            return $this->operations->getAsyncOps()->reject(new SocketException('Socket is closed.'));
+            return $this->operations->getAsyncOps()->rejected(new SocketException('Socket is closed.'));
         }
 
         return $this->operations->write($this, $data, $timeout);

@@ -3,6 +3,7 @@
 namespace Rcalicdan\FiberAsync\EventLoop\IOHandlers\Timer;
 
 use Rcalicdan\FiberAsync\EventLoop\ValueObjects\Timer;
+use Throwable;
 
 /**
  * Handles timer execution and readiness detection.
@@ -13,23 +14,26 @@ use Rcalicdan\FiberAsync\EventLoop\ValueObjects\Timer;
 final readonly class TimerExecutionHandler
 {
     /**
-     * Execute all timers that are ready to run.
+     * Executes all timers that are ready at the given current time.
      *
-     * Checks all timers in the array, executes those that are ready,
-     * and removes them from the array after execution.
+     * This method modifies the timers array by reference, removing timers
+     * after they have been executed.
      *
-     * @param  Timer[]  &$timers  Reference to the timers array
-     * @param  float  $currentTime  Current timestamp for readiness check
-     * @return bool True if any timers were processed
+     * @param array<string, Timer> &$timers A map of timers, keyed by their string ID.
+     *                                      This array is modified by this method.
+     * @param float $currentTime The current microtime timestamp.
+     * @return bool True if at least one timer was executed, false otherwise.
      */
     public function executeReadyTimers(array &$timers, float $currentTime): bool
     {
         $processed = false;
 
-        foreach ($timers as $id => $timer) {
+        foreach ($timers as $timerId => $timer) {
             if ($timer->isReady($currentTime)) {
-                $timer->execute();
-                unset($timers[$id]);
+                $this->executeTimer($timer);
+
+                // Remove the timer from the array after it has been executed.
+                unset($timers[$timerId]);
                 $processed = true;
             }
         }
@@ -38,29 +42,35 @@ final readonly class TimerExecutionHandler
     }
 
     /**
-     * Get all timers that are ready to execute.
+     * Get all timers that are ready to execute from a map of timers.
      *
-     * Filters the timers array to return only those that are
+     * Filters the timers map to return only those that are
      * ready to run at the current time.
      *
-     * @param  Timer[]  $timers  Array of timers to check
-     * @param  float  $currentTime  Current timestamp for readiness check
-     * @return Timer[] Array of ready timers
+     * @param  array<string, Timer>  $timers  Map of timers to check.
+     * @param  float  $currentTime  Current timestamp for readiness check.
+     * @return array<string, Timer> Map of ready timers.
      */
     public function getReadyTimers(array $timers, float $currentTime): array
     {
-        return array_filter($timers, fn (Timer $timer) => $timer->isReady($currentTime));
+        return array_filter(
+            $timers,
+            fn (Timer $timer): bool => $timer->isReady($currentTime)
+        );
     }
 
     /**
-     * Execute a specific timer's callback.
-     *
      * Safely executes the callback associated with the given timer.
      *
-     * @param  Timer  $timer  The timer to execute
+     * @param  Timer  $timer  The timer to execute.
+     * @return void
      */
     public function executeTimer(Timer $timer): void
     {
-        $timer->execute();
+        try {
+            $timer->execute();
+        } catch (Throwable $e) {
+            error_log('Timer callback error for timer ' . $timer->getId() . ': ' . $e->getMessage());
+        }
     }
 }

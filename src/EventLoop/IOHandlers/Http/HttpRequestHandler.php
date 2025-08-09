@@ -19,7 +19,7 @@ final readonly class HttpRequestHandler
      * and callback function for handling the response.
      *
      * @param  string  $url  The URL to request
-     * @param  array  $options  cURL options for the request
+     * @param  array<int, mixed>  $options  cURL options for the request (e.g., [CURLOPT_TIMEOUT => 10])
      * @param  callable  $callback  Callback to execute when request completes
      * @return HttpRequest The created request object
      */

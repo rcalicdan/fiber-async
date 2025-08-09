@@ -32,13 +32,6 @@ test('Async Facade can call async operations', function () {
     expect($result)->toBe(10);
 });
 
-test('Async Loop Facade can call loop operations', function () {
-    $result = AsyncLoop::task(function () {
-        return 'facade task result';
-    });
-
-    expect($result)->toBe('facade task result');
-});
 
 test('Async resolve works', function () {
     $resolved = false;

@@ -43,7 +43,7 @@ final readonly class TimeoutHandler
      * completes before the timeout, its result is returned. If the timeout
      * is reached first, an exception is thrown.
      *
-     * @param  callable|PromiseInterface|array  $asyncOperation  The operation to execute
+     * @param  callable|PromiseInterface<mixed>|array<int|string, callable|PromiseInterface<mixed>>  $asyncOperation  The operation to execute
      * @param  float  $timeout  Timeout in seconds
      * @return mixed The result of the async operation
      *
@@ -54,23 +54,5 @@ final readonly class TimeoutHandler
         return $this->executionHandler->run(function () use ($asyncOperation, $timeout) {
             return $this->asyncOps->await($this->asyncOps->timeout($asyncOperation, $timeout));
         });
-    }
-
-    /**
-     * Create a promise that rejects after the specified timeout.
-     *
-     * Creates a promise that will automatically reject with a timeout
-     * exception after the specified duration.
-     *
-     * @param  float  $timeout  Timeout duration in seconds
-     * @return PromiseInterface Promise that rejects on timeout
-     */
-    private function createTimeoutPromise(float $timeout): PromiseInterface
-    {
-        return $this->asyncOps->async(function () use ($timeout) {
-            $this->asyncOps->await($this->asyncOps->delay($timeout));
-
-            throw new Exception("Operation timed out after {$timeout} seconds");
-        })();
     }
 }

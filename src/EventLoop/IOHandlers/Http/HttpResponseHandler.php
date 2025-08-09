@@ -3,10 +3,29 @@
 namespace Rcalicdan\FiberAsync\EventLoop\IOHandlers\Http;
 
 use Rcalicdan\FiberAsync\EventLoop\ValueObjects\HttpRequest;
+use RuntimeException;
 
+/**
+ * Handles processing of completed cURL requests from a multi-handle.
+ *
+ * This class is responsible for reading completion information from a cURL
+ * multi-handle, parsing successful responses and errors, and invoking the
+ * appropriate callbacks on the corresponding HttpRequest objects.
+ */
 final readonly class HttpResponseHandler
 {
-    public function handleSuccessfulResponse($handle, HttpRequest $request): void
+    /**
+     * Handles a successfully completed HTTP request.
+     *
+     * This method is called when a cURL handle completes with a result of CURLE_OK.
+     * It extracts the HTTP status code, headers, and body from the response,
+     * then executes the request's callback with the parsed data.
+     *
+     * @param \CurlHandle $handle The individual cURL handle that has completed.
+     * @param HttpRequest $request The original request object associated with the handle.
+     * @return void
+     */
+    public function handleSuccessfulResponse(\CurlHandle $handle, HttpRequest $request): void
     {
         $fullResponse = curl_multi_getcontent($handle) ?? '';
         $httpCode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
@@ -38,17 +57,48 @@ final readonly class HttpResponseHandler
         $request->executeCallback(null, $body, $httpCode, $parsedHeaders);
     }
 
-    public function handleErrorResponse($handle, HttpRequest $request): void
+    /**
+     * Handles a failed HTTP request.
+     *
+     * This method is called when a cURL handle completes with an error. It
+     * retrieves the cURL error message and executes the request's callback,
+     * passing the error.
+     *
+     * @param \CurlHandle $handle The individual cURL handle that has failed.
+     * @param HttpRequest $request The original request object associated with the handle.
+     * @return void
+     */
+    public function handleErrorResponse(\CurlHandle $handle, HttpRequest $request): void
     {
         $error = curl_error($handle);
         $request->executeCallback($error, null, null, []);
     }
 
+    /**
+     * Processes all completed requests from a cURL multi-handle.
+     *
+     * This method iterates through any completed cURL handles in the multi-handle,
+     * determines if they succeeded or failed, and dispatches them to the
+     * appropriate handler method. It also cleans up by removing the handle from
+     * the multi-handle and closing it.
+     *
+     * @param \CurlMultiHandle $multiHandle The cURL multi-handle to process.
+     * @param array<int, HttpRequest> &$activeRequests An associative array of active requests,
+     *                                                  keyed by their integer handle ID. This
+     *                                                  array is modified by this method.
+     * @return bool Returns true if at least one request was processed, false otherwise.
+     * @throws RuntimeException If curl_multi_info_read returns an invalid handle type.
+     */
     public function processCompletedRequests(\CurlMultiHandle $multiHandle, array &$activeRequests): bool
     {
         $processed = false;
+
         while ($info = curl_multi_info_read($multiHandle)) {
             $handle = $info['handle'];
+            if (!($handle instanceof \CurlHandle)) {
+                throw new RuntimeException('curl_multi_info_read returned an invalid handle type.');
+            }
+
             $handleId = (int) $handle;
 
             if (isset($activeRequests[$handleId])) {

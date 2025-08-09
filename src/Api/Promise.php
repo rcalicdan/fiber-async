@@ -61,7 +61,7 @@ final class Promise
      */
     public static function resolve(mixed $value): PromiseInterface
     {
-        return self::getAsyncOperations()->resolve($value);
+        return self::getAsyncOperations()->resolved($value);
     }
 
     /**
@@ -76,7 +76,7 @@ final class Promise
      */
     public static function reject(mixed $reason): PromiseInterface
     {
-        return self::getAsyncOperations()->reject($reason);
+        return self::getAsyncOperations()->rejected($reason);
     }
 
     /**

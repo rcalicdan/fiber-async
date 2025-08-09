@@ -2,6 +2,9 @@
 
 namespace Rcalicdan\FiberAsync\Promise\Handlers;
 
+use Exception;
+use Throwable;
+
 /**
  * Manages the internal state of Promise instances.
  *
@@ -101,6 +104,7 @@ final class StateHandler
      * will be ignored if the Promise has already been settled.
      *
      * @param  mixed  $value  The value to resolve with
+     * @return void
      */
     public function resolve(mixed $value): void
     {
@@ -120,6 +124,7 @@ final class StateHandler
      * is automatically wrapped in an Exception if it's not already a Throwable.
      *
      * @param  mixed  $reason  The reason to reject with
+     * @return void
      */
     public function reject(mixed $reason): void
     {
@@ -128,8 +133,16 @@ final class StateHandler
         }
 
         $this->rejected = true;
-        $this->reason = $reason instanceof \Throwable
-            ? $reason
-            : new \Exception((string) $reason);
+        
+        if ($reason instanceof Throwable) {
+            $this->reason = $reason;
+            return;
+        }
+
+        $message = is_scalar($reason) || (is_object($reason) && method_exists($reason, '__toString'))
+            ? (string) $reason
+            : 'Rejected with non-stringable value: ' . print_r($reason, true);
+
+        $this->reason = new Exception($message);
     }
 }

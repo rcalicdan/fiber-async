@@ -18,9 +18,9 @@ final readonly class TimerScheduleHandler
      * Creates a Timer object that will execute the callback
      * after the specified delay from the current time.
      *
-     * @param  float  $delay  Delay in seconds before execution
-     * @param  callable  $callback  Callback to execute when timer fires
-     * @return Timer The created timer object
+     * @param  float  $delay  Delay in seconds before execution.
+     * @param  callable  $callback  Callback to execute when timer fires.
+     * @return Timer The created timer object.
      */
     public function createTimer(float $delay, callable $callback): Timer
     {
@@ -33,12 +33,12 @@ final readonly class TimerScheduleHandler
      * Finds the earliest execution time among all pending timers.
      * Returns null if no timers are pending.
      *
-     * @param  Timer[]  $timers  Array of timers to check
-     * @return float|null The earliest execution time or null
+     * @param  Timer[]  $timers  Array of timers to check.
+     * @return float|null The earliest execution time or null if no timers are scheduled.
      */
     public function getNextExecutionTime(array $timers): ?float
     {
-        if (empty($timers)) {
+        if (count($timers) === 0) {
             return null;
         }
 
@@ -55,11 +55,12 @@ final readonly class TimerScheduleHandler
      * Calculate the optimal sleep duration based on pending timers.
      *
      * Determines the shortest time until the next timer's execution.
-     * If no timers are pending, returns 0 to signal an immediate wakeup.
+     * Returns null if no timers are pending, which signals the event loop
+     * to wait indefinitely for I/O if there are stream watchers.
      *
-     * @param  Timer[]  $timers  Array of timers to check
-     * @param  float  $currentTime  Current timestamp for delay calculation
-     * @return float|null Optimal sleep duration in seconds
+     * @param  Timer[]  $timers  Array of timers to check.
+     * @param  float  $currentTime  Current timestamp for delay calculation.
+     * @return float|null Optimal sleep duration in seconds, or null if no timers exist.
      */
     public function calculateDelay(array $timers, float $currentTime): ?float
     {

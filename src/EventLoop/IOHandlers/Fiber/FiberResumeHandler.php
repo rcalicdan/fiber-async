@@ -16,8 +16,8 @@ final readonly class FiberResumeHandler
      * Attempts to resume the given fiber if it's in a suspended state.
      * Handles any exceptions that may occur during resumption.
      *
-     * @param  \Fiber  $fiber  The fiber to resume
-     * @return bool True if the fiber was successfully resumed
+     * @param  \Fiber<mixed, mixed, mixed, mixed>  $fiber  The fiber to resume
+     * @return bool  True if the fiber was successfully resumed
      */
     public function resumeFiber(\Fiber $fiber): bool
     {
@@ -30,7 +30,7 @@ final readonly class FiberResumeHandler
 
             return true;
         } catch (\Throwable $e) {
-            error_log('Fiber resume error: '.$e->getMessage());
+            error_log('Fiber resume error: ' . $e->getMessage());
 
             return false;
         }
@@ -41,8 +41,8 @@ final readonly class FiberResumeHandler
      *
      * A fiber can be resumed if it's not terminated and is currently suspended.
      *
-     * @param  \Fiber  $fiber  The fiber to check
-     * @return bool True if the fiber can be resumed
+     * @param  \Fiber<mixed, mixed, mixed, mixed>  $fiber  The fiber to check
+     * @return bool  True if the fiber can be resumed
      */
     public function canResume(\Fiber $fiber): bool
     {

@@ -8,6 +8,9 @@ use Rcalicdan\FiberAsync\Promise\Handlers\ExecutorHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\ResolutionHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\StateHandler;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseCollectionInterface;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
+use Rcalicdan\FiberAsync\Async\AsyncOperations;
 
 /**
  * A Promise/A+ compliant implementation for managing asynchronous operations.
@@ -20,7 +23,7 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
  *
  * @implements PromiseInterface<TValue>
  */
-class Promise implements PromiseInterface
+class Promise implements PromiseInterface, PromiseCollectionInterface
 {
     /**
      * @var StateHandler Manages the promise's state (pending, resolved, rejected)
@@ -47,7 +50,15 @@ class Promise implements PromiseInterface
      */
     private ResolutionHandler $resolutionHandler;
 
-    protected ?CancellablePromise $rootCancellable = null;
+    /**
+     * @var CancellablePromiseInterface<mixed>|null
+     */
+    protected ?CancellablePromiseInterface $rootCancellable = null;
+
+    /**
+     * @var AsyncOperations|null Static instance for collection operations
+     */
+    private static ?AsyncOperations $asyncOps = null;
 
     /**
      * Create a new promise with an optional executor function.
@@ -104,84 +115,101 @@ class Promise implements PromiseInterface
 
     /**
      * {@inheritdoc}
+     * 
+     * @template TResult
+     * @param callable(TValue): (TResult|PromiseInterface<TResult>)|null $onFulfilled
+     * @param callable(mixed): (TResult|PromiseInterface<TResult>)|null $onRejected
+     * @return PromiseInterface<TResult>
      */
     public function then(?callable $onFulfilled = null, ?callable $onRejected = null): PromiseInterface
     {
-        $origin = $this;
+        /** @var Promise<TResult> $newPromise */
+        $newPromise = new self(
+            /**
+             * @param callable(TResult): void $resolve
+             * @param callable(mixed): void $reject
+             */
+            function (callable $resolve, callable $reject) use ($onFulfilled, $onRejected) {
+                $root = $this instanceof CancellablePromiseInterface
+                    ? $this
+                    : $this->rootCancellable;
 
-        $newPromise = new self(function ($resolve, $reject) use ($onFulfilled, $onRejected, $origin) {
-            $root = $origin instanceof CancellablePromise
-                ? $origin
-                : ($origin->rootCancellable ?? null);
-
-            $handleResolve = function ($value) use ($onFulfilled, $resolve, $reject, $root) {
-                if ($root?->isCancelled()) {
-                    return;
-                }
-
-                if ($onFulfilled) {
-                    try {
-                        $result = $onFulfilled($value);
-                        if ($result instanceof PromiseInterface) {
-                            $result->then($resolve, $reject);
-                        } else {
-                            $resolve($result);
-                        }
-                    } catch (\Throwable $e) {
-                        $reject($e);
+                $handleResolve = function ($value) use ($onFulfilled, $resolve, $reject, $root) {
+                    if ($root !== null && $root->isCancelled()) {
+                        return;
                     }
-                } else {
-                    $resolve($value);
-                }
-            };
 
-            $handleReject = function ($reason) use ($onRejected, $resolve, $reject, $root) {
-                if ($root?->isCancelled()) {
-                    return;
-                }
-
-                if ($onRejected) {
-                    try {
-                        $result = $onRejected($reason);
-                        if ($result instanceof PromiseInterface) {
-                            $result->then($resolve, $reject);
-                        } else {
-                            $resolve($result);
+                    if ($onFulfilled !== null) {
+                        try {
+                            $result = $onFulfilled($value);
+                            if ($result instanceof PromiseInterface) {
+                                $result->then($resolve, $reject);
+                            } else {
+                                $resolve($result);
+                            }
+                        } catch (\Throwable $e) {
+                            $reject($e);
                         }
-                    } catch (\Throwable $e) {
-                        $reject($e);
+                    } else {
+                        $resolve($value);
                     }
-                } else {
-                    $reject($reason);
-                }
-            };
+                };
 
-            if ($this->stateHandler->isResolved()) {
-                $this->chainHandler->scheduleHandler(fn () => $handleResolve($this->stateHandler->getValue()));
-            } elseif ($this->stateHandler->isRejected()) {
-                $this->chainHandler->scheduleHandler(fn () => $handleReject($this->stateHandler->getReason()));
-            } else {
-                $this->callbackHandler->addThenCallback($handleResolve);
-                $this->callbackHandler->addCatchCallback($handleReject);
+                $handleReject = function ($reason) use ($onRejected, $resolve, $reject, $root) {
+                    if ($root !== null && $root->isCancelled()) {
+                        return;
+                    }
+
+                    if ($onRejected !== null) {
+                        try {
+                            $result = $onRejected($reason);
+                            if ($result instanceof PromiseInterface) {
+                                $result->then($resolve, $reject);
+                            } else {
+                                $resolve($result);
+                            }
+                        } catch (\Throwable $e) {
+                            $reject($e);
+                        }
+                    } else {
+                        $reject($reason);
+                    }
+                };
+
+                if ($this->stateHandler->isResolved()) {
+                    $this->chainHandler->scheduleHandler(fn () => $handleResolve($this->stateHandler->getValue()));
+                } elseif ($this->stateHandler->isRejected()) {
+                    $this->chainHandler->scheduleHandler(fn () => $handleReject($this->stateHandler->getReason()));
+                } else {
+                    $this->callbackHandler->addThenCallback($handleResolve);
+                    $this->callbackHandler->addCatchCallback($handleReject);
+                }
             }
-        });
+        );
 
-        if ($this instanceof CancellablePromise) {
+        if ($this instanceof CancellablePromiseInterface) {
             $newPromise->rootCancellable = $this;
-        } elseif ($this->rootCancellable) {
+        } elseif ($this->rootCancellable !== null) {
             $newPromise->rootCancellable = $this->rootCancellable;
         }
 
         return $newPromise;
     }
 
-    public function getRootCancellable(): ?CancellablePromise
+    /**
+     * @return CancellablePromiseInterface<mixed>|null
+     */
+    public function getRootCancellable(): ?CancellablePromiseInterface
     {
         return $this->rootCancellable;
     }
 
     /**
      * {@inheritdoc}
+     * 
+     * @template TResult
+     * @param callable(mixed): (TResult|PromiseInterface<TResult>) $onRejected
+     * @return PromiseInterface<TResult>
      */
     public function catch(callable $onRejected): PromiseInterface
     {
@@ -190,6 +218,8 @@ class Promise implements PromiseInterface
 
     /**
      * {@inheritdoc}
+     * 
+     * @return PromiseInterface<TValue>
      */
     public function finally(callable $onFinally): PromiseInterface
     {
@@ -252,5 +282,91 @@ class Promise implements PromiseInterface
     public function getReason(): mixed
     {
         return $this->stateHandler->getReason();
+    }
+
+    /**
+     * Get or create the AsyncOperations instance for static methods.
+     *
+     * @return AsyncOperations
+     */
+    private static function getAsyncOps(): AsyncOperations
+    {
+        if (self::$asyncOps === null) {
+            self::$asyncOps = new AsyncOperations();
+        }
+        
+        return self::$asyncOps;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function reset(): void
+    {
+        self::$asyncOps = null;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function resolved(mixed $value): PromiseInterface
+    {
+        return self::getAsyncOps()->resolved($value);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function rejected(mixed $reason): PromiseInterface
+    {
+        return self::getAsyncOps()->rejected($reason);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function all(array $promises): PromiseInterface
+    {
+        return self::getAsyncOps()->all($promises);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function race(array $promises): PromiseInterface
+    {
+        return self::getAsyncOps()->race($promises);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function any(array $promises): PromiseInterface
+    {
+        return self::getAsyncOps()->any($promises);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function timeout(callable|PromiseInterface|array $promises, float $seconds): PromiseInterface
+    {
+        return self::getAsyncOps()->timeout($promises, $seconds);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
+    {
+        return self::getAsyncOps()->concurrent($tasks, $concurrency);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function batch(array $tasks, int $batchSize = 10, ?int $concurrency = null): PromiseInterface
+    {
+        return self::getAsyncOps()->batch($tasks, $batchSize, $concurrency);
     }
 }

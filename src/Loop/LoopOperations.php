@@ -2,11 +2,10 @@
 
 namespace Rcalicdan\FiberAsync\Loop;
 
+use Exception;
 use Rcalicdan\FiberAsync\Async\AsyncOperations;
-use Rcalicdan\FiberAsync\Loop\Handlers\BenchmarkHandler;
 use Rcalicdan\FiberAsync\Loop\Handlers\ConcurrentExecutionHandler;
 use Rcalicdan\FiberAsync\Loop\Handlers\LoopExecutionHandler;
-use Rcalicdan\FiberAsync\Loop\Handlers\TaskExecutionHandler;
 use Rcalicdan\FiberAsync\Loop\Handlers\TimeoutHandler;
 use Rcalicdan\FiberAsync\Loop\Interfaces\LoopOperationsInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
@@ -25,33 +24,24 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 class LoopOperations implements LoopOperationsInterface
 {
     /**
-     * @var AsyncOperations Core async operations handler
+     * Core async operations handler
      */
     private AsyncOperations $asyncOps;
 
     /**
-     * @var LoopExecutionHandler Manages event loop execution lifecycle
+     * Manages event loop execution lifecycle
      */
     private LoopExecutionHandler $executionHandler;
 
     /**
-     * @var ConcurrentExecutionHandler Handles concurrent operation execution
+     * Handles concurrent operation execution
      */
     private ConcurrentExecutionHandler $concurrentHandler;
 
     /**
-     * @var TaskExecutionHandler Manages simple task execution
-     */
-    private TaskExecutionHandler $taskHandler;
-
-    /**
-     * @var TimeoutHandler Manages operations with timeout constraints
+     * Manages operations with timeout constraints
      */
     private TimeoutHandler $timeoutHandler;
-
-    /**
-     * @var BenchmarkHandler Provides performance measurement capabilities
-     */
 
     /**
      * Initialize loop operations with all required handlers.
@@ -63,7 +53,6 @@ class LoopOperations implements LoopOperationsInterface
         $this->asyncOps = $asyncOps ?? new AsyncOperations;
         $this->executionHandler = new LoopExecutionHandler($this->asyncOps);
         $this->concurrentHandler = new ConcurrentExecutionHandler($this->asyncOps, $this->executionHandler);
-        $this->taskHandler = new TaskExecutionHandler($this->asyncOps, $this->executionHandler);
         $this->timeoutHandler = new TimeoutHandler($this->asyncOps, $this->executionHandler);
     }
 
@@ -74,7 +63,7 @@ class LoopOperations implements LoopOperationsInterface
      * and stopping the loop when complete. It's the primary method for
      * running async operations with minimal setup.
      *
-     * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
+     * @param  callable|PromiseInterface<mixed>  $asyncOperation  The operation to execute
      * @return mixed The result of the async operation
      */
     public function run(callable|PromiseInterface $asyncOperation): mixed
@@ -88,8 +77,8 @@ class LoopOperations implements LoopOperationsInterface
      * All operations are started simultaneously and the method waits for
      * all to complete before returning their results in the same order.
      *
-     * @param  array  $asyncOperations  Array of callables or promises to execute
-     * @return array Results of all operations in the same order as input
+     * @param  array<int|string, callable|PromiseInterface<mixed>>  $asyncOperations  Array of callables or promises to execute
+     * @return array<int|string, mixed> Results of all operations in the same order as input
      */
     public function runAll(array $asyncOperations): array
     {
@@ -102,40 +91,13 @@ class LoopOperations implements LoopOperationsInterface
      * Executes operations in batches to prevent overwhelming the system.
      * Useful for processing large numbers of operations with resource constraints.
      *
-     * @param  array  $asyncOperations  Array of operations to execute
+     * @param  array<int|string, callable|PromiseInterface<mixed>>  $asyncOperations  Array of operations to execute
      * @param  int  $concurrency  Maximum number of concurrent operations
-     * @return array Results of all operations
+     * @return array<int|string, mixed> Results of all operations
      */
     public function runConcurrent(array $asyncOperations, int $concurrency = 10): array
     {
         return $this->concurrentHandler->runConcurrent($asyncOperations, $concurrency);
-    }
-
-    /**
-     * Create and run a simple async task with automatic loop management.
-     *
-     * This is a convenience method for running a single async function
-     * without manually managing the event loop.
-     *
-     * @param  callable  $asyncFunction  The async function to execute
-     * @return mixed The result of the async function
-     */
-    public function task(callable $asyncFunction): mixed
-    {
-        return $this->taskHandler->task($asyncFunction);
-    }
-
-    /**
-     * Perform an async delay with automatic loop management.
-     *
-     * This method starts the event loop, waits for the specified duration,
-     * then stops the loop. Useful for simple delay operations.
-     *
-     * @param  float  $seconds  Number of seconds to delay
-     */
-    public function asyncSleep(float $seconds): void
-    {
-        $this->taskHandler->asyncSleep($seconds);
     }
 
     /**
@@ -144,11 +106,11 @@ class LoopOperations implements LoopOperationsInterface
      * If the operation doesn't complete within the specified timeout,
      * it will be cancelled and a timeout exception will be thrown.
      *
-     * @param  callable|PromiseInterface|array  $asyncOperation  The operation to execute
+     * @param  callable|PromiseInterface<mixed>|array<int|string, callable|PromiseInterface<mixed>>  $asyncOperation  The operation to execute
      * @param  float  $timeout  Maximum time to wait in seconds
      * @return mixed The result of the operation if completed within timeout
      *
-     * @throws \Exception If the operation times out
+     * @throws Exception If the operation times out
      */
     public function runWithTimeout(callable|PromiseInterface|array $asyncOperation, float $timeout): mixed
     {
@@ -158,10 +120,10 @@ class LoopOperations implements LoopOperationsInterface
     /**
      * Run async operations in batches with concurrency control and automatic loop management.
      *
-     * @param  array  $asyncOperations  Array of operations to execute
+     * @param  array<int|string, callable|PromiseInterface<mixed>>  $asyncOperations  Array of operations to execute
      * @param  int  $batch  Number of operations to run in each batch
      * @param  int|null  $concurrency  Maximum number of concurrent operations per batch
-     * @return array Results of all operations
+     * @return array<int|string, mixed> Results of all operations
      */
     public function runBatch(array $asyncOperations, int $batch, ?int $concurrency = null): array
     {

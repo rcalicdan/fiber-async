@@ -55,39 +55,6 @@ if (! function_exists('run_concurrent')) {
     }
 }
 
-if (! function_exists('task')) {
-    /**
-     * Create and run a simple async task with automatic event loop management.
-     *
-     * This is a convenience function for running a single async function without
-     * manually managing the event loop. Perfect for simple async operations
-     * that don't require complex setup.
-     *
-     * @param  callable  $asyncFunction  The async function to execute
-     * @return mixed The result of the async function
-     */
-    function task(callable $asyncFunction): mixed
-    {
-        return AsyncLoop::task($asyncFunction);
-    }
-}
-
-if (! function_exists('async_sleep')) {
-    /**
-     * Perform an async delay with automatic event loop management.
-     *
-     * Creates a delay without blocking the current thread, with the event loop
-     * managed automatically. This is useful for simple timing operations that
-     * don't require manual loop control.
-     *
-     * @param  float  $seconds  Number of seconds to delay
-     */
-    function async_sleep(float $seconds): void
-    {
-        AsyncLoop::asyncSleep($seconds);
-    }
-}
-
 if (! function_exists('run_with_timeout')) {
     /**
      * Run an async operations with a timeout constraint and automatic loop management.

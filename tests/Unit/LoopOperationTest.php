@@ -18,10 +18,10 @@ test('LoopOperations can be instantiated with AsyncOperations', function () {
     expect($loopOps)->toBeInstanceOf(LoopOperations::class);
 });
 
-test('LoopOperations task method works', function () {
+test('LoopOperations run method works', function () {
     $loopOps = new LoopOperations;
 
-    $result = $loopOps->task(function () {
+    $result = $loopOps->run(function () {
         return 'task result';
     });
 

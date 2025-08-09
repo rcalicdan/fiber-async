@@ -3,124 +3,153 @@
 namespace Rcalicdan\FiberAsync\MySQLi;
 
 use mysqli;
-use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
-use Rcalicdan\FiberAsync\Promise\Promise as AsyncPromise;
+use Rcalicdan\FiberAsync\Promise\Promise;
 use SplQueue;
+use Throwable;
+use InvalidArgumentException;
+use RuntimeException;
 
 /**
- * An asynchronous, fiber-aware MySQLi connection pool with true async support.
+ * An asynchronous, fiber-aware MySQLi connection pool.
+ *
+ * This class manages a pool of MySQLi connections to provide efficient, non-blocking
+ * database access in an asynchronous environment. It handles connection limits,
+ * waiting queues, and safe connection reuse.
  */
 class AsyncMySQLiPool
 {
+    /** 
+     * @var SplQueue<mysqli> A queue of available, idle connections.
+     */
     private SplQueue $pool;
+
+    /**
+     * @var SplQueue<Promise<mysqli>> A queue of pending requests for a connection.
+     */
     private SplQueue $waiters;
+
+    /**
+     * @var int The maximum number of concurrent connections.
+     */
     private int $maxSize;
+
+    /** 
+     * @var int The current number of active connections.
+     */
     private int $activeConnections = 0;
+
+    /** 
+     * @var array<string, mixed> The database connection configuration.
+     */
     private array $dbConfig;
+
+    /** 
+     * @var mysqli|null The most recently used or created connection.
+     */
     private ?mysqli $lastConnection = null;
+
+    /** 
+     * @var bool Flag indicating if the configuration has been validated.
+     */
     private bool $configValidated = false;
 
     /**
      * Creates a new MySQLi connection pool.
      *
-     * @param  array  $dbConfig  Database configuration array
-     * @param  int  $maxSize  Maximum number of concurrent connections
+     * @param array<string, mixed> $dbConfig Database configuration array.
+     * @param int $maxSize Maximum number of concurrent connections.
+     * @throws InvalidArgumentException If the configuration is invalid.
      */
     public function __construct(array $dbConfig, int $maxSize = 10)
     {
         $this->validateDbConfig($dbConfig);
-        $this->configValidated = true; // Mark as validated
+        $this->configValidated = true;
         $this->dbConfig = $dbConfig;
         $this->maxSize = $maxSize;
-        $this->pool = new SplQueue;
-        $this->waiters = new SplQueue;
+        $this->pool = new SplQueue();
+        $this->waiters = new SplQueue();
     }
 
     /**
      * Asynchronously acquires a MySQLi connection from the pool.
      *
-     * @return PromiseInterface<mysqli>
+     * @return PromiseInterface<mysqli> A promise that resolves with a mysqli connection object.
      */
     public function get(): PromiseInterface
     {
-        // If an idle connection is waiting in the pool, use it.
-        if (! $this->pool->isEmpty()) {
+        if (!$this->pool->isEmpty()) {
+            /** @var mysqli $connection */
             $connection = $this->pool->dequeue();
             $this->lastConnection = $connection;
 
-            return Promise::resolve($connection);
+            /** @var PromiseInterface<mysqli> $promise */
+            $promise = Promise::resolved($connection);
+            return $promise;
         }
 
-        // If we haven't reached our max connection limit, create a new one.
         if ($this->activeConnections < $this->maxSize) {
             $this->activeConnections++;
-
             try {
                 $connection = $this->createConnection();
                 $this->lastConnection = $connection;
 
-                return Promise::resolve($connection);
-            } catch (\Throwable $e) {
-                // If connection fails, decrement count and reject the promise.
+                /** @var PromiseInterface<mysqli> $promise */
+                $promise = Promise::resolved($connection);
+                return $promise;
+            } catch (Throwable $e) {
                 $this->activeConnections--;
-
-                return Promise::reject($e);
+                /** @var PromiseInterface<mysqli> $promise */
+                $promise = Promise::rejected($e);
+                return $promise;
             }
         }
 
-        // If the pool is full, wait for a connection to be released.
-        $promise = new AsyncPromise;
+        /** @var Promise<mysqli> $promise */
+        $promise = new Promise();
         $this->waiters->enqueue($promise);
-
         return $promise;
     }
 
     /**
-     * Releases a MySQLi connection back to the pool.
+     * Releases a MySQLi connection back to the pool for reuse.
      *
-     * @param  mysqli  $connection  The MySQLi connection to release
+     * @param mysqli $connection The MySQLi connection to release.
      */
     public function release(mysqli $connection): void
     {
-        // Check if connection is still alive before reusing
-        if (! $this->isConnectionAlive($connection)) {
+        if (!$this->isConnectionAlive($connection)) {
             $this->activeConnections--;
-
-            // If there are waiters, try to create a new connection for them
-            if (! $this->waiters->isEmpty() && $this->activeConnections < $this->maxSize) {
+            if (!$this->waiters->isEmpty() && $this->activeConnections < $this->maxSize) {
                 $this->activeConnections++;
+                /** @var Promise<mysqli> $promise */
                 $promise = $this->waiters->dequeue();
-
                 try {
                     $newConnection = $this->createConnection();
                     $this->lastConnection = $newConnection;
                     $promise->resolve($newConnection);
-                } catch (\Throwable $e) {
+                } catch (Throwable $e) {
                     $this->activeConnections--;
                     $promise->reject($e);
                 }
             }
-
             return;
         }
 
-        // Reset connection state
         $this->resetConnectionState($connection);
 
-        // If a fiber is waiting, give this connection to it directly.
-        if (! $this->waiters->isEmpty()) {
+        if (!$this->waiters->isEmpty()) {
+            /** @var Promise<mysqli> $promise */
             $promise = $this->waiters->dequeue();
             $this->lastConnection = $connection;
             $promise->resolve($connection);
         } else {
-            // Otherwise, add the connection to the pool of available connections.
             $this->pool->enqueue($connection);
         }
     }
 
     /**
-     * Gets the last used connection (for affected_rows in execute operations).
+     * Gets the most recently active connection handled by the pool.
      */
     public function getLastConnection(): ?mysqli
     {
@@ -128,7 +157,9 @@ class AsyncMySQLiPool
     }
 
     /**
-     * Gets pool statistics for monitoring.
+     * Retrieves statistics about the current state of the connection pool.
+     *
+     * @return array<string, int|bool> An associative array with pool metrics.
      */
     public function getStats(): array
     {
@@ -146,86 +177,82 @@ class AsyncMySQLiPool
      */
     public function close(): void
     {
-        while (! $this->pool->isEmpty()) {
+        while (!$this->pool->isEmpty()) {
+            /** @var mysqli $connection */
             $connection = $this->pool->dequeue();
             if ($this->isConnectionAlive($connection)) {
                 $connection->close();
             }
         }
-
-        while (! $this->waiters->isEmpty()) {
+        while (!$this->waiters->isEmpty()) {
+            /** @var Promise<mysqli> $promise */
             $promise = $this->waiters->dequeue();
-            $promise->reject(new \RuntimeException('Pool is being closed'));
+            $promise->reject(new RuntimeException('Pool is being closed'));
         }
-
-        $this->pool = new SplQueue;
-        $this->waiters = new SplQueue;
+        $this->pool = new SplQueue();
+        $this->waiters = new SplQueue();
         $this->activeConnections = 0;
         $this->lastConnection = null;
-        $this->configValidated = false;
     }
 
     /**
-     * Validates database configuration - called only once during construction.
+     * Validates the database configuration.
+     *
+     * @param array<string, mixed> $dbConfig
+     * @throws InvalidArgumentException
      */
     private function validateDbConfig(array $dbConfig): void
     {
-        if (empty($dbConfig)) {
-            throw new \InvalidArgumentException('Database configuration cannot be empty');
+        if (count($dbConfig) === 0) {
+            throw new InvalidArgumentException('Database configuration cannot be empty');
         }
-
         $requiredFields = ['host', 'username', 'database'];
-
         foreach ($requiredFields as $field) {
-            if (! array_key_exists($field, $dbConfig)) {
-                throw new \InvalidArgumentException("Missing required database configuration field: '{$field}'");
+            if (!array_key_exists($field, $dbConfig)) {
+                throw new InvalidArgumentException("Missing required database configuration field: '{$field}'");
             }
-
-            if ($field !== 'username' && $field !== 'password' && empty($dbConfig[$field])) {
-                throw new \InvalidArgumentException("Database configuration field '{$field}' cannot be empty");
+            if (in_array($field, ['host', 'database'], true) && ($dbConfig[$field] === '' || $dbConfig[$field] === null)) {
+                throw new InvalidArgumentException("Database configuration field '{$field}' cannot be empty");
             }
         }
-
-        if (isset($dbConfig['port']) && (! is_int($dbConfig['port']) || $dbConfig['port'] <= 0)) {
-            throw new \InvalidArgumentException('Database port must be a positive integer');
+        if (isset($dbConfig['port']) && (!is_int($dbConfig['port']) || $dbConfig['port'] <= 0)) {
+            throw new InvalidArgumentException('Database port must be a positive integer');
         }
-
-        if (isset($dbConfig['host']) && ! is_string($dbConfig['host'])) {
-            throw new \InvalidArgumentException('Database host must be a string');
+        if (isset($dbConfig['host']) && !is_string($dbConfig['host'])) {
+            throw new InvalidArgumentException('Database host must be a string');
         }
-
-        if (isset($dbConfig['charset']) && ! is_string($dbConfig['charset'])) {
-            throw new \InvalidArgumentException('Database charset must be a string');
+        if (isset($dbConfig['charset']) && !is_string($dbConfig['charset'])) {
+            throw new InvalidArgumentException('Database charset must be a string');
         }
-
-        if (isset($dbConfig['socket']) && ! is_string($dbConfig['socket'])) {
-            throw new \InvalidArgumentException('Database socket must be a string');
+        if (isset($dbConfig['socket']) && !is_string($dbConfig['socket'])) {
+            throw new InvalidArgumentException('Database socket must be a string');
         }
     }
 
     /**
-     * Creates a new MySQLi connection using validated config.
+     * Creates a new, configured MySQLi connection.
+     * @throws RuntimeException
      */
     private function createConnection(): mysqli
     {
         $config = $this->dbConfig;
 
-        $mysqli = new mysqli(
-            $config['host'],
-            $config['username'],
-            $config['password'] ?? '',
-            $config['database'],
-            $config['port'] ?? 3306,
-            $config['socket'] ?? null
-        );
+        $host = isset($config['host']) && is_string($config['host']) ? $config['host'] : null;
+        $username = isset($config['username']) && is_string($config['username']) ? $config['username'] : null;
+        $password = isset($config['password']) && is_string($config['password']) ? $config['password'] : null;
+        $database = isset($config['database']) && is_string($config['database']) ? $config['database'] : null;
+        $port = isset($config['port']) && is_int($config['port']) ? $config['port'] : null;
+        $socket = isset($config['socket']) && is_string($config['socket']) ? $config['socket'] : null;
 
-        if ($mysqli->connect_error) {
-            throw new \RuntimeException('MySQLi Connection failed: '.$mysqli->connect_error);
+        $mysqli = new mysqli($host, $username, $password, $database, $port, $socket);
+
+        if ($mysqli->connect_error !== null) {
+            throw new RuntimeException('MySQLi Connection failed: ' . $mysqli->connect_error);
         }
 
-        if (isset($config['charset'])) {
-            if (! $mysqli->set_charset($config['charset'])) {
-                throw new \RuntimeException('Failed to set charset: '.$mysqli->error);
+        if (isset($config['charset']) && is_string($config['charset'])) {
+            if (!$mysqli->set_charset($config['charset'])) {
+                throw new RuntimeException('Failed to set charset: ' . $mysqli->error);
             }
         }
 
@@ -234,24 +261,12 @@ class AsyncMySQLiPool
 
     /**
      * Checks if a MySQLi connection is still alive using a lightweight query.
-     * This replaces the deprecated ping() method.
      */
     private function isConnectionAlive(mysqli $connection): bool
     {
         try {
-            $result = $connection->query('SELECT 1', MYSQLI_USE_RESULT);
-
-            if ($result === false) {
-                return false;
-            }
-
-            if ($result instanceof \mysqli_result) {
-                $result->free();
-            }
-
-            return true;
-
-        } catch (\Throwable $e) {
+            return $connection->query('SELECT 1') !== false;
+        } catch (Throwable $e) {
             return false;
         }
     }
@@ -262,21 +277,16 @@ class AsyncMySQLiPool
     private function resetConnectionState(mysqli $connection): void
     {
         try {
-            // Clear any remaining result sets
-            if ($connection->more_results()) {
-                while ($connection->next_result()) {
-                    if ($result = $connection->store_result()) {
-                        $result->free();
-                    }
+            while ($connection->more_results() && $connection->next_result()) {
+                $result = $connection->store_result();
+                if ($result !== false) {
+                    $result->free();
                 }
             }
 
-            // Reset connection state
             $connection->autocommit(true);
-
-        } catch (\Throwable $e) {
-            // If reset fails, connection will be considered dead
-            // and will be caught by isConnectionAlive check
+        } catch (Throwable $e) {
+            // If reset fails, isConnectionAlive() will catch it on the next cycle.
         }
     }
 }

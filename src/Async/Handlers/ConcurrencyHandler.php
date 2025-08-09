@@ -37,24 +37,23 @@ final readonly class ConcurrencyHandler
      * callable functions or existing Promise instances. Promise instances will be
      * automatically wrapped to ensure proper concurrency control.
      *
-     * @param  array  $tasks  Array of callable tasks or Promise instances
+     * @param  array<int|string, callable(): mixed|PromiseInterface<mixed>>  $tasks  Array of callable tasks or Promise instances
      * @param  int  $concurrency  Maximum number of tasks to run simultaneously (default: 10)
-     * @return PromiseInterface Promise that resolves with an array of all results
+     * @return PromiseInterface<array<int|string, mixed>> Promise that resolves with an array of all results
      *
      * @throws RuntimeException If a task doesn't return a Promise
      */
     public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {
-        return new Promise(function ($resolve, $reject) use ($tasks, $concurrency) {
+        /** @var Promise<array<int|string, mixed>> */
+        return new Promise(function (callable $resolve, callable $reject) use ($tasks, $concurrency): void {
             if ($concurrency <= 0) {
                 $reject(new \InvalidArgumentException('Concurrency limit must be greater than 0'));
-
                 return;
             }
 
-            if (empty($tasks)) {
+            if ($tasks === []) {
                 $resolve([]);
-
                 return;
             }
 
@@ -86,7 +85,7 @@ final readonly class ConcurrencyHandler
                 $concurrency,
                 $resolve,
                 $reject
-            ) {
+            ): void {
                 // Start as many tasks as we can up to the concurrency limit
                 while ($running < $concurrency && $taskIndex < $total) {
                     $currentIndex = $taskIndex++;
@@ -95,7 +94,8 @@ final readonly class ConcurrencyHandler
                     $running++;
 
                     try {
-                        $promise = $this->executionHandler->async($task)();
+                        $asyncTask = $this->executionHandler->async($task);
+                        $promise = $asyncTask();
 
                         if (! ($promise instanceof PromiseInterface)) {
                             throw new RuntimeException('Task must return a Promise or be a callable that returns a Promise');
@@ -103,7 +103,6 @@ final readonly class ConcurrencyHandler
                     } catch (Throwable $e) {
                         $running--;
                         $reject($e);
-
                         return;
                     }
 
@@ -116,7 +115,7 @@ final readonly class ConcurrencyHandler
                             $total,
                             $resolve,
                             $processNext
-                        ) {
+                        ): void {
                             $results[$originalKey] = $result;
                             $running--;
                             $completed++;
@@ -128,11 +127,10 @@ final readonly class ConcurrencyHandler
                                 EventLoop::getInstance()->nextTick($processNext);
                             }
                         })
-                        ->catch(function ($error) use (&$running, $reject) {
+                        ->catch(function ($error) use (&$running, $reject): void {
                             $running--;
                             $reject($error);
-                        })
-                    ;
+                        });
                 }
             };
 
@@ -149,23 +147,22 @@ final readonly class ConcurrencyHandler
      * entire batch to complete before starting the next batch. Promise instances
      * will be automatically wrapped to ensure proper concurrency control.
      *
-     * @param  array  $tasks  Array of callable tasks or Promise instances
+     * @param  array<int|string, callable(): mixed|PromiseInterface<mixed>>  $tasks  Array of callable tasks or Promise instances
      * @param  int  $batchSize  Number of tasks per batch (default: 10)
-     * @param  int  $concurrency  Maximum concurrent tasks within each batch (default: same as batch size)
-     * @return PromiseInterface Promise that resolves with an array of all results
+     * @param  int|null  $concurrency  Maximum concurrent tasks within each batch (default: same as batch size)
+     * @return PromiseInterface<array<int|string, mixed>> Promise that resolves with an array of all results
      */
     public function batch(array $tasks, int $batchSize = 10, ?int $concurrency = null): PromiseInterface
     {
-        return new Promise(function ($resolve, $reject) use ($tasks, $batchSize, $concurrency) {
+        /** @var Promise<array<int|string, mixed>> */
+        return new Promise(function (callable $resolve, callable $reject) use ($tasks, $batchSize, $concurrency): void {
             if ($batchSize <= 0) {
                 $reject(new \InvalidArgumentException('Batch size must be greater than 0'));
-
                 return;
             }
 
-            if (empty($tasks)) {
+            if ($tasks === []) {
                 $resolve([]);
-
                 return;
             }
 
@@ -198,10 +195,9 @@ final readonly class ConcurrencyHandler
                 $concurrency,
                 $resolve,
                 $reject
-            ) {
+            ): void {
                 if ($batchIndex >= $totalBatches) {
                     $resolve($allResults);
-
                     return;
                 }
 
@@ -215,13 +211,14 @@ final readonly class ConcurrencyHandler
                         &$allResults,
                         &$batchIndex,
                         $processNextBatch
-                    ) {
+                    ): void {
                         $allResults = array_merge($allResults, $batchResults);
                         $batchIndex++;
                         EventLoop::getInstance()->nextTick($processNextBatch);
                     })
-                    ->catch($reject)
-                ;
+                    ->catch(function ($error) use ($reject): void {
+                        $reject($error);
+                    });
             };
 
             EventLoop::getInstance()->nextTick($processNextBatch);
@@ -236,8 +233,8 @@ final readonly class ConcurrencyHandler
      * - Promise instances are wrapped with await
      * - Other types are wrapped in a callable
      *
-     * @param  mixed  $task  The task to wrap
-     * @return callable A callable that properly defers execution
+     * @param  callable(): mixed|PromiseInterface<mixed>  $task  The task to wrap
+     * @return callable(): mixed A callable that properly defers execution
      */
     private function wrapTaskForConcurrency(mixed $task): callable
     {
@@ -247,7 +244,6 @@ final readonly class ConcurrencyHandler
                 if ($result instanceof PromiseInterface) {
                     return $this->awaitHandler->await($result);
                 }
-
                 return $result;
             };
         }

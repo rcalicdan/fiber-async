@@ -2,6 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\Promise\Interfaces;
 
+use LogicException;
+
 /**
  * Represents the eventual result of an asynchronous operation.
  *
@@ -18,7 +20,8 @@ interface PromiseInterface
      * Once resolved, the promise cannot be resolved or rejected again.
      * All attached fulfillment handlers will be called with the value.
      *
-     * @param  mixed  $value  The value to resolve the promise with
+     * @param TValue $value The value to resolve the promise with.
+     * @return void
      */
     public function resolve(mixed $value): void;
 
@@ -28,7 +31,8 @@ interface PromiseInterface
      * Once rejected, the promise cannot be resolved or rejected again.
      * All attached rejection handlers will be called with the reason.
      *
-     * @param  mixed  $reason  The reason for rejection (typically an exception or error message)
+     * @param mixed $reason The reason for rejection (typically an exception or error message).
+     * @return void
      */
     public function reject(mixed $reason): void;
 
@@ -36,13 +40,13 @@ interface PromiseInterface
      * Attaches handlers for promise fulfillment and/or rejection.
      *
      * Returns a new promise that will be resolved or rejected based on
-     * the return value of the executed handler.
+     * the return value of the executed handler. This allows for chaining and
+     * transforming values.
      *
-     * @param  callable|null  $onFulfilled  Handler for successful resolution with signature:
-     *                                      function(mixed $value): mixed
-     * @param  callable|null  $onRejected  Handler for rejection with signature:
-     *                                     function(mixed $reason): mixed
-     * @return PromiseInterface A new promise for method chaining
+     * @template TResult
+     * @param callable(TValue): (TResult|PromiseInterface<TResult>) $onFulfilled Handler for successful resolution.
+     * @param callable(mixed): (TResult|PromiseInterface<TResult>) $onRejected Handler for rejection.
+     * @return PromiseInterface<TResult> A new promise for method chaining.
      */
     public function then(?callable $onFulfilled = null, ?callable $onRejected = null): PromiseInterface;
 
@@ -51,9 +55,9 @@ interface PromiseInterface
      *
      * Equivalent to calling then(null, $onRejected).
      *
-     * @param  callable  $onRejected  Handler for rejection with signature:
-     *                                function(mixed $reason): mixed
-     * @return PromiseInterface A new promise for method chaining
+     * @template TResult
+     * @param callable(mixed): (TResult|PromiseInterface<TResult>) $onRejected Handler for rejection.
+     * @return PromiseInterface<TResult> A new promise for method chaining.
      */
     public function catch(callable $onRejected): PromiseInterface;
 
@@ -63,30 +67,28 @@ interface PromiseInterface
      * The finally handler receives no arguments and its return value
      * does not affect the promise chain unless it throws an exception.
      *
-     * @param  callable  $onFinally  Handler to execute after settlement with signature:
-     *                               function(): mixed
-     * @return PromiseInterface A new promise for method chaining
+     * @return PromiseInterface<TValue> A new promise that will settle with the same outcome as the original.
      */
     public function finally(callable $onFinally): PromiseInterface;
 
     /**
      * Checks if the promise has been resolved with a value.
      *
-     * @return bool True if resolved, false otherwise
+     * @return bool True if resolved, false otherwise.
      */
     public function isResolved(): bool;
 
     /**
      * Checks if the promise has been rejected with a reason.
      *
-     * @return bool True if rejected, false otherwise
+     * @return bool True if rejected, false otherwise.
      */
     public function isRejected(): bool;
 
     /**
      * Checks if the promise is still pending (neither resolved nor rejected).
      *
-     * @return bool True if pending, false otherwise
+     * @return bool True if pending, false otherwise.
      */
     public function isPending(): bool;
 
@@ -96,9 +98,8 @@ interface PromiseInterface
      * This method should only be called after confirming the promise
      * is resolved using isResolved().
      *
-     * @return mixed The resolved value
-     *
-     * @throws \LogicException If called on a non-resolved promise
+     * @return TValue The resolved value.
+     * @throws LogicException If called on a non-resolved promise.
      */
     public function getValue(): mixed;
 
@@ -108,9 +109,8 @@ interface PromiseInterface
      * This method should only be called after confirming the promise
      * is rejected using isRejected().
      *
-     * @return mixed The rejection reason
-     *
-     * @throws \LogicException If called on a non-rejected promise
+     * @return mixed The rejection reason.
+     * @throws LogicException If called on a non-rejected promise.
      */
     public function getReason(): mixed;
 }

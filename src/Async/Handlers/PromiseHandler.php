@@ -20,11 +20,13 @@ final readonly class PromiseHandler
      * This is useful for converting synchronous values into Promise form
      * or for creating resolved Promises in async chains.
      *
-     * @param  mixed  $value  The value to resolve the Promise with
-     * @return PromiseInterface A Promise that resolves with the given value
+     * @template TValue
+     * @param  TValue  $value  The value to resolve the Promise with
+     * @return PromiseInterface<TValue> A Promise that resolves with the given value
      */
     public function resolve(mixed $value): PromiseInterface
     {
+        /** @var Promise<TValue> $promise */
         $promise = new Promise;
         $promise->resolve($value);
 
@@ -38,10 +40,11 @@ final readonly class PromiseHandler
      * creating rejected Promises in async chains.
      *
      * @param  mixed  $reason  The reason to reject the Promise with
-     * @return PromiseInterface A Promise that rejects with the given reason
+     * @return PromiseInterface<never> A Promise that rejects with the given reason
      */
     public function reject(mixed $reason): PromiseInterface
     {
+        /** @var Promise<never> $promise */
         $promise = new Promise;
         $promise->reject($reason);
 
@@ -54,10 +57,12 @@ final readonly class PromiseHandler
      * This creates a Promise in pending state that can be manually
      * resolved or rejected at a later time.
      *
-     * @return PromiseInterface An empty Promise in pending state
+     * @return PromiseInterface<mixed> An empty Promise in pending state
      */
     public function createEmpty(): PromiseInterface
     {
-        return new Promise;
+        /** @var Promise<mixed> $promise */
+        $promise = new Promise;
+        return $promise;
     }
 }
