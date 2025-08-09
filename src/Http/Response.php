@@ -93,14 +93,28 @@ class Response extends Message implements ResponseInterface
         if (! ($body instanceof StreamInterface)) {
             if (is_string($body)) {
                 $resource = fopen('php://temp', 'r+');
+
+                // Check if fopen succeeded
+                if ($resource === false) {
+                    throw new \RuntimeException('Unable to create temporary stream');
+                }
+
                 if ($body !== '') {
-                    fwrite($resource, $body);
+                    $writeResult = fwrite($resource, $body);
+                    if ($writeResult === false) {
+                        fclose($resource);
+                        throw new \RuntimeException('Unable to write to temporary stream');
+                    }
                     rewind($resource);
                 }
                 $body = new Stream($resource);
             } else {
                 // Default to an empty stream if body is not a recognizable type
-                $body = new Stream(fopen('php://temp', 'r+'));
+                $resource = fopen('php://temp', 'r+');
+                if ($resource === false) {
+                    throw new \RuntimeException('Unable to create temporary stream');
+                }
+                $body = new Stream($resource);
             }
         }
 
@@ -166,17 +180,19 @@ class Response extends Message implements ResponseInterface
     /**
      * Get the response body decoded from JSON.
      *
-     * @return array The decoded JSON data. Returns an empty array on failure.
+     * @return array<mixed> The decoded JSON data. Returns an empty array on failure.
      */
     public function json(): array
     {
-        return json_decode((string) $this->body, true) ?? [];
+        $decoded = json_decode((string) $this->body, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**
      * Alias for `json()`.
      *
-     * @return array The decoded JSON data.
+     * @return array<string, mixed> The decoded JSON data.
      */
     public function getJson(): array
     {

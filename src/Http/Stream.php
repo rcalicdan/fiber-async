@@ -76,7 +76,7 @@ class Stream implements StreamInterface
         $this->uri = $uri;
 
         $meta = stream_get_meta_data($this->resource);
-        $this->seekable = $meta['seekable'] ?? false;
+        $this->seekable = $meta['seekable'];
         $this->readable = isset(self::READ_WRITE_HASH['read'][$meta['mode']]);
         $this->writable = isset(self::READ_WRITE_HASH['write'][$meta['mode']]);
     }
@@ -97,7 +97,6 @@ class Stream implements StreamInterface
 
             return $this->getContents();
         } catch (\Throwable $e) {
-            // Per PSR-7, must not throw an exception.
             return '';
         }
     }
@@ -146,7 +145,7 @@ class Stream implements StreamInterface
             return null;
         }
 
-        if ($this->uri) {
+        if ($this->uri !== null) {
             clearstatcache(true, $this->uri);
         }
 
@@ -206,8 +205,12 @@ class Stream implements StreamInterface
             throw new RuntimeException('Stream is not seekable');
         }
 
+        if (! is_resource($this->resource)) {
+            throw new RuntimeException('Stream is detached');
+        }
+
         if (fseek($this->resource, $offset, $whence) === -1) {
-            throw new RuntimeException('Unable to seek to stream position '.$offset.' with whence '.var_export($whence, true));
+            throw new RuntimeException('Unable to seek to stream position ' . $offset . ' with whence ' . var_export($whence, true));
         }
     }
 
@@ -235,6 +238,11 @@ class Stream implements StreamInterface
         if (! $this->isWritable()) {
             throw new RuntimeException('Cannot write to a non-writable stream');
         }
+
+        if (! is_resource($this->resource)) {
+            throw new RuntimeException('Stream is detached');
+        }
+
         $this->size = null; // Invalidate cached size
 
         $result = fwrite($this->resource, $string);
@@ -270,6 +278,10 @@ class Stream implements StreamInterface
             return '';
         }
 
+        if (! is_resource($this->resource)) {
+            throw new RuntimeException('Stream is detached');
+        }
+
         $result = fread($this->resource, $length);
         if ($result === false) {
             throw new RuntimeException('Unable to read from stream');
@@ -287,6 +299,10 @@ class Stream implements StreamInterface
             throw new RuntimeException('Cannot read from non-readable stream');
         }
 
+        if (! is_resource($this->resource)) {
+            throw new RuntimeException('Stream is detached');
+        }
+
         $contents = stream_get_contents($this->resource);
         if ($contents === false) {
             throw new RuntimeException('Unable to read stream contents');
@@ -301,7 +317,7 @@ class Stream implements StreamInterface
     public function getMetadata(?string $key = null)
     {
         if (! is_resource($this->resource)) {
-            return $key ? null : [];
+            return $key !== null ? null : [];
         }
 
         $meta = stream_get_meta_data($this->resource);
