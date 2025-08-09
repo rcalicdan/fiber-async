@@ -5,7 +5,6 @@ namespace Rcalicdan\FiberAsync\Http;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Interfaces\RequestInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\UriInterface;
-use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
