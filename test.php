@@ -1,27 +1,31 @@
 <?php
 
-use Rcalicdan\FiberAsync\Api\AsyncDB;
-use Rcalicdan\FiberAsync\Api\AsyncMySQLi;
-use Rcalicdan\FiberAsync\Api\Promise;
-use Rcalicdan\FiberAsync\Api\Timer;
+use Rcalicdan\FiberAsync\EventLoop\Loop;
 
-require_once __DIR__ . '/vendor/autoload.php';
+require __DIR__ . '/vendor/autoload.php';
 
-$microtime = microtime(true);
+function asyncTask(string $name, float $delay)
+{
+    return new Fiber(function () use ($name, $delay) {
+        $start = microtime(true);
+        echo sprintf("[%s] Start at %.3f\n", $name, $start);
+
+        // Your async delay function (float seconds)
+        delay($delay);
+
+        $end = microtime(true);
+        echo sprintf("[%s] End at %.3f (Duration: %.3f)\n", $name, $end, $end - $start);
+    });
+}
+
+$startTime = microtime(true);
+
 run(function () {
-    $Promise = Promise::all([
-       AsyncDB::table('users')->get(),
-       AsyncDB::table('users')->get(),
-       AsyncDB::table('users')->get(),
-       AsyncDB::table('users')->get(),
-    ]);
-
-    $results = await($Promise);
-
-    foreach ($results as $result) {
-        var_dump($result);
-    }
+    yield asyncTask('Task A', 0.5);
+    yield asyncTask('Task B', 1.2);
+    yield asyncTask('Task C', 2.8);
 });
 
-$microtime = microtime(true) - $microtime;
-echo $microtime . PHP_EOL;
+$totalTime = microtime(true) - $startTime;
+
+echo sprintf("Total runtime: %.3f seconds\n", $totalTime);
