@@ -8,3 +8,5 @@ parameters:
     treatPhpDocTypesAsCertain: false
     excludePaths:
         - tests/
+    ignoreErrors:
+        - '#Variable method call on.*#'

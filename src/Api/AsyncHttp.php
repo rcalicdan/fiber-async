@@ -6,6 +6,7 @@ use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -16,13 +17,13 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
  * underlying handler and event loop management for a more convenient API.
  *
  * @method static Request request() Creates a new fluent request builder.
- * @method static PromiseInterface<Response> get(string $url, array $query = []) Performs a GET request.
- * @method static PromiseInterface<Response> post(string $url, array $data = []) Performs a POST request.
- * @method static PromiseInterface<Response> put(string $url, array $data = []) Performs a PUT request.
+ * @method static PromiseInterface<Response> get(string $url, array<string, mixed> $query = []) Performs a GET request.
+ * @method static PromiseInterface<Response> post(string $url, array<string, mixed> $data = []) Performs a POST request.
+ * @method static PromiseInterface<Response> put(string $url, array<string, mixed> $data = []) Performs a PUT request.
  * @method static PromiseInterface<Response> delete(string $url) Performs a DELETE request.
- * @method static PromiseInterface<Response> fetch(string $url, array $options = []) A flexible, fetch-like request method.
- * @method static PromiseInterface<StreamingResponse> stream(string $url, array $options = [], ?callable $onChunk = null) Streams a response body.
- * @method static PromiseInterface<array{file: string, status: int|null, headers: array}> download(string $url, string $destination, array $options = []) Downloads a file.
+ * @method static PromiseInterface<Response> fetch(string $url, array<int|string, mixed> $options = []) A flexible, fetch-like request method.
+ * @method static PromiseInterface<StreamingResponse> stream(string $url, array<int|string, mixed> $options = [], ?callable $onChunk = null) Streams a response body.
+ * @method static CancellablePromiseInterface<array{file: string, status: int, headers: array<mixed>}> download(string $url, string $destination, array<int|string, mixed> $options = []) Downloads a file.
  */
 class AsyncHttp
 {
@@ -55,7 +56,7 @@ class AsyncHttp
      * Performs a quick, asynchronous GET request.
      *
      * @param  string  $url  The target URL.
-     * @param  array  $query  Optional query parameters.
+     * @param  array<string, mixed>  $query  Optional query parameters.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public static function get(string $url, array $query = []): PromiseInterface
@@ -67,7 +68,7 @@ class AsyncHttp
      * Performs a quick, asynchronous POST request with a JSON payload.
      *
      * @param  string  $url  The target URL.
-     * @param  array  $data  Data to be JSON-encoded.
+     * @param  array<string, mixed>  $data  Data to be JSON-encoded.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public static function post(string $url, array $data = []): PromiseInterface
@@ -79,7 +80,7 @@ class AsyncHttp
      * Performs a quick, asynchronous PUT request.
      *
      * @param  string  $url  The target URL.
-     * @param  array  $data  Data to be JSON-encoded.
+     * @param  array<string, mixed>  $data  Data to be JSON-encoded.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public static function put(string $url, array $data = []): PromiseInterface
@@ -102,7 +103,7 @@ class AsyncHttp
      * A flexible, fetch-like method for making HTTP requests.
      *
      * @param  string  $url  The target URL.
-     * @param  array  $options  Associative array of request options (method, headers, body, etc.).
+     * @param  array<int|string, mixed>  $options  Associative array of request options (method, headers, body, etc.).
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public static function fetch(string $url, array $options = []): PromiseInterface
@@ -114,11 +115,11 @@ class AsyncHttp
      * Streams an HTTP response, processing it in chunks.
      *
      * @param  string  $url  The URL to stream from.
-     * @param  array  $options  Advanced cURL or request options.
+     * @param  array<int|string, mixed>  $options  Advanced cURL or request options.
      * @param  callable|null  $onChunk  Optional callback for each data chunk.
-     * @return PromiseInterface<StreamingResponse> A promise resolving with a StreamingResponse object.
+     * @return CancellablePromiseInterface<StreamingResponse> A promise resolving with a StreamingResponse object.
      */
-    public static function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
+    public static function stream(string $url, array $options = [], ?callable $onChunk = null): CancellablePromiseInterface
     {
         return self::getInstance()->stream($url, $options, $onChunk);
     }
@@ -128,10 +129,10 @@ class AsyncHttp
      *
      * @param  string  $url  The URL of the file to download.
      * @param  string  $destination  The local path to save the file.
-     * @param  array  $options  Advanced cURL or request options.
-     * @return PromiseInterface<array{file: string, status: int|null, headers: array}> A promise resolving with download metadata.
+     * @param  array<int|string, mixed>  $options  Advanced cURL or request options.
+     * @return CancellablePromiseInterface<array{file: string, status: int, headers: array<mixed>}> A promise resolving with download metadata.
      */
-    public static function download(string $url, string $destination, array $options = []): PromiseInterface
+    public static function download(string $url, string $destination, array $options = []): CancellablePromiseInterface
     {
         return self::getInstance()->download($url, $destination, $options);
     }
@@ -158,7 +159,7 @@ class AsyncHttp
      * Magic method to handle dynamic static calls and proxy them to the handler instance.
      *
      * @param  string  $method  The method name.
-     * @param  array  $arguments  The arguments to pass to the method.
+     * @param  array<mixed>  $arguments  The arguments to pass to the method.
      * @return mixed The result of the proxied method call.
      */
     public static function __callStatic(string $method, array $arguments)

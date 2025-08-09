@@ -101,7 +101,7 @@ class HttpHandler
      * @param callable(string): void|null $onChunk An optional callback to execute for each received data chunk.
      * @return CancellablePromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse object.
      */
-    public function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
+    public function stream(string $url, array $options = [], ?callable $onChunk = null): CancellablePromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
 
