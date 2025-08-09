@@ -8,11 +8,11 @@ use Rcalicdan\FiberAsync\Http\Exceptions\HttpStreamException;
 use Rcalicdan\FiberAsync\Http\Stream;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
-use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 
 final readonly class StreamingHandler
 {
-    public function streamRequest(string $url, array $options, ?callable $onChunk = null): PromiseInterface
+    public function streamRequest(string $url, array $options, ?callable $onChunk = null): CancellablePromise
     {
         $promise = new CancellablePromise;
         $requestId = null;
@@ -79,7 +79,7 @@ final readonly class StreamingHandler
         return $promise;
     }
 
-    public function downloadFile(string $url, string $destination, array $options = []): PromiseInterface
+    public function downloadFile(string $url, string $destination, array $options = []): CancellablePromiseInterface
     {
         $promise = new CancellablePromise;
         $requestId = null;
