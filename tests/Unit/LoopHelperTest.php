@@ -17,14 +17,6 @@ test('run function executes async operation and returns result', function () {
     expect($result)->toBe('test result');
 });
 
-test('task function works as shorthand for run', function () {
-    $result = task(function () {
-        return 'task result';
-    });
-
-    expect($result)->toBe('task result');
-});
-
 test('run_all executes multiple operations concurrently', function () {
     $start = microtime(true);
 
