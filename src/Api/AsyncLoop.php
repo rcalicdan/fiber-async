@@ -98,27 +98,6 @@ final class AsyncLoop
     }
 
     /**
-     * Create and run a simple async task with automatic event loop management.
-     *
-     * @param  callable  $asyncFunction  The async function to execute
-     * @return mixed The result of the async function
-     */
-    public static function task(callable $asyncFunction): mixed
-    {
-        return self::getLoopOperations()->task($asyncFunction);
-    }
-
-    /**
-     * Perform an async delay with automatic event loop management.
-     *
-     * @param  float  $seconds  Number of seconds to delay
-     */
-    public static function sleep(float $seconds): void
-    {
-        self::getLoopOperations()->asyncSleep($seconds);
-    }
-
-    /**
      * Run an async operation with a timeout constraint and automatic loop management.
      *
      * @param  callable|PromiseInterface|array  $asyncOperation  The operation to execute
@@ -143,19 +122,5 @@ final class AsyncLoop
     public static function runBatch(array $asyncOperations, int $batch, ?int $concurrency = null): array
     {
         return self::getLoopOperations()->runBatch($asyncOperations, $batch, $concurrency);
-    }
-
-    /**
-     * Perform an async delay with automatic event loop management.
-     *
-     * Creates a delay without blocking the current thread, with the event loop
-     * managed automatically. This is useful for simple timing operations that
-     * don't require manual loop control.
-     *
-     * @param  float  $seconds  Number of seconds to delay
-     */
-    public static function asyncSleep(float $seconds): void
-    {
-        self::getLoopOperations()->asyncSleep($seconds);
     }
 }

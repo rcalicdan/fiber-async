@@ -19,6 +19,10 @@ final class LoopExecutionHandler
         $this->asyncOps = $asyncOps;
     }
 
+    /**
+     * @param callable|PromiseInterface<mixed> $asyncOperation
+     * @return mixed
+     */
     public function run(callable|PromiseInterface $asyncOperation): mixed
     {
         if (self::$isRunning) {
@@ -27,7 +31,6 @@ final class LoopExecutionHandler
 
         try {
             self::$isRunning = true;
-            $loop = EventLoop::getInstance();
             $result = null;
             $error = null;
             $completed = false;
@@ -47,16 +50,13 @@ final class LoopExecutionHandler
                 })
             ;
 
-            while (! $completed) {
-                $loop->run();
-
-                if (! $completed) {
-                    usleep(100);
-                }
+            while (!$completed) {
+                EventLoop::getInstance()->run();
+                usleep(100);
             }
 
             if ($error !== null) {
-                throw $error instanceof Throwable ? $error : new Exception((string) $error);
+                throw $error instanceof Throwable ? $error : new Exception($this->safeStringCast($error));
             }
 
             return $result;
@@ -66,10 +66,30 @@ final class LoopExecutionHandler
         }
     }
 
+    /**
+     * @param callable|PromiseInterface<mixed> $operation
+     * @return PromiseInterface<mixed>
+     */
     public function createPromiseFromOperation(callable|PromiseInterface $operation): PromiseInterface
     {
         return is_callable($operation)
             ? $this->asyncOps->async($operation)()
             : $operation;
+    }
+
+    /**
+     * Safely convert mixed value to string for error messages
+     */
+    private function safeStringCast(mixed $value): string
+    {
+        return match (true) {
+            is_string($value) => $value,
+            $value === null => 'null',
+            is_scalar($value) => (string) $value,
+            is_object($value) && method_exists($value, '__toString') => (string) $value,
+            is_array($value) => 'Array: ' . json_encode($value),
+            is_object($value) => 'Object: ' . get_class($value),
+            default => 'Unknown error type: ' . gettype($value)
+        };
     }
 }

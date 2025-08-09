@@ -40,11 +40,6 @@ class LoopOperations implements LoopOperationsInterface
     private ConcurrentExecutionHandler $concurrentHandler;
 
     /**
-     * @var TaskExecutionHandler Manages simple task execution
-     */
-    private TaskExecutionHandler $taskHandler;
-
-    /**
      * @var TimeoutHandler Manages operations with timeout constraints
      */
     private TimeoutHandler $timeoutHandler;
@@ -63,7 +58,6 @@ class LoopOperations implements LoopOperationsInterface
         $this->asyncOps = $asyncOps ?? new AsyncOperations;
         $this->executionHandler = new LoopExecutionHandler($this->asyncOps);
         $this->concurrentHandler = new ConcurrentExecutionHandler($this->asyncOps, $this->executionHandler);
-        $this->taskHandler = new TaskExecutionHandler($this->asyncOps, $this->executionHandler);
         $this->timeoutHandler = new TimeoutHandler($this->asyncOps, $this->executionHandler);
     }
 
@@ -109,33 +103,6 @@ class LoopOperations implements LoopOperationsInterface
     public function runConcurrent(array $asyncOperations, int $concurrency = 10): array
     {
         return $this->concurrentHandler->runConcurrent($asyncOperations, $concurrency);
-    }
-
-    /**
-     * Create and run a simple async task with automatic loop management.
-     *
-     * This is a convenience method for running a single async function
-     * without manually managing the event loop.
-     *
-     * @param  callable  $asyncFunction  The async function to execute
-     * @return mixed The result of the async function
-     */
-    public function task(callable $asyncFunction): mixed
-    {
-        return $this->taskHandler->task($asyncFunction);
-    }
-
-    /**
-     * Perform an async delay with automatic loop management.
-     *
-     * This method starts the event loop, waits for the specified duration,
-     * then stops the loop. Useful for simple delay operations.
-     *
-     * @param  float  $seconds  Number of seconds to delay
-     */
-    public function asyncSleep(float $seconds): void
-    {
-        $this->taskHandler->asyncSleep($seconds);
     }
 
     /**

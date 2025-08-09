@@ -41,26 +41,6 @@ interface LoopOperationsInterface
     public function runConcurrent(array $asyncOperations, int $concurrency = 10): array;
 
     /**
-     * Executes an async function as a task and returns its result.
-     *
-     * Similar to run() but specifically designed for task execution patterns.
-     *
-     * @param  callable  $asyncFunction  The async function to execute as a task
-     * @return mixed The result of the task execution
-     */
-    public function task(callable $asyncFunction): mixed;
-
-    /**
-     * Asynchronously sleeps for the specified duration.
-     *
-     * This method should be called within an async context and will
-     * yield control back to the event loop during the sleep period.
-     *
-     * @param  float  $seconds  Duration to sleep in seconds (supports fractions)
-     */
-    public function asyncSleep(float $seconds): void;
-
-    /**
      * Runs an async operation with a timeout.
      *
      * If the operation doesn't complete within the timeout period,
