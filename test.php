@@ -4,16 +4,16 @@ use Rcalicdan\FiberAsync\Api\Promise;
 
 require_once __DIR__ . '/vendor/autoload.php';
 
-for ($i = 0; $i < 100; $i++) {
+for ($i = 0; $i < 10; $i++) {
     $startTime = microtime(true);
     run(function () {
-        $delays = Promise::concurrent([
-            delay(1)->then(fn()=>print "1\n"),
-            delay(1)->then(fn()=>print "2\n"),
-            delay(1)->then(fn()=>print "3\n"),
-            delay(1)->then(fn()=>print "4\n"),
-            delay(1)->then(fn()=>print "5\n"),
-            delay(1)->then(fn()=>print "6\n"),
+        $delays = Promise::all([
+            delay(1),
+            delay(1),
+            delay(1),
+            delay(1),
+            delay(1),
+            delay(1),
         ]);
  
         await($delays);
