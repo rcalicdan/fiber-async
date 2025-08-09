@@ -96,7 +96,7 @@ class AsyncOperations implements AsyncOperationsInterface
      * @param TValue $value The value to resolve the promise with
      * @return PromiseInterface<TValue> A promise resolved with the provided value
      */
-    public function resolve(mixed $value): PromiseInterface
+    public function resolved(mixed $value): PromiseInterface
     {
         return $this->promiseHandler->resolve($value);
     }
@@ -107,7 +107,7 @@ class AsyncOperations implements AsyncOperationsInterface
      * @param mixed $reason The reason for rejection (typically an exception)
      * @return PromiseInterface<mixed> A promise rejected with the provided reason
      */
-    public function reject(mixed $reason): PromiseInterface
+    public function rejected(mixed $reason): PromiseInterface
     {
         return $this->promiseHandler->reject($reason);
     }

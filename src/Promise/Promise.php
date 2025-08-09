@@ -8,7 +8,9 @@ use Rcalicdan\FiberAsync\Promise\Handlers\ExecutorHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\ResolutionHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\StateHandler;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseCollectionInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
+use Rcalicdan\FiberAsync\Async\AsyncOperations;
 
 /**
  * A Promise/A+ compliant implementation for managing asynchronous operations.
@@ -21,7 +23,7 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
  *
  * @implements PromiseInterface<TValue>
  */
-class Promise implements PromiseInterface
+class Promise implements PromiseInterface, PromiseCollectionInterface
 {
     /**
      * @var StateHandler Manages the promise's state (pending, resolved, rejected)
@@ -52,6 +54,11 @@ class Promise implements PromiseInterface
      * @var CancellablePromiseInterface<mixed>|null
      */
     protected ?CancellablePromiseInterface $rootCancellable = null;
+
+    /**
+     * @var AsyncOperations|null Static instance for collection operations
+     */
+    private static ?AsyncOperations $asyncOps = null;
 
     /**
      * Create a new promise with an optional executor function.
@@ -275,5 +282,91 @@ class Promise implements PromiseInterface
     public function getReason(): mixed
     {
         return $this->stateHandler->getReason();
+    }
+
+    /**
+     * Get or create the AsyncOperations instance for static methods.
+     *
+     * @return AsyncOperations
+     */
+    private static function getAsyncOps(): AsyncOperations
+    {
+        if (self::$asyncOps === null) {
+            self::$asyncOps = new AsyncOperations();
+        }
+        
+        return self::$asyncOps;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function reset(): void
+    {
+        self::$asyncOps = null;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function resolved(mixed $value): PromiseInterface
+    {
+        return self::getAsyncOps()->resolved($value);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function rejected(mixed $reason): PromiseInterface
+    {
+        return self::getAsyncOps()->rejected($reason);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function all(array $promises): PromiseInterface
+    {
+        return self::getAsyncOps()->all($promises);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function race(array $promises): PromiseInterface
+    {
+        return self::getAsyncOps()->race($promises);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function any(array $promises): PromiseInterface
+    {
+        return self::getAsyncOps()->any($promises);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function timeout(callable|PromiseInterface|array $promises, float $seconds): PromiseInterface
+    {
+        return self::getAsyncOps()->timeout($promises, $seconds);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
+    {
+        return self::getAsyncOps()->concurrent($tasks, $concurrency);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function batch(array $tasks, int $batchSize = 10, ?int $concurrency = null): PromiseInterface
+    {
+        return self::getAsyncOps()->batch($tasks, $batchSize, $concurrency);
     }
 }
