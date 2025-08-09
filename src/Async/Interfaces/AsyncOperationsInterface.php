@@ -23,9 +23,9 @@ interface AsyncOperationsInterface
     /**
      * Creates a resolved promise with the given value.
      *
-     * @template T
-     * @param T $value The value to resolve the promise with.
-     * @return PromiseInterface<T> A promise resolved with the provided value.
+     * @template TValue
+     * @param TValue $value The value to resolve the promise with.
+     * @return PromiseInterface<TValue> A promise resolved with the provided value.
      */
     public function resolve(mixed $value): PromiseInterface;
 
@@ -54,9 +54,9 @@ interface AsyncOperationsInterface
      * This method should only be called within a fiber context.
      * It will yield control back to the event loop until the promise settles.
      *
-     * @template T
-     * @param PromiseInterface<T> $promise The promise to await.
-     * @return T The resolved value of the promise.
+     * @template TValue
+     * @param PromiseInterface<TValue> $promise The promise to await.
+     * @return TValue The resolved value of the promise.
      * @throws Throwable The rejection reason if the promise is rejected.
      */
     public function await(PromiseInterface $promise): mixed;

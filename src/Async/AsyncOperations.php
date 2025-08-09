@@ -92,9 +92,9 @@ class AsyncOperations implements AsyncOperationsInterface
     /**
      * Create a resolved promise with the given value.
      *
-     * @template T
-     * @param T $value The value to resolve the promise with
-     * @return PromiseInterface<T> A promise resolved with the provided value
+     * @template TValue
+     * @param TValue $value The value to resolve the promise with
+     * @return PromiseInterface<TValue> A promise resolved with the provided value
      */
     public function resolve(mixed $value): PromiseInterface
     {
@@ -132,9 +132,9 @@ class AsyncOperations implements AsyncOperationsInterface
      * This function suspends the current fiber until the promise
      * resolves or rejects. Must be called from within a fiber context.
      *
-     * @template T
-     * @param PromiseInterface<T> $promise The promise to await
-     * @return T The resolved value of the promise
+     * @template TValue
+     * @param PromiseInterface<TValue> $promise The promise to await
+     * @return TValue The resolved value of the promise
      *
      * @throws \Exception If the promise is rejected
      */
