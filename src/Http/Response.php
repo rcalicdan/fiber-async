@@ -192,7 +192,7 @@ class Response extends Message implements ResponseInterface
     /**
      * Alias for `json()`.
      *
-     * @return array<string, mixed> The decoded JSON data.
+     * @return array<mixed> The decoded JSON data.
      */
     public function getJson(): array
     {
