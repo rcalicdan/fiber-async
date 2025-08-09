@@ -422,7 +422,7 @@ class Request extends Message implements RequestInterface
      *
      * @param  string  $url  The URL of the file to download.
      * @param  string  $destination  The local file path to save to.
-     * @return CancellablePromiseInterface<array{file: string, status: int|null, headers: array<mixed>}> A promise that resolves with download metadata.
+     * @return CancellablePromiseInterface<array{file: string, status: int, headers: array<mixed>}> A promise that resolves with download metadata.
      */
     public function download(string $url, string $destination): CancellablePromiseInterface
     {

@@ -2,7 +2,9 @@
 
 namespace Rcalicdan\FiberAsync\Http\Handlers;
 
-use Rcalicdan\FiberAsync\Http\Interfaces\HttpRetryResponseInterface;
+use Rcalicdan\FiberAsync\Http\Request;
+use Rcalicdan\FiberAsync\Http\Response;
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
  * Helper class for configuring HTTP request retry logic and options.
@@ -20,7 +22,7 @@ final class RetryHelperHandler
      * timeouts, and SSL verification settings. Supports multiple authentication methods
      * including Bearer tokens and Basic auth.
      * 
-     * @param HttpRetryResponseInterface $request The HTTP request object
+     * @param Request $request The HTTP request object
      * @param string $url The target URL for the request
      * @param array{
      *     headers?: array<string, string>,
@@ -37,9 +39,9 @@ final class RetryHelperHandler
      *     }
      * } $options Configuration options for the request
      * 
-     * @return mixed The result of the request send operation
+     * @return PromiseInterface<Response> The result of the request send operation
      */
-    public static function getRetryLogic(HttpRetryResponseInterface $request, string $url, array $options = []): mixed
+    public static function getRetryLogic(Request $request, string $url, array $options = []): PromiseInterface
     {
         if (isset($options['headers']) && is_array($options['headers'])) {
             $request->headers($options['headers']);

@@ -1,31 +1,47 @@
 <?php
 
-use Rcalicdan\FiberAsync\EventLoop\Loop;
+use Rcalicdan\FiberAsync\Api\Promise;
 
-require __DIR__ . '/vendor/autoload.php';
 
-function asyncTask(string $name, float $delay)
-{
-    return new Fiber(function () use ($name, $delay) {
-        $start = microtime(true);
-        echo sprintf("[%s] Start at %.3f\n", $name, $start);
+require_once __DIR__ . '/vendor/autoload.php';
 
-        // Your async delay function (float seconds)
-        delay($delay);
+$microtime = microtime(true);
+$results = run(function () {
+    $googleStartTime = microtime(true);
+    $facebookStartTime = microtime(true);
+    $twitterStartTime = microtime(true);
+    $instagramStartTime = microtime(true);
 
-        $end = microtime(true);
-        echo sprintf("[%s] End at %.3f (Duration: %.3f)\n", $name, $end, $end - $start);
-    });
-}
+    $Promise = Promise::all([
+        'google' => http()->get('https://www.google.com')
+            ->then(function ($response) use ($googleStartTime) {
+                $googleEndTime = microtime(true);
+                echo 'Google: ' . ($googleEndTime - $googleStartTime) . PHP_EOL;
+                echo $response->getStatusCode() . PHP_EOL;
 
-$startTime = microtime(true);
+            }),
+        'facebook' => http()->get('https://www.facebook.com')
+            ->then(function ($response) use ($facebookStartTime) {
+                $facebookEndTime = microtime(true);
+                echo 'Facebook: ' . ($facebookEndTime - $facebookStartTime) . PHP_EOL;
+                echo $response->getStatusCode() . PHP_EOL;
+            }),
+        'linkedIn' => http()->get('https://www.linkedin.com')
+            ->then(function ($response) use ($twitterStartTime) {
+                $twitterEndTime = microtime(true);
+                echo 'LinkedIn: ' . ($twitterEndTime - $twitterStartTime) . PHP_EOL;
+                echo $response->getStatusCode() . PHP_EOL;
+            }),
+        'instagram' => http()->get('https://www.instagram.com')
+            ->then(function ($response) use ($instagramStartTime) {
+                $instagramEndTime = microtime(true);
+                echo 'Instagram: ' . ($instagramEndTime - $instagramStartTime) . PHP_EOL;
+                echo $response->getStatusCode() . PHP_EOL;
+            }),
+    ]);
 
-run(function () {
-    yield asyncTask('Task A', 0.5);
-    yield asyncTask('Task B', 1.2);
-    yield asyncTask('Task C', 2.8);
+    return await($Promise);
 });
 
-$totalTime = microtime(true) - $startTime;
-
-echo sprintf("Total runtime: %.3f seconds\n", $totalTime);
+$microtime = microtime(true) - $microtime;
+echo $microtime . PHP_EOL;
