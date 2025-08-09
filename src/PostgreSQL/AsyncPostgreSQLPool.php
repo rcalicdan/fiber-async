@@ -3,9 +3,8 @@
 namespace Rcalicdan\FiberAsync\PostgreSQL;
 
 use PgSql\Connection;
-use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
-use Rcalicdan\FiberAsync\Promise\Promise as AsyncPromise;
+use Rcalicdan\FiberAsync\Promise\Promise;
 use SplQueue;
 
 class AsyncPostgreSQLPool
@@ -34,7 +33,7 @@ class AsyncPostgreSQLPool
             $connection = $this->pool->dequeue();
             $this->lastConnection = $connection;
 
-            return Promise::resolve($connection);
+            return Promise::resolved($connection);
         }
 
         if ($this->activeConnections < $this->maxSize) {
@@ -44,15 +43,15 @@ class AsyncPostgreSQLPool
                 $connection = $this->createConnection();
                 $this->lastConnection = $connection;
 
-                return Promise::resolve($connection);
+                return Promise::resolved($connection);
             } catch (\Throwable $e) {
                 $this->activeConnections--;
 
-                return Promise::reject($e);
+                return Promise::rejected($e);
             }
         }
 
-        $promise = new AsyncPromise;
+        $promise = new Promise;
         $this->waiters->enqueue($promise);
 
         return $promise;
