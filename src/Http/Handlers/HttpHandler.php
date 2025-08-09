@@ -12,6 +12,7 @@ use Rcalicdan\FiberAsync\Http\RetryConfig;
 use Rcalicdan\FiberAsync\Http\Stream;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use RuntimeException;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
@@ -98,7 +99,7 @@ class HttpHandler
      * @param  string  $url  The URL to stream from.
      * @param  array  $options  Advanced cURL or request options.
      * @param  callable|null  $onChunk  An optional callback to execute for each received data chunk. `function(string $chunk): void`
-     * @return PromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse object.
+     * @return CancellablePromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse object.
      */
     public function stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
     {
@@ -113,9 +114,9 @@ class HttpHandler
      * @param  string  $url  The URL of the file to download.
      * @param  string  $destination  The local path to save the file.
      * @param  array  $options  Advanced cURL or request options.
-     * @return PromiseInterface<array{file: string, status: int|null, headers: array}> A promise that resolves with download metadata.
+     * @return CancellablePromiseInterface<array{file: string, status: int|null, headers: array<mixed>}> A promise that resolves with download metadata.
      */
-    public function download(string $url, string $destination, array $options = []): PromiseInterface
+    public function download(string $url, string $destination, array $options = []): CancellablePromiseInterface
     {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
 
@@ -168,7 +169,7 @@ class HttpHandler
      */
     public static function generateCacheKey(string $url): string
     {
-        return 'http_'.sha1($url);
+        return 'http_' . sha1($url);
     }
 
     /**
@@ -207,10 +208,10 @@ class HttpHandler
 
             if ($cachedItem && $cacheConfig->respectServerHeaders) {
                 if (isset($cachedItem['headers']['etag'])) {
-                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-None-Match: '.$cachedItem['headers']['etag'][0];
+                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-None-Match: ' . $cachedItem['headers']['etag'][0];
                 }
                 if (isset($cachedItem['headers']['last-modified'])) {
-                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-Modified-Since: '.$cachedItem['headers']['last-modified'][0];
+                    $curlOptions[CURLOPT_HTTPHEADER][] = 'If-Modified-Since: ' . $cachedItem['headers']['last-modified'][0];
                 }
             }
 

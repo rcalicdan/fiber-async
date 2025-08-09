@@ -5,6 +5,8 @@ namespace Rcalicdan\FiberAsync\Http;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Interfaces\RequestInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\UriInterface;
+use Rcalicdan\FiberAsync\Promise\CancellablePromise;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -407,9 +409,9 @@ class Request extends Message implements RequestInterface
      *
      * @param  string  $url  The URL to stream from.
      * @param  callable|null  $onChunk  An optional callback for each data chunk. `function(string $chunk): void`
-     * @return PromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse.
+     * @return CancellablePromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse.
      */
-    public function stream(string $url, ?callable $onChunk = null): PromiseInterface
+    public function stream(string $url, ?callable $onChunk = null): CancellablePromiseInterface
     {
         $options = $this->buildCurlOptions('GET', $url);
 
@@ -421,9 +423,9 @@ class Request extends Message implements RequestInterface
      *
      * @param  string  $url  The URL of the file to download.
      * @param  string  $destination  The local file path to save to.
-     * @return PromiseInterface<array{file: string, status: int|null, headers: array<string, array<string>>}> A promise that resolves with download metadata.
+     * @return CancellablePromiseInterface<array{file: string, status: int|null, headers: array<mixed>}> A promise that resolves with download metadata.
      */
-    public function download(string $url, string $destination): PromiseInterface
+    public function download(string $url, string $destination): CancellablePromiseInterface
     {
         $options = $this->buildCurlOptions('GET', $url);
 
@@ -436,9 +438,9 @@ class Request extends Message implements RequestInterface
      * @param  string  $url  The target URL.
      * @param  mixed|null  $body  The request body.
      * @param  callable|null  $onChunk  An optional callback for each data chunk. `function(string $chunk): void`
-     * @return PromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse.
+     * @return CancellablePromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse.
      */
-    public function streamPost(string $url, $body = null, ?callable $onChunk = null): PromiseInterface
+    public function streamPost(string $url, $body = null, ?callable $onChunk = null): CancellablePromiseInterface
     {
         if ($body !== null) {
             $this->body($this->convertToString($body));
