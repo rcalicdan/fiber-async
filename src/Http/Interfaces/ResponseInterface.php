@@ -55,7 +55,7 @@ interface ResponseInterface extends MessageInterface
     /**
      * Get the response body decoded from JSON.
      *
-     * @return array The decoded JSON data. Returns an empty array on failure.
+     * @return array<string|int, mixed> The decoded JSON data. Returns an empty array on failure.
      */
     public function json(): array;
 
