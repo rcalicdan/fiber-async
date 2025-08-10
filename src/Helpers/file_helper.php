@@ -20,7 +20,7 @@ if (! function_exists('read_file_async')) {
      *   - 'flags' => int: File operation flags for advanced control
      * @return CancellablePromiseInterface<string> Promise that resolves with the complete file contents as a string
      * @throws \RuntimeException If the file cannot be read, doesn't exist, or access is denied
-     *
+     * - example
      * ```php
      * // Read a text file
      * $content = await(read_file_async('/path/to/file.txt'));
@@ -116,7 +116,7 @@ if (! function_exists('file_exists_async')) {
      * @param string $path The filesystem path to check for existence
      * @return CancellablePromiseInterface<bool> Promise that resolves with true if the path exists, false otherwise
      * @throws \RuntimeException If the existence check fails due to system errors or invalid path format
-     *
+     * - example
      * ```php
      * // Check if a file exists
      * $exists = await(file_exists_async('/path/to/file.txt'));
@@ -156,7 +156,7 @@ if (! function_exists('file_stats_async')) {
      *   - 'is_writable' => bool: Whether the current process can write to the file
      *   - 'is_executable' => bool: Whether the file is executable
      * @throws \RuntimeException If the file doesn't exist or statistics cannot be retrieved
-     *
+     * - example
      * ```php
      * // Get file statistics
      * $stats = await(file_stats_async('/path/to/file.txt'));
@@ -183,7 +183,7 @@ if (! function_exists('delete_file_async')) {
      * @param string $path The path to the file to permanently delete
      * @return CancellablePromiseInterface<bool> Promise that resolves with true on successful deletion
      * @throws \RuntimeException If the file doesn't exist, is a directory, is in use, or cannot be deleted
-     *
+     * - example
      * ```php
      * // Delete a temporary file
      * $deleted = await(delete_file_async('/tmp/temporary_file.txt'));
@@ -218,7 +218,7 @@ if (! function_exists('copy_file_async')) {
      * @param string $destination The path where the copy should be created
      * @return CancellablePromiseInterface<bool> Promise that resolves with true on successful file copy
      * @throws \RuntimeException If the source file doesn't exist, destination cannot be written, or copy operation fails
-     *
+     * - example
      * ```php
      * // Copy a configuration file
      * $copied = await(copy_file_async('/etc/config.conf', '/backup/config.conf'));
@@ -249,7 +249,7 @@ if (! function_exists('rename_file_async')) {
      * @param string $newPath The new path where the file should be moved to
      * @return CancellablePromiseInterface<bool> Promise that resolves with true on successful rename/move operation
      * @throws \RuntimeException If the source file doesn't exist, destination directory doesn't exist, or insufficient permissions
-     *
+     * - example
      * ```php
      * // Rename a file in the same directory
      * $renamed = await(rename_file_async('/path/old_name.txt', '/path/new_name.txt'));
@@ -292,7 +292,7 @@ if (! function_exists('watch_file_async')) {
      *   - 'exclude_patterns' => array<string>: File patterns to exclude (glob patterns)
      * @return string Unique watcher identifier that can be used to stop monitoring with unwatch_file_async()
      * @throws \RuntimeException If the path doesn't exist or file watcher cannot be established
-     *
+     * - example
      * ```php
      * // Watch a single file for changes
      * $watcherId = watch_file_async('/path/to/config.txt', function($path, $event, $data) {
@@ -330,7 +330,7 @@ if (! function_exists('unwatch_file_async')) {
      *
      * @param string $watcherId The unique watcher identifier returned by watch_file_async()
      * @return bool True if the watcher was successfully removed, false if the watcher ID was not found
-     *
+     * - example
      * ```php
      * // Start watching a file
      * $watcherId = watch_file_async('/path/to/file.txt', function($path, $event) {
@@ -465,7 +465,7 @@ if (! function_exists('get_file_size_async')) {
      * file statistics.
      *
      * @param string $path The file path to get size for
-     * @return CancellablePromiseInterface<int> Promise that resolves with file size in bytes, or 0 if size cannot be determined
+     * @return CancellablePromiseInterface<array<string, mixed>> Promise that resolves with detailed file information:
      * @throws \RuntimeException If the file doesn't exist or statistics cannot be retrieved
      *
      * ```php
@@ -482,46 +482,9 @@ if (! function_exists('get_file_size_async')) {
      * }
      * ```
      */
-    function get_file_size_async(string $path): CancellablePromiseInterface
+    function get_file_stats_async(string $path): CancellablePromiseInterface
     {
-        return AsyncFile::stats($path)->then(function ($stats) {
-            return $stats['size'] ?? 0;
-        });
-    }
-}
-
-if (! function_exists('get_file_mtime_async')) {
-    /**
-     * Asynchronously get the modification time of a file.
-     *
-     * This function retrieves the last modification time without blocking the event loop.
-     * This is a convenience function that extracts mtime from file stats, providing
-     * a simpler interface when only the modification time is needed rather than
-     * complete file statistics.
-     *
-     * @param string $path The file path to get modification time for
-     * @return CancellablePromiseInterface<int> Promise that resolves with Unix timestamp of last modification, or 0 if time cannot be determined
-     * @throws \RuntimeException If the file doesn't exist or statistics cannot be retrieved
-     *
-     * ```php
-     * // Check when file was last modified
-     * $mtime = await(get_file_mtime_async('/path/to/file.txt'));
-     * $lastModified = date('Y-m-d H:i:s', $mtime);
-     * echo "File last modified: $lastModified";
-     * 
-     * // Compare modification times
-     * $file1_mtime = await(get_file_mtime_async('/path/to/file1.txt'));
-     * $file2_mtime = await(get_file_mtime_async('/path/to/file2.txt'));
-     * if ($file1_mtime > $file2_mtime) {
-     *     echo "file1.txt is newer than file2.txt";
-     * }
-     * ```
-     */
-    function get_file_mtime_async(string $path): CancellablePromiseInterface
-    {
-        return AsyncFile::stats($path)->then(function ($stats) {
-            return $stats['mtime'] ?? 0;
-        });
+        return AsyncFile::stats($path);
     }
 }
 

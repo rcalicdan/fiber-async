@@ -7,27 +7,14 @@ use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 
 /**
- * Asynchronous file handler for non-blocking file operations.
- *
- * This class provides a comprehensive set of asynchronous file operations including
- * reading, writing, copying, renaming, and directory management. All operations
- * return cancellable promises that integrate with the fiber-based event loop system.
- *
- * Features:
- * - Non-blocking file I/O operations
- * - Streaming support for large files
- * - Cancellable operations with resource cleanup
- * - File system watching capabilities
- * - Promise-based API with proper error handling
- *
- * @package Rcalicdan\FiberAsync\File\Handlers
+ * Async file operations (non-blocking, cancellable).
  */
 final readonly class FileHandler
 {
     private EventLoop $eventLoop;
 
     /**
-     * Initialize the file handler with event loop integration.
+     * Constructor — attach to the global event loop.
      */
     public function __construct()
     {
@@ -35,19 +22,12 @@ final readonly class FileHandler
     }
 
     /**
-     * Asynchronously read the entire contents of a file.
+     * Read a file into memory asynchronously.
      *
-     * This method reads a file completely into memory and returns the contents
-     * as a string. For large files, consider using readFileStream() instead.
-     *
-     * @param string $path The path to the file to read
-     * @param array<string, mixed> $options Optional configuration options:
-     *   - 'encoding' => string: Character encoding (default: 'utf-8')
-     *   - 'offset' => int: Starting position to read from
-     *   - 'length' => int: Maximum bytes to read
-     *   - 'flags' => int: File operation flags
-     * @return CancellablePromiseInterface<string> Promise that resolves with file contents
-     * @throws \RuntimeException If the file cannot be read or doesn't exist
+     * @param string $path
+     * @param array<string,mixed> $options
+     * @return CancellablePromiseInterface<string>
+     * @throws \RuntimeException
      */
     public function readFile(string $path, array $options = []): CancellablePromiseInterface
     {
@@ -80,19 +60,12 @@ final readonly class FileHandler
     }
 
     /**
-     * Asynchronously open a file for streaming read operations.
+     * Open a file for streaming reads asynchronously.
      *
-     * This method returns a file resource/stream handle that can be used for
-     * reading large files without loading the entire content into memory.
-     * The stream should be properly closed when done.
-     *
-     * @param string $path The path to the file to open for streaming
-     * @param array<string, mixed> $options Optional configuration options:
-     *   - 'mode' => string: File open mode (default: 'r')
-     *   - 'buffer_size' => int: Read buffer size in bytes
-     *   - 'context' => resource: Stream context resource
-     * @return CancellablePromiseInterface<resource> Promise that resolves with file stream resource
-     * @throws \RuntimeException If the file cannot be opened for reading
+     * @param string $path
+     * @param array<string,mixed> $options
+     * @return CancellablePromiseInterface<resource>
+     * @throws \RuntimeException
      */
     public function readFileStream(string $path, array $options = []): CancellablePromiseInterface
     {
@@ -126,20 +99,13 @@ final readonly class FileHandler
     }
 
     /**
-     * Asynchronously write data to a file using streaming mode.
+     * Write data to a file using streaming mode (delegates to writeFile).
      *
-     * This method writes data to a file using streaming operations, which is
-     * more memory efficient for large amounts of data. The file will be created
-     * if it doesn't exist, or truncated if it does exist.
-     *
-     * @param string $path The path where the file should be written
-     * @param string $data The data to write to the file
-     * @param array<string, mixed> $options Optional configuration options:
-     *   - 'mode' => string: File write mode (default: 'w')
-     *   - 'buffer_size' => int: Write buffer size in bytes
-     *   - 'create_dirs' => bool: Create parent directories if they don't exist
-     * @return CancellablePromiseInterface<int> Promise that resolves with number of bytes written
-     * @throws \RuntimeException If the file cannot be written or directory cannot be created
+     * @param string $path
+     * @param string $data
+     * @param array<string,mixed> $options
+     * @return CancellablePromiseInterface<int>
+     * @throws \RuntimeException
      */
     public function writeFileStream(string $path, string $data, array $options = []): CancellablePromiseInterface
     {
@@ -149,16 +115,12 @@ final readonly class FileHandler
     }
 
     /**
-     * Asynchronously copy a file using streaming operations.
+     * Copy a file using streaming operations asynchronously.
      *
-     * This method copies a file from source to destination using streaming
-     * operations to handle large files efficiently without loading the entire
-     * file into memory. Parent directories will be created if necessary.
-     *
-     * @param string $source The path to the source file to copy
-     * @param string $destination The path where the file should be copied to
-     * @return CancellablePromiseInterface<bool> Promise that resolves with true on successful copy
-     * @throws \RuntimeException If the source file doesn't exist or copy operation fails
+     * @param string $source
+     * @param string $destination
+     * @return CancellablePromiseInterface<bool>
+     * @throws \RuntimeException
      */
     public function copyFileStream(string $source, string $destination): CancellablePromiseInterface
     {
@@ -180,7 +142,7 @@ final readonly class FileHandler
                     $promise->resolve($result);
                 }
             },
-            ['use_streaming' => true] // Force streaming for copy operations
+            ['use_streaming' => true]
         );
 
         $promise->setCancelHandler(function () use ($operationId) {
@@ -191,21 +153,13 @@ final readonly class FileHandler
     }
 
     /**
-     * Asynchronously write data to a file.
+     * Write data to a file asynchronously.
      *
-     * This method writes the provided data to a file, creating the file if it
-     * doesn't exist or overwriting it if it does. For large amounts of data,
-     * consider using writeFileStream() for better memory efficiency.
-     *
-     * @param string $path The path where the file should be written
-     * @param string $data The data to write to the file
-     * @param array<string, mixed> $options Optional configuration options:
-     *   - 'mode' => string: File write mode (default: 'w')
-     *   - 'permissions' => int: File permissions in octal format
-     *   - 'create_dirs' => bool: Create parent directories if they don't exist
-     *   - 'lock' => bool: Use file locking during write operation
-     * @return CancellablePromiseInterface<int> Promise that resolves with number of bytes written
-     * @throws \RuntimeException If the file cannot be written or directory cannot be created
+     * @param string $path
+     * @param string $data
+     * @param array<string,mixed> $options
+     * @return CancellablePromiseInterface<int>
+     * @throws \RuntimeException
      */
     public function writeFile(string $path, string $data, array $options = []): CancellablePromiseInterface
     {
@@ -230,7 +184,6 @@ final readonly class FileHandler
             $options
         );
 
-        // Set up cancellation handler
         $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
@@ -239,16 +192,12 @@ final readonly class FileHandler
     }
 
     /**
-     * Asynchronously append data to the end of a file.
+     * Append data to a file asynchronously.
      *
-     * This method appends the provided data to an existing file or creates
-     * a new file if it doesn't exist. The data is added to the end of the
-     * file without modifying existing content.
-     *
-     * @param string $path The path to the file to append data to
-     * @param string $data The data to append to the file
-     * @return CancellablePromiseInterface<int> Promise that resolves with number of bytes written
-     * @throws \RuntimeException If the file cannot be opened for writing or append operation fails
+     * @param string $path
+     * @param string $data
+     * @return CancellablePromiseInterface<int>
+     * @throws \RuntimeException
      */
     public function appendFile(string $path, string $data): CancellablePromiseInterface
     {
@@ -272,7 +221,6 @@ final readonly class FileHandler
             }
         );
 
-        // Set up cancellation handler
         $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
@@ -281,15 +229,11 @@ final readonly class FileHandler
     }
 
     /**
-     * Asynchronously delete a file from the filesystem.
+     * Delete a file asynchronously.
      *
-     * This method removes the specified file from the filesystem. The operation
-     * will fail if the file doesn't exist, is a directory, or cannot be deleted
-     * due to permission issues.
-     *
-     * @param string $path The path to the file to delete
-     * @return CancellablePromiseInterface<bool> Promise that resolves with true on successful deletion
-     * @throws \RuntimeException If the file cannot be deleted or doesn't exist
+     * @param string $path
+     * @return CancellablePromiseInterface<bool>
+     * @throws \RuntimeException
      */
     public function deleteFile(string $path): CancellablePromiseInterface
     {
@@ -313,7 +257,6 @@ final readonly class FileHandler
             }
         );
 
-        // Set up cancellation handler
         $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
@@ -322,15 +265,11 @@ final readonly class FileHandler
     }
 
     /**
-     * Asynchronously check if a file or directory exists.
+     * Check existence of a path asynchronously.
      *
-     * This method checks whether the specified path exists in the filesystem,
-     * regardless of whether it's a file or directory. It performs a non-blocking
-     * existence check without accessing the file contents.
-     *
-     * @param string $path The path to check for existence
-     * @return CancellablePromiseInterface<bool> Promise that resolves with true if path exists, false otherwise
-     * @throws \RuntimeException If the existence check fails due to system errors
+     * @param string $path
+     * @return CancellablePromiseInterface<bool>
+     * @throws \RuntimeException
      */
     public function fileExists(string $path): CancellablePromiseInterface
     {
@@ -354,7 +293,6 @@ final readonly class FileHandler
             }
         );
 
-        // Set up cancellation handler
         $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
@@ -363,28 +301,15 @@ final readonly class FileHandler
     }
 
     /**
-     * Asynchronously retrieve file statistics and metadata.
+     * Get file stats asynchronously.
      *
-     * This method returns detailed information about a file or directory including
-     * size, permissions, timestamps, and file type. The information is equivalent
-     * to what you would get from PHP's stat() function.
-     *
-     * @param string $path The path to get statistics for
-     * @return CancellablePromiseInterface<array<string, mixed>> Promise that resolves with file stats array containing:
-     *   - 'size' => int: File size in bytes
-     *   - 'mtime' => int: Last modification time as Unix timestamp
-     *   - 'atime' => int: Last access time as Unix timestamp
-     *   - 'ctime' => int: Creation time as Unix timestamp
-     *   - 'mode' => int: File permissions and type
-     *   - 'is_file' => bool: Whether path is a regular file
-     *   - 'is_dir' => bool: Whether path is a directory
-     *   - 'is_readable' => bool: Whether file is readable
-     *   - 'is_writable' => bool: Whether file is writable
-     * @throws \RuntimeException If the file doesn't exist or stats cannot be retrieved
+     * @param string $path
+     * @return CancellablePromiseInterface<array<string,mixed>>
+     * @throws \RuntimeException
      */
     public function getFileStats(string $path): CancellablePromiseInterface
     {
-        /** @var CancellablePromise<array<string, mixed>> $promise */
+        /** @var CancellablePromise<array<string,mixed>> $promise */
         $promise = new CancellablePromise;
 
         $operationId = $this->eventLoop->addFileOperation(
@@ -404,7 +329,6 @@ final readonly class FileHandler
             }
         );
 
-        // Set up cancellation handler
         $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
@@ -413,17 +337,12 @@ final readonly class FileHandler
     }
 
     /**
-     * Asynchronously create a directory.
+     * Create a directory asynchronously.
      *
-     * This method creates a directory at the specified path. It can optionally
-     * create parent directories recursively and set specific permissions.
-     *
-     * @param string $path The path where the directory should be created
-     * @param array<string, mixed> $options Optional configuration options:
-     *   - 'mode' => int: Directory permissions in octal format (default: 0755)
-     *   - 'recursive' => bool: Create parent directories if they don't exist (default: false)
-     * @return CancellablePromiseInterface<bool> Promise that resolves with true on successful creation
-     * @throws \RuntimeException If the directory cannot be created or already exists
+     * @param string $path
+     * @param array<string,mixed> $options
+     * @return CancellablePromiseInterface<bool>
+     * @throws \RuntimeException
      */
     public function createDirectory(string $path, array $options = []): CancellablePromiseInterface
     {
@@ -448,7 +367,6 @@ final readonly class FileHandler
             $options
         );
 
-        // Set up cancellation handler
         $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
@@ -457,15 +375,11 @@ final readonly class FileHandler
     }
 
     /**
-     * Asynchronously remove an empty directory.
+     * Remove an empty directory asynchronously.
      *
-     * This method removes a directory from the filesystem. The directory must
-     * be empty before it can be removed. For recursive directory removal,
-     * you'll need to delete all contents first.
-     *
-     * @param string $path The path to the directory to remove
-     * @return CancellablePromiseInterface<bool> Promise that resolves with true on successful removal
-     * @throws \RuntimeException If the directory doesn't exist, is not empty, or cannot be removed
+     * @param string $path
+     * @return CancellablePromiseInterface<bool>
+     * @throws \RuntimeException
      */
     public function removeDirectory(string $path): CancellablePromiseInterface
     {
@@ -489,7 +403,6 @@ final readonly class FileHandler
             }
         );
 
-        // Set up cancellation handler
         $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
@@ -498,16 +411,12 @@ final readonly class FileHandler
     }
 
     /**
-     * Asynchronously copy a file from source to destination.
+     * Copy a file asynchronously.
      *
-     * This method copies a file from the source path to the destination path.
-     * If the destination file already exists, it will be overwritten. Parent
-     * directories of the destination will be created if necessary.
-     *
-     * @param string $source The path to the source file to copy
-     * @param string $destination The path where the file should be copied to
-     * @return CancellablePromiseInterface<bool> Promise that resolves with true on successful copy
-     * @throws \RuntimeException If the source file doesn't exist or copy operation fails
+     * @param string $source
+     * @param string $destination
+     * @return CancellablePromiseInterface<bool>
+     * @throws \RuntimeException
      */
     public function copyFile(string $source, string $destination): CancellablePromiseInterface
     {
@@ -531,7 +440,6 @@ final readonly class FileHandler
             }
         );
 
-        // Set up cancellation handler
         $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
@@ -540,16 +448,12 @@ final readonly class FileHandler
     }
 
     /**
-     * Asynchronously rename or move a file.
+     * Rename or move a file asynchronously.
      *
-     * This method renames a file from the old path to the new path. This operation
-     * can be used for both renaming files and moving them to different directories.
-     * If the new path already exists, it will be overwritten.
-     *
-     * @param string $oldPath The current path of the file to rename/move
-     * @param string $newPath The new path where the file should be renamed/moved to
-     * @return CancellablePromiseInterface<bool> Promise that resolves with true on successful rename
-     * @throws \RuntimeException If the source file doesn't exist or rename operation fails
+     * @param string $oldPath
+     * @param string $newPath
+     * @return CancellablePromiseInterface<bool>
+     * @throws \RuntimeException
      */
     public function renameFile(string $oldPath, string $newPath): CancellablePromiseInterface
     {
@@ -573,7 +477,6 @@ final readonly class FileHandler
             }
         );
 
-        // Set up cancellation handler
         $promise->setCancelHandler(function () use ($operationId) {
             $this->eventLoop->cancelFileOperation($operationId);
         });
@@ -582,24 +485,13 @@ final readonly class FileHandler
     }
 
     /**
-     * Start watching a file for changes.
+     * Watch a file or directory for changes.
      *
-     * This method sets up a file system watcher that will monitor the specified
-     * file for changes and call the provided callback when changes occur. The
-     * watcher operates asynchronously and doesn't block execution.
-     *
-     * @param string $path The path to the file to watch for changes
-     * @param callable $callback Callback function to execute when file changes:
-     *   function(string $path, string $event, mixed $data): void
-     *   - $path: The path that changed
-     *   - $event: Type of change ('modified', 'deleted', 'created', etc.)
-     *   - $data: Additional event data
-     * @param array<string, mixed> $options Optional configuration options:
-     *   - 'recursive' => bool: Watch subdirectories recursively (default: false)
-     *   - 'events' => array: Specific events to watch for ['modify', 'delete', 'create']
-     *   - 'debounce' => float: Minimum time between event notifications in seconds
-     * @return string Unique watcher ID that can be used to stop watching
-     * @throws \RuntimeException If the file watcher cannot be established
+     * @param string $path
+     * @param callable $callback
+     * @param array<string,mixed> $options
+     * @return string Watcher ID
+     * @throws \RuntimeException
      */
     public function watchFile(string $path, callable $callback, array $options = []): string
     {
@@ -607,14 +499,10 @@ final readonly class FileHandler
     }
 
     /**
-     * Stop watching a file for changes.
+     * Stop watching by watcher ID.
      *
-     * This method removes a previously established file watcher using its
-     * unique watcher ID. Once removed, the associated callback will no longer
-     * be called for file changes.
-     *
-     * @param string $watcherId The unique watcher ID returned by watchFile()
-     * @return bool True if the watcher was successfully removed, false if watcher ID not found
+     * @param string $watcherId
+     * @return bool
      */
     public function unwatchFile(string $watcherId): bool
     {
