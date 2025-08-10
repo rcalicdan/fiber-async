@@ -14,7 +14,7 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
  * and stopping the event loop automatically, making it ideal for simple
  * async workflows and batch processing.
  */
-final class AsyncLoop
+final class Task
 {
     /**
      * @var AsyncOperations|null Cached instance of core async operations handler

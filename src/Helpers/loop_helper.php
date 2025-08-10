@@ -1,6 +1,6 @@
 <?php
 
-use Rcalicdan\FiberAsync\Api\AsyncLoop;
+use Rcalicdan\FiberAsync\Api\Task;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 if (! function_exists('run')) {
@@ -16,7 +16,7 @@ if (! function_exists('run')) {
      */
     function run(callable|PromiseInterface $asyncOperation): mixed
     {
-        return AsyncLoop::run($asyncOperation);
+        return Task::run($asyncOperation);
     }
 }
 
@@ -33,7 +33,7 @@ if (! function_exists('run_all')) {
      */
     function run_all(array $asyncOperations): array
     {
-        return AsyncLoop::runAll($asyncOperations);
+        return Task::runAll($asyncOperations);
     }
 }
 
@@ -51,7 +51,7 @@ if (! function_exists('run_concurrent')) {
      */
     function run_concurrent(array $asyncOperations, int $concurrency = 10): array
     {
-        return AsyncLoop::runConcurrent($asyncOperations, $concurrency);
+        return Task::runConcurrent($asyncOperations, $concurrency);
     }
 }
 
@@ -71,7 +71,7 @@ if (! function_exists('run_with_timeout')) {
      */
     function run_with_timeout(callable|PromiseInterface|array $asyncOperation, float $timeout): mixed
     {
-        return AsyncLoop::runWithTimeout($asyncOperation, $timeout);
+        return Task::runWithTimeout($asyncOperation, $timeout);
     }
 }
 
@@ -86,6 +86,6 @@ if (! function_exists('run_batch')) {
      */
     function run_batch(array $asyncOperations, int $batch, ?int $concurrency = null): array
     {
-        return AsyncLoop::runBatch($asyncOperations, $batch, $concurrency);
+        return Task::runBatch($asyncOperations, $batch, $concurrency);
     }
 }
