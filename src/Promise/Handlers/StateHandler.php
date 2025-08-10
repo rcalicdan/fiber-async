@@ -71,9 +71,6 @@ final class StateHandler
      */
     public function getValue(): mixed
     {
-        if (!$this->resolved) {
-            throw new \LogicException('Cannot get value of non-resolved promise');
-        }
         return $this->value;
     }
 
@@ -84,9 +81,6 @@ final class StateHandler
      */
     public function getReason(): mixed
     {
-        if (!$this->rejected) {
-            throw new \LogicException('Cannot get reason of non-rejected promise');
-        }
         return $this->reason;
     }
 
@@ -137,6 +131,17 @@ final class StateHandler
         }
 
         $this->rejected = true;
-        $this->reason = $reason;
+
+        if ($reason instanceof Throwable) {
+            $this->reason = $reason;
+
+            return;
+        }
+
+        $message = is_scalar($reason) || (is_object($reason) && method_exists($reason, '__toString'))
+            ? (string) $reason
+            : 'Rejected with non-stringable value: '.print_r($reason, true);
+
+        $this->reason = new Exception($message);
     }
 }

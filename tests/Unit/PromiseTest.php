@@ -209,7 +209,7 @@ describe('Promise', function () {
             $promise->resolve(5);
 
             expect($finalPromise->isResolved())->toBeTrue()
-                ->and($finalPromise->getValue())->toBe(11); // (5 * 2) + 1
+                ->and($finalPromise->getValue())->toBe(11); 
         });
 
         it('handles promise returning from onFulfilled', function () {

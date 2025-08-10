@@ -1,93 +1,54 @@
 <?php
+require __DIR__ . '/vendor/autoload.php';
 
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Promise\Promise;
-
-require_once __DIR__ . '/vendor/autoload.php';
 
 $start = microtime(true);
 
-$results = run(function () {
-    $flags = [
-        'v1' => false,
-        'v2' => false,
-        'v3' => false,
-    ];
-    $resolvedCount = 0;
+function ms()
+{
+    global $start;
+    return round((microtime(true) - $start) * 1000);
+}
 
-    // This promise will fail after 0.5s
-    $errorPromise = async(function () {
-        await(delay(0.5));
-        throw new ErrorException('boom');
-    });
+function logmsg($msg)
+{
+    echo "$msg @ " . ms() . "ms\n";
+}
 
-    // These promises set flags when their `then` handlers run
-    $p1 = delay(1)->then(function () use (&$flags, &$resolvedCount) {
-        $flags['v1'] = true;
-        $resolvedCount++;
-        echo "v1 then executed\n";
-        return "value1\n";
-    });
+run(function () {
+    $aggregateStart = ms();
 
-    $p2 = delay(2)->then(function () use (&$flags, &$resolvedCount) {
-        $flags['v2'] = true;
-        $resolvedCount++;
-        echo "v2 then executed\n";
-        return "value2\n";
-    });
+    // Create promises with different completion times
+    $pFast = delay(1) // 1 second
+        ->then(function() {
+            logmsg('Fast promise completed');
+            return 'fast-result';
+        });
 
-    $p3 = delay(3)->then(function () use (&$flags, &$resolvedCount) {
-        $flags['v3'] = true;
-        $resolvedCount++;
-        echo "v3 then executed\n";
-        return "value3\n";
-    });
+    $pMedium = delay(2) // 2 seconds
+        ->then(function() {
+            logmsg('Medium promise completed');
+            return 'medium-result';
+        });
 
-    $aggregate = Promise::all([
-        $errorPromise(),
-        $p1,
-        $p2,
-        $p3,
-    ]);
+    $pSlow = delay(3) // 3 seconds
+        ->then(function() {
+            logmsg('Slow promise completed');
+            return 'slow-result';
+        });
 
-    // Await the aggregate so `run()` returns the resolved value (not a Promise)
-    try {
-        $value = await($aggregate);
-        // If all resolved (unexpected here), return the resolved values
-        return [
-            'status' => 'resolved',
-            'value' => $value,
-            'flags' => $flags,
-            'resolvedCount' => $resolvedCount,
-        ];
-    } catch (\Throwable $e) {
-        // Promise::all rejected — return the reason and current flags
-        return [
-            'status' => 'rejected',
-            'error' => $e->getMessage(),
-            'flags' => $flags,
-            'resolvedCount' => $resolvedCount,
-        ];
-    }
+    // Test timeout - should complete before 2.5 seconds
+    Promise::timeout([$pFast, $pMedium, $pSlow], 2.5)
+        ->then(function ($results) use ($aggregateStart) {
+            logmsg('Promise::timeout resolved: ' . json_encode($results) .
+                ' (duration: ' . (ms() - $aggregateStart) . 'ms)');
+        })
+        ->catch(function (Throwable $e) use ($aggregateStart) {
+            logmsg("Promise::timeout rejected: {$e->getMessage()} " .
+                '(duration: ' . (ms() - $aggregateStart) . 'ms)');
+        });
 });
 
-$elapsed = microtime(true) - $start;
-
-echo "Elapsed: {$elapsed}\n";
-var_dump($results);
-
-// Basic checks
-$fastReject = ($elapsed < 1.0); // error after 0.5s expected -> should finish well before 1s
-$rejected = ($results['status'] === 'rejected');
-$noThenExecuted = ($results['flags'] === ['v1' => false, 'v2' => false, 'v3' => false]);
-
-echo "Fast reject (<1s): " . ($fastReject ? "YES" : "NO") . PHP_EOL;
-echo "Promise::all rejected: " . ($rejected ? "YES" : "NO") . PHP_EOL;
-echo "Other then() handlers ran? " . ($noThenExecuted ? "NO" : "YES") . PHP_EOL;
-
-if ($fastReject && $rejected && $noThenExecuted) {
-    echo "TEST PASS: Promise::all rejected quickly and other then() handlers did not run.\n";
-} elseif ($fastReject && $rejected) {
-    echo "PARTIAL PASS: Promise::all rejected quickly, but other producers' then() ran (no active cancellation).\n";
-} else {
-    echo "TEST FAIL: Promise::all didn't reject as expected or timing differs.\n";
-}
+logmsg("Timeout test completed");
