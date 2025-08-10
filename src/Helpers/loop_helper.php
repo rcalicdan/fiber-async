@@ -11,8 +11,8 @@ if (! function_exists('run')) {
      * executes the operation, waits for completion, and stops the loop.
      * This is the primary method for running async operations with minimal setup.
      *
-     * @param  callable|PromiseInterface  $asyncOperation  The operation to execute
-     * @return mixed The result of the async operation
+     * @param callable(): mixed|PromiseInterface<mixed> $asyncOperation The operation to execute.
+     * @return mixed The result of the async operation.
      */
     function run(callable|PromiseInterface $asyncOperation): mixed
     {
@@ -28,8 +28,8 @@ if (! function_exists('run_all')) {
      * returns their results in the same order as the input array. The event
      * loop is managed automatically throughout the entire process.
      *
-     * @param  array  $asyncOperations  Array of callables or promises to execute
-     * @return array Results of all operations in the same order as input
+     * @param array<int|string, callable(): mixed|PromiseInterface<mixed>> $asyncOperations Array of callables or promises to execute.
+     * @return array<mixed> Results of all operations in the same order as input.
      */
     function run_all(array $asyncOperations): array
     {
@@ -45,9 +45,9 @@ if (! function_exists('run_concurrent')) {
      * maintaining high throughput. The event loop lifecycle is handled automatically,
      * making this ideal for processing large numbers of operations safely.
      *
-     * @param  array  $asyncOperations  Array of operations to execute
-     * @param  int  $concurrency  Maximum number of concurrent operations
-     * @return array Results of all operations
+     * @param array<int|string, callable(): mixed|PromiseInterface<mixed>> $asyncOperations Array of operations to execute.
+     * @param int $concurrency Maximum number of concurrent operations.
+     * @return array<mixed> Results of all operations.
      */
     function run_concurrent(array $asyncOperations, int $concurrency = 10): array
     {
@@ -57,17 +57,17 @@ if (! function_exists('run_concurrent')) {
 
 if (! function_exists('run_with_timeout')) {
     /**
-     * Run an async operations with a timeout constraint and automatic loop management.
+     * Run an async operation with a timeout constraint and automatic loop management.
      *
      * Executes the operation with a maximum time limit. If the operation doesn't
      * complete within the timeout, it's cancelled and a timeout exception is thrown.
      * The event loop is managed automatically throughout.
      *
-     * @param  callable|PromiseInterface|array  $asyncOperation  The operation to execute
-     * @param  float  $timeout  Maximum time to wait in seconds
-     * @return mixed The result of the operation if completed within timeout
+     * @param callable(): mixed|PromiseInterface<mixed>|array<int|string, callable(): mixed|PromiseInterface<mixed>> $asyncOperation The operation to execute.
+     * @param float $timeout Maximum time to wait in seconds.
+     * @return mixed The result of the operation if completed within timeout.
      *
-     * @throws Exception If the operation times out
+     * @throws Exception If the operation times out.
      */
     function run_with_timeout(callable|PromiseInterface|array $asyncOperation, float $timeout): mixed
     {
@@ -79,10 +79,10 @@ if (! function_exists('run_batch')) {
     /**
      * Run async operations in batches with concurrency control and automatic loop management.
      *
-     * @param  array  $asyncOperations  Array of operations to execute
-     * @param  int  $batch  Number of operations to run in each batch
-     * @param  int|null  $concurrency  Maximum number of concurrent operations per batch
-     * @return array Results of all operations
+     * @param array<int|string, callable(): mixed|PromiseInterface<mixed>> $asyncOperations Array of operations to execute.
+     * @param int $batch Number of operations to run in each batch.
+     * @param int|null $concurrency Maximum number of concurrent operations per batch.
+     * @return array<mixed> Results of all operations.
      */
     function run_batch(array $asyncOperations, int $batch, ?int $concurrency = null): array
     {

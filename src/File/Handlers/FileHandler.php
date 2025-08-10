@@ -4,18 +4,34 @@ namespace Rcalicdan\FiberAsync\File\Handlers;
 
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
-use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 
+/**
+ * Handles asynchronous file operations using the event loop.
+ */
 final readonly class FileHandler
 {
+    /**
+     * @var EventLoop The event loop instance for managing async operations.
+     */
     private EventLoop $eventLoop;
 
+    /**
+     * Create a new FileHandler instance.
+     */
     public function __construct()
     {
         $this->eventLoop = EventLoop::getInstance();
     }
 
-    public function readFile(string $path, array $options = []): PromiseInterface
+    /**
+     * Read a file asynchronously.
+     *
+     * @param string $path The file path to read.
+     * @param array<string, mixed> $options Additional options for the read operation.
+     * @return CancellablePromiseInterface<string> A promise that resolves with the file contents.
+     */
+    public function readFile(string $path, array $options = []): CancellablePromiseInterface
     {
         $promise = new CancellablePromise;
 
@@ -28,7 +44,7 @@ final readonly class FileHandler
                     return;
                 }
 
-                if ($error) {
+                if ($error !== null) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
                     $promise->resolve($result);
@@ -44,21 +60,43 @@ final readonly class FileHandler
         return $promise;
     }
 
-    public function readFileStream(string $path, array $options = []): PromiseInterface
+    /**
+     * Read a file using streaming asynchronously.
+     *
+     * @param string $path The file path to read.
+     * @param array<string, mixed> $options Additional options for the read operation.
+     * @return CancellablePromiseInterface<resource> A promise that resolves with the file stream resource.
+     */
+    public function readFileStream(string $path, array $options = []): CancellablePromiseInterface
     {
         $options['use_streaming'] = true;
 
         return $this->readFile($path, $options);
     }
 
-    public function writeFileStream(string $path, string $data, array $options = []): PromiseInterface
+    /**
+     * Write to a file using streaming asynchronously.
+     *
+     * @param string $path The file path to write to.
+     * @param string $data The data to write.
+     * @param array<string, mixed> $options Additional options for the write operation.
+     * @return CancellablePromiseInterface<int> A promise that resolves with the number of bytes written.
+     */
+    public function writeFileStream(string $path, string $data, array $options = []): CancellablePromiseInterface
     {
         $options['use_streaming'] = true;
 
         return $this->writeFile($path, $data, $options);
     }
 
-    public function copyFileStream(string $source, string $destination): PromiseInterface
+    /**
+     * Copy a file using streaming asynchronously.
+     *
+     * @param string $source The source file path.
+     * @param string $destination The destination file path.
+     * @return CancellablePromiseInterface<bool> A promise that resolves with true when the copy is complete.
+     */
+    public function copyFileStream(string $source, string $destination): CancellablePromiseInterface
     {
         $promise = new CancellablePromise;
 
@@ -71,7 +109,7 @@ final readonly class FileHandler
                     return;
                 }
 
-                if ($error) {
+                if ($error !== null) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
                     $promise->resolve($result);
@@ -87,7 +125,15 @@ final readonly class FileHandler
         return $promise;
     }
 
-    public function writeFile(string $path, string $data, array $options = []): PromiseInterface
+    /**
+     * Write to a file asynchronously.
+     *
+     * @param string $path The file path to write to.
+     * @param string $data The data to write.
+     * @param array<string, mixed> $options Additional options for the write operation.
+     * @return CancellablePromiseInterface<int> A promise that resolves with the number of bytes written.
+     */
+    public function writeFile(string $path, string $data, array $options = []): CancellablePromiseInterface
     {
         $promise = new CancellablePromise;
 
@@ -100,7 +146,7 @@ final readonly class FileHandler
                     return;
                 }
 
-                if ($error) {
+                if ($error !== null) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
                     $promise->resolve($result);
@@ -117,7 +163,14 @@ final readonly class FileHandler
         return $promise;
     }
 
-    public function appendFile(string $path, string $data): PromiseInterface
+    /**
+     * Append data to a file asynchronously.
+     *
+     * @param string $path The file path to append to.
+     * @param string $data The data to append.
+     * @return CancellablePromiseInterface<int> A promise that resolves with the number of bytes written.
+     */
+    public function appendFile(string $path, string $data): CancellablePromiseInterface
     {
         $promise = new CancellablePromise;
 
@@ -130,7 +183,7 @@ final readonly class FileHandler
                     return;
                 }
 
-                if ($error) {
+                if ($error !== null) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
                     $promise->resolve($result);
@@ -146,7 +199,13 @@ final readonly class FileHandler
         return $promise;
     }
 
-    public function deleteFile(string $path): PromiseInterface
+    /**
+     * Delete a file asynchronously.
+     *
+     * @param string $path The file path to delete.
+     * @return CancellablePromiseInterface<bool> A promise that resolves with true when the deletion is complete.
+     */
+    public function deleteFile(string $path): CancellablePromiseInterface
     {
         $promise = new CancellablePromise;
 
@@ -159,7 +218,7 @@ final readonly class FileHandler
                     return;
                 }
 
-                if ($error) {
+                if ($error !== null) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
                     $promise->resolve($result);
@@ -175,7 +234,13 @@ final readonly class FileHandler
         return $promise;
     }
 
-    public function fileExists(string $path): PromiseInterface
+    /**
+     * Check if a file exists asynchronously.
+     *
+     * @param string $path The file path to check.
+     * @return CancellablePromiseInterface<bool> A promise that resolves with true if the file exists, false otherwise.
+     */
+    public function fileExists(string $path): CancellablePromiseInterface
     {
         $promise = new CancellablePromise;
 
@@ -188,7 +253,7 @@ final readonly class FileHandler
                     return;
                 }
 
-                if ($error) {
+                if ($error !== null) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
                     $promise->resolve($result);
@@ -204,7 +269,13 @@ final readonly class FileHandler
         return $promise;
     }
 
-    public function getFileStats(string $path): PromiseInterface
+    /**
+     * Get file statistics asynchronously.
+     *
+     * @param string $path The file path to get stats for.
+     * @return CancellablePromiseInterface<array<string, mixed>> A promise that resolves with the file statistics array.
+     */
+    public function getFileStats(string $path): CancellablePromiseInterface
     {
         $promise = new CancellablePromise;
 
@@ -217,7 +288,7 @@ final readonly class FileHandler
                     return;
                 }
 
-                if ($error) {
+                if ($error !== null) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
                     $promise->resolve($result);
@@ -233,7 +304,14 @@ final readonly class FileHandler
         return $promise;
     }
 
-    public function createDirectory(string $path, array $options = []): PromiseInterface
+    /**
+     * Create a directory asynchronously.
+     *
+     * @param string $path The directory path to create.
+     * @param array<string, mixed> $options Additional options for the directory creation.
+     * @return CancellablePromiseInterface<bool> A promise that resolves with true when the directory is created.
+     */
+    public function createDirectory(string $path, array $options = []): CancellablePromiseInterface
     {
         $promise = new CancellablePromise;
 
@@ -246,7 +324,7 @@ final readonly class FileHandler
                     return;
                 }
 
-                if ($error) {
+                if ($error !== null) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
                     $promise->resolve($result);
@@ -263,7 +341,13 @@ final readonly class FileHandler
         return $promise;
     }
 
-    public function removeDirectory(string $path): PromiseInterface
+    /**
+     * Remove a directory asynchronously.
+     *
+     * @param string $path The directory path to remove.
+     * @return CancellablePromiseInterface<bool> A promise that resolves with true when the directory is removed.
+     */
+    public function removeDirectory(string $path): CancellablePromiseInterface
     {
         $promise = new CancellablePromise;
 
@@ -276,7 +360,7 @@ final readonly class FileHandler
                     return;
                 }
 
-                if ($error) {
+                if ($error !== null) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
                     $promise->resolve($result);
@@ -292,7 +376,14 @@ final readonly class FileHandler
         return $promise;
     }
 
-    public function copyFile(string $source, string $destination): PromiseInterface
+    /**
+     * Copy a file asynchronously.
+     *
+     * @param string $source The source file path.
+     * @param string $destination The destination file path.
+     * @return CancellablePromiseInterface<bool> A promise that resolves with true when the copy is complete.
+     */
+    public function copyFile(string $source, string $destination): CancellablePromiseInterface
     {
         $promise = new CancellablePromise;
 
@@ -305,7 +396,7 @@ final readonly class FileHandler
                     return;
                 }
 
-                if ($error) {
+                if ($error !== null) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
                     $promise->resolve($result);
@@ -321,7 +412,14 @@ final readonly class FileHandler
         return $promise;
     }
 
-    public function renameFile(string $oldPath, string $newPath): PromiseInterface
+    /**
+     * Rename/move a file asynchronously.
+     *
+     * @param string $oldPath The current file path.
+     * @param string $newPath The new file path.
+     * @return CancellablePromiseInterface<bool> A promise that resolves with true when the rename is complete.
+     */
+    public function renameFile(string $oldPath, string $newPath): CancellablePromiseInterface
     {
         $promise = new CancellablePromise;
 
@@ -334,7 +432,7 @@ final readonly class FileHandler
                     return;
                 }
 
-                if ($error) {
+                if ($error !== null) {
                     $promise->reject(new \RuntimeException($error));
                 } else {
                     $promise->resolve($result);
@@ -350,11 +448,25 @@ final readonly class FileHandler
         return $promise;
     }
 
+    /**
+     * Watch a file for changes.
+     *
+     * @param string $path The file path to watch.
+     * @param callable $callback The callback to execute when the file changes.
+     * @param array<string, mixed> $options Additional options for the file watcher.
+     * @return string The watcher ID for later removal.
+     */
     public function watchFile(string $path, callable $callback, array $options = []): string
     {
         return $this->eventLoop->addFileWatcher($path, $callback, $options);
     }
 
+    /**
+     * Stop watching a file.
+     *
+     * @param string $watcherId The watcher ID to remove.
+     * @return bool True if the watcher was successfully removed, false otherwise.
+     */
     public function unwatchFile(string $watcherId): bool
     {
         return $this->eventLoop->removeFileWatcher($watcherId);
