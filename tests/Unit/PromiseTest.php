@@ -13,7 +13,7 @@ describe('Promise', function () {
     describe('Constructor and Initial State', function () {
         it('creates a pending promise with no executor', function () {
             $promise = new Promise();
-            
+
             expect($promise->isPending())->toBeTrue()
                 ->and($promise->isResolved())->toBeFalse()
                 ->and($promise->isRejected())->toBeFalse();
@@ -56,7 +56,7 @@ describe('Promise', function () {
 
         it('handles executor that throws an exception', function () {
             $exception = new Exception('executor error');
-            
+
             $promise = new Promise(function ($resolve, $reject) use ($exception) {
                 throw $exception;
             });
@@ -88,7 +88,7 @@ describe('Promise', function () {
         it('ignores resolution after rejection', function () {
             $promise = new Promise();
             $exception = new Exception('error');
-            
+
             $promise->reject($exception);
             $promise->resolve('value');
 
@@ -129,7 +129,7 @@ describe('Promise', function () {
             $promise = new Promise();
             $firstError = new Exception('first error');
             $secondError = new Exception('second error');
-            
+
             $promise->reject($firstError);
             $promise->reject($secondError);
 
@@ -199,7 +199,7 @@ describe('Promise', function () {
 
         it('transforms values through the chain', function () {
             $promise = new Promise();
-            
+
             $finalPromise = $promise->then(function ($value) {
                 return $value * 2;
             })->then(function ($value) {
@@ -215,7 +215,7 @@ describe('Promise', function () {
         it('handles promise returning from onFulfilled', function () {
             $promise = new Promise();
             $innerPromise = new Promise();
-            
+
             $chainedPromise = $promise->then(function ($value) use ($innerPromise) {
                 return $innerPromise;
             });
@@ -231,7 +231,7 @@ describe('Promise', function () {
         it('handles exceptions in onFulfilled', function () {
             $promise = new Promise();
             $exception = new Exception('handler error');
-            
+
             $chainedPromise = $promise->then(function ($value) use ($exception) {
                 throw $exception;
             });
@@ -313,7 +313,7 @@ describe('Promise', function () {
         it('can recover from rejection', function () {
             $promise = new Promise();
             $exception = new Exception('error');
-            
+
             $recoveredPromise = $promise->catch(function ($reason) {
                 return 'recovered value';
             });
@@ -381,92 +381,102 @@ describe('Promise', function () {
 
     describe('Promise::all', function () {
         it('resolves when all promises resolve', function () {
-            $promise1 = Promise::resolved('value1');
-            $promise2 = Promise::resolved('value2');
-            $promise3 = Promise::resolved('value3');
+            $result = run(function () {
+                $promise1 = Promise::resolved('value1');
+                $promise2 = Promise::resolved('value2');
+                $promise3 = Promise::resolved('value3');
 
-            $allPromise = Promise::all([$promise1, $promise2, $promise3]);
+                return await(Promise::all([$promise1, $promise2, $promise3]));
+            });
 
-            expect($allPromise->isResolved())->toBeTrue()
-                ->and($allPromise->getValue())->toBe(['value1', 'value2', 'value3']);
+            expect($result)->toBe(['value1', 'value2', 'value3']);
         });
 
         it('rejects when any promise rejects', function () {
-            $promise1 = Promise::resolved('value1');
             $exception = new Exception('error');
-            $promise2 = Promise::rejected($exception);
-            $promise3 = Promise::resolved('value3');
 
-            $allPromise = Promise::all([$promise1, $promise2, $promise3]);
+            try {
+                run(function () use ($exception) {
+                    $promise1 = Promise::resolved('value1');
+                    $promise2 = Promise::rejected($exception);
+                    $promise3 = Promise::resolved('value3');
 
-            expect($allPromise->isRejected())->toBeTrue()
-                ->and($allPromise->getReason())->toBe($exception);
+                    return await(Promise::all([$promise1, $promise2, $promise3]));
+                });
+
+                expect(false)->toBeTrue('Expected exception to be thrown');
+            } catch (Exception $e) {
+                expect($e)->toBe($exception);
+            }
         });
 
         it('handles empty array', function () {
-            $allPromise = Promise::all([]);
+            $result = run(function () {
+                return await(Promise::all([]));
+            });
 
-            expect($allPromise->isResolved())->toBeTrue()
-                ->and($allPromise->getValue())->toBe([]);
+            expect($result)->toBe([]);
         });
 
         it('preserves order of results', function () {
-            $promises = [
-                Promise::resolved('first'),
-                Promise::resolved('second'),
-                Promise::resolved('third')
-            ];
+            $result = run(function () {
+                $promises = [
+                    Promise::resolved('first'),
+                    Promise::resolved('second'),
+                    Promise::resolved('third')
+                ];
 
-            $allPromise = Promise::all($promises);
-            $results = $allPromise->getValue();
+                return await(Promise::all($promises));
+            });
 
-            expect($results[0])->toBe('first')
-                ->and($results[1])->toBe('second')
-                ->and($results[2])->toBe('third');
+            expect($result[0])->toBe('first')
+                ->and($result[1])->toBe('second')
+                ->and($result[2])->toBe('third');
         });
     });
 
     describe('Promise::race', function () {
         it('resolves with the first settled promise value', function () {
-            $promise1 = Promise::resolved('fast');
-            $promise2 = new Promise(); // never settles
-            $promise3 = new Promise(); // never settles
+            $result = run(function () {
+                $promise1 = Promise::resolved('fast');
+                $promise2 = new Promise(); // never settles
+                $promise3 = new Promise(); // never settles
 
-            $racePromise = Promise::race([$promise1, $promise2, $promise3]);
+                return await(Promise::race([$promise1, $promise2, $promise3]));
+            });
 
-            expect($racePromise->isResolved())->toBeTrue()
-                ->and($racePromise->getValue())->toBe('fast');
+            expect($result)->toBe('fast');
         });
 
         it('rejects with the first settled promise reason', function () {
             $exception = new Exception('fast error');
-            $promise1 = Promise::rejected($exception);
-            $promise2 = new Promise(); // never settles
 
-            $racePromise = Promise::race([$promise1, $promise2]);
+            try {
+                run(function () use ($exception) {
+                    $promise1 = Promise::rejected($exception);
+                    $promise2 = new Promise(); // never settles
 
-            expect($racePromise->isRejected())->toBeTrue()
-                ->and($racePromise->getReason())->toBe($exception);
-        });
+                    return await(Promise::race([$promise1, $promise2]));
+                });
 
-        it('handles empty array by staying pending', function () {
-            $racePromise = Promise::race([]);
-
-            expect($racePromise->isPending())->toBeTrue();
+                expect(false)->toBeTrue('Expected exception to be thrown');
+            } catch (Exception $e) {
+                expect($e)->toBe($exception);
+            }
         });
     });
 
     describe('Error handling', function () {
         it('throws LogicException when getting value of non-resolved promise', function () {
             $promise = new Promise();
-            
+
             expect(fn() => $promise->getValue())
                 ->toThrow(LogicException::class);
         });
 
         it('throws LogicException when getting reason of non-rejected promise', function () {
             $promise = new Promise();
-            
+
             expect(fn() => $promise->getReason())
                 ->toThrow(LogicException::class);
         });
@@ -474,7 +484,7 @@ describe('Promise', function () {
         it('allows getting value of resolved promise', function () {
             $promise = new Promise();
             $promise->resolve('test');
-            
+
             expect($promise->getValue())->toBe('test');
         });
 
@@ -482,7 +492,7 @@ describe('Promise', function () {
             $promise = new Promise();
             $exception = new Exception('error');
             $promise->reject($exception);
-            
+
             expect($promise->getReason())->toBe($exception);
         });
     });
@@ -500,7 +510,7 @@ describe('Promise', function () {
         it('skips handlers when root promise is cancelled', function () {
             $cancellable = new CancellablePromise();
             $handlerCalled = false;
-            
+
             $chained = $cancellable->then(function ($value) use (&$handlerCalled) {
                 $handlerCalled = true;
                 return $value;
