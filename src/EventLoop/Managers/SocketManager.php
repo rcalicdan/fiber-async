@@ -14,8 +14,8 @@ class SocketManager
      * Stores watchers for sockets ready to be read from.
      *
      * @var array<int, list<array{resource, callable}>>
-     *   Key: Socket resource ID (int)
-     *   Value: List of watcher arrays, each containing [socket_resource, callback]
+     *                                                  Key: Socket resource ID (int)
+     *                                                  Value: List of watcher arrays, each containing [socket_resource, callback]
      */
     private array $readWatchers = [];
 
@@ -23,17 +23,16 @@ class SocketManager
      * Stores watchers for sockets ready to be written to.
      *
      * @var array<int, list<array{resource, callable}>>
-     *   Key: Socket resource ID (int)
-     *   Value: List of watcher arrays, each containing [socket_resource, callback]
+     *                                                  Key: Socket resource ID (int)
+     *                                                  Value: List of watcher arrays, each containing [socket_resource, callback]
      */
     private array $writeWatchers = [];
 
     /**
      * Adds a callback to be executed when the socket is readable.
      *
-     * @param resource $socket The stream socket resource.
-     * @param callable $callback The callback function.
-     * @return void
+     * @param  resource  $socket  The stream socket resource.
+     * @param  callable  $callback  The callback function.
      */
     public function addReadWatcher(mixed $socket, callable $callback): void // Using 'mixed' for resource as PHPStan level 6+ might require it if 'resource' is not fully supported in all contexts, otherwise 'resource' is preferred if your PHPStan config allows it.
     {
@@ -44,9 +43,8 @@ class SocketManager
     /**
      * Adds a callback to be executed when the socket is writable.
      *
-     * @param resource $socket The stream socket resource.
-     * @param callable $callback The callback function.
-     * @return void
+     * @param  resource  $socket  The stream socket resource.
+     * @param  callable  $callback  The callback function.
      */
     public function addWriteWatcher(mixed $socket, callable $callback): void
     {
@@ -57,8 +55,7 @@ class SocketManager
     /**
      * Removes all read watchers for a specific socket.
      *
-     * @param resource $socket The stream socket resource.
-     * @return void
+     * @param  resource  $socket  The stream socket resource.
      */
     public function removeReadWatcher(mixed $socket): void
     {
@@ -69,8 +66,7 @@ class SocketManager
     /**
      * Removes all write watchers for a specific socket.
      *
-     * @param resource $socket The stream socket resource.
-     * @return void
+     * @param  resource  $socket  The stream socket resource.
      */
     public function removeWriteWatcher(mixed $socket): void
     {
@@ -94,15 +90,15 @@ class SocketManager
         /** @var resource[] $writableStreams List of sockets to check for writability */
         $writableStreams = [];
         /** @var resource[]|null $exceptionStreams List of sockets to check for exceptions (not used) */
-        $exceptionStreams = null; 
+        $exceptionStreams = null;
 
         // Populate arrays for stream_select
         foreach ($this->readWatchers as $socketId => $watcherGroup) {
-            $readableStreams[] = $watcherGroup[0][0]; 
+            $readableStreams[] = $watcherGroup[0][0];
         }
 
         foreach ($this->writeWatchers as $socketId => $watcherGroup) {
-            $writableStreams[] = $watcherGroup[0][0]; 
+            $writableStreams[] = $watcherGroup[0][0];
         }
 
         $numChanged = @\stream_select($readableStreams, $writableStreams, $exceptionStreams, 0, 1000);
@@ -124,24 +120,23 @@ class SocketManager
     /**
      * Invokes callbacks for sockets that are ready.
      *
-     * @param resource[] $readySockets List of stream resources that are ready (from stream_select).
-     * @param array<int, list<array{resource, callable}>> &$watchers Reference to the watchers array (read or write).
-     * @return void
+     * @param  resource[]  $readySockets  List of stream resources that are ready (from stream_select).
+     * @param  array<int, list<array{resource, callable}>>  &$watchers  Reference to the watchers array (read or write).
      */
     private function processReadySockets(array $readySockets, array &$watchers): void
     {
         foreach ($readySockets as $socket) {
-            $socketId = (int) $socket; 
+            $socketId = (int) $socket;
 
             if (isset($watchers[$socketId])) {
-                foreach ($watchers[$socketId] as [$_, $callback]) { 
+                foreach ($watchers[$socketId] as [$_, $callback]) {
                     try {
                         $callback();
                     } catch (\Throwable $e) {
-                        \error_log("Error in socket callback for ID {$socketId}: " . $e->getMessage());
+                        \error_log("Error in socket callback for ID {$socketId}: ".$e->getMessage());
                     }
                 }
-        
+
                 unset($watchers[$socketId]);
             }
         }
@@ -160,12 +155,11 @@ class SocketManager
     /**
      * Removes all watchers (read and write) for a specific socket.
      *
-     * @param resource $socket The stream socket resource.
-     * @return void
+     * @param  resource  $socket  The stream socket resource.
      */
     public function clearAllWatchersForSocket(mixed $socket): void
     {
-        $socketId = (int) $socket; 
+        $socketId = (int) $socket;
         unset($this->readWatchers[$socketId], $this->writeWatchers[$socketId]);
     }
 }

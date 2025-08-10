@@ -2,8 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\PDO;
 
-use PDO;
 use InvalidArgumentException;
+use PDO;
 
 /**
  * Creates standardized database configuration arrays for various drivers.
@@ -17,7 +17,7 @@ class DatabaseConfigFactory
     /**
      * Creates a standardized MySQL database configuration array.
      *
-     * @param array<string, mixed> $config Optional configuration values to override the defaults.
+     * @param  array<string, mixed>  $config  Optional configuration values to override the defaults.
      * @return array<string, mixed> The complete MySQL configuration array.
      */
     public static function mysql(array $config = []): array
@@ -42,7 +42,7 @@ class DatabaseConfigFactory
     /**
      * Creates a standardized PostgreSQL database configuration array.
      *
-     * @param array<string, mixed> $config Optional configuration values to override the defaults.
+     * @param  array<string, mixed>  $config  Optional configuration values to override the defaults.
      * @return array<string, mixed> The complete PostgreSQL configuration array.
      */
     public static function postgresql(array $config = []): array
@@ -66,7 +66,7 @@ class DatabaseConfigFactory
     /**
      * Creates a standardized SQLite database configuration array.
      *
-     * @param string $database Path to the SQLite database file or ':memory:' for an in-memory database.
+     * @param  string  $database  Path to the SQLite database file or ':memory:' for an in-memory database.
      * @return array<string, mixed> The complete SQLite configuration array.
      */
     public static function sqlite(string $database = ':memory:'): array
@@ -86,7 +86,7 @@ class DatabaseConfigFactory
     /**
      * Creates a standardized Microsoft SQL Server database configuration array.
      *
-     * @param array<string, mixed> $config Optional configuration values to override the defaults.
+     * @param  array<string, mixed>  $config  Optional configuration values to override the defaults.
      * @return array<string, mixed> The complete SQL Server configuration array.
      */
     public static function sqlserver(array $config = []): array
@@ -108,7 +108,7 @@ class DatabaseConfigFactory
     /**
      * Creates a standardized Oracle database configuration array.
      *
-     * @param array<string, mixed> $config Optional configuration values to override the defaults.
+     * @param  array<string, mixed>  $config  Optional configuration values to override the defaults.
      * @return array<string, mixed> The complete Oracle configuration array.
      */
     public static function oracle(array $config = []): array
@@ -131,7 +131,7 @@ class DatabaseConfigFactory
     /**
      * Creates a standardized IBM DB2 database configuration array.
      *
-     * @param array<string, mixed> $config Optional configuration values to override the defaults.
+     * @param  array<string, mixed>  $config  Optional configuration values to override the defaults.
      * @return array<string, mixed> The complete IBM DB2 configuration array.
      */
     public static function ibm(array $config = []): array
@@ -153,7 +153,7 @@ class DatabaseConfigFactory
     /**
      * Creates a standardized Firebird database configuration array.
      *
-     * @param array<string, mixed> $config Optional configuration values to override the defaults.
+     * @param  array<string, mixed>  $config  Optional configuration values to override the defaults.
      * @return array<string, mixed> The complete Firebird configuration array.
      */
     public static function firebird(array $config = []): array
@@ -178,7 +178,7 @@ class DatabaseConfigFactory
      *
      * Note: This typically relies on a pre-configured DSN (Data Source Name) on the server.
      *
-     * @param array<string, mixed> $config Optional configuration values to override the defaults.
+     * @param  array<string, mixed>  $config  Optional configuration values to override the defaults.
      * @return array<string, mixed> The complete ODBC configuration array.
      */
     public static function odbc(array $config = []): array
@@ -198,7 +198,7 @@ class DatabaseConfigFactory
     /**
      * Creates a standardized Informix database configuration array.
      *
-     * @param array<string, mixed> $config Optional configuration values to override the defaults.
+     * @param  array<string, mixed>  $config  Optional configuration values to override the defaults.
      * @return array<string, mixed> The complete Informix configuration array.
      */
     public static function informix(array $config = []): array
@@ -226,8 +226,9 @@ class DatabaseConfigFactory
      *
      * @example `mysql://user:pass@localhost:3306/mydb?pdo_attr_errmode=exception`
      *
-     * @param string $url The database connection URL.
+     * @param  string  $url  The database connection URL.
      * @return array<string, mixed> The parsed database configuration array.
+     *
      * @throws InvalidArgumentException If the URL is malformed.
      */
     public static function fromUrl(string $url): array
@@ -249,11 +250,11 @@ class DatabaseConfigFactory
         if (isset($parsed['query']) && is_string($parsed['query'])) {
             parse_str($parsed['query'], $queryParams);
             foreach ($queryParams as $key => $value) {
-                if (!is_string($key)) {
+                if (! is_string($key)) {
                     continue;
                 }
                 if (str_starts_with($key, 'pdo_')) {
-                    $constantName = PDO::class . '::' . strtoupper(substr($key, 4));
+                    $constantName = PDO::class.'::'.strtoupper(substr($key, 4));
                     if (defined($constantName)) {
                         $options[constant($constantName)] = $value;
                     }

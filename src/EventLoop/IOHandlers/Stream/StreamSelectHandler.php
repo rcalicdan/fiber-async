@@ -9,7 +9,7 @@ final readonly class StreamSelectHandler
     /**
      * Polls an array of stream watchers and returns the streams that are ready.
      *
-     * @param array<string, StreamWatcher> $watchers An associative array of StreamWatcher objects.
+     * @param  array<string, StreamWatcher>  $watchers  An associative array of StreamWatcher objects.
      * @return array<resource> An array of stream resources that are ready for I/O.
      */
     public function selectStreams(array $watchers): array
@@ -42,10 +42,9 @@ final readonly class StreamSelectHandler
     /**
      * Processes streams that are ready for I/O operations using an efficient lookup.
      *
-     * @param array<resource> $readyStreams An array of stream resources that are ready.
-     * @param array<string, StreamWatcher> &$watchers The master map of active watchers, keyed by string ID.
-     *                                                  This array is modified by reference.
-     * @return void
+     * @param  array<resource>  $readyStreams  An array of stream resources that are ready.
+     * @param  array<string, StreamWatcher>  &$watchers  The master map of active watchers, keyed by string ID.
+     *                                                   This array is modified by reference.
      */
     public function processReadyStreams(array $readyStreams, array &$watchers): void
     {

@@ -304,7 +304,6 @@ describe('HTTP Client Caching - Edge Cases', function () {
                 // Expected to fail
             }
 
-        
             $cachedEntries = array_filter($trackableCache->operations, fn ($op) => $op[0] === 'set');
             expect($trackableCache->getOperationsCount('get'))->toBeGreaterThan(0);
         });

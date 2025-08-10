@@ -27,16 +27,15 @@ class FiberManager
 
     public function __construct()
     {
-        $this->startHandler = new FiberStartHandler();
-        $this->resumeHandler = new FiberResumeHandler();
-        $this->stateHandler = new FiberStateHandler();
+        $this->startHandler = new FiberStartHandler;
+        $this->resumeHandler = new FiberResumeHandler;
+        $this->stateHandler = new FiberStateHandler;
     }
 
     /**
      * Adds a new, unstarted fiber to the processing queue.
      *
-     * @param Fiber<null, mixed, mixed, mixed> $fiber The fiber to add.
-     * @return void
+     * @param  Fiber<null, mixed, mixed, mixed>  $fiber  The fiber to add.
      */
     public function addFiber(Fiber $fiber): void
     {

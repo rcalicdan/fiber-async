@@ -107,7 +107,7 @@ class AsyncQueryBuilder
     /**
      * Create a new AsyncQueryBuilder instance.
      *
-     * @param string $table The table name to query.
+     * @param  string  $table  The table name to query.
      */
     public function __construct(string $table = '')
     {
@@ -119,7 +119,7 @@ class AsyncQueryBuilder
     /**
      * Set the table for the query.
      *
-     * @param string $table The table name.
+     * @param  string  $table  The table name.
      * @return self Returns the query builder instance for method chaining.
      */
     public function table(string $table): self
@@ -132,7 +132,7 @@ class AsyncQueryBuilder
     /**
      * Set the columns to select.
      *
-     * @param string|array<string> $columns The columns to select.
+     * @param  string|array<string>  $columns  The columns to select.
      * @return self Returns the query builder instance for method chaining.
      */
     public function select(string|array $columns = '*'): self
@@ -148,9 +148,9 @@ class AsyncQueryBuilder
     /**
      * Add a join clause to the query.
      *
-     * @param string $table The table to join.
-     * @param string $condition The join condition.
-     * @param string $type The type of join (INNER, LEFT, RIGHT).
+     * @param  string  $table  The table to join.
+     * @param  string  $condition  The join condition.
+     * @param  string  $type  The type of join (INNER, LEFT, RIGHT).
      * @return self Returns the query builder instance for method chaining.
      */
     public function join(string $table, string $condition, string $type = 'INNER'): self
@@ -167,8 +167,8 @@ class AsyncQueryBuilder
     /**
      * Add a left join clause to the query.
      *
-     * @param string $table The table to join.
-     * @param string $condition The join condition.
+     * @param  string  $table  The table to join.
+     * @param  string  $condition  The join condition.
      * @return self Returns the query builder instance for method chaining.
      */
     public function leftJoin(string $table, string $condition): self
@@ -179,8 +179,8 @@ class AsyncQueryBuilder
     /**
      * Add a right join clause to the query.
      *
-     * @param string $table The table to join.
-     * @param string $condition The join condition.
+     * @param  string  $table  The table to join.
+     * @param  string  $condition  The join condition.
      * @return self Returns the query builder instance for method chaining.
      */
     public function rightJoin(string $table, string $condition): self
@@ -191,9 +191,9 @@ class AsyncQueryBuilder
     /**
      * Add a WHERE clause to the query.
      *
-     * @param string $column The column name.
-     * @param mixed $operator The comparison operator or value if only 2 arguments.
-     * @param mixed $value The value to compare against.
+     * @param  string  $column  The column name.
+     * @param  mixed  $operator  The comparison operator or value if only 2 arguments.
+     * @param  mixed  $value  The value to compare against.
      * @return self Returns the query builder instance for method chaining.
      */
     public function where(string $column, mixed $operator = null, mixed $value = null): self
@@ -204,7 +204,7 @@ class AsyncQueryBuilder
         }
 
         // Ensure operator is a string, default to '=' if null
-        if (!is_string($operator)) {
+        if (! is_string($operator)) {
             $operator = '=';
         }
 
@@ -218,9 +218,9 @@ class AsyncQueryBuilder
     /**
      * Add an OR WHERE clause to the query.
      *
-     * @param string $column The column name.
-     * @param mixed $operator The comparison operator or value if only 2 arguments.
-     * @param mixed $value The value to compare against.
+     * @param  string  $column  The column name.
+     * @param  mixed  $operator  The comparison operator or value if only 2 arguments.
+     * @param  mixed  $value  The value to compare against.
      * @return self Returns the query builder instance for method chaining.
      */
     public function orWhere(string $column, mixed $operator = null, mixed $value = null): self
@@ -231,7 +231,7 @@ class AsyncQueryBuilder
         }
 
         // Ensure operator is a string, default to '=' if null
-        if (!is_string($operator)) {
+        if (! is_string($operator)) {
             $operator = '=';
         }
 
@@ -245,8 +245,8 @@ class AsyncQueryBuilder
     /**
      * Add a WHERE IN clause to the query.
      *
-     * @param string $column The column name.
-     * @param array<mixed> $values The values to check against.
+     * @param  string  $column  The column name.
+     * @param  array<mixed>  $values  The values to check against.
      * @return self Returns the query builder instance for method chaining.
      */
     public function whereIn(string $column, array $values): self
@@ -264,8 +264,8 @@ class AsyncQueryBuilder
     /**
      * Add a WHERE NOT IN clause to the query.
      *
-     * @param string $column The column name.
-     * @param array<mixed> $values The values to check against.
+     * @param  string  $column  The column name.
+     * @param  array<mixed>  $values  The values to check against.
      * @return self Returns the query builder instance for method chaining.
      */
     public function whereNotIn(string $column, array $values): self
@@ -283,9 +283,10 @@ class AsyncQueryBuilder
     /**
      * Add a WHERE BETWEEN clause to the query.
      *
-     * @param string $column The column name.
-     * @param array<mixed> $values An array with exactly 2 values for the range.
+     * @param  string  $column  The column name.
+     * @param  array<mixed>  $values  An array with exactly 2 values for the range.
      * @return self Returns the query builder instance for method chaining.
+     *
      * @throws \InvalidArgumentException When values array doesn't contain exactly 2 elements.
      */
     public function whereBetween(string $column, array $values): self
@@ -305,7 +306,7 @@ class AsyncQueryBuilder
     /**
      * Add a WHERE NULL clause to the query.
      *
-     * @param string $column The column name.
+     * @param  string  $column  The column name.
      * @return self Returns the query builder instance for method chaining.
      */
     public function whereNull(string $column): self
@@ -318,7 +319,7 @@ class AsyncQueryBuilder
     /**
      * Add a WHERE NOT NULL clause to the query.
      *
-     * @param string $column The column name.
+     * @param  string  $column  The column name.
      * @return self Returns the query builder instance for method chaining.
      */
     public function whereNotNull(string $column): self
@@ -331,9 +332,9 @@ class AsyncQueryBuilder
     /**
      * Add a LIKE clause to the query.
      *
-     * @param string $column The column name.
-     * @param string $value The value to search for.
-     * @param string $side The side to add wildcards ('before', 'after', 'both').
+     * @param  string  $column  The column name.
+     * @param  string  $value  The value to search for.
+     * @param  string  $side  The side to add wildcards ('before', 'after', 'both').
      * @return self Returns the query builder instance for method chaining.
      */
     public function like(string $column, string $value, string $side = 'both'): self
@@ -356,7 +357,7 @@ class AsyncQueryBuilder
     /**
      * Add a GROUP BY clause to the query.
      *
-     * @param string|array<string> $columns The columns to group by.
+     * @param  string|array<string>  $columns  The columns to group by.
      * @return self Returns the query builder instance for method chaining.
      */
     public function groupBy(string|array $columns): self
@@ -372,9 +373,9 @@ class AsyncQueryBuilder
     /**
      * Add a HAVING clause to the query.
      *
-     * @param string $column The column name.
-     * @param mixed $operator The comparison operator or value if only 2 arguments.
-     * @param mixed $value The value to compare against.
+     * @param  string  $column  The column name.
+     * @param  mixed  $operator  The comparison operator or value if only 2 arguments.
+     * @param  mixed  $value  The value to compare against.
      * @return self Returns the query builder instance for method chaining.
      */
     public function having(string $column, mixed $operator = null, mixed $value = null): self
@@ -385,7 +386,7 @@ class AsyncQueryBuilder
         }
 
         // Ensure operator is a string, default to '=' if null
-        if (!is_string($operator)) {
+        if (! is_string($operator)) {
             $operator = '=';
         }
 
@@ -399,8 +400,8 @@ class AsyncQueryBuilder
     /**
      * Add an ORDER BY clause to the query.
      *
-     * @param string $column The column name.
-     * @param string $direction The sort direction (ASC or DESC).
+     * @param  string  $column  The column name.
+     * @param  string  $direction  The sort direction (ASC or DESC).
      * @return self Returns the query builder instance for method chaining.
      */
     public function orderBy(string $column, string $direction = 'ASC'): self
@@ -413,8 +414,8 @@ class AsyncQueryBuilder
     /**
      * Set the LIMIT and optionally OFFSET for the query.
      *
-     * @param int $limit The maximum number of records to return.
-     * @param int|null $offset The number of records to skip.
+     * @param  int  $limit  The maximum number of records to return.
+     * @param  int|null  $offset  The number of records to skip.
      * @return self Returns the query builder instance for method chaining.
      */
     public function limit(int $limit, ?int $offset = null): self
@@ -430,7 +431,7 @@ class AsyncQueryBuilder
     /**
      * Set the OFFSET for the query.
      *
-     * @param int $offset The number of records to skip.
+     * @param  int  $offset  The number of records to skip.
      * @return self Returns the query builder instance for method chaining.
      */
     public function offset(int $offset): self
@@ -470,8 +471,8 @@ class AsyncQueryBuilder
     /**
      * Find a record by ID.
      *
-     * @param mixed $id The ID value to search for.
-     * @param string $column The column name to search in.
+     * @param  mixed  $id  The ID value to search for.
+     * @param  string  $column  The column name to search in.
      * @return PromiseInterface<mixed> A promise that resolves to the found record or null.
      */
     public function find(mixed $id, string $column = 'id'): PromiseInterface
@@ -482,9 +483,10 @@ class AsyncQueryBuilder
     /**
      * Find a record by ID or throw an exception if not found.
      *
-     * @param mixed $id The ID value to search for.
-     * @param string $column The column name to search in.
+     * @param  mixed  $id  The ID value to search for.
+     * @param  string  $column  The column name to search in.
      * @return PromiseInterface<mixed> A promise that resolves to the found record.
+     *
      * @throws \RuntimeException When no record is found.
      */
     public function findOrFail(mixed $id, string $column = 'id'): PromiseInterface
@@ -494,7 +496,8 @@ class AsyncQueryBuilder
             $result = await($this->find($id, $column));
             if ($result === null || $result === false) {
                 // Convert $id to string safely
-                $idString = $id === null ? 'null' : (is_scalar($id) ? (string)$id : 'complex_type');
+                $idString = $id === null ? 'null' : (is_scalar($id) ? (string) $id : 'complex_type');
+
                 throw new \RuntimeException("Record not found with {$column} = {$idString}");
             }
 
@@ -505,7 +508,7 @@ class AsyncQueryBuilder
     /**
      * Get a single value from the first result.
      *
-     * @param string $column The column name to retrieve.
+     * @param  string  $column  The column name to retrieve.
      * @return PromiseInterface<mixed> A promise that resolves to the column value or null.
      */
     public function value(string $column): PromiseInterface
@@ -521,7 +524,7 @@ class AsyncQueryBuilder
     /**
      * Count the number of records.
      *
-     * @param string $column The column to count.
+     * @param  string  $column  The column to count.
      * @return PromiseInterface<mixed> A promise that resolves to the record count.
      */
     public function count(string $column = '*'): PromiseInterface
@@ -549,7 +552,7 @@ class AsyncQueryBuilder
     /**
      * Insert a single record.
      *
-     * @param array<string, mixed> $data The data to insert as column => value pairs.
+     * @param  array<string, mixed>  $data  The data to insert as column => value pairs.
      * @return PromiseInterface<mixed> A promise that resolves to the result of the insert operation.
      */
     public function insert(array $data): PromiseInterface
@@ -562,7 +565,7 @@ class AsyncQueryBuilder
     /**
      * Insert multiple records in a batch operation.
      *
-     * @param array<array<string, mixed>> $data An array of records to insert.
+     * @param  array<array<string, mixed>>  $data  An array of records to insert.
      * @return PromiseInterface<mixed> A promise that resolves to the result of the batch insert operation.
      */
     public function insertBatch(array $data): PromiseInterface
@@ -585,7 +588,7 @@ class AsyncQueryBuilder
     /**
      * Create a new record (alias for insert).
      *
-     * @param array<string, mixed> $data The data to insert as column => value pairs.
+     * @param  array<string, mixed>  $data  The data to insert as column => value pairs.
      * @return PromiseInterface<mixed> A promise that resolves to the result of the insert operation.
      */
     public function create(array $data): PromiseInterface
@@ -596,7 +599,7 @@ class AsyncQueryBuilder
     /**
      * Update records matching the query conditions.
      *
-     * @param array<string, mixed> $data The data to update as column => value pairs.
+     * @param  array<string, mixed>  $data  The data to update as column => value pairs.
      * @return PromiseInterface<mixed> A promise that resolves to the result of the update operation.
      */
     public function update(array $data): PromiseInterface
@@ -622,8 +625,8 @@ class AsyncQueryBuilder
     /**
      * Execute a raw SQL query.
      *
-     * @param string $sql The raw SQL query.
-     * @param array<mixed> $bindings The parameter bindings for the query.
+     * @param  string  $sql  The raw SQL query.
+     * @param  array<mixed>  $bindings  The parameter bindings for the query.
      * @return PromiseInterface<mixed> A promise that resolves to the query results.
      */
     public function raw(string $sql, array $bindings = []): PromiseInterface
@@ -634,8 +637,8 @@ class AsyncQueryBuilder
     /**
      * Execute a raw SQL query and return the first result.
      *
-     * @param string $sql The raw SQL query.
-     * @param array<mixed> $bindings The parameter bindings for the query.
+     * @param  string  $sql  The raw SQL query.
+     * @param  array<mixed>  $bindings  The parameter bindings for the query.
      * @return PromiseInterface<mixed> A promise that resolves to the first result or null.
      */
     public function rawFirst(string $sql, array $bindings = []): PromiseInterface
@@ -646,8 +649,8 @@ class AsyncQueryBuilder
     /**
      * Execute a raw SQL query and return a single value.
      *
-     * @param string $sql The raw SQL query.
-     * @param array<mixed> $bindings The parameter bindings for the query.
+     * @param  string  $sql  The raw SQL query.
+     * @param  array<mixed>  $bindings  The parameter bindings for the query.
      * @return PromiseInterface<mixed> A promise that resolves to a single value.
      */
     public function rawValue(string $sql, array $bindings = []): PromiseInterface
@@ -702,7 +705,7 @@ class AsyncQueryBuilder
     /**
      * Build the COUNT SQL query string.
      *
-     * @param string $column The column to count.
+     * @param  string  $column  The column to count.
      * @return string The complete COUNT SQL query.
      */
     protected function buildCountQuery(string $column = '*'): string
@@ -733,7 +736,7 @@ class AsyncQueryBuilder
     /**
      * Build the INSERT SQL query string.
      *
-     * @param array<string, mixed> $data The data to insert.
+     * @param  array<string, mixed>  $data  The data to insert.
      * @return string The complete INSERT SQL query.
      */
     protected function buildInsertQuery(array $data): string
@@ -747,17 +750,18 @@ class AsyncQueryBuilder
     /**
      * Build the INSERT BATCH SQL query string.
      *
-     * @param array<array<string, mixed>> $data The data array for batch insert.
+     * @param  array<array<string, mixed>>  $data  The data array for batch insert.
      * @return string The complete INSERT SQL query.
+     *
      * @throws \InvalidArgumentException When data format is invalid.
      */
     protected function buildInsertBatchQuery(array $data): string
     {
         $firstRow = $data[0];
-        if (!is_array($firstRow)) {
+        if (! is_array($firstRow)) {
             throw new \InvalidArgumentException('Invalid data format for batch insert');
         }
-        
+
         $columns = implode(', ', array_keys($firstRow));
         $placeholders = '('.implode(', ', array_fill(0, count($firstRow), '?')).')';
         $allPlaceholders = implode(', ', array_fill(0, count($data), $placeholders));
@@ -768,7 +772,7 @@ class AsyncQueryBuilder
     /**
      * Build the UPDATE SQL query string.
      *
-     * @param array<string, mixed> $data The data to update.
+     * @param  array<string, mixed>  $data  The data to update.
      * @return string The complete UPDATE SQL query.
      */
     protected function buildUpdateQuery(array $data): string

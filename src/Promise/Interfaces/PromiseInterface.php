@@ -20,8 +20,7 @@ interface PromiseInterface
      * Once resolved, the promise cannot be resolved or rejected again.
      * All attached fulfillment handlers will be called with the value.
      *
-     * @param TValue $value The value to resolve the promise with.
-     * @return void
+     * @param  TValue  $value  The value to resolve the promise with.
      */
     public function resolve(mixed $value): void;
 
@@ -31,8 +30,7 @@ interface PromiseInterface
      * Once rejected, the promise cannot be resolved or rejected again.
      * All attached rejection handlers will be called with the reason.
      *
-     * @param mixed $reason The reason for rejection (typically an exception or error message).
-     * @return void
+     * @param  mixed  $reason  The reason for rejection (typically an exception or error message).
      */
     public function reject(mixed $reason): void;
 
@@ -44,8 +42,9 @@ interface PromiseInterface
      * transforming values.
      *
      * @template TResult
-     * @param callable(TValue): (TResult|PromiseInterface<TResult>) $onFulfilled Handler for successful resolution.
-     * @param callable(mixed): (TResult|PromiseInterface<TResult>) $onRejected Handler for rejection.
+     *
+     * @param  callable(TValue): (TResult|PromiseInterface<TResult>)  $onFulfilled  Handler for successful resolution.
+     * @param  callable(mixed): (TResult|PromiseInterface<TResult>)  $onRejected  Handler for rejection.
      * @return PromiseInterface<TResult> A new promise for method chaining.
      */
     public function then(?callable $onFulfilled = null, ?callable $onRejected = null): PromiseInterface;
@@ -56,7 +55,8 @@ interface PromiseInterface
      * Equivalent to calling then(null, $onRejected).
      *
      * @template TResult
-     * @param callable(mixed): (TResult|PromiseInterface<TResult>) $onRejected Handler for rejection.
+     *
+     * @param  callable(mixed): (TResult|PromiseInterface<TResult>)  $onRejected  Handler for rejection.
      * @return PromiseInterface<TResult> A new promise for method chaining.
      */
     public function catch(callable $onRejected): PromiseInterface;
@@ -99,6 +99,7 @@ interface PromiseInterface
      * is resolved using isResolved().
      *
      * @return TValue The resolved value.
+     *
      * @throws LogicException If called on a non-resolved promise.
      */
     public function getValue(): mixed;
@@ -110,6 +111,7 @@ interface PromiseInterface
      * is rejected using isRejected().
      *
      * @return mixed The rejection reason.
+     *
      * @throws LogicException If called on a non-rejected promise.
      */
     public function getReason(): mixed;

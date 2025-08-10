@@ -158,7 +158,7 @@ final class AsyncMySQLi
                     $mysqli->autocommit(true);
                     self::getPool()->release($mysqli);
                 } catch (Throwable $e) {
-                    error_log("Failed to cancel transaction {$index}: " . $e->getMessage());
+                    error_log("Failed to cancel transaction {$index}: ".$e->getMessage());
                     self::getPool()->release($mysqli);
                 }
             }
@@ -197,7 +197,7 @@ final class AsyncMySQLi
                     echo "Transaction $winnerIndex: Winner committed!\n";
                     self::getPool()->release($mysqli);
                 } catch (Throwable $e) {
-                    error_log("Failed to commit winner transaction {$winnerIndex}: " . $e->getMessage());
+                    error_log("Failed to commit winner transaction {$winnerIndex}: ".$e->getMessage());
                     $mysqli->rollback();
                     $mysqli->autocommit(true);
                     self::getPool()->release($mysqli);
@@ -220,7 +220,7 @@ final class AsyncMySQLi
                         $mysqli->autocommit(true);
                         self::getPool()->release($mysqli);
                     } catch (Throwable $e) {
-                        error_log("Failed to rollback transaction {$index}: " . $e->getMessage());
+                        error_log("Failed to rollback transaction {$index}: ".$e->getMessage());
                         self::getPool()->release($mysqli);
                     }
                 })();
@@ -240,7 +240,7 @@ final class AsyncMySQLi
                 if (! empty($params)) {
                     $stmt = $mysqli->prepare($sql);
                     if (! $stmt) {
-                        throw new \RuntimeException('Prepare failed: ' . $mysqli->error);
+                        throw new \RuntimeException('Prepare failed: '.$mysqli->error);
                     }
 
                     if (empty($types)) {
@@ -248,11 +248,11 @@ final class AsyncMySQLi
                     }
 
                     if (! $stmt->bind_param($types, ...$params)) {
-                        throw new \RuntimeException('Bind param failed: ' . $stmt->error);
+                        throw new \RuntimeException('Bind param failed: '.$stmt->error);
                     }
 
                     if (! $stmt->execute()) {
-                        throw new \RuntimeException('Execute failed: ' . $stmt->error);
+                        throw new \RuntimeException('Execute failed: '.$stmt->error);
                     }
 
                     if (stripos(trim($sql), 'SELECT') === 0 || stripos(trim($sql), 'SHOW') === 0 || stripos(trim($sql), 'DESCRIBE') === 0) {
@@ -264,7 +264,7 @@ final class AsyncMySQLi
                     return self::processResult($result, $resultType, $stmt, $mysqli);
                 } else {
                     if (! $mysqli->query($sql, MYSQLI_ASYNC)) {
-                        throw new \RuntimeException('Query failed: ' . $mysqli->error);
+                        throw new \RuntimeException('Query failed: '.$mysqli->error);
                     }
 
                     $result = await(self::waitForAsyncCompletion($mysqli));
@@ -310,7 +310,7 @@ final class AsyncMySQLi
                 }
 
                 await(Timer::delay(0));
-                $pollInterval = min((int)(self::POOL_INTERVAL * 1.2), self::POOL_MAX_INTERVAL);
+                $pollInterval = min((int) (self::POOL_INTERVAL * 1.2), self::POOL_MAX_INTERVAL);
             }
         })();
     }
@@ -320,7 +320,7 @@ final class AsyncMySQLi
         if ($result === false) {
             $error = $stmt?->error ?? $mysqli?->error ?? 'Unknown error';
 
-            throw new \RuntimeException('Query execution failed: ' . $error);
+            throw new \RuntimeException('Query execution failed: '.$error);
         }
 
         return match ($resultType) {

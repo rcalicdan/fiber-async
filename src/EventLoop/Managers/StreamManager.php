@@ -13,6 +13,7 @@ class StreamManager
 {
     /**
      * Stores registered stream watchers, keyed by their unique string ID.
+     *
      * @var array<string, StreamWatcher>
      */
     private array $watchers = [];
@@ -22,16 +23,16 @@ class StreamManager
 
     public function __construct()
     {
-        $this->watcherHandler = new StreamWatcherHandler();
-        $this->selectHandler = new StreamSelectHandler();
+        $this->watcherHandler = new StreamWatcherHandler;
+        $this->selectHandler = new StreamSelectHandler;
     }
 
     /**
      * Adds a new stream watcher.
      *
-     * @param resource $stream The stream resource to watch.
-     * @param callable $callback The callback to execute when the stream is ready.
-     * @param string $type The type of watcher (read/write).
+     * @param  resource  $stream  The stream resource to watch.
+     * @param  callable  $callback  The callback to execute when the stream is ready.
+     * @param  string  $type  The type of watcher (read/write).
      * @return string The unique ID of the created watcher.
      */
     public function addStreamWatcher($stream, callable $callback, string $type = StreamWatcher::TYPE_READ): string
@@ -45,13 +46,14 @@ class StreamManager
     /**
      * Removes a stream watcher by its ID.
      *
-     * @param string $watcherId The ID of the watcher to remove.
+     * @param  string  $watcherId  The ID of the watcher to remove.
      * @return bool True if the watcher was removed, false if it didn't exist.
      */
     public function removeStreamWatcher(string $watcherId): bool
     {
         if (isset($this->watchers[$watcherId])) {
             unset($this->watchers[$watcherId]);
+
             return true;
         }
 
@@ -60,8 +62,6 @@ class StreamManager
 
     /**
      * Processes streams that are ready for I/O.
-     *
-     * @return void
      */
     public function processStreams(): void
     {

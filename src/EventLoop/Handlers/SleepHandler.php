@@ -12,12 +12,12 @@ use Rcalicdan\FiberAsync\EventLoop\Managers\TimerManager;
 final class SleepHandler
 {
     /**
-     * @var TimerManager  Manages scheduled timers and their delays.
+     * @var TimerManager Manages scheduled timers and their delays.
      */
     private TimerManager $timerManager;
 
     /**
-     * @var FiberManager  Manages currently active fibers.
+     * @var FiberManager Manages currently active fibers.
      */
     private FiberManager $fiberManager;
 
@@ -32,8 +32,8 @@ final class SleepHandler
     private const MAX_SLEEP_DURATION = 500;
 
     /**
-     * @param TimerManager $timerManager  The timer manager to query next timer delays.
-     * @param FiberManager $fiberManager  The fiber manager to check active fibers.
+     * @param  TimerManager  $timerManager  The timer manager to query next timer delays.
+     * @param  FiberManager  $fiberManager  The fiber manager to check active fibers.
      */
     public function __construct(TimerManager $timerManager, FiberManager $fiberManager)
     {
@@ -44,8 +44,8 @@ final class SleepHandler
     /**
      * Determine whether the loop should sleep this iteration.
      *
-     * @param bool $hasImmediateWork  True if there are immediate tasks (callbacks, I/O, etc.).
-     * @return bool  True if there is no immediate work and no active fibers.
+     * @param  bool  $hasImmediateWork  True if there are immediate tasks (callbacks, I/O, etc.).
+     * @return bool True if there is no immediate work and no active fibers.
      */
     public function shouldSleep(bool $hasImmediateWork): bool
     {
@@ -59,7 +59,7 @@ final class SleepHandler
      * - Skips sleeping for very short intervals below MIN_SLEEP_THRESHOLD.
      * - If no timers, uses the minimum threshold.
      *
-     * @return int  Sleep duration in microseconds.
+     * @return int Sleep duration in microseconds.
      */
     public function calculateOptimalSleep(): int
     {
@@ -83,8 +83,7 @@ final class SleepHandler
     /**
      * Sleep for the given duration, if it meets the minimum threshold.
      *
-     * @param int $microseconds  Number of microseconds to sleep.
-     * @return void
+     * @param  int  $microseconds  Number of microseconds to sleep.
      */
     public function sleep(int $microseconds): void
     {

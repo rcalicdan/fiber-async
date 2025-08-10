@@ -221,7 +221,7 @@ abstract class Message implements MessageInterface
             if (is_scalar($value) || $value === null) {
                 return [trim((string) $value)];
             }
-           
+
             return [trim(var_export($value, true))];
         }
 

@@ -80,7 +80,7 @@ class Request extends Message implements RequestInterface
             $target = '/';
         }
         if ($this->uri->getQuery() !== '') {
-            $target .= '?' . $this->uri->getQuery();
+            $target .= '?'.$this->uri->getQuery();
         }
 
         return $target;
@@ -460,7 +460,7 @@ class Request extends Message implements RequestInterface
     public function get(string $url, array $query = []): PromiseInterface
     {
         if (count($query) > 0) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
         }
 
         return $this->send('GET', $url);
@@ -619,7 +619,7 @@ class Request extends Message implements RequestInterface
         if (count($this->headers) > 0) {
             $headerStrings = [];
             foreach ($this->headers as $name => $value) {
-                $headerStrings[] = "{$name}: " . implode(', ', $value);
+                $headerStrings[] = "{$name}: ".implode(', ', $value);
             }
             $options[CURLOPT_HTTPHEADER] = $headerStrings;
         }
@@ -666,7 +666,7 @@ class Request extends Message implements RequestInterface
         }
 
         if (($port = $this->uri->getPort()) !== null) {
-            $host .= ':' . $port;
+            $host .= ':'.$port;
         }
 
         if (isset($this->headerNames['host'])) {
@@ -687,13 +687,14 @@ class Request extends Message implements RequestInterface
         if ($resource === false) {
             throw new \RuntimeException('Unable to create temporary stream');
         }
+
         return new Stream($resource, null);
     }
 
     /**
      * Safely converts mixed values to string.
-     * 
-     * @param mixed $value The value to convert to string
+     *
+     * @param  mixed  $value  The value to convert to string
      */
     private function convertToString($value): string
     {
@@ -706,6 +707,7 @@ class Request extends Message implements RequestInterface
         if (is_object($value) && method_exists($value, '__toString')) {
             return (string) $value;
         }
+
         return var_export($value, true);
     }
 }

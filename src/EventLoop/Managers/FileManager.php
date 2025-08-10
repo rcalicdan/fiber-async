@@ -32,18 +32,18 @@ class FileManager
 
     public function __construct()
     {
-        $this->operationHandler = new FileOperationHandler();
-        $this->watcherHandler = new FileWatcherHandler();
+        $this->operationHandler = new FileOperationHandler;
+        $this->watcherHandler = new FileWatcherHandler;
     }
 
     /**
      * Adds a new file operation to the processing queue.
      *
-     * @param string $type The type of file operation (e.g., 'read', 'write').
-     * @param string $path The file path for the operation.
-     * @param mixed $data The data for the operation (e.g., content to write).
-     * @param callable $callback The callback to execute upon completion.
-     * @param array<string, mixed> $options Additional options for the operation.
+     * @param  string  $type  The type of file operation (e.g., 'read', 'write').
+     * @param  string  $path  The file path for the operation.
+     * @param  mixed  $data  The data for the operation (e.g., content to write).
+     * @param  callable  $callback  The callback to execute upon completion.
+     * @param  array<string, mixed>  $options  Additional options for the operation.
      * @return string The unique ID of the created operation.
      */
     public function addFileOperation(
@@ -64,12 +64,12 @@ class FileManager
     /**
      * Cancels a pending file operation.
      *
-     * @param string $operationId The unique ID of the operation to cancel.
+     * @param  string  $operationId  The unique ID of the operation to cancel.
      * @return bool True if the operation was found and canceled, false otherwise.
      */
     public function cancelFileOperation(string $operationId): bool
     {
-        if (!isset($this->operationsById[$operationId])) {
+        if (! isset($this->operationsById[$operationId])) {
             return false;
         }
 
@@ -93,9 +93,9 @@ class FileManager
     /**
      * Adds a new file watcher to be monitored.
      *
-     * @param string $path The file or directory path to watch.
-     * @param callable $callback The callback to execute when a change is detected.
-     * @param array<string, mixed> $options Additional options for the watcher (e.g., polling interval).
+     * @param  string  $path  The file or directory path to watch.
+     * @param  callable  $callback  The callback to execute when a change is detected.
+     * @param  array<string, mixed>  $options  Additional options for the watcher (e.g., polling interval).
      * @return string The unique ID of the created watcher.
      */
     public function addFileWatcher(string $path, callable $callback, array $options = []): string
@@ -112,12 +112,12 @@ class FileManager
     /**
      * Removes an active file watcher.
      *
-     * @param string $watcherId The unique ID of the watcher to remove.
+     * @param  string  $watcherId  The unique ID of the watcher to remove.
      * @return bool True if the watcher was found and removed, false otherwise.
      */
     public function removeFileWatcher(string $watcherId): bool
     {
-        if (!isset($this->watchersById[$watcherId])) {
+        if (! isset($this->watchersById[$watcherId])) {
             return false;
         }
 
@@ -168,6 +168,7 @@ class FileManager
             // Skip cancelled operations entirely
             if ($operation->isCancelled()) {
                 unset($this->operationsById[$operation->getId()]);
+
                 continue;
             }
 

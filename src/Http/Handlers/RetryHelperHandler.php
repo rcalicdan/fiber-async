@@ -8,7 +8,7 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
  * Helper class for configuring HTTP request retry logic and options.
- * 
+ *
  * Provides a centralized way to apply various HTTP request configurations
  * including headers, authentication, body data, and other cURL options
  * before sending the request.
@@ -17,13 +17,13 @@ final class RetryHelperHandler
 {
     /**
      * Configures an HTTP request object with the provided options and sends it.
-     * 
+     *
      * Applies various request configurations like headers, authentication, body data,
      * timeouts, and SSL verification settings. Supports multiple authentication methods
      * including Bearer tokens and Basic auth.
-     * 
-     * @param Request $request The HTTP request object
-     * @param string $url The target URL for the request
+     *
+     * @param  Request  $request  The HTTP request object
+     * @param  string  $url  The target URL for the request
      * @param array{
      *     headers?: array<string, string>,
      *     method?: string,
@@ -38,7 +38,6 @@ final class RetryHelperHandler
      *         basic?: array{username: string, password: string}
      *     }
      * } $options Configuration options for the request
-     * 
      * @return PromiseInterface<Response> The result of the request send operation
      */
     public static function getRetryLogic(Request $request, string $url, array $options = []): PromiseInterface
@@ -82,8 +81,8 @@ final class RetryHelperHandler
                 $request->bearerToken($options['auth']['bearer']);
             } elseif (isset($options['auth']['basic']) && is_array($options['auth']['basic'])) {
                 $basicAuth = $options['auth']['basic'];
-                if (isset($basicAuth['username'], $basicAuth['password']) 
-                    && is_string($basicAuth['username']) 
+                if (isset($basicAuth['username'], $basicAuth['password'])
+                    && is_string($basicAuth['username'])
                     && is_string($basicAuth['password'])) {
                     $request->basicAuth($basicAuth['username'], $basicAuth['password']);
                 }

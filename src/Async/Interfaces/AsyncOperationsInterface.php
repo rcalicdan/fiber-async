@@ -25,7 +25,8 @@ interface AsyncOperationsInterface
      * Creates a resolved promise with the given value.
      *
      * @template TValue
-     * @param TValue $value The value to resolve the promise with.
+     *
+     * @param  TValue  $value  The value to resolve the promise with.
      * @return PromiseInterface<TValue> A promise resolved with the provided value.
      */
     public function resolved(mixed $value): PromiseInterface;
@@ -33,7 +34,7 @@ interface AsyncOperationsInterface
     /**
      * Creates a rejected promise with the given reason.
      *
-     * @param mixed $reason The reason for rejection (typically an exception or error message).
+     * @param  mixed  $reason  The reason for rejection (typically an exception or error message).
      * @return PromiseInterface<mixed> A promise rejected with the provided reason.
      */
     public function rejected(mixed $reason): PromiseInterface;
@@ -44,7 +45,7 @@ interface AsyncOperationsInterface
      * The returned callable will execute the original function within a fiber
      * and return a promise that resolves with the function's result.
      *
-     * @param callable $asyncFunction The function to wrap asynchronously.
+     * @param  callable  $asyncFunction  The function to wrap asynchronously.
      * @return callable(): PromiseInterface<mixed> A callable that returns a PromiseInterface.
      */
     public function async(callable $asyncFunction): callable;
@@ -56,8 +57,10 @@ interface AsyncOperationsInterface
      * It will yield control back to the event loop until the promise settles.
      *
      * @template TValue
-     * @param PromiseInterface<TValue> $promise The promise to await.
+     *
+     * @param  PromiseInterface<TValue>  $promise  The promise to await.
      * @return TValue The resolved value of the promise.
+     *
      * @throws Throwable The rejection reason if the promise is rejected.
      */
     public function await(PromiseInterface $promise): mixed;
@@ -65,7 +68,7 @@ interface AsyncOperationsInterface
     /**
      * Creates a promise that resolves with null after the specified delay.
      *
-     * @param float $seconds The delay in seconds (supports fractions for milliseconds).
+     * @param  float  $seconds  The delay in seconds (supports fractions for milliseconds).
      * @return CancellablePromiseInterface<null> A promise that resolves with null after the delay.
      */
     public function delay(float $seconds): CancellablePromiseInterface;
@@ -76,7 +79,7 @@ interface AsyncOperationsInterface
      * Returns a promise that resolves with an array of all resolved values
      * in the same order as the input promises, or rejects with the first rejection.
      *
-     * @param array<PromiseInterface<mixed>> $promises Array of PromiseInterface instances.
+     * @param  array<PromiseInterface<mixed>>  $promises  Array of PromiseInterface instances.
      * @return PromiseInterface<array<mixed>> A promise that resolves with an array of results.
      */
     public function all(array $promises): PromiseInterface;
@@ -87,7 +90,7 @@ interface AsyncOperationsInterface
      * The returned promise will resolve or reject with the value/reason
      * of whichever input promise settles first.
      *
-     * @param array<PromiseInterface<mixed>> $promises Array of PromiseInterface instances.
+     * @param  array<PromiseInterface<mixed>>  $promises  Array of PromiseInterface instances.
      * @return PromiseInterface<mixed> A promise that settles with the first settled promise.
      */
     public function race(array $promises): PromiseInterface;
@@ -98,8 +101,8 @@ interface AsyncOperationsInterface
      * Limits the number of simultaneously executing tasks while ensuring
      * all tasks eventually complete.
      *
-     * @param array<callable(): PromiseInterface<mixed>> $tasks Array of callable tasks that return promises.
-     * @param int $concurrency Maximum number of concurrent executions (default: 10).
+     * @param  array<callable(): PromiseInterface<mixed>>  $tasks  Array of callable tasks that return promises.
+     * @param  int  $concurrency  Maximum number of concurrent executions (default: 10).
      * @return PromiseInterface<array<mixed>> A promise that resolves with an array of all results when all tasks complete.
      */
     public function concurrent(array $tasks, int $concurrency = 10): PromiseInterface;
@@ -110,9 +113,9 @@ interface AsyncOperationsInterface
      * This method processes tasks in smaller batches, allowing for
      * controlled concurrency and resource management.
      *
-     * @param array<callable(): PromiseInterface<mixed>> $tasks Array of tasks (callables that return promises) to execute.
-     * @param int $batchSize Size of each batch to process concurrently.
-     * @param int|null $concurrency Maximum number of concurrent executions per batch.
+     * @param  array<callable(): PromiseInterface<mixed>>  $tasks  Array of tasks (callables that return promises) to execute.
+     * @param  int  $batchSize  Size of each batch to process concurrently.
+     * @param  int|null  $concurrency  Maximum number of concurrent executions per batch.
      * @return PromiseInterface<array<mixed>> A promise that resolves with all results.
      */
     public function batch(array $tasks, int $batchSize = 10, ?int $concurrency = null): PromiseInterface;

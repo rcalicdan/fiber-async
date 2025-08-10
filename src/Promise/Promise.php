@@ -2,15 +2,15 @@
 
 namespace Rcalicdan\FiberAsync\Promise;
 
+use Rcalicdan\FiberAsync\Async\AsyncOperations;
 use Rcalicdan\FiberAsync\Promise\Handlers\CallbackHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\ChainHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\ExecutorHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\ResolutionHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\StateHandler;
-use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
-use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseCollectionInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
-use Rcalicdan\FiberAsync\Async\AsyncOperations;
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseCollectionInterface;
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
  * A Promise/A+ compliant implementation for managing asynchronous operations.
@@ -23,7 +23,7 @@ use Rcalicdan\FiberAsync\Async\AsyncOperations;
  *
  * @implements PromiseInterface<TValue>
  */
-class Promise implements PromiseInterface, PromiseCollectionInterface
+class Promise implements PromiseCollectionInterface, PromiseInterface
 {
     /**
      * @var StateHandler Manages the promise's state (pending, resolved, rejected)
@@ -115,10 +115,11 @@ class Promise implements PromiseInterface, PromiseCollectionInterface
 
     /**
      * {@inheritdoc}
-     * 
+     *
      * @template TResult
-     * @param callable(TValue): (TResult|PromiseInterface<TResult>)|null $onFulfilled
-     * @param callable(mixed): (TResult|PromiseInterface<TResult>)|null $onRejected
+     *
+     * @param  callable(TValue): (TResult|PromiseInterface<TResult>)|null  $onFulfilled
+     * @param  callable(mixed): (TResult|PromiseInterface<TResult>)|null  $onRejected
      * @return PromiseInterface<TResult>
      */
     public function then(?callable $onFulfilled = null, ?callable $onRejected = null): PromiseInterface
@@ -126,8 +127,8 @@ class Promise implements PromiseInterface, PromiseCollectionInterface
         /** @var Promise<TResult> $newPromise */
         $newPromise = new self(
             /**
-             * @param callable(TResult): void $resolve
-             * @param callable(mixed): void $reject
+             * @param  callable(TResult): void  $resolve
+             * @param  callable(mixed): void  $reject
              */
             function (callable $resolve, callable $reject) use ($onFulfilled, $onRejected) {
                 $root = $this instanceof CancellablePromiseInterface
@@ -206,9 +207,10 @@ class Promise implements PromiseInterface, PromiseCollectionInterface
 
     /**
      * {@inheritdoc}
-     * 
+     *
      * @template TResult
-     * @param callable(mixed): (TResult|PromiseInterface<TResult>) $onRejected
+     *
+     * @param  callable(mixed): (TResult|PromiseInterface<TResult>)  $onRejected
      * @return PromiseInterface<TResult>
      */
     public function catch(callable $onRejected): PromiseInterface
@@ -218,7 +220,7 @@ class Promise implements PromiseInterface, PromiseCollectionInterface
 
     /**
      * {@inheritdoc}
-     * 
+     *
      * @return PromiseInterface<TValue>
      */
     public function finally(callable $onFinally): PromiseInterface
@@ -286,15 +288,13 @@ class Promise implements PromiseInterface, PromiseCollectionInterface
 
     /**
      * Get or create the AsyncOperations instance for static methods.
-     *
-     * @return AsyncOperations
      */
     private static function getAsyncOps(): AsyncOperations
     {
         if (self::$asyncOps === null) {
-            self::$asyncOps = new AsyncOperations();
+            self::$asyncOps = new AsyncOperations;
         }
-        
+
         return self::$asyncOps;
     }
 

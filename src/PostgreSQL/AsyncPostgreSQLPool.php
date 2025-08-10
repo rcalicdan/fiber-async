@@ -2,13 +2,13 @@
 
 namespace Rcalicdan\FiberAsync\PostgreSQL;
 
+use InvalidArgumentException;
 use PgSql\Connection;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Promise;
+use RuntimeException;
 use SplQueue;
 use Throwable;
-use InvalidArgumentException;
-use RuntimeException;
 
 /**
  * Manages a pool of asynchronous PostgreSQL connections.
@@ -58,8 +58,9 @@ class AsyncPostgreSQLPool
     /**
      * Creates a new PostgreSQL connection pool.
      *
-     * @param array<string, mixed> $dbConfig The database connection parameters (host, user, dbname, etc.).
-     * @param int $maxSize The maximum number of connections this pool can manage.
+     * @param  array<string, mixed>  $dbConfig  The database connection parameters (host, user, dbname, etc.).
+     * @param  int  $maxSize  The maximum number of connections this pool can manage.
+     *
      * @throws InvalidArgumentException If the database configuration is invalid.
      */
     public function __construct(array $dbConfig, int $maxSize = 10)
@@ -68,8 +69,8 @@ class AsyncPostgreSQLPool
         $this->configValidated = true;
         $this->dbConfig = $dbConfig;
         $this->maxSize = $maxSize;
-        $this->pool = new SplQueue();
-        $this->waiters = new SplQueue();
+        $this->pool = new SplQueue;
+        $this->waiters = new SplQueue;
     }
 
     /**
@@ -86,35 +87,40 @@ class AsyncPostgreSQLPool
      */
     public function get(): PromiseInterface
     {
-        if (!$this->pool->isEmpty()) {
+        if (! $this->pool->isEmpty()) {
             $connection = $this->pool->dequeue();
             $this->lastConnection = $connection;
 
             /** @var PromiseInterface<Connection> $promise */
             $promise = Promise::resolved($connection);
+
             return $promise;
         }
 
         if ($this->activeConnections < $this->maxSize) {
             $this->activeConnections++;
+
             try {
                 $connection = $this->createConnection();
                 $this->lastConnection = $connection;
 
                 /** @var PromiseInterface<Connection> $promise */
                 $promise = Promise::resolved($connection);
+
                 return $promise;
             } catch (Throwable $e) {
                 $this->activeConnections--;
                 /** @var PromiseInterface<Connection> $promise */
                 $promise = Promise::rejected($e);
+
                 return $promise;
             }
         }
 
         /** @var Promise<Connection> $promise */
-        $promise = new Promise();
+        $promise = new Promise;
         $this->waiters->enqueue($promise);
+
         return $promise;
     }
 
@@ -125,17 +131,18 @@ class AsyncPostgreSQLPool
      * This method will first check if there are any waiting requests and fulfill one if so.
      * Otherwise, it returns the connection to the idle pool.
      *
-     * @param Connection $connection The connection to release.
+     * @param  Connection  $connection  The connection to release.
      */
     public function release(Connection $connection): void
     {
-        if (!$this->isConnectionAlive($connection)) {
+        if (! $this->isConnectionAlive($connection)) {
             $this->activeConnections--;
             // If a waiter exists and we have capacity, create a new connection for them.
-            if (!$this->waiters->isEmpty() && $this->activeConnections < $this->maxSize) {
+            if (! $this->waiters->isEmpty() && $this->activeConnections < $this->maxSize) {
                 $this->activeConnections++;
                 /** @var Promise<Connection> $promise */
                 $promise = $this->waiters->dequeue();
+
                 try {
                     $newConnection = $this->createConnection();
                     $this->lastConnection = $newConnection;
@@ -145,13 +152,14 @@ class AsyncPostgreSQLPool
                     $promise->reject($e);
                 }
             }
+
             return;
         }
 
         $this->resetConnectionState($connection);
 
         // Prioritize giving the connection to a waiting request.
-        if (!$this->waiters->isEmpty()) {
+        if (! $this->waiters->isEmpty()) {
             /** @var Promise<Connection> $promise */
             $promise = $this->waiters->dequeue();
             $this->lastConnection = $connection;
@@ -195,19 +203,19 @@ class AsyncPostgreSQLPool
      */
     public function close(): void
     {
-        while (!$this->pool->isEmpty()) {
+        while (! $this->pool->isEmpty()) {
             $connection = $this->pool->dequeue();
             if ($this->isConnectionAlive($connection)) {
                 pg_close($connection);
             }
         }
-        while (!$this->waiters->isEmpty()) {
+        while (! $this->waiters->isEmpty()) {
             /** @var Promise<Connection> $promise */
             $promise = $this->waiters->dequeue();
             $promise->reject(new RuntimeException('Pool is being closed'));
         }
-        $this->pool = new SplQueue();
-        $this->waiters = new SplQueue();
+        $this->pool = new SplQueue;
+        $this->waiters = new SplQueue;
         $this->activeConnections = 0;
         $this->lastConnection = null;
     }
@@ -215,7 +223,8 @@ class AsyncPostgreSQLPool
     /**
      * Validates the provided database configuration array.
      *
-     * @param array<string, mixed> $dbConfig
+     * @param  array<string, mixed>  $dbConfig
+     *
      * @throws InvalidArgumentException If any required fields are missing or invalid.
      */
     private function validateDbConfig(array $dbConfig): void
@@ -225,20 +234,20 @@ class AsyncPostgreSQLPool
         }
         $requiredFields = ['host', 'username', 'database'];
         foreach ($requiredFields as $field) {
-            if (!array_key_exists($field, $dbConfig)) {
+            if (! array_key_exists($field, $dbConfig)) {
                 throw new InvalidArgumentException("Missing required database configuration field: '{$field}'");
             }
             if (in_array($field, ['host', 'database'], true) && ($dbConfig[$field] === '' || $dbConfig[$field] === null)) {
                 throw new InvalidArgumentException("Database configuration field '{$field}' cannot be empty");
             }
         }
-        if (isset($dbConfig['port']) && (!is_int($dbConfig['port']) || $dbConfig['port'] <= 0)) {
+        if (isset($dbConfig['port']) && (! is_int($dbConfig['port']) || $dbConfig['port'] <= 0)) {
             throw new InvalidArgumentException('Database port must be a positive integer');
         }
-        if (isset($dbConfig['host']) && !is_string($dbConfig['host'])) {
+        if (isset($dbConfig['host']) && ! is_string($dbConfig['host'])) {
             throw new InvalidArgumentException('Database host must be a string');
         }
-        if (isset($dbConfig['sslmode']) && !in_array($dbConfig['sslmode'], ['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full'], true)) {
+        if (isset($dbConfig['sslmode']) && ! in_array($dbConfig['sslmode'], ['disable', 'allow', 'prefer', 'require', 'verify-ca', 'verify-full'], true)) {
             throw new InvalidArgumentException('Invalid sslmode value');
         }
     }
@@ -247,6 +256,7 @@ class AsyncPostgreSQLPool
      * Establishes a new PostgreSQL connection.
      *
      * @return Connection The newly created connection resource.
+     *
      * @throws RuntimeException If the connection fails.
      */
     private function createConnection(): Connection
@@ -256,14 +266,15 @@ class AsyncPostgreSQLPool
 
         if ($connection === false) {
             // PHPStan has proven pg_last_error() is guaranteed to return a string here.
-            throw new RuntimeException('PostgreSQL Connection failed: ' . pg_last_error());
+            throw new RuntimeException('PostgreSQL Connection failed: '.pg_last_error());
         }
 
         if (pg_connection_status($connection) !== PGSQL_CONNECTION_OK) {
             // PHPStan has proven pg_last_error() is guaranteed to return a string here.
             $error = pg_last_error($connection);
             pg_close($connection);
-            throw new RuntimeException('PostgreSQL Connection failed: ' . $error);
+
+            throw new RuntimeException('PostgreSQL Connection failed: '.$error);
         }
 
         return $connection;
@@ -272,35 +283,36 @@ class AsyncPostgreSQLPool
     /**
      * Constructs a PostgreSQL connection string from a configuration array.
      *
-     * @param array<string, mixed> $config The database configuration.
+     * @param  array<string, mixed>  $config  The database configuration.
      * @return string The formatted connection string.
+     *
      * @throws InvalidArgumentException On invalid configuration types.
      */
     private function buildConnectionString(array $config): string
     {
-        if (!isset($config['host']) || !is_string($config['host']) ||
-            !isset($config['username']) || !is_string($config['username']) ||
-            !isset($config['database']) || !is_string($config['database'])) {
+        if (! isset($config['host']) || ! is_string($config['host']) ||
+            ! isset($config['username']) || ! is_string($config['username']) ||
+            ! isset($config['database']) || ! is_string($config['database'])) {
             throw new InvalidArgumentException('Host, username, and database must be non-empty strings.');
         }
 
         $parts = [
-            'host=' . $config['host'],
-            'user=' . $config['username'],
-            'dbname=' . $config['database'],
+            'host='.$config['host'],
+            'user='.$config['username'],
+            'dbname='.$config['database'],
         ];
 
         if (isset($config['password']) && is_string($config['password'])) {
-            $parts[] = 'password=' . $config['password'];
+            $parts[] = 'password='.$config['password'];
         }
         if (isset($config['port']) && is_int($config['port'])) {
-            $parts[] = 'port=' . $config['port'];
+            $parts[] = 'port='.$config['port'];
         }
         if (isset($config['sslmode']) && is_string($config['sslmode'])) {
-            $parts[] = 'sslmode=' . $config['sslmode'];
+            $parts[] = 'sslmode='.$config['sslmode'];
         }
         if (isset($config['connect_timeout']) && is_int($config['connect_timeout'])) {
-            $parts[] = 'connect_timeout=' . $config['connect_timeout'];
+            $parts[] = 'connect_timeout='.$config['connect_timeout'];
         }
 
         return implode(' ', $parts);
@@ -309,7 +321,7 @@ class AsyncPostgreSQLPool
     /**
      * Checks if a connection is still active and usable.
      *
-     * @param Connection $connection The connection to check.
+     * @param  Connection  $connection  The connection to check.
      * @return bool True if the connection is alive.
      */
     private function isConnectionAlive(Connection $connection): bool
@@ -327,7 +339,7 @@ class AsyncPostgreSQLPool
      * This method ensures that any open transactions are rolled back, so the
      * connection is clean for its next use.
      *
-     * @param Connection $connection The connection to reset.
+     * @param  Connection  $connection  The connection to reset.
      */
     private function resetConnectionState(Connection $connection): void
     {

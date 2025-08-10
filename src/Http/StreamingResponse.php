@@ -6,12 +6,10 @@ use Rcalicdan\FiberAsync\Http\Interfaces\StreamInterface;
 
 /**
  * StreamingResponse class for handling HTTP responses with streaming capabilities.
- * 
+ *
  * This class extends the base Response class to provide streaming functionality,
  * allowing for efficient handling of large response bodies without loading
  * the entire content into memory at once.
- * 
- * @package Rcalicdan\FiberAsync\Http
  */
 class StreamingResponse extends Response
 {
@@ -33,9 +31,9 @@ class StreamingResponse extends Response
     /**
      * Constructor for StreamingResponse.
      *
-     * @param StreamInterface $stream The stream containing the response body
-     * @param int $status The HTTP status code
-     * @param array<string, string|string[]> $headers Optional HTTP headers
+     * @param  StreamInterface  $stream  The stream containing the response body
+     * @param  int  $status  The HTTP status code
+     * @param  array<string, string|string[]>  $headers  Optional HTTP headers
      */
     public function __construct(StreamInterface $stream, int $status, array $headers = [])
     {
@@ -55,12 +53,13 @@ class StreamingResponse extends Response
 
     /**
      * Get the response body as a string.
-     * 
+     *
      * This method consumes the stream if it hasn't been consumed already.
      * Once consumed, subsequent calls will return the cached content.
      * The stream content is stored in a temporary stream for future access.
      *
      * @return string The complete response body as a string
+     *
      * @throws \RuntimeException If temporary stream creation fails
      */
     public function body(): string
@@ -77,7 +76,7 @@ class StreamingResponse extends Response
         if ($resource === false) {
             throw new \RuntimeException('Failed to open temporary stream');
         }
-        
+
         fwrite($resource, $content);
         rewind($resource);
         $this->body = new Stream($resource);
@@ -87,7 +86,7 @@ class StreamingResponse extends Response
 
     /**
      * Parse the response body as JSON and return as an array.
-     * 
+     *
      * This method attempts to decode the response body as JSON.
      * If the JSON is invalid or the result is not an array, an empty array is returned.
      *
@@ -96,17 +95,18 @@ class StreamingResponse extends Response
     public function json(): array
     {
         $decoded = json_decode($this->body(), true);
+
         return is_array($decoded) ? $decoded : [];
     }
 
     /**
      * Save the stream contents directly to a file.
-     * 
+     *
      * This method streams the response body directly to a file without loading
      * the entire content into memory, making it efficient for large files.
      * The stream is rewound if seekable before reading.
      *
-     * @param string $path The file path where the content should be saved
+     * @param  string  $path  The file path where the content should be saved
      * @return bool True on success, false on failure
      */
     public function saveToFile(string $path): bool
@@ -137,16 +137,16 @@ class StreamingResponse extends Response
 
     /**
      * Stream the response contents to a destination.
-     * 
+     *
      * This method can stream the response body to either a file (by path)
      * or to an existing resource handle. This is memory-efficient as it
      * processes the stream in chunks rather than loading everything into memory.
-     * 
+     *
      * If the destination is a string, it's treated as a file path.
      * If the destination is a resource, the content is written directly to it.
      * The stream is rewound if seekable before streaming begins.
      *
-     * @param string|resource $destination File path or resource handle to stream to
+     * @param  string|resource  $destination  File path or resource handle to stream to
      * @return bool True on success, false on failure or invalid destination
      */
     public function streamTo($destination): bool

@@ -19,11 +19,9 @@ class Mutex
 {
     /**
      * Whether the mutex is currently locked.
-     *
-     * @var bool
      */
     private bool $locked = false;
-    
+
     /**
      * Queue of promises waiting to acquire the lock.
      *
@@ -42,7 +40,7 @@ class Mutex
      */
     public function __construct()
     {
-        $this->queue = new \SplQueue();
+        $this->queue = new \SplQueue;
     }
 
     /**
@@ -61,14 +59,15 @@ class Mutex
      */
     public function acquire(): PromiseInterface
     {
-        if (!$this->locked) {
+        if (! $this->locked) {
             $this->locked = true;
+
             return Promise::resolved($this);
         }
 
         // Mutex is locked, create a pending promise and queue it
         /** @var Promise<$this> $promise */
-        $promise = new Promise();
+        $promise = new Promise;
         $this->queue->enqueue($promise);
 
         return $promise;
@@ -85,8 +84,7 @@ class Mutex
      * holds the lock. Calling release() without holding the lock may lead to
      * undefined behavior.
      *
-     * @return void
-     * 
+     *
      * @throws \RuntimeException If the queue contains an invalid promise type
      */
     public function release(): void
@@ -97,12 +95,12 @@ class Mutex
         } else {
             // Give the lock to the next waiting promise in the queue
             $promise = $this->queue->dequeue();
-            
+
             // Ensure we have a valid Promise instance
-            if (!$promise instanceof Promise) {
+            if (! $promise instanceof Promise) {
                 throw new \RuntimeException('Invalid promise type in mutex queue');
             }
-            
+
             // The mutex remains locked, but ownership transfers to the next waiter
             $promise->resolve($this);
         }

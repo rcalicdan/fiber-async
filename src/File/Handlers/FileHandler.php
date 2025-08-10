@@ -24,9 +24,9 @@ final readonly class FileHandler
     /**
      * Read a file into memory asynchronously.
      *
-     * @param string $path
-     * @param array<string,mixed> $options
+     * @param  array<string,mixed>  $options
      * @return CancellablePromiseInterface<string>
+     *
      * @throws \RuntimeException
      */
     public function readFile(string $path, array $options = []): CancellablePromiseInterface
@@ -62,9 +62,9 @@ final readonly class FileHandler
     /**
      * Open a file for streaming reads asynchronously.
      *
-     * @param string $path
-     * @param array<string,mixed> $options
+     * @param  array<string,mixed>  $options
      * @return CancellablePromiseInterface<resource>
+     *
      * @throws \RuntimeException
      */
     public function readFileStream(string $path, array $options = []): CancellablePromiseInterface
@@ -101,10 +101,9 @@ final readonly class FileHandler
     /**
      * Write data to a file using streaming mode (delegates to writeFile).
      *
-     * @param string $path
-     * @param string $data
-     * @param array<string,mixed> $options
+     * @param  array<string,mixed>  $options
      * @return CancellablePromiseInterface<int>
+     *
      * @throws \RuntimeException
      */
     public function writeFileStream(string $path, string $data, array $options = []): CancellablePromiseInterface
@@ -117,9 +116,8 @@ final readonly class FileHandler
     /**
      * Copy a file using streaming operations asynchronously.
      *
-     * @param string $source
-     * @param string $destination
      * @return CancellablePromiseInterface<bool>
+     *
      * @throws \RuntimeException
      */
     public function copyFileStream(string $source, string $destination): CancellablePromiseInterface
@@ -155,10 +153,9 @@ final readonly class FileHandler
     /**
      * Write data to a file asynchronously.
      *
-     * @param string $path
-     * @param string $data
-     * @param array<string,mixed> $options
+     * @param  array<string,mixed>  $options
      * @return CancellablePromiseInterface<int>
+     *
      * @throws \RuntimeException
      */
     public function writeFile(string $path, string $data, array $options = []): CancellablePromiseInterface
@@ -194,9 +191,8 @@ final readonly class FileHandler
     /**
      * Append data to a file asynchronously.
      *
-     * @param string $path
-     * @param string $data
      * @return CancellablePromiseInterface<int>
+     *
      * @throws \RuntimeException
      */
     public function appendFile(string $path, string $data): CancellablePromiseInterface
@@ -231,8 +227,8 @@ final readonly class FileHandler
     /**
      * Delete a file asynchronously.
      *
-     * @param string $path
      * @return CancellablePromiseInterface<bool>
+     *
      * @throws \RuntimeException
      */
     public function deleteFile(string $path): CancellablePromiseInterface
@@ -267,8 +263,8 @@ final readonly class FileHandler
     /**
      * Check existence of a path asynchronously.
      *
-     * @param string $path
      * @return CancellablePromiseInterface<bool>
+     *
      * @throws \RuntimeException
      */
     public function fileExists(string $path): CancellablePromiseInterface
@@ -303,8 +299,8 @@ final readonly class FileHandler
     /**
      * Get file stats asynchronously.
      *
-     * @param string $path
      * @return CancellablePromiseInterface<array<string,mixed>>
+     *
      * @throws \RuntimeException
      */
     public function getFileStats(string $path): CancellablePromiseInterface
@@ -339,9 +335,9 @@ final readonly class FileHandler
     /**
      * Create a directory asynchronously.
      *
-     * @param string $path
-     * @param array<string,mixed> $options
+     * @param  array<string,mixed>  $options
      * @return CancellablePromiseInterface<bool>
+     *
      * @throws \RuntimeException
      */
     public function createDirectory(string $path, array $options = []): CancellablePromiseInterface
@@ -377,8 +373,8 @@ final readonly class FileHandler
     /**
      * Remove an empty directory asynchronously.
      *
-     * @param string $path
      * @return CancellablePromiseInterface<bool>
+     *
      * @throws \RuntimeException
      */
     public function removeDirectory(string $path): CancellablePromiseInterface
@@ -413,9 +409,8 @@ final readonly class FileHandler
     /**
      * Copy a file asynchronously.
      *
-     * @param string $source
-     * @param string $destination
      * @return CancellablePromiseInterface<bool>
+     *
      * @throws \RuntimeException
      */
     public function copyFile(string $source, string $destination): CancellablePromiseInterface
@@ -450,9 +445,8 @@ final readonly class FileHandler
     /**
      * Rename or move a file asynchronously.
      *
-     * @param string $oldPath
-     * @param string $newPath
      * @return CancellablePromiseInterface<bool>
+     *
      * @throws \RuntimeException
      */
     public function renameFile(string $oldPath, string $newPath): CancellablePromiseInterface
@@ -487,10 +481,9 @@ final readonly class FileHandler
     /**
      * Watch a file or directory for changes.
      *
-     * @param string $path
-     * @param callable $callback
-     * @param array<string,mixed> $options
+     * @param  array<string,mixed>  $options
      * @return string Watcher ID
+     *
      * @throws \RuntimeException
      */
     public function watchFile(string $path, callable $callback, array $options = []): string
@@ -500,9 +493,6 @@ final readonly class FileHandler
 
     /**
      * Stop watching by watcher ID.
-     *
-     * @param string $watcherId
-     * @return bool
      */
     public function unwatchFile(string $watcherId): bool
     {

@@ -7,16 +7,18 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 
 /**
  * A promise that can be cancelled to clean up resources.
- * 
+ *
  * @template TValue
+ *
  * @extends Promise<TValue>
+ *
  * @implements CancellablePromiseInterface<TValue>
  */
 class CancellablePromise extends Promise implements CancellablePromiseInterface
 {
     private ?string $timerId = null;
     private bool $cancelled = false;
-    
+
     /**
      * @var callable(): void|null
      */

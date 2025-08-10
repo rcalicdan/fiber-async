@@ -17,7 +17,7 @@ final readonly class FiberStartHandler
      * Handles any exceptions that may occur during startup.
      *
      * @param  \Fiber<mixed, mixed, mixed, mixed>  $fiber  The fiber to start
-     * @return bool  True if the fiber was successfully started
+     * @return bool True if the fiber was successfully started
      */
     public function startFiber(\Fiber $fiber): bool
     {
@@ -30,7 +30,7 @@ final readonly class FiberStartHandler
 
             return true;
         } catch (\Throwable $e) {
-            error_log('Fiber start error: ' . $e->getMessage());
+            error_log('Fiber start error: '.$e->getMessage());
 
             return false;
         }
@@ -42,7 +42,7 @@ final readonly class FiberStartHandler
      * A fiber can be started if it's not terminated and hasn't been started yet.
      *
      * @param  \Fiber<mixed, mixed, mixed, mixed>  $fiber  The fiber to check
-     * @return bool  True if the fiber can be started
+     * @return bool True if the fiber can be started
      */
     public function canStart(\Fiber $fiber): bool
     {

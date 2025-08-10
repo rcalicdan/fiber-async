@@ -2,9 +2,9 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\IOHandlers\File;
 
+use InvalidArgumentException;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\EventLoop\ValueObjects\FileOperation;
-use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
 
@@ -13,7 +13,7 @@ final readonly class FileOperationHandler
     private const CHUNK_SIZE = 8192;
 
     /**
-     * @param array<string, mixed> $options
+     * @param  array<string, mixed>  $options
      */
     public function createOperation(
         string $type,
@@ -44,13 +44,13 @@ final readonly class FileOperationHandler
     {
         $streamableOperations = ['read', 'write', 'copy'];
 
-        if (!in_array($operation->getType(), $streamableOperations, true)) {
+        if (! in_array($operation->getType(), $streamableOperations, true)) {
             return false;
         }
 
         $options = $operation->getOptions();
         $useStreaming = $options['use_streaming'] ?? false;
-        if (is_scalar($useStreaming) && (bool)$useStreaming) {
+        if (is_scalar($useStreaming) && (bool) $useStreaming) {
             return true;
         }
 
@@ -69,12 +69,15 @@ final readonly class FileOperationHandler
         switch ($operation->getType()) {
             case 'read':
                 $this->handleStreamingRead($operation);
+
                 break;
             case 'write':
                 $this->handleStreamingWrite($operation);
+
                 break;
             case 'copy':
                 $this->handleStreamingCopy($operation);
+
                 break;
             default:
                 $this->executeOperationSync($operation);
@@ -90,31 +93,34 @@ final readonly class FileOperationHandler
         $path = $operation->getPath();
         $options = $operation->getOptions();
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             $operation->executeCallback("File does not exist: $path");
+
             return;
         }
 
-        if (!is_readable($path)) {
+        if (! is_readable($path)) {
             $operation->executeCallback("File is not readable: $path");
+
             return;
         }
 
         $stream = @fopen($path, 'rb');
         if ($stream === false) {
             $operation->executeCallback("Failed to open file: $path");
+
             return;
         }
 
         // Handle offset
         $offsetRaw = $options['offset'] ?? 0;
-        $offset = is_numeric($offsetRaw) ? (int)$offsetRaw : 0;
+        $offset = is_numeric($offsetRaw) ? (int) $offsetRaw : 0;
         if ($offset > 0) {
             fseek($stream, $offset);
         }
 
         $lengthRaw = $options['length'] ?? null;
-        $length = is_numeric($lengthRaw) ? max(0, (int)$lengthRaw) : null;
+        $length = is_numeric($lengthRaw) ? max(0, (int) $lengthRaw) : null;
 
         $content = '';
         $bytesRead = 0;
@@ -123,18 +129,20 @@ final readonly class FileOperationHandler
     }
 
     /**
-     * @param resource $stream
+     * @param  resource  $stream
      */
     private function scheduleStreamRead(FileOperation $operation, $stream, string &$content, int &$bytesRead, ?int $maxLength): void
     {
         if ($operation->isCancelled()) {
             fclose($stream);
+
             return;
         }
 
         if (feof($stream) || ($maxLength !== null && $bytesRead >= $maxLength)) {
             fclose($stream);
             $operation->executeCallback(null, $content);
+
             return;
         }
 
@@ -146,6 +154,7 @@ final readonly class FileOperationHandler
         if ($chunkSize <= 0) {
             fclose($stream);
             $operation->executeCallback(null, $content);
+
             return;
         }
 
@@ -153,6 +162,7 @@ final readonly class FileOperationHandler
         if ($chunk === false) {
             fclose($stream);
             $operation->executeCallback('Failed to read from file');
+
             return;
         }
 
@@ -172,19 +182,21 @@ final readonly class FileOperationHandler
 
         $path = $operation->getPath();
         $data = $operation->getData();
-        if (!is_scalar($data)) {
+        if (! is_scalar($data)) {
             $operation->executeCallback('Invalid data provided for writing. Must be a scalar value.');
+
             return;
         }
-        $data = (string)$data;
+        $data = (string) $data;
         $options = $operation->getOptions();
 
         $createDirs = $options['create_directories'] ?? false;
-        if (is_scalar($createDirs) && (bool)$createDirs) {
+        if (is_scalar($createDirs) && (bool) $createDirs) {
             $dir = dirname($path);
-            if (!is_dir($dir)) {
-                if (!mkdir($dir, 0755, true)) {
+            if (! is_dir($dir)) {
+                if (! mkdir($dir, 0755, true)) {
                     $operation->executeCallback("Failed to create directory: $dir");
+
                     return;
                 }
             }
@@ -192,13 +204,14 @@ final readonly class FileOperationHandler
 
         $mode = 'wb';
         $flagsRaw = $options['flags'] ?? 0;
-        if (is_numeric($flagsRaw) && (((int)$flagsRaw & FILE_APPEND) !== 0)) {
+        if (is_numeric($flagsRaw) && (((int) $flagsRaw & FILE_APPEND) !== 0)) {
             $mode = 'ab';
         }
 
         $stream = @fopen($path, $mode);
         if ($stream === false) {
             $operation->executeCallback("Failed to open file for writing: $path");
+
             return;
         }
 
@@ -209,18 +222,20 @@ final readonly class FileOperationHandler
     }
 
     /**
-     * @param resource $stream
+     * @param  resource  $stream
      */
     private function scheduleStreamWrite(FileOperation $operation, $stream, string $data, int &$bytesWritten, int $totalLength): void
     {
         if ($operation->isCancelled()) {
             fclose($stream);
+
             return;
         }
 
         if ($bytesWritten >= $totalLength) {
             fclose($stream);
             $operation->executeCallback(null, $bytesWritten);
+
             return;
         }
 
@@ -231,6 +246,7 @@ final readonly class FileOperationHandler
         if ($written === false) {
             fclose($stream);
             $operation->executeCallback('Failed to write to file');
+
             return;
         }
 
@@ -250,19 +266,22 @@ final readonly class FileOperationHandler
         $sourcePath = $operation->getPath();
         $destinationPath = $operation->getData();
 
-        if (!is_string($destinationPath) || $destinationPath === '') {
+        if (! is_string($destinationPath) || $destinationPath === '') {
             $operation->executeCallback('Invalid destination path provided for copy.');
+
             return;
         }
 
-        if (!file_exists($sourcePath)) {
+        if (! file_exists($sourcePath)) {
             $operation->executeCallback("Source file does not exist: $sourcePath");
+
             return;
         }
 
         $sourceStream = @fopen($sourcePath, 'rb');
         if ($sourceStream === false) {
             $operation->executeCallback("Failed to open source file: $sourcePath");
+
             return;
         }
 
@@ -270,6 +289,7 @@ final readonly class FileOperationHandler
         if ($destStream === false) {
             fclose($sourceStream);
             $operation->executeCallback("Failed to open destination file: {$destinationPath}");
+
             return;
         }
 
@@ -277,14 +297,15 @@ final readonly class FileOperationHandler
     }
 
     /**
-     * @param resource $sourceStream
-     * @param resource $destStream
+     * @param  resource  $sourceStream
+     * @param  resource  $destStream
      */
     private function scheduleStreamCopy(FileOperation $operation, $sourceStream, $destStream): void
     {
         if ($operation->isCancelled()) {
             fclose($sourceStream);
             fclose($destStream);
+
             return;
         }
 
@@ -292,6 +313,7 @@ final readonly class FileOperationHandler
             fclose($sourceStream);
             fclose($destStream);
             $operation->executeCallback(null, true);
+
             return;
         }
 
@@ -300,6 +322,7 @@ final readonly class FileOperationHandler
             fclose($sourceStream);
             fclose($destStream);
             $operation->executeCallback('Failed to read from source file');
+
             return;
         }
 
@@ -308,6 +331,7 @@ final readonly class FileOperationHandler
             fclose($sourceStream);
             fclose($destStream);
             $operation->executeCallback('Failed to write to destination file');
+
             return;
         }
 
@@ -326,33 +350,43 @@ final readonly class FileOperationHandler
             switch ($operation->getType()) {
                 case 'read':
                     $this->handleRead($operation);
+
                     break;
                 case 'write':
                     $this->handleWrite($operation);
+
                     break;
                 case 'append':
                     $this->handleAppend($operation);
+
                     break;
                 case 'delete':
                     $this->handleDelete($operation);
+
                     break;
                 case 'exists':
                     $this->handleExists($operation);
+
                     break;
                 case 'stat':
                     $this->handleStat($operation);
+
                     break;
                 case 'mkdir':
                     $this->handleMkdir($operation);
+
                     break;
                 case 'rmdir':
                     $this->handleRmdir($operation);
+
                     break;
                 case 'copy':
                     $this->handleCopy($operation);
+
                     break;
                 case 'rename':
                     $this->handleRename($operation);
+
                     break;
                 default:
                     throw new InvalidArgumentException("Unknown operation type: {$operation->getType()}");
@@ -367,19 +401,19 @@ final readonly class FileOperationHandler
         $path = $operation->getPath();
         $options = $operation->getOptions();
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             throw new RuntimeException("File does not exist: $path");
         }
 
-        if (!is_readable($path)) {
+        if (! is_readable($path)) {
             throw new RuntimeException("File is not readable: $path");
         }
 
         $offsetRaw = $options['offset'] ?? 0;
-        $offset = is_numeric($offsetRaw) ? (int)$offsetRaw : 0;
+        $offset = is_numeric($offsetRaw) ? (int) $offsetRaw : 0;
 
         $lengthRaw = $options['length'] ?? null;
-        $length = is_numeric($lengthRaw) ? max(0, (int)$lengthRaw) : null;
+        $length = is_numeric($lengthRaw) ? max(0, (int) $lengthRaw) : null;
 
         if ($length !== null) {
             $content = file_get_contents($path, false, null, $offset, $length);
@@ -401,12 +435,12 @@ final readonly class FileOperationHandler
         $options = $operation->getOptions();
 
         $flagsRaw = $options['flags'] ?? 0;
-        $flags = is_numeric($flagsRaw) ? (int)$flagsRaw : 0;
+        $flags = is_numeric($flagsRaw) ? (int) $flagsRaw : 0;
 
         $createDirs = $options['create_directories'] ?? false;
-        if (is_scalar($createDirs) && (bool)$createDirs) {
+        if (is_scalar($createDirs) && (bool) $createDirs) {
             $dir = dirname($path);
-            if (!is_dir($dir)) {
+            if (! is_dir($dir)) {
                 mkdir($dir, 0755, true);
             }
         }
@@ -438,8 +472,9 @@ final readonly class FileOperationHandler
     {
         $path = $operation->getPath();
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             $operation->executeCallback(null, true);
+
             return;
         }
 
@@ -464,7 +499,7 @@ final readonly class FileOperationHandler
     {
         $path = $operation->getPath();
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             throw new RuntimeException("File does not exist: $path");
         }
 
@@ -483,13 +518,14 @@ final readonly class FileOperationHandler
         $options = $operation->getOptions();
 
         $modeRaw = $options['mode'] ?? 0755;
-        $mode = is_numeric($modeRaw) ? (int)$modeRaw : 0755;
+        $mode = is_numeric($modeRaw) ? (int) $modeRaw : 0755;
 
         $recursiveRaw = $options['recursive'] ?? false;
-        $recursive = is_scalar($recursiveRaw) ? (bool)$recursiveRaw : false;
+        $recursive = is_scalar($recursiveRaw) ? (bool) $recursiveRaw : false;
 
         if (is_dir($path)) {
             $operation->executeCallback(null, true);
+
             return;
         }
 
@@ -506,8 +542,9 @@ final readonly class FileOperationHandler
     {
         $path = $operation->getPath();
 
-        if (!is_dir($path)) {
+        if (! is_dir($path)) {
             $operation->executeCallback(null, true);
+
             return;
         }
 
@@ -534,7 +571,7 @@ final readonly class FileOperationHandler
 
     private function removeDirectoryRecursive(string $dir, FileOperation $operation): void
     {
-        if ($operation->isCancelled() || !is_dir($dir)) {
+        if ($operation->isCancelled() || ! is_dir($dir)) {
             return;
         }
 
@@ -544,7 +581,7 @@ final readonly class FileOperationHandler
                 return;
             }
 
-            $path = $dir . DIRECTORY_SEPARATOR . $file;
+            $path = $dir.DIRECTORY_SEPARATOR.$file;
             if (is_dir($path)) {
                 $this->removeDirectoryRecursive($path, $operation);
             } else {
@@ -564,11 +601,11 @@ final readonly class FileOperationHandler
         $sourcePath = $operation->getPath();
         $destinationPath = $operation->getData();
 
-        if (!is_string($destinationPath)) {
+        if (! is_string($destinationPath)) {
             throw new InvalidArgumentException('Destination path for copy must be a string.');
         }
 
-        if (!file_exists($sourcePath)) {
+        if (! file_exists($sourcePath)) {
             throw new RuntimeException("Source file does not exist: $sourcePath");
         }
 
@@ -586,11 +623,11 @@ final readonly class FileOperationHandler
         $oldPath = $operation->getPath();
         $newPath = $operation->getData();
 
-        if (!is_string($newPath)) {
+        if (! is_string($newPath)) {
             throw new InvalidArgumentException('New path for rename must be a string.');
         }
 
-        if (!file_exists($oldPath)) {
+        if (! file_exists($oldPath)) {
             throw new RuntimeException("Source file does not exist: $oldPath");
         }
 

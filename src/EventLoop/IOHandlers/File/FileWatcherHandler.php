@@ -12,10 +12,9 @@ final readonly class FileWatcherHandler
     /**
      * Create a new FileWatcher.
      *
-     * @param  string               $path      File or directory to watch.
-     * @param  callable             $callback  fn(string $event, string $path): void.
-     * @param  array<string,mixed>  $options   ['interval'=>int (ms), ...].
-     * @return FileWatcher
+     * @param  string  $path  File or directory to watch.
+     * @param  callable  $callback  fn(string $event, string $path): void.
+     * @param  array<string,mixed>  $options  ['interval'=>int (ms), ...].
      */
     public function createWatcher(
         string $path,
@@ -29,7 +28,7 @@ final readonly class FileWatcherHandler
      * Poll each watcher and invoke callbacks for those with changes.
      *
      * @param  list<FileWatcher>  $watchers  List of watchers to process (by reference).
-     * @return bool             True if any watcher detected changes.
+     * @return bool True if any watcher detected changes.
      */
     public function processWatchers(array &$watchers): bool
     {
@@ -48,8 +47,7 @@ final readonly class FileWatcherHandler
     /**
      * Check a single watcher for changes and execute its callback if needed.
      *
-     * @param  FileWatcher  $watcher
-     * @return bool         True if callback executed.
+     * @return bool True if callback executed.
      */
     private function checkWatcher(FileWatcher $watcher): bool
     {
@@ -63,7 +61,7 @@ final readonly class FileWatcherHandler
 
         $eventType = file_exists($watcher->getPath()) ? 'modified' : 'deleted';
         $watcher->executeCallback($eventType, $watcher->getPath());
-        
+
         return true;
     }
 
@@ -74,9 +72,9 @@ final readonly class FileWatcherHandler
      * passed by reference remains a `list` (sequentially indexed), which
      * satisfies strict static analysis rules.
      *
-     * @param  list<FileWatcher>  &$watchers    List of watchers (by reference).
-     * @param  string             $watcherId   The ID to remove.
-     * @return bool               True if removal succeeded.
+     * @param  list<FileWatcher>  &$watchers  List of watchers (by reference).
+     * @param  string  $watcherId  The ID to remove.
+     * @return bool True if removal succeeded.
      */
     public function removeWatcher(array &$watchers, string $watcherId): bool
     {

@@ -32,18 +32,18 @@ class HttpRequestManager
 
     public function __construct()
     {
-        $this->requestHandler = new HttpRequestHandler();
-        $this->responseHandler = new HttpResponseHandler();
-        $this->curlHandler = new CurlMultiHandler();
+        $this->requestHandler = new HttpRequestHandler;
+        $this->responseHandler = new HttpResponseHandler;
+        $this->curlHandler = new CurlMultiHandler;
         $this->multiHandle = $this->curlHandler->createMultiHandle();
     }
 
     /**
      * Adds an HTTP request to the processing queue.
      *
-     * @param string $url The URL for the request.
-     * @param array<int, mixed> $options cURL options for the request.
-     * @param callable(string|null, string|null, int|null, array<string, mixed>): void $callback The callback to execute upon completion.
+     * @param  string  $url  The URL for the request.
+     * @param  array<int, mixed>  $options  cURL options for the request.
+     * @param  callable(string|null, string|null, int|null, array<string, mixed>): void  $callback  The callback to execute upon completion.
      * @return string A unique ID for the request, which can be used for cancellation.
      */
     public function addHttpRequest(string $url, array $options, callable $callback): string
@@ -60,12 +60,12 @@ class HttpRequestManager
     /**
      * Cancels a pending or active HTTP request by its ID.
      *
-     * @param string $requestId The unique ID of the request to cancel.
+     * @param  string  $requestId  The unique ID of the request to cancel.
      * @return bool True if the request was found and canceled, false otherwise.
      */
     public function cancelHttpRequest(string $requestId): bool
     {
-        if (!isset($this->requestsById[$requestId])) {
+        if (! isset($this->requestsById[$requestId])) {
             return false;
         }
 

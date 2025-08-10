@@ -20,8 +20,7 @@ final class LoopExecutionHandler
     }
 
     /**
-     * @param callable|PromiseInterface<mixed> $asyncOperation
-     * @return mixed
+     * @param  callable|PromiseInterface<mixed>  $asyncOperation
      */
     public function run(callable|PromiseInterface $asyncOperation): mixed
     {
@@ -50,7 +49,7 @@ final class LoopExecutionHandler
                 })
             ;
 
-            while (!$completed) {
+            while (! $completed) {
                 EventLoop::getInstance()->run();
             }
 
@@ -66,7 +65,7 @@ final class LoopExecutionHandler
     }
 
     /**
-     * @param callable|PromiseInterface<mixed> $operation
+     * @param  callable|PromiseInterface<mixed>  $operation
      * @return PromiseInterface<mixed>
      */
     public function createPromiseFromOperation(callable|PromiseInterface $operation): PromiseInterface
@@ -86,9 +85,9 @@ final class LoopExecutionHandler
             is_null($value) => 'null',
             is_scalar($value) => (string) $value,
             is_object($value) && method_exists($value, '__toString') => (string) $value,
-            is_array($value) => 'Array: ' . json_encode($value),
-            is_object($value) => 'Object: ' . get_class($value),
-            default => 'Unknown error type: ' . gettype($value)
+            is_array($value) => 'Array: '.json_encode($value),
+            is_object($value) => 'Object: '.get_class($value),
+            default => 'Unknown error type: '.gettype($value)
         };
     }
 }

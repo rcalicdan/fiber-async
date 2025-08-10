@@ -210,7 +210,7 @@ class Stream implements StreamInterface
         }
 
         if (fseek($this->resource, $offset, $whence) === -1) {
-            throw new RuntimeException('Unable to seek to stream position ' . $offset . ' with whence ' . var_export($whence, true));
+            throw new RuntimeException('Unable to seek to stream position '.$offset.' with whence '.var_export($whence, true));
         }
     }
 

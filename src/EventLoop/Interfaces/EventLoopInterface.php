@@ -28,7 +28,7 @@ interface EventLoopInterface
      */
     public function addHttpRequest(string $url, array $options, callable $callback): string;
 
-     /**
+    /**
      * Add a fiber to be managed by the event loop.
      *
      * @param  \Fiber<mixed, mixed, mixed, mixed>  $fiber  The fiber instance to add to the loop

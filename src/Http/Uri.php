@@ -6,7 +6,7 @@ use Rcalicdan\FiberAsync\Http\Interfaces\UriInterface;
 
 /**
  * A PSR-7 compliant implementation of a Uniform Resource Identifier (URI).
- * 
+ *
  * Provides parsing and manipulation of URI components including scheme, host, port,
  * path, query, fragment, and user information with immutable operations.
  */
@@ -23,7 +23,7 @@ class Uri implements UriInterface
     /**
      * Initializes a new URI instance by parsing a URI string.
      *
-     * @param string $uri The URI to parse.
+     * @param  string  $uri  The URI to parse.
      *
      * @throws \InvalidArgumentException If the given URI cannot be parsed.
      */
@@ -48,7 +48,7 @@ class Uri implements UriInterface
 
         if (isset($parts['user']) && is_string($parts['user'])) {
             $password = isset($parts['pass']) && is_string($parts['pass']) ? $parts['pass'] : null;
-            $this->userInfo = $parts['user'] . ($password !== null ? ':' . $password : '');
+            $this->userInfo = $parts['user'].($password !== null ? ':'.$password : '');
         }
     }
 
@@ -65,11 +65,11 @@ class Uri implements UriInterface
      */
     public function getAuthority(): string
     {
-        $authority = $this->getUserInfo() !== '' ? $this->getUserInfo() . '@' : '';
+        $authority = $this->getUserInfo() !== '' ? $this->getUserInfo().'@' : '';
         $authority .= $this->host;
 
-        if ($this->port !== null && !$this->isStandardPort($this->scheme, $this->port)) {
-            $authority .= ':' . $this->port;
+        if ($this->port !== null && ! $this->isStandardPort($this->scheme, $this->port)) {
+            $authority .= ':'.$this->port;
         }
 
         return $authority;
@@ -143,8 +143,8 @@ class Uri implements UriInterface
      */
     public function withUserInfo(string $user, ?string $password = null): UriInterface
     {
-        $userInfo = $user . ($password !== null ? ':' . $password : '');
-        
+        $userInfo = $user.($password !== null ? ':'.$password : '');
+
         if ($this->userInfo === $userInfo) {
             return $this;
         }
@@ -242,7 +242,7 @@ class Uri implements UriInterface
         $uri = '';
 
         if ($this->scheme !== '') {
-            $uri .= $this->scheme . '://';
+            $uri .= $this->scheme.'://';
         }
 
         $authority = $this->getAuthority();
@@ -255,11 +255,11 @@ class Uri implements UriInterface
         }
 
         if ($this->query !== '') {
-            $uri .= '?' . $this->query;
+            $uri .= '?'.$this->query;
         }
 
         if ($this->fragment !== '') {
-            $uri .= '#' . $this->fragment;
+            $uri .= '#'.$this->fragment;
         }
 
         return $uri;
@@ -267,9 +267,9 @@ class Uri implements UriInterface
 
     /**
      * Checks if the given port is a standard port for the given scheme.
-     * 
-     * @param string $scheme The URI scheme
-     * @param int $port The port number
+     *
+     * @param  string  $scheme  The URI scheme
+     * @param  int  $port  The port number
      * @return bool True if it's a standard port, false otherwise
      */
     private function isStandardPort(string $scheme, int $port): bool

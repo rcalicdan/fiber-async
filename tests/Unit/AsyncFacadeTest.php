@@ -1,7 +1,6 @@
 <?php
 
 use Rcalicdan\FiberAsync\Api\Async;
-use Rcalicdan\FiberAsync\Api\AsyncLoop;
 use Rcalicdan\FiberAsync\Api\Promise;
 
 beforeEach(function () {
@@ -31,7 +30,6 @@ test('Async Facade can call async operations', function () {
 
     expect($result)->toBe(10);
 });
-
 
 test('Async resolve works', function () {
     $resolved = false;

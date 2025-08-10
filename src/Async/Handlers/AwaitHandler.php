@@ -72,10 +72,10 @@ final readonly class AwaitHandler
                 $error instanceof Throwable => throw $error,
                 is_string($error) => $error,
                 is_object($error) && method_exists($error, '__toString') => (string) $error,
-                default => 'Promise rejected with: ' . var_export($error, true)
+                default => 'Promise rejected with: '.var_export($error, true)
             };
-            
-            if (!($error instanceof Throwable)) {
+
+            if (! ($error instanceof Throwable)) {
                 throw new Exception($errorMessage);
             }
         }

@@ -10,29 +10,21 @@ final class ActivityHandler
 {
     /**
      * The timestamp of the last recorded activity.
-     *
-     * @var float
      */
     private float $lastActivity = 0.0;
 
     /**
      * The default idle threshold in seconds when activityCounter ≤ 100.
-     *
-     * @var int
      */
     private int $idleThreshold = 5;
 
     /**
      * Counts how many times activity has been updated.
-     *
-     * @var int
      */
     private int $activityCounter = 0;
 
     /**
      * Exponential moving average of intervals between activities.
-     *
-     * @var float
      */
     private float $avgActivityInterval = 0.0;
 
@@ -46,8 +38,6 @@ final class ActivityHandler
 
     /**
      * Record a new activity timestamp, updating the moving average interval.
-     *
-     * @return void
      */
     public function updateLastActivity(): void
     {
@@ -69,7 +59,7 @@ final class ActivityHandler
      * If more than 100 updates have occurred, threshold is adaptive:
      * max(1, avg_interval * 10). Otherwise, uses $idleThreshold.
      *
-     * @return bool  True if idle, false otherwise.
+     * @return bool True if idle, false otherwise.
      */
     public function isIdle(): bool
     {
@@ -86,7 +76,7 @@ final class ActivityHandler
     /**
      * Get the timestamp of the last recorded activity.
      *
-     * @return float  UNIX timestamp (in seconds with microseconds).
+     * @return float UNIX timestamp (in seconds with microseconds).
      */
     public function getLastActivity(): float
     {
@@ -97,16 +87,16 @@ final class ActivityHandler
      * Get statistics about activity.
      *
      * @return array{counter:int, avg_interval:float, idle_time:float}
-     *   - counter: total number of activity updates
-     *   - avg_interval: exponential moving average of intervals
-     *   - idle_time: seconds since last activity
+     *                                                                 - counter: total number of activity updates
+     *                                                                 - avg_interval: exponential moving average of intervals
+     *                                                                 - idle_time: seconds since last activity
      */
     public function getActivityStats(): array
     {
         return [
-            'counter'      => $this->activityCounter,
+            'counter' => $this->activityCounter,
             'avg_interval' => $this->avgActivityInterval,
-            'idle_time'    => microtime(true) - $this->lastActivity,
+            'idle_time' => microtime(true) - $this->lastActivity,
         ];
     }
 }

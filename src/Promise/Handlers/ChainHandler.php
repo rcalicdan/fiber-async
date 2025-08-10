@@ -22,9 +22,9 @@ final readonly class ChainHandler
      * It handles value transformation, nested Promise resolution, and error
      * propagation in the chain.
      *
-     * @param callable|null $onFulfilled Callback to transform the resolved value.
-     * @param callable $resolve Function to resolve the chained Promise.
-     * @param callable $reject Function to reject the chained Promise.
+     * @param  callable|null  $onFulfilled  Callback to transform the resolved value.
+     * @param  callable  $resolve  Function to resolve the chained Promise.
+     * @param  callable  $reject  Function to reject the chained Promise.
      * @return callable The handler function for the then operation.
      */
     public function createThenHandler(?callable $onFulfilled, callable $resolve, callable $reject): callable
@@ -57,9 +57,9 @@ final readonly class ChainHandler
      * It handles error recovery, value transformation, and continued chaining
      * after error handling.
      *
-     * @param callable|null $onRejected Callback to handle the rejection reason.
-     * @param callable $resolve Function to resolve the chained Promise.
-     * @param callable $reject Function to reject the chained Promise.
+     * @param  callable|null  $onRejected  Callback to handle the rejection reason.
+     * @param  callable  $resolve  Function to resolve the chained Promise.
+     * @param  callable  $reject  Function to reject the chained Promise.
      * @return callable The handler function for the catch operation.
      */
     public function createCatchHandler(?callable $onRejected, callable $resolve, callable $reject): callable
@@ -91,8 +91,7 @@ final readonly class ChainHandler
      * maintaining the proper execution order and preventing stack overflow
      * in long Promise chains.
      *
-     * @param callable $handler The handler function to schedule.
-     * @return void
+     * @param  callable  $handler  The handler function to schedule.
      */
     public function scheduleHandler(callable $handler): void
     {

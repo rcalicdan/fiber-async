@@ -16,6 +16,7 @@ class TimerManager
 {
     /**
      * A map of active timers, keyed by their unique string ID.
+     *
      * @var array<string, Timer>
      */
     private array $timers = [];
@@ -25,15 +26,15 @@ class TimerManager
 
     public function __construct()
     {
-        $this->executionHandler = new TimerExecutionHandler();
-        $this->scheduleHandler = new TimerScheduleHandler();
+        $this->executionHandler = new TimerExecutionHandler;
+        $this->scheduleHandler = new TimerScheduleHandler;
     }
 
     /**
      * Adds a new timer to the manager.
      *
-     * @param float $delay The delay in seconds before the timer should fire.
-     * @param callable $callback The callback to execute when the timer fires.
+     * @param  float  $delay  The delay in seconds before the timer should fire.
+     * @param  callable  $callback  The callback to execute when the timer fires.
      * @return string The unique ID of the created timer, which can be used for cancellation.
      */
     public function addTimer(float $delay, callable $callback): string
@@ -47,13 +48,14 @@ class TimerManager
     /**
      * Cancels a pending timer by its unique ID.
      *
-     * @param string $timerId The ID of the timer to cancel.
+     * @param  string  $timerId  The ID of the timer to cancel.
      * @return bool True if the timer was found and canceled, false otherwise.
      */
     public function cancelTimer(string $timerId): bool
     {
         if (isset($this->timers[$timerId])) {
             unset($this->timers[$timerId]);
+
             return true;
         }
 
@@ -63,7 +65,7 @@ class TimerManager
     /**
      * Checks if a timer exists and is currently active.
      *
-     * @param string $timerId The ID of the timer to check.
+     * @param  string  $timerId  The ID of the timer to check.
      * @return bool True if the timer exists.
      */
     public function hasTimer(string $timerId): bool

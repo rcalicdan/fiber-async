@@ -12,7 +12,7 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 
 /**
  * Handles non-blocking HTTP streaming operations with cancellation support.
- * 
+ *
  * Provides asynchronous HTTP request streaming and file downloads using the
  * Event loop. Supports real-time chunk processing and proper
  * resource cleanup on cancellation.
@@ -21,17 +21,16 @@ final readonly class StreamingHandler
 {
     /**
      * Creates a streaming HTTP request with optional real-time chunk processing.
-     * 
+     *
      * Sends a non-blocking HTTP request and streams the response data as it arrives.
      * The response is buffered in a temporary stream while optionally calling a
      * chunk processor for immediate handling of incoming data.
-     * 
-     * @param string $url The target URL for the HTTP request
-     * @param array<int, mixed> $options cURL options (CURLOPT_WRITEFUNCTION and CURLOPT_HEADERFUNCTION will be overridden)
-     * @param callable|null $onChunk Optional callback for processing each data chunk: function(string $chunk): void
-     * 
+     *
+     * @param  string  $url  The target URL for the HTTP request
+     * @param  array<int, mixed>  $options  cURL options (CURLOPT_WRITEFUNCTION and CURLOPT_HEADERFUNCTION will be overridden)
+     * @param  callable|null  $onChunk  Optional callback for processing each data chunk: function(string $chunk): void
      * @return CancellablePromiseInterface<StreamingResponse> Promise resolving to StreamingResponse with buffered stream, status, and headers
-     * 
+     *
      * @throws HttpStreamException On stream creation failure (via promise rejection)
      */
     public function streamRequest(string $url, array $options, ?callable $onChunk = null): CancellablePromiseInterface
@@ -85,7 +84,7 @@ final readonly class StreamingHandler
                 } else {
                     rewind($responseStream);
                     $stream = new Stream($responseStream);
-                    
+
                     /** @var array<string, string|array<string>> $formattedHeaders */
                     $formattedHeaders = [];
                     foreach ($headerAccumulator as $header) {
@@ -104,7 +103,7 @@ final readonly class StreamingHandler
                             }
                         }
                     }
-                    
+
                     $promise->resolve(new StreamingResponse($stream, $httpCode ?? 200, $formattedHeaders));
                 }
             }
@@ -122,19 +121,18 @@ final readonly class StreamingHandler
 
     /**
      * Downloads a file asynchronously to a specified destination with cancellation support.
-     * 
+     *
      * Performs a non-blocking HTTP download, writing data directly to the destination file
      * as it arrives. Includes progress tracking and automatic cleanup on cancellation or failure.
      * The download can be cancelled at any time, which will abort the request and remove
      * any partially downloaded file.
-     * 
-     * @param string $url The source URL to download from
-     * @param string $destination Local file path where the download will be saved
-     * @param array<int, mixed> $options Additional cURL options (CURLOPT_WRITEFUNCTION will be overridden)
-     * 
-     * @return CancellablePromiseInterface<array{file: string, status: int, headers: array<mixed>}> 
-     *         Promise resolving to array with download info: file path, HTTP status, and response headers
-     * 
+     *
+     * @param  string  $url  The source URL to download from
+     * @param  string  $destination  Local file path where the download will be saved
+     * @param  array<int, mixed>  $options  Additional cURL options (CURLOPT_WRITEFUNCTION will be overridden)
+     * @return CancellablePromiseInterface<array{file: string, status: int, headers: array<mixed>}>
+     *                                                                                              Promise resolving to array with download info: file path, HTTP status, and response headers
+     *
      * @throws HttpStreamException On file creation failure (via promise rejection)
      * @throws Exception On download failure (via promise rejection)
      */

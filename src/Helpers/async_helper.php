@@ -57,7 +57,7 @@ if (! function_exists('await')) {
      * @param  PromiseInterface<TValue>  $promise  The promise to await.
      * @return TValue The resolved value of the promise.
      *
-     * @throws \Exception If the promise is rejected, this method throws the rejection reason.
+     * @throws Exception If the promise is rejected, this method throws the rejection reason.
      */
     function await(PromiseInterface $promise): mixed
     {
@@ -180,6 +180,7 @@ if (! function_exists('resolve')) {
      * for converting synchronous values into promise-compatible form.
      *
      * @template T
+     *
      * @param  T  $value  The value to resolve the promise with
      * @return PromiseInterface<T> A promise resolved with the provided value
      *
@@ -221,8 +222,8 @@ if (! function_exists('concurrent')) {
      * running and cannot be subject to concurrency limiting.
      *
      * @param  array<callable|PromiseInterface<mixed>>  $tasks  Array of callables that return Promises, or Promise instances
-     *                        Note: Promise instances will be awaited but cannot be truly
-     *                        limited since they're already running
+     *                                                          Note: Promise instances will be awaited but cannot be truly
+     *                                                          limited since they're already running
      * @param  int  $concurrency  Maximum number of tasks to run simultaneously
      * @return PromiseInterface<array<mixed>> Promise that resolves with an array of all results
      */
@@ -242,8 +243,8 @@ if (! function_exists('batch')) {
      * significant resources without overwhelming the system.
      *
      * @param  array<callable|PromiseInterface<mixed>>  $tasks  Array of callables that return Promises, or Promise instances
-     *                        Note: Promise instances will be awaited but cannot be truly
-     *                        limited since they're already running
+     *                                                          Note: Promise instances will be awaited but cannot be truly
+     *                                                          limited since they're already running
      * @param  int  $batchSize  Size of each batch to process concurrently
      * @param  int|null  $concurrency  Maximum number of concurrent executions per batch
      * @return PromiseInterface<array<mixed>> A promise that resolves with all results

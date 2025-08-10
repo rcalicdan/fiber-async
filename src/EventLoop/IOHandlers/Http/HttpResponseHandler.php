@@ -21,9 +21,8 @@ final readonly class HttpResponseHandler
      * It extracts the HTTP status code, headers, and body from the response,
      * then executes the request's callback with the parsed data.
      *
-     * @param \CurlHandle $handle The individual cURL handle that has completed.
-     * @param HttpRequest $request The original request object associated with the handle.
-     * @return void
+     * @param  \CurlHandle  $handle  The individual cURL handle that has completed.
+     * @param  HttpRequest  $request  The original request object associated with the handle.
      */
     public function handleSuccessfulResponse(\CurlHandle $handle, HttpRequest $request): void
     {
@@ -64,9 +63,8 @@ final readonly class HttpResponseHandler
      * retrieves the cURL error message and executes the request's callback,
      * passing the error.
      *
-     * @param \CurlHandle $handle The individual cURL handle that has failed.
-     * @param HttpRequest $request The original request object associated with the handle.
-     * @return void
+     * @param  \CurlHandle  $handle  The individual cURL handle that has failed.
+     * @param  HttpRequest  $request  The original request object associated with the handle.
      */
     public function handleErrorResponse(\CurlHandle $handle, HttpRequest $request): void
     {
@@ -82,11 +80,12 @@ final readonly class HttpResponseHandler
      * appropriate handler method. It also cleans up by removing the handle from
      * the multi-handle and closing it.
      *
-     * @param \CurlMultiHandle $multiHandle The cURL multi-handle to process.
-     * @param array<int, HttpRequest> &$activeRequests An associative array of active requests,
-     *                                                  keyed by their integer handle ID. This
-     *                                                  array is modified by this method.
+     * @param  \CurlMultiHandle  $multiHandle  The cURL multi-handle to process.
+     * @param  array<int, HttpRequest>  &$activeRequests  An associative array of active requests,
+     *                                                    keyed by their integer handle ID. This
+     *                                                    array is modified by this method.
      * @return bool Returns true if at least one request was processed, false otherwise.
+     *
      * @throws RuntimeException If curl_multi_info_read returns an invalid handle type.
      */
     public function processCompletedRequests(\CurlMultiHandle $multiHandle, array &$activeRequests): bool
@@ -95,7 +94,7 @@ final readonly class HttpResponseHandler
 
         while ($info = curl_multi_info_read($multiHandle)) {
             $handle = $info['handle'];
-            if (!($handle instanceof \CurlHandle)) {
+            if (! ($handle instanceof \CurlHandle)) {
                 throw new RuntimeException('curl_multi_info_read returned an invalid handle type.');
             }
 

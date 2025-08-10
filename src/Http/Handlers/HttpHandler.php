@@ -47,8 +47,8 @@ class HttpHandler
     /**
      * Performs a quick, asynchronous GET request.
      *
-     * @param string $url The target URL.
-     * @param array<string, mixed> $query Optional query parameters.
+     * @param  string  $url  The target URL.
+     * @param  array<string, mixed>  $query  Optional query parameters.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function get(string $url, array $query = []): PromiseInterface
@@ -59,8 +59,8 @@ class HttpHandler
     /**
      * Performs a quick, asynchronous POST request with a JSON payload.
      *
-     * @param string $url The target URL.
-     * @param array<string, mixed> $data Data to be JSON-encoded and sent as the request body.
+     * @param  string  $url  The target URL.
+     * @param  array<string, mixed>  $data  Data to be JSON-encoded and sent as the request body.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function post(string $url, array $data = []): PromiseInterface
@@ -71,8 +71,8 @@ class HttpHandler
     /**
      * Performs a quick, asynchronous PUT request.
      *
-     * @param string $url The target URL.
-     * @param array<string, mixed> $data Data to be JSON-encoded and sent as the request body.
+     * @param  string  $url  The target URL.
+     * @param  array<string, mixed>  $data  Data to be JSON-encoded and sent as the request body.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function put(string $url, array $data = []): PromiseInterface
@@ -83,7 +83,7 @@ class HttpHandler
     /**
      * Performs a quick, asynchronous DELETE request.
      *
-     * @param string $url The target URL.
+     * @param  string  $url  The target URL.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function delete(string $url): PromiseInterface
@@ -96,9 +96,9 @@ class HttpHandler
      *
      * Ideal for large responses that should not be fully loaded into memory.
      *
-     * @param string $url The URL to stream from.
-     * @param array<int|string, mixed> $options Advanced cURL or request options.
-     * @param callable(string): void|null $onChunk An optional callback to execute for each received data chunk.
+     * @param  string  $url  The URL to stream from.
+     * @param  array<int|string, mixed>  $options  Advanced cURL or request options.
+     * @param  callable(string): void|null  $onChunk  An optional callback to execute for each received data chunk.
      * @return CancellablePromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse object.
      */
     public function stream(string $url, array $options = [], ?callable $onChunk = null): CancellablePromiseInterface
@@ -111,9 +111,9 @@ class HttpHandler
     /**
      * Asynchronously downloads a file from a URL to a specified destination.
      *
-     * @param string $url The URL of the file to download.
-     * @param string $destination The local path to save the file.
-     * @param array<int|string, mixed> $options Advanced cURL or request options.
+     * @param  string  $url  The URL of the file to download.
+     * @param  string  $destination  The local path to save the file.
+     * @param  array<int|string, mixed>  $options  Advanced cURL or request options.
      * @return CancellablePromiseInterface<array{file: string, status: int, headers: array<mixed>}> A promise that resolves with download metadata.
      */
     public function download(string $url, string $destination, array $options = []): CancellablePromiseInterface
@@ -126,8 +126,9 @@ class HttpHandler
     /**
      * Creates a new stream from a string.
      *
-     * @param string $content The initial content of the stream.
+     * @param  string  $content  The initial content of the stream.
      * @return Stream A new Stream object.
+     *
      * @throws RuntimeException If temporary stream creation fails.
      */
     public function createStream(string $content = ''): Stream
@@ -148,9 +149,10 @@ class HttpHandler
     /**
      * Creates a new stream from a file path.
      *
-     * @param string $path The path to the file.
-     * @param string $mode The mode to open the file with (e.g., 'rb', 'w+b').
+     * @param  string  $path  The path to the file.
+     * @param  string  $mode  The mode to open the file with (e.g., 'rb', 'w+b').
      * @return Stream A new Stream object wrapping the file resource.
+     *
      * @throws RuntimeException if the file cannot be opened.
      */
     public function createStreamFromFile(string $path, string $mode = 'rb'): Stream
@@ -168,12 +170,12 @@ class HttpHandler
      * This method is the single source of truth for cache key generation,
      * ensuring consistency between caching and invalidation logic.
      *
-     * @param string $url The URL to generate a cache key for.
+     * @param  string  $url  The URL to generate a cache key for.
      * @return string The unique cache key.
      */
     public static function generateCacheKey(string $url): string
     {
-        return 'http_' . sha1($url);
+        return 'http_'.sha1($url);
     }
 
     /**
@@ -196,10 +198,10 @@ class HttpHandler
      * The main entry point for sending a request from the Request builder.
      * It intelligently applies caching logic before proceeding to dispatch the request.
      *
-     * @param string $url The target URL.
-     * @param array<int, mixed> $curlOptions cURL options for the request.
-     * @param CacheConfig|null $cacheConfig Optional cache configuration.
-     * @param RetryConfig|null $retryConfig Optional retry configuration.
+     * @param  string  $url  The target URL.
+     * @param  array<int, mixed>  $curlOptions  cURL options for the request.
+     * @param  CacheConfig|null  $cacheConfig  Optional cache configuration.
+     * @param  RetryConfig|null  $retryConfig  Optional retry configuration.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function sendRequest(string $url, array $curlOptions, ?CacheConfig $cacheConfig = null, ?RetryConfig $retryConfig = null): PromiseInterface
@@ -229,12 +231,12 @@ class HttpHandler
 
                 if (isset($cachedItem['headers']['etag'])) {
                     $etag = is_array($cachedItem['headers']['etag']) ? $cachedItem['headers']['etag'][0] : $cachedItem['headers']['etag'];
-                    $httpHeaders[] = 'If-None-Match: ' . $etag;
+                    $httpHeaders[] = 'If-None-Match: '.$etag;
                 }
 
                 if (isset($cachedItem['headers']['last-modified'])) {
                     $lastModified = is_array($cachedItem['headers']['last-modified']) ? $cachedItem['headers']['last-modified'][0] : $cachedItem['headers']['last-modified'];
-                    $httpHeaders[] = 'If-Modified-Since: ' . $lastModified;
+                    $httpHeaders[] = 'If-Modified-Since: '.$lastModified;
                 }
 
                 $curlOptions[CURLOPT_HTTPHEADER] = $httpHeaders;
@@ -270,9 +272,9 @@ class HttpHandler
     /**
      * Dispatches the request to the network, applying retry logic if configured.
      *
-     * @param string $url The target URL.
-     * @param array<int, mixed> $curlOptions cURL options for the request.
-     * @param RetryConfig|null $retryConfig Optional retry configuration.
+     * @param  string  $url  The target URL.
+     * @param  array<int, mixed>  $curlOptions  cURL options for the request.
+     * @param  RetryConfig|null  $retryConfig  Optional retry configuration.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     private function dispatchRequest(string $url, array $curlOptions, ?RetryConfig $retryConfig): PromiseInterface
@@ -287,8 +289,8 @@ class HttpHandler
     /**
      * A flexible, fetch-like method for making HTTP requests.
      *
-     * @param string $url The target URL.
-     * @param array<int|string, mixed> $options An associative array of request options (method, headers, body, etc.).
+     * @param  string  $url  The target URL.
+     * @param  array<int|string, mixed>  $options  An associative array of request options (method, headers, body, etc.).
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function fetch(string $url, array $options = []): PromiseInterface
@@ -325,9 +327,9 @@ class HttpHandler
     /**
      * Sends a request with automatic retry logic on failure.
      *
-     * @param string $url The target URL.
-     * @param array<int, mixed> $options An array of cURL options.
-     * @param RetryConfig $retryConfig Configuration object for retry behavior.
+     * @param  string  $url  The target URL.
+     * @param  array<int, mixed>  $options  An array of cURL options.
+     * @param  RetryConfig  $retryConfig  Configuration object for retry behavior.
      * @return PromiseInterface<Response> A promise that resolves with a Response object or rejects with an HttpException on final failure.
      */
     public function fetchWithRetry(string $url, array $options, RetryConfig $retryConfig): PromiseInterface
@@ -387,15 +389,15 @@ class HttpHandler
     /**
      * Normalizes fetch options from various formats to cURL options.
      *
-     * @param string $url The target URL.
-     * @param array<int|string, mixed> $options The options to normalize.
+     * @param  string  $url  The target URL.
+     * @param  array<int|string, mixed>  $options  The options to normalize.
      * @return array<int, mixed> Normalized cURL options.
      */
     private function normalizeFetchOptions(string $url, array $options): array
     {
         if ($this->isCurlOptionsFormat($options)) {
             /** @var array<int, mixed> */
-            return array_filter($options, fn($key) => is_int($key), ARRAY_FILTER_USE_KEY);
+            return array_filter($options, fn ($key) => is_int($key), ARRAY_FILTER_USE_KEY);
         }
 
         /** @var array<int, mixed> $curlOptions */
@@ -448,7 +450,7 @@ class HttpHandler
     /**
      * Determines if the options array is in cURL format (integer keys) or fetch format (string keys).
      *
-     * @param array<int|string, mixed> $options The options to check.
+     * @param  array<int|string, mixed>  $options  The options to check.
      * @return bool True if options are in cURL format.
      */
     private function isCurlOptionsFormat(array $options): bool
@@ -465,7 +467,7 @@ class HttpHandler
     /**
      * Normalizes headers array to the expected format.
      *
-     * @param array<mixed> $headers The headers to normalize.
+     * @param  array<mixed>  $headers  The headers to normalize.
      * @return array<string, array<string>|string> Normalized headers.
      */
     private function normalizeHeaders(array $headers): array
@@ -492,8 +494,8 @@ class HttpHandler
     /**
      * Calculates the expiry timestamp based on Cache-Control headers or the default TTL from config.
      *
-     * @param Response $response The HTTP response.
-     * @param CacheConfig $cacheConfig The cache configuration.
+     * @param  Response  $response  The HTTP response.
+     * @param  CacheConfig  $cacheConfig  The cache configuration.
      * @return int The expiry timestamp.
      */
     private function calculateExpiry(Response $response, CacheConfig $cacheConfig): int

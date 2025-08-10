@@ -21,10 +21,9 @@ final readonly class ExecutorHandler
      * If the executor throws an exception, the Promise is automatically
      * rejected with that exception.
      *
-     * @param callable(callable $resolve, callable $reject): void|null $executor The executor function to run.
-     * @param callable $resolve Function to resolve the Promise.
-     * @param callable $reject Function to reject the Promise.
-     * @return void
+     * @param  callable(callable $resolve, callable $reject): void|null  $executor  The executor function to run.
+     * @param  callable  $resolve  Function to resolve the Promise.
+     * @param  callable  $reject  Function to reject the Promise.
      */
     public function executeExecutor(?callable $executor, callable $resolve, callable $reject): void
     {

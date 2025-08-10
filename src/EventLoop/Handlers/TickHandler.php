@@ -8,12 +8,12 @@ namespace Rcalicdan\FiberAsync\EventLoop\Handlers;
 final class TickHandler
 {
     /**
-     * @var list<callable>  Callbacks to run on the next tick.
+     * @var list<callable> Callbacks to run on the next tick.
      */
     private array $tickCallbacks = [];
 
     /**
-     * @var list<callable>  Callbacks to run after current tick (deferred).
+     * @var list<callable> Callbacks to run after current tick (deferred).
      */
     private array $deferredCallbacks = [];
 
@@ -24,9 +24,6 @@ final class TickHandler
 
     /**
      * Schedule a callback to run on the next loop tick.
-     *
-     * @param callable $callback
-     * @return void
      */
     public function addNextTick(callable $callback): void
     {
@@ -35,9 +32,6 @@ final class TickHandler
 
     /**
      * Schedule a callback to run after current tick (deferred).
-     *
-     * @param callable $callback
-     * @return void
      */
     public function addDeferred(callable $callback): void
     {
@@ -47,7 +41,7 @@ final class TickHandler
     /**
      * Process up to BATCH_SIZE next-tick callbacks.
      *
-     * @return bool  True if any callbacks were processed.
+     * @return bool True if any callbacks were processed.
      */
     public function processNextTickCallbacks(): bool
     {
@@ -61,7 +55,7 @@ final class TickHandler
     /**
      * Process all deferred callbacks in one go.
      *
-     * @return bool  True if any callbacks were processed.
+     * @return bool True if any callbacks were processed.
      */
     public function processDeferredCallbacks(): bool
     {
@@ -78,9 +72,9 @@ final class TickHandler
     /**
      * Split the callback list into a batch and execute it.
      *
-     * @param list<callable> $callbacks  Passed by reference; batch is spliced off.
-     * @param string         $type       Label for error logging.
-     * @return bool          True if any callbacks were executed.
+     * @param  list<callable>  $callbacks  Passed by reference; batch is spliced off.
+     * @param  string  $type  Label for error logging.
+     * @return bool True if any callbacks were executed.
      */
     private function processBatch(array &$callbacks, string $type): bool
     {
@@ -93,9 +87,8 @@ final class TickHandler
     /**
      * Execute a batch of callbacks, catching any exceptions.
      *
-     * @param list<callable> $callbacks
-     * @param string         $type
-     * @return bool          True if at least one callback ran successfully.
+     * @param  list<callable>  $callbacks
+     * @return bool True if at least one callback ran successfully.
      */
     private function executeBatch(array $callbacks, string $type): bool
     {
@@ -106,7 +99,7 @@ final class TickHandler
                 $callback();
                 $processed = true;
             } catch (\Throwable $e) {
-                error_log("{$type} callback error: " . $e->getMessage());
+                error_log("{$type} callback error: ".$e->getMessage());
             }
         }
 
@@ -115,8 +108,6 @@ final class TickHandler
 
     /**
      * Check if there are any pending next-tick callbacks.
-     *
-     * @return bool
      */
     public function hasTickCallbacks(): bool
     {
@@ -125,8 +116,6 @@ final class TickHandler
 
     /**
      * Check if there are any pending deferred callbacks.
-     *
-     * @return bool
      */
     public function hasDeferredCallbacks(): bool
     {

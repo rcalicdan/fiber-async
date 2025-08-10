@@ -18,48 +18,48 @@ use Rcalicdan\FiberAsync\EventLoop\Managers\TimerManager;
 final readonly class WorkHandler
 {
     /**
-     * @var TimerManager  Manages scheduled timers.
+     * @var TimerManager Manages scheduled timers.
      */
     private TimerManager $timerManager;
 
     /**
-     * @var HttpRequestManager  Manages outgoing HTTP requests.
+     * @var HttpRequestManager Manages outgoing HTTP requests.
      */
     private HttpRequestManager $httpRequestManager;
 
     /**
-     * @var StreamManager  Manages stream watchers and processing.
+     * @var StreamManager Manages stream watchers and processing.
      */
     private StreamManager $streamManager;
 
     /**
-     * @var FiberManager  Manages fiber scheduling and execution.
+     * @var FiberManager Manages fiber scheduling and execution.
      */
     private FiberManager $fiberManager;
 
     /**
-     * @var TickHandler  Manages next-tick and deferred callbacks.
+     * @var TickHandler Manages next-tick and deferred callbacks.
      */
     private TickHandler $tickHandler;
 
     /**
-     * @var FileManager  Manages file system operations.
+     * @var FileManager Manages file system operations.
      */
     private FileManager $fileManager;
 
     /**
-     * @var SocketManager  Manages socket watchers and processing.
+     * @var SocketManager Manages socket watchers and processing.
      */
     private SocketManager $socketManager;
 
     /**
-     * @param TimerManager        $timerManager        Timer scheduling/processing.
-     * @param HttpRequestManager  $httpRequestManager  HTTP request scheduling/processing.
-     * @param StreamManager       $streamManager       Stream watching/processing.
-     * @param FiberManager        $fiberManager        Fiber scheduling/processing.
-     * @param TickHandler         $tickHandler         Next-tick and deferred callbacks.
-     * @param FileManager         $fileManager         File system operations.
-     * @param SocketManager       $socketManager       Socket watching/processing.
+     * @param  TimerManager  $timerManager  Timer scheduling/processing.
+     * @param  HttpRequestManager  $httpRequestManager  HTTP request scheduling/processing.
+     * @param  StreamManager  $streamManager  Stream watching/processing.
+     * @param  FiberManager  $fiberManager  Fiber scheduling/processing.
+     * @param  TickHandler  $tickHandler  Next-tick and deferred callbacks.
+     * @param  FileManager  $fileManager  File system operations.
+     * @param  SocketManager  $socketManager  Socket watching/processing.
      */
     public function __construct(
         TimerManager $timerManager,
@@ -70,13 +70,13 @@ final readonly class WorkHandler
         FileManager $fileManager,
         SocketManager $socketManager,
     ) {
-        $this->timerManager       = $timerManager;
+        $this->timerManager = $timerManager;
         $this->httpRequestManager = $httpRequestManager;
-        $this->streamManager      = $streamManager;
-        $this->fiberManager       = $fiberManager;
-        $this->tickHandler        = $tickHandler;
-        $this->fileManager        = $fileManager;
-        $this->socketManager      = $socketManager;
+        $this->streamManager = $streamManager;
+        $this->fiberManager = $fiberManager;
+        $this->tickHandler = $tickHandler;
+        $this->fileManager = $fileManager;
+        $this->socketManager = $socketManager;
     }
 
     /**
@@ -84,7 +84,7 @@ final readonly class WorkHandler
      *
      * Checks callbacks, timers, HTTP requests, file I/O, streams, sockets, and fibers.
      *
-     * @return bool  True if any work units are pending.
+     * @return bool True if any work units are pending.
      */
     public function hasWork(): bool
     {
@@ -105,7 +105,7 @@ final readonly class WorkHandler
      * 3. I/O operations (HTTP, sockets, streams, files)
      * 4. Deferred callbacks
      *
-     * @return bool  True if any work was performed.
+     * @return bool True if any work was performed.
      */
     public function processWork(): bool
     {
@@ -143,7 +143,7 @@ final readonly class WorkHandler
      * - Streams (only if watchers exist)
      * - File operations
      *
-     * @return bool  True if any I/O work was performed.
+     * @return bool True if any I/O work was performed.
      */
     private function processIOOperations(): bool
     {

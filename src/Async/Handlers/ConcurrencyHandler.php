@@ -49,11 +49,13 @@ final readonly class ConcurrencyHandler
         return new Promise(function (callable $resolve, callable $reject) use ($tasks, $concurrency): void {
             if ($concurrency <= 0) {
                 $reject(new \InvalidArgumentException('Concurrency limit must be greater than 0'));
+
                 return;
             }
 
             if ($tasks === []) {
                 $resolve([]);
+
                 return;
             }
 
@@ -103,6 +105,7 @@ final readonly class ConcurrencyHandler
                     } catch (Throwable $e) {
                         $running--;
                         $reject($e);
+
                         return;
                     }
 
@@ -130,7 +133,8 @@ final readonly class ConcurrencyHandler
                         ->catch(function ($error) use (&$running, $reject): void {
                             $running--;
                             $reject($error);
-                        });
+                        })
+                    ;
                 }
             };
 
@@ -158,11 +162,13 @@ final readonly class ConcurrencyHandler
         return new Promise(function (callable $resolve, callable $reject) use ($tasks, $batchSize, $concurrency): void {
             if ($batchSize <= 0) {
                 $reject(new \InvalidArgumentException('Batch size must be greater than 0'));
+
                 return;
             }
 
             if ($tasks === []) {
                 $resolve([]);
+
                 return;
             }
 
@@ -198,6 +204,7 @@ final readonly class ConcurrencyHandler
             ): void {
                 if ($batchIndex >= $totalBatches) {
                     $resolve($allResults);
+
                     return;
                 }
 
@@ -218,7 +225,8 @@ final readonly class ConcurrencyHandler
                     })
                     ->catch(function ($error) use ($reject): void {
                         $reject($error);
-                    });
+                    })
+                ;
             };
 
             EventLoop::getInstance()->nextTick($processNextBatch);
@@ -244,6 +252,7 @@ final readonly class ConcurrencyHandler
                 if ($result instanceof PromiseInterface) {
                     return $this->awaitHandler->await($result);
                 }
+
                 return $result;
             };
         }

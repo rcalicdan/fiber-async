@@ -56,8 +56,6 @@ final class Task
 
     /**
      * Reset all cached instances to their initial state.
-     *
-     * @return void
      */
     public static function reset(): void
     {
@@ -68,7 +66,7 @@ final class Task
     /**
      * Run an async operation with automatic event loop management.
      *
-     * @param callable(): mixed|PromiseInterface<mixed> $asyncOperation The operation to execute.
+     * @param  callable(): mixed|PromiseInterface<mixed>  $asyncOperation  The operation to execute.
      * @return mixed The result of the async operation.
      */
     public static function run(callable|PromiseInterface $asyncOperation): mixed
@@ -79,7 +77,7 @@ final class Task
     /**
      * Run multiple async operations concurrently with automatic loop management.
      *
-     * @param array<int|string, callable(): mixed|PromiseInterface<mixed>> $asyncOperations Array of callables or promises to execute.
+     * @param  array<int|string, callable(): mixed|PromiseInterface<mixed>>  $asyncOperations  Array of callables or promises to execute.
      * @return array<mixed> Results of all operations in the same order as input.
      */
     public static function runAll(array $asyncOperations): array
@@ -90,8 +88,8 @@ final class Task
     /**
      * Run async operations with concurrency control and automatic loop management.
      *
-     * @param array<int|string, callable(): mixed|PromiseInterface<mixed>> $asyncOperations Array of operations to execute.
-     * @param int $concurrency Maximum number of concurrent operations.
+     * @param  array<int|string, callable(): mixed|PromiseInterface<mixed>>  $asyncOperations  Array of operations to execute.
+     * @param  int  $concurrency  Maximum number of concurrent operations.
      * @return array<mixed> Results of all operations.
      */
     public static function runConcurrent(array $asyncOperations, int $concurrency = 10): array
@@ -102,8 +100,8 @@ final class Task
     /**
      * Run an async operation with a timeout constraint and automatic loop management.
      *
-     * @param callable(): mixed|PromiseInterface<mixed>|array<int|string, callable(): mixed|PromiseInterface<mixed>> $asyncOperation The operation to execute.
-     * @param float $timeout Maximum time to wait in seconds.
+     * @param  callable(): mixed|PromiseInterface<mixed>|array<int|string, callable(): mixed|PromiseInterface<mixed>>  $asyncOperation  The operation to execute.
+     * @param  float  $timeout  Maximum time to wait in seconds.
      * @return mixed The result of the operation if completed within timeout.
      *
      * @throws \Exception If the operation times out.
@@ -116,9 +114,9 @@ final class Task
     /**
      * Run async operations in batches with concurrency control and automatic loop management.
      *
-     * @param array<int|string, callable(): mixed|PromiseInterface<mixed>> $asyncOperations Array of operations to execute.
-     * @param int $batch Number of operations to run in each batch.
-     * @param int|null $concurrency Maximum number of concurrent operations per batch.
+     * @param  array<int|string, callable(): mixed|PromiseInterface<mixed>>  $asyncOperations  Array of operations to execute.
+     * @param  int  $batch  Number of operations to run in each batch.
+     * @param  int|null  $concurrency  Maximum number of concurrent operations per batch.
      * @return array<mixed> Results of all operations.
      */
     public static function runBatch(array $asyncOperations, int $batch, ?int $concurrency = null): array

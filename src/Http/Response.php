@@ -103,6 +103,7 @@ class Response extends Message implements ResponseInterface
                     $writeResult = fwrite($resource, $body);
                     if ($writeResult === false) {
                         fclose($resource);
+
                         throw new \RuntimeException('Unable to write to temporary stream');
                     }
                     rewind($resource);

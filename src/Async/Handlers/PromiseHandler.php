@@ -21,6 +21,7 @@ final readonly class PromiseHandler
      * or for creating resolved Promises in async chains.
      *
      * @template TValue
+     *
      * @param  TValue  $value  The value to resolve the Promise with
      * @return PromiseInterface<TValue> A Promise that resolves with the given value
      */
@@ -63,6 +64,7 @@ final readonly class PromiseHandler
     {
         /** @var Promise<mixed> $promise */
         $promise = new Promise;
+
         return $promise;
     }
 }

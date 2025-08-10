@@ -25,7 +25,7 @@ final readonly class PromiseCollectionHandler
     }
 
     /**
-     * @param array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>> $promises
+     * @param  array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>>  $promises
      * @return PromiseInterface<array<int|string, mixed>>
      */
     public function all(array $promises): PromiseInterface
@@ -34,6 +34,7 @@ final readonly class PromiseCollectionHandler
         return new Promise(function (callable $resolve, callable $reject) use ($promises): void {
             if ($promises === []) {
                 $resolve([]);
+
                 return;
             }
 
@@ -53,6 +54,7 @@ final readonly class PromiseCollectionHandler
                     }
                 } catch (Throwable $e) {
                     $reject($e);
+
                     return;
                 }
 
@@ -71,15 +73,16 @@ final readonly class PromiseCollectionHandler
                     })
                     ->catch(function ($reason) use ($reject): void {
                         $reject($reason);
-                    });
+                    })
+                ;
             }
         });
     }
 
     /**
      * Race multiple Promises and return the first to settle.
-     * 
-     * @param array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>> $promises
+     *
+     * @param  array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>>  $promises
      * @return PromiseInterface<mixed>
      */
     public function race(array $promises): PromiseInterface
@@ -91,6 +94,7 @@ final readonly class PromiseCollectionHandler
         $cancellablePromise = new CancellablePromise(function (callable $resolve, callable $reject) use ($promises, &$promiseInstances, &$settled): void {
             if ($promises === []) {
                 $reject(new Exception('No promises provided'));
+
                 return;
             }
 
@@ -116,6 +120,7 @@ final readonly class PromiseCollectionHandler
                         $this->cancelPromiseIfPossible($p);
                     }
                     $reject($e);
+
                     return;
                 }
 
@@ -135,7 +140,8 @@ final readonly class PromiseCollectionHandler
 
                         $this->handleRaceSettlement($settled, $promiseInstances, $index);
                         $reject($reason);
-                    });
+                    })
+                ;
             }
         });
 
@@ -150,7 +156,7 @@ final readonly class PromiseCollectionHandler
     }
 
     /**
-     * @param callable(): PromiseInterface<mixed>|PromiseInterface<mixed>|array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>> $operations
+     * @param  callable(): PromiseInterface<mixed>|PromiseInterface<mixed>|array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>>  $operations
      * @return PromiseInterface<mixed>
      */
     public function timeout(
@@ -171,17 +177,19 @@ final readonly class PromiseCollectionHandler
 
         $timeoutPromise = $this->timerHandler
             ->delay($seconds)
-            ->then(fn () => throw new Exception("Operation timed out after {$seconds} seconds"));
+            ->then(fn () => throw new Exception("Operation timed out after {$seconds} seconds"))
+        ;
 
         /** @var array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>> $racePromises */
         $racePromises = [...$promises, $timeoutPromise];
+
         return $this->race($racePromises);
     }
 
     /**
      * Wait for any Promise in a collection to resolve.
-     * 
-     * @param array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>> $promises
+     *
+     * @param  array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>>  $promises
      * @return PromiseInterface<mixed>
      */
     public function any(array $promises): PromiseInterface
@@ -194,6 +202,7 @@ final readonly class PromiseCollectionHandler
             function (callable $resolve, callable $reject) use ($promises, &$promiseInstances, &$settled): void {
                 if ($promises === []) {
                     $reject(new Exception('No promises provided'));
+
                     return;
                 }
 
@@ -225,6 +234,7 @@ final readonly class PromiseCollectionHandler
                             $this->cancelPromiseIfPossible($p);
                         }
                         $reject($e);
+
                         return;
                     }
 
@@ -267,7 +277,8 @@ final readonly class PromiseCollectionHandler
                                     );
                                 }
                             }
-                        );
+                        )
+                    ;
                 }
             }
         );
@@ -285,7 +296,7 @@ final readonly class PromiseCollectionHandler
     }
 
     /**
-     * @param array<int|string, PromiseInterface<mixed>> $promiseInstances
+     * @param  array<int|string, PromiseInterface<mixed>>  $promiseInstances
      */
     private function handleAnySettlement(bool &$settled, array &$promiseInstances, int|string $winnerIndex): void
     {
@@ -300,7 +311,7 @@ final readonly class PromiseCollectionHandler
     }
 
     /**
-     * @param array<int|string, PromiseInterface<mixed>> $promiseInstances
+     * @param  array<int|string, PromiseInterface<mixed>>  $promiseInstances
      */
     private function handleRaceSettlement(bool &$settled, array &$promiseInstances, int|string $winnerIndex): void
     {
@@ -315,7 +326,7 @@ final readonly class PromiseCollectionHandler
     }
 
     /**
-     * @param PromiseInterface<mixed> $promise
+     * @param  PromiseInterface<mixed>  $promise
      */
     private function cancelPromiseIfPossible(PromiseInterface $promise): void
     {
@@ -330,7 +341,7 @@ final readonly class PromiseCollectionHandler
     }
 
     /**
-     * @param array<int|string, mixed> $array
+     * @param  array<int|string, mixed>  $array
      */
     private function hasStringKeys(array $array): bool
     {

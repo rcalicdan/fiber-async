@@ -19,9 +19,9 @@ final readonly class TimerExecutionHandler
      * This method modifies the timers array by reference, removing timers
      * after they have been executed.
      *
-     * @param array<string, Timer> &$timers A map of timers, keyed by their string ID.
-     *                                      This array is modified by this method.
-     * @param float $currentTime The current microtime timestamp.
+     * @param  array<string, Timer>  &$timers  A map of timers, keyed by their string ID.
+     *                                         This array is modified by this method.
+     * @param  float  $currentTime  The current microtime timestamp.
      * @return bool True if at least one timer was executed, false otherwise.
      */
     public function executeReadyTimers(array &$timers, float $currentTime): bool
@@ -63,14 +63,13 @@ final readonly class TimerExecutionHandler
      * Safely executes the callback associated with the given timer.
      *
      * @param  Timer  $timer  The timer to execute.
-     * @return void
      */
     public function executeTimer(Timer $timer): void
     {
         try {
             $timer->execute();
         } catch (Throwable $e) {
-            error_log('Timer callback error for timer ' . $timer->getId() . ': ' . $e->getMessage());
+            error_log('Timer callback error for timer '.$timer->getId().': '.$e->getMessage());
         }
     }
 }
