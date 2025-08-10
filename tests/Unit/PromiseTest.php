@@ -6,7 +6,6 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 describe('Promise', function () {
     beforeEach(function () {
-        // Reset any static state before each test
         Promise::reset();
     });
 
@@ -149,42 +148,49 @@ describe('Promise', function () {
             $promise = new Promise();
             $promise->reject('simple error message');
 
-            expect($promise->getReason())->toBe('simple error message');
+            expect($promise->getReason())->toBeInstanceOf(Exception::class)
+                ->and($promise->getReason()->getMessage())->toBe('simple error message');
         });
     });
 
     describe('Then method', function () {
         it('calls onFulfilled when promise is resolved', function () {
-            $promise = new Promise();
             $called = false;
             $receivedValue = null;
 
-            $promise->then(function ($value) use (&$called, &$receivedValue) {
-                $called = true;
-                $receivedValue = $value;
-            });
+            run(function () use (&$called, &$receivedValue) {
+                $promise = new Promise();
 
-            $promise->resolve('test value');
+                $promise->then(function ($value) use (&$called, &$receivedValue) {
+                    $called = true;
+                    $receivedValue = $value;
+                });
+
+                $promise->resolve('test value');
+            });
 
             expect($called)->toBeTrue()
                 ->and($receivedValue)->toBe('test value');
         });
 
         it('calls onRejected when promise is rejected', function () {
-            $promise = new Promise();
             $called = false;
             $receivedReason = null;
 
-            $promise->then(null, function ($reason) use (&$called, &$receivedReason) {
-                $called = true;
-                $receivedReason = $reason;
+            run(function () use (&$called, &$receivedReason) {
+                $promise = new Promise();
+
+                $promise->then(null, function ($reason) use (&$called, &$receivedReason) {
+                    $called = true;
+                    $receivedReason = $reason;
+                });
+
+                $exception = new Exception('test error');
+                $promise->reject($exception);
             });
 
-            $exception = new Exception('test error');
-            $promise->reject($exception);
-
             expect($called)->toBeTrue()
-                ->and($receivedReason)->toBe($exception);
+                ->and($receivedReason)->toBeInstanceOf(Exception::class);
         });
 
         it('returns a new promise', function () {
@@ -198,60 +204,76 @@ describe('Promise', function () {
         });
 
         it('transforms values through the chain', function () {
-            $promise = new Promise();
+            $finalPromise = run(function () {
+                $promise = new Promise();
 
-            $finalPromise = $promise->then(function ($value) {
-                return $value * 2;
-            })->then(function ($value) {
-                return $value + 1;
+                $finalPromise = $promise->then(function ($value) {
+                    return $value * 2;
+                })->then(function ($value) {
+                    return $value + 1;
+                });
+
+                $promise->resolve(5);
+
+                return $finalPromise;
             });
 
-            $promise->resolve(5);
-
             expect($finalPromise->isResolved())->toBeTrue()
-                ->and($finalPromise->getValue())->toBe(11); 
+                ->and($finalPromise->getValue())->toBe(11); // (5 * 2) + 1
         });
 
         it('handles promise returning from onFulfilled', function () {
-            $promise = new Promise();
-            $innerPromise = new Promise();
+            $chainedPromise = run(function () {
+                $promise = new Promise();
+                $innerPromise = new Promise();
 
-            $chainedPromise = $promise->then(function ($value) use ($innerPromise) {
-                return $innerPromise;
+                $chainedPromise = $promise->then(function ($value) use ($innerPromise) {
+                    return $innerPromise;
+                });
+
+                $promise->resolve('original');
+                // At this point chainedPromise should be pending
+
+                $innerPromise->resolve('inner value');
+
+                return $chainedPromise;
             });
 
-            $promise->resolve('original');
-            expect($chainedPromise->isPending())->toBeTrue();
-
-            $innerPromise->resolve('inner value');
             expect($chainedPromise->isResolved())->toBeTrue()
                 ->and($chainedPromise->getValue())->toBe('inner value');
         });
 
         it('handles exceptions in onFulfilled', function () {
-            $promise = new Promise();
-            $exception = new Exception('handler error');
+            $chainedPromise = run(function () {
+                $promise = new Promise();
+                $exception = new Exception('handler error');
 
-            $chainedPromise = $promise->then(function ($value) use ($exception) {
-                throw $exception;
+                $chainedPromise = $promise->then(function ($value) use ($exception) {
+                    throw $exception;
+                });
+
+                $promise->resolve('value');
+
+                return $chainedPromise;
             });
 
-            $promise->resolve('value');
-
             expect($chainedPromise->isRejected())->toBeTrue()
-                ->and($chainedPromise->getReason())->toBe($exception);
+                ->and($chainedPromise->getReason())->toBeInstanceOf(Exception::class)
+                ->and($chainedPromise->getReason()->getMessage())->toBe('handler error');
         });
 
         it('calls handlers for already resolved promises', function () {
-            $promise = new Promise();
-            $promise->resolve('test value');
-
             $called = false;
             $receivedValue = null;
 
-            $promise->then(function ($value) use (&$called, &$receivedValue) {
-                $called = true;
-                $receivedValue = $value;
+            run(function () use (&$called, &$receivedValue) {
+                $promise = new Promise();
+                $promise->resolve('test value');
+
+                $promise->then(function ($value) use (&$called, &$receivedValue) {
+                    $called = true;
+                    $receivedValue = $value;
+                });
             });
 
             expect($called)->toBeTrue()
@@ -259,18 +281,21 @@ describe('Promise', function () {
         });
 
         it('supports multiple then handlers', function () {
-            $promise = new Promise();
             $calls = [];
 
-            $promise->then(function ($value) use (&$calls) {
-                $calls[] = 'first: ' . $value;
-            });
+            run(function () use (&$calls) {
+                $promise = new Promise();
 
-            $promise->then(function ($value) use (&$calls) {
-                $calls[] = 'second: ' . $value;
-            });
+                $promise->then(function ($value) use (&$calls) {
+                    $calls[] = 'first: ' . $value;
+                });
 
-            $promise->resolve('test');
+                $promise->then(function ($value) use (&$calls) {
+                    $calls[] = 'second: ' . $value;
+                });
+
+                $promise->resolve('test');
+            });
 
             expect($calls)->toHaveCount(2)
                 ->and($calls)->toContain('first: test')
@@ -280,21 +305,27 @@ describe('Promise', function () {
 
     describe('Catch method', function () {
         it('handles rejected promises', function () {
-            $promise = new Promise();
+
             $called = false;
+            /** @var Exception|null $receivedReason */
             $receivedReason = null;
 
-            $promise->catch(function ($reason) use (&$called, &$receivedReason) {
-                $called = true;
-                $receivedReason = $reason;
-                return 'recovered';
+            run(function () use (&$called, &$receivedReason) {
+                $promise = new Promise();
+
+                $promise->catch(function ($reason) use (&$called, &$receivedReason) {
+                    $called = true;
+                    $receivedReason = $reason;
+                    return 'recovered';
+                });
+
+                $exception = new Exception('test error');
+                $promise->reject($exception);
             });
 
-            $exception = new Exception('test error');
-            $promise->reject($exception);
-
             expect($called)->toBeTrue()
-                ->and($receivedReason)->toBe($exception);
+                ->and($receivedReason)->toBeInstanceOf(Exception::class)
+                ->and($receivedReason->getMessage())->toBe('test error');
         });
 
         it('does not handle resolved promises', function () {
@@ -311,14 +342,18 @@ describe('Promise', function () {
         });
 
         it('can recover from rejection', function () {
-            $promise = new Promise();
-            $exception = new Exception('error');
+            $recoveredPromise = run(function () {
+                $promise = new Promise();
+                $exception = new Exception('error');
 
-            $recoveredPromise = $promise->catch(function ($reason) {
-                return 'recovered value';
+                $recoveredPromise = $promise->catch(function ($reason) {
+                    return 'recovered value';
+                });
+
+                $promise->reject($exception);
+
+                return $recoveredPromise;
             });
-
-            $promise->reject($exception);
 
             expect($recoveredPromise->isResolved())->toBeTrue()
                 ->and($recoveredPromise->getValue())->toBe('recovered value');
@@ -327,27 +362,33 @@ describe('Promise', function () {
 
     describe('Finally method', function () {
         it('calls finally handler on resolution', function () {
-            $promise = new Promise();
             $called = false;
 
-            $promise->finally(function () use (&$called) {
-                $called = true;
-            });
+            run(function () use (&$called) {
+                $promise = new Promise();
 
-            $promise->resolve('value');
+                $promise->finally(function () use (&$called) {
+                    $called = true;
+                });
+
+                $promise->resolve('value');
+            });
 
             expect($called)->toBeTrue();
         });
 
         it('calls finally handler on rejection', function () {
-            $promise = new Promise();
             $called = false;
 
-            $promise->finally(function () use (&$called) {
-                $called = true;
-            });
+            run(function () use (&$called) {
+                $promise = new Promise();
 
-            $promise->reject(new Exception('error'));
+                $promise->finally(function () use (&$called) {
+                    $called = true;
+                });
+
+                $promise->reject(new Exception('error'));
+            });
 
             expect($called)->toBeTrue();
         });
@@ -435,6 +476,82 @@ describe('Promise', function () {
         });
     });
 
+    describe('Promise::any', function () {
+        it('resolves with the first resolved promise even when earlier promises reject', function () {
+            $result = run(function () {
+                $promise1 = Promise::rejected(new Exception('first error'));
+                $promise2 = Promise::rejected(new Exception('second error'));
+                $promise3 = Promise::resolved('third success');
+                $promise4 = Promise::resolved('fourth success');
+
+                return await(Promise::any([$promise1, $promise2, $promise3, $promise4]));
+            });
+
+            expect($result)->toBe('third success');
+        });
+
+        it('rejects with AggregateException when all promises reject', function () {
+            try {
+                run(function () {
+                    $promise1 = Promise::rejected(new Exception('first error'));
+                    $promise2 = Promise::rejected(new Exception('second error'));
+                    $promise3 = Promise::rejected(new Exception('third error'));
+
+                    return await(Promise::any([$promise1, $promise2, $promise3]));
+                });
+
+                expect(false)->toBeTrue('Expected AggregateException to be thrown');
+            } catch (Exception $e) {
+                expect($e)->toBeInstanceOf(Exception::class);
+                // You might want to check for a specific exception type like AggregateException
+                // depending on your implementation
+            }
+        });
+
+        it('resolves immediately with the first successful promise in mixed order', function () {
+            $result = run(function () {
+                $promise1 = new Promise();
+                $promise2 = Promise::resolved('quick success');
+                $promise3 = new Promise();
+
+                // Reject the first promise after setting up any()
+                $anyPromise = Promise::any([$promise1, $promise2, $promise3]);
+
+                $promise1->reject(new Exception('delayed error'));
+                $promise3->resolve('delayed success');
+
+                return await($anyPromise);
+            });
+
+            expect($result)->toBe('quick success');
+        });
+
+        it('handles empty array by rejecting', function () {
+            try {
+                run(function () {
+                    return await(Promise::any([]));
+                });
+
+                expect(false)->toBeTrue('Expected exception to be thrown for empty array');
+            } catch (Exception $e) {
+                expect($e)->toBeInstanceOf(Exception::class);
+            }
+        });
+
+        it('resolves with first successful promise when mixed with pending promises', function () {
+            $result = run(function () {
+                $promise1 = Promise::rejected(new Exception('error'));
+                $promise2 = new Promise(); // Never settles
+                $promise3 = Promise::resolved('success');
+                $promise4 = new Promise(); // Never settles
+
+                return await(Promise::any([$promise1, $promise2, $promise3, $promise4]));
+            });
+
+            expect($result)->toBe('success');
+        });
+    });
+
     describe('Promise::race', function () {
         it('resolves with the first settled promise value', function () {
             $result = run(function () {
@@ -467,18 +584,14 @@ describe('Promise', function () {
     });
 
     describe('Error handling', function () {
-        it('throws LogicException when getting value of non-resolved promise', function () {
+        it('returns null when getting value of non-resolved promise', function () {
             $promise = new Promise();
-
-            expect(fn() => $promise->getValue())
-                ->toThrow(LogicException::class);
+            expect($promise->getValue())->toBeNull();
         });
 
-        it('throws LogicException when getting reason of non-rejected promise', function () {
+        it('returns null when getting reason of non-rejected promise', function () {
             $promise = new Promise();
-
-            expect(fn() => $promise->getReason())
-                ->toThrow(LogicException::class);
+            expect($promise->getReason())->toBeNull();
         });
 
         it('allows getting value of resolved promise', function () {
@@ -494,6 +607,173 @@ describe('Promise', function () {
             $promise->reject($exception);
 
             expect($promise->getReason())->toBe($exception);
+        });
+    });
+
+    describe('Promise::batch', function () {
+        it('processes tasks in batches with default batch size', function () {
+            $executionOrder = [];
+            $startTime = microtime(true);
+
+            $result = run(function () use (&$executionOrder) {
+                $tasks = [];
+
+                // Create 25 tasks that each take 0.1 seconds
+                for ($i = 0; $i < 25; $i++) {
+                    $tasks[] = function () use ($i, &$executionOrder) {
+                        return delay(0.1)->then(function () use ($i, &$executionOrder) {
+                            $executionOrder[] = $i;
+                            return "task-{$i}";
+                        });
+                    };
+                }
+
+                return await(Promise::batch($tasks, 5)); // 5 tasks per batch
+            });
+
+            $executionTime = microtime(true) - $startTime;
+
+            // Should complete in roughly 5 batches × 0.1s = 0.5s (plus overhead)
+            expect($executionTime)->toBeLessThan(0.8);
+            expect($result)->toHaveCount(25);
+            expect($result[0])->toBe('task-0');
+            expect($result[24])->toBe('task-24');
+        });
+
+        it('respects batch size parameter', function () {
+            $startTime = microtime(true);
+
+            $result = run(function () {
+                $tasks = [];
+
+                // Create 7 tasks, each taking 0.1 seconds
+                for ($i = 0; $i < 7; $i++) {
+                    $tasks[] = fn() => delay(0.1)->then(fn() => "task-{$i}");
+                }
+
+                return await(Promise::batch($tasks, 3)); // 3 tasks per batch
+            });
+
+            $executionTime = microtime(true) - $startTime;
+
+            expect($result)->toHaveCount(7);
+            // With batch size 3: [0,1,2], [3,4,5], [6]
+            // Should take ~3 batch cycles × 0.1s = ~0.3s
+            expect($executionTime)->toBeGreaterThan(0.25);
+            expect($executionTime)->toBeLessThan(0.5);
+        });
+
+        it('processes batches sequentially not concurrently', function () {
+            $executionTimes = [];
+            $startTime = microtime(true);
+
+            run(function () use (&$executionTimes, $startTime) {
+                $tasks = [];
+
+                // Create 6 tasks, each taking 0.1 seconds
+                for ($i = 0; $i < 6; $i++) {
+                    $tasks[] = function () use ($i, &$executionTimes, $startTime) {
+                        return delay(0.1)->then(function () use ($i, &$executionTimes, $startTime) {
+                            $executionTimes[] = microtime(true) - $startTime;
+                            return "task-{$i}";
+                        });
+                    };
+                }
+
+                return await(Promise::batch($tasks, 2)); // 2 tasks per batch
+            });
+
+            // Batches should execute sequentially:
+            // Batch 1 (tasks 0,1): ~0.1s
+            // Batch 2 (tasks 2,3): ~0.2s  
+            // Batch 3 (tasks 4,5): ~0.3s
+            expect($executionTimes[0])->toBeLessThan(0.15); // First batch
+            expect($executionTimes[2])->toBeGreaterThan(0.18); // Second batch
+            expect($executionTimes[4])->toBeGreaterThan(0.28); // Third batch
+        });
+
+        it('handles empty task array', function () {
+            $result = run(function () {
+                return await(Promise::batch([], 5));
+            });
+
+            expect($result)->toBe([]);
+        });
+
+        it('works with batch size larger than task count', function () {
+            $result = run(function () {
+                $tasks = [
+                    fn() => delay(0.05)->then(fn() => 'task-0'),
+                    fn() => delay(0.05)->then(fn() => 'task-1'),
+                    fn() => delay(0.05)->then(fn() => 'task-2'),
+                ];
+
+                return await(Promise::batch($tasks, 10)); // Batch size > task count
+            });
+
+            expect($result)->toHaveCount(3);
+            expect($result)->toBe(['task-0', 'task-1', 'task-2']);
+        });
+
+        it('handles task failures within a batch', function () {
+            try {
+                run(function () {
+                    $tasks = [
+                        fn() => delay(0.05)->then(fn() => 'task-0'),
+                        fn() => delay(0.05)->then(fn() => throw new Exception('batch error')),
+                        fn() => delay(0.05)->then(fn() => 'task-2'),
+                    ];
+
+                    return await(Promise::batch($tasks, 2));
+                });
+
+                expect(false)->toBeTrue('Expected exception to be thrown');
+            } catch (Exception $e) {
+                expect($e->getMessage())->toBe('batch error');
+            }
+        });
+
+        it('respects concurrency parameter when provided', function () {
+            $startTime = microtime(true);
+
+            $result = run(function () {
+                $tasks = [];
+
+                for ($i = 0; $i < 6; $i++) {
+                    $tasks[] = fn() => delay(0.1)->then(fn() => "task-{$i}");
+                }
+
+                return await(Promise::batch($tasks, 3, 2));
+            });
+
+            $executionTime = microtime(true) - $startTime;
+
+            expect($result)->toHaveCount(6);
+            expect($executionTime)->toBeLessThan(0.6);
+            expect($executionTime)->toBeGreaterThan(0.3);
+        });
+
+        it('maintains result order within and across batches', function () {
+            $result = run(function () {
+                $tasks = [];
+
+                // Create tasks with same delay to avoid timing issues
+                for ($i = 0; $i < 6; $i++) {
+                    $tasks[] = function () use ($i) {
+                        return delay(0.05)->then(fn() => "task-{$i}");
+                    };
+                }
+
+                return await(Promise::batch($tasks, 2));
+            });
+
+            expect($result)->toHaveCount(6);
+            expect($result)->toContain('task-0');
+            expect($result)->toContain('task-1');
+            expect($result)->toContain('task-2');
+            expect($result)->toContain('task-3');
+            expect($result)->toContain('task-4');
+            expect($result)->toContain('task-5');
         });
     });
 

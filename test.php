@@ -1,54 +1,24 @@
 <?php
 require __DIR__ . '/vendor/autoload.php';
 
-use Rcalicdan\FiberAsync\EventLoop\EventLoop;
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Promise;
 
-$start = microtime(true);
+$promises = Promise::all([
+    delay(1),
+    delay(2),
+    delay(3),
+]);
 
-function ms()
-{
-    global $start;
-    return round((microtime(true) - $start) * 1000);
-}
-
-function logmsg($msg)
-{
-    echo "$msg @ " . ms() . "ms\n";
-}
-
-run(function () {
-    $aggregateStart = ms();
-
-    // Create promises with different completion times
-    $pFast = delay(1) // 1 second
-        ->then(function() {
-            logmsg('Fast promise completed');
-            return 'fast-result';
-        });
-
-    $pMedium = delay(2) // 2 seconds
-        ->then(function() {
-            logmsg('Medium promise completed');
-            return 'medium-result';
-        });
-
-    $pSlow = delay(3) // 3 seconds
-        ->then(function() {
-            logmsg('Slow promise completed');
-            return 'slow-result';
-        });
-
-    // Test timeout - should complete before 2.5 seconds
-    Promise::timeout([$pFast, $pMedium, $pSlow], 2.5)
-        ->then(function ($results) use ($aggregateStart) {
-            logmsg('Promise::timeout resolved: ' . json_encode($results) .
-                ' (duration: ' . (ms() - $aggregateStart) . 'ms)');
-        })
-        ->catch(function (Throwable $e) use ($aggregateStart) {
-            logmsg("Promise::timeout rejected: {$e->getMessage()} " .
-                '(duration: ' . (ms() - $aggregateStart) . 'ms)');
-        });
+$startTime = microtime(true);
+run(function () use ($promises) {
+    await($promises);
 });
 
-logmsg("Timeout test completed");
+run(function () use ($promises) {
+    await($promises);
+});
+
+$endTime = microtime(true);
+$executionTime = $endTime - $startTime;
+echo "Execution time: " . $executionTime . " seconds" . PHP_EOL;
