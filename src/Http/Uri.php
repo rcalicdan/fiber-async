@@ -6,6 +6,9 @@ use Rcalicdan\FiberAsync\Http\Interfaces\UriInterface;
 
 /**
  * A PSR-7 compliant implementation of a Uniform Resource Identifier (URI).
+ * 
+ * Provides parsing and manipulation of URI components including scheme, host, port,
+ * path, query, fragment, and user information with immutable operations.
  */
 class Uri implements UriInterface
 {
@@ -20,27 +23,32 @@ class Uri implements UriInterface
     /**
      * Initializes a new URI instance by parsing a URI string.
      *
-     * @param  string  $uri  The URI to parse.
+     * @param string $uri The URI to parse.
      *
      * @throws \InvalidArgumentException If the given URI cannot be parsed.
      */
-    public function __construct(string $uri)
+    public function __construct(string $uri = '')
     {
+        if ($uri === '') {
+            return;
+        }
+
         $parts = parse_url($uri);
 
-        if (! $parts) {
+        if ($parts === false) {
             throw new \InvalidArgumentException("Invalid URI: $uri");
         }
 
-        $this->scheme = $parts['scheme'] ?? '';
-        $this->host = $parts['host'] ?? '';
-        $this->port = $parts['port'] ?? null;
-        $this->path = $parts['path'] ?? '/';
-        $this->query = $parts['query'] ?? '';
-        $this->fragment = $parts['fragment'] ?? '';
+        $this->scheme = isset($parts['scheme']) && is_string($parts['scheme']) ? $parts['scheme'] : '';
+        $this->host = isset($parts['host']) && is_string($parts['host']) ? $parts['host'] : '';
+        $this->port = isset($parts['port']) && is_int($parts['port']) ? $parts['port'] : null;
+        $this->path = isset($parts['path']) && is_string($parts['path']) ? $parts['path'] : '/';
+        $this->query = isset($parts['query']) && is_string($parts['query']) ? $parts['query'] : '';
+        $this->fragment = isset($parts['fragment']) && is_string($parts['fragment']) ? $parts['fragment'] : '';
 
-        if (isset($parts['user'])) {
-            $this->userInfo = $parts['user'].(isset($parts['pass']) ? ':'.$parts['pass'] : '');
+        if (isset($parts['user']) && is_string($parts['user'])) {
+            $password = isset($parts['pass']) && is_string($parts['pass']) ? $parts['pass'] : null;
+            $this->userInfo = $parts['user'] . ($password !== null ? ':' . $password : '');
         }
     }
 
@@ -57,11 +65,11 @@ class Uri implements UriInterface
      */
     public function getAuthority(): string
     {
-        $authority = $this->getUserInfo() !== '' ? $this->getUserInfo().'@' : '';
+        $authority = $this->getUserInfo() !== '' ? $this->getUserInfo() . '@' : '';
         $authority .= $this->host;
 
-        if ($this->port !== null && ! in_array($this->port, [80, 443])) {
-            $authority .= ':'.$this->port;
+        if ($this->port !== null && !$this->isStandardPort($this->scheme, $this->port)) {
+            $authority .= ':' . $this->port;
         }
 
         return $authority;
@@ -120,8 +128,12 @@ class Uri implements UriInterface
      */
     public function withScheme(string $scheme): UriInterface
     {
+        if ($this->scheme === $scheme) {
+            return $this;
+        }
+
         $clone = clone $this;
-        $clone->scheme = $scheme;
+        $clone->scheme = strtolower($scheme);
 
         return $clone;
     }
@@ -131,8 +143,14 @@ class Uri implements UriInterface
      */
     public function withUserInfo(string $user, ?string $password = null): UriInterface
     {
+        $userInfo = $user . ($password !== null ? ':' . $password : '');
+        
+        if ($this->userInfo === $userInfo) {
+            return $this;
+        }
+
         $clone = clone $this;
-        $clone->userInfo = $user.($password !== null ? ':'.$password : '');
+        $clone->userInfo = $userInfo;
 
         return $clone;
     }
@@ -142,8 +160,12 @@ class Uri implements UriInterface
      */
     public function withHost(string $host): UriInterface
     {
+        if ($this->host === $host) {
+            return $this;
+        }
+
         $clone = clone $this;
-        $clone->host = $host;
+        $clone->host = strtolower($host);
 
         return $clone;
     }
@@ -153,6 +175,14 @@ class Uri implements UriInterface
      */
     public function withPort(?int $port): UriInterface
     {
+        if ($this->port === $port) {
+            return $this;
+        }
+
+        if ($port !== null && ($port < 1 || $port > 65535)) {
+            throw new \InvalidArgumentException('Port must be between 1 and 65535 or null');
+        }
+
         $clone = clone $this;
         $clone->port = $port;
 
@@ -164,6 +194,10 @@ class Uri implements UriInterface
      */
     public function withPath(string $path): UriInterface
     {
+        if ($this->path === $path) {
+            return $this;
+        }
+
         $clone = clone $this;
         $clone->path = $path;
 
@@ -175,6 +209,10 @@ class Uri implements UriInterface
      */
     public function withQuery(string $query): UriInterface
     {
+        if ($this->query === $query) {
+            return $this;
+        }
+
         $clone = clone $this;
         $clone->query = $query;
 
@@ -186,6 +224,10 @@ class Uri implements UriInterface
      */
     public function withFragment(string $fragment): UriInterface
     {
+        if ($this->fragment === $fragment) {
+            return $this;
+        }
+
         $clone = clone $this;
         $clone->fragment = $fragment;
 
@@ -199,24 +241,45 @@ class Uri implements UriInterface
     {
         $uri = '';
 
-        if ($this->scheme) {
-            $uri .= $this->scheme.'://';
+        if ($this->scheme !== '') {
+            $uri .= $this->scheme . '://';
         }
 
-        $uri .= $this->getAuthority();
+        $authority = $this->getAuthority();
+        if ($authority !== '') {
+            $uri .= $authority;
+        }
 
-        if ($this->path) {
+        if ($this->path !== '') {
             $uri .= $this->path;
         }
 
-        if ($this->query) {
-            $uri .= '?'.$this->query;
+        if ($this->query !== '') {
+            $uri .= '?' . $this->query;
         }
 
-        if ($this->fragment) {
-            $uri .= '#'.$this->fragment;
+        if ($this->fragment !== '') {
+            $uri .= '#' . $this->fragment;
         }
 
         return $uri;
+    }
+
+    /**
+     * Checks if the given port is a standard port for the given scheme.
+     * 
+     * @param string $scheme The URI scheme
+     * @param int $port The port number
+     * @return bool True if it's a standard port, false otherwise
+     */
+    private function isStandardPort(string $scheme, int $port): bool
+    {
+        return match (strtolower($scheme)) {
+            'http' => $port === 80,
+            'https' => $port === 443,
+            'ftp' => $port === 21,
+            'ftps' => $port === 990,
+            default => false,
+        };
     }
 }

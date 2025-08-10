@@ -304,13 +304,8 @@ describe('HTTP Client Caching - Edge Cases', function () {
                 // Expected to fail
             }
 
-            // Even if the request was made, 404s shouldn't be cached
-            // (depending on your implementation - you might want to check this)
+        
             $cachedEntries = array_filter($trackableCache->operations, fn ($op) => $op[0] === 'set');
-
-            // If 404s are not cached, there should be no set operations
-            // If they are cached, you might want to adjust this test
-            // For now, let's just verify the cache was accessed
             expect($trackableCache->getOperationsCount('get'))->toBeGreaterThan(0);
         });
     });

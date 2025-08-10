@@ -3,7 +3,7 @@
 namespace Rcalicdan\FiberAsync\Api;
 
 use Rcalicdan\FiberAsync\Async\AsyncOperations;
-use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 
 /**
  * Static API for timer-based asynchronous operations.
@@ -55,9 +55,9 @@ final class Timer
      * in async execution, implementing retry delays, or rate limiting operations.
      *
      * @param  float  $seconds  Number of seconds to delay (supports fractional seconds)
-     * @return PromiseInterface A promise that resolves with null after the delay
+     * @return CancellablePromiseInterface A promise that resolves with null after the delay
      */
-    public static function delay(float $seconds): PromiseInterface
+    public static function delay(float $seconds): CancellablePromiseInterface
     {
         return self::getAsyncOperations()->delay($seconds);
     }

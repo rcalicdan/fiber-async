@@ -5,6 +5,7 @@ namespace Rcalicdan\FiberAsync\Http;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Interfaces\RequestInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\UriInterface;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -20,6 +21,7 @@ class Request extends Message implements RequestInterface
     private string $method = 'GET';
     private ?string $requestTarget = null;
     private UriInterface $uri;
+    /** @var array<string, mixed> */
     private array $options = [];
     private int $timeout = 30;
     private int $connectTimeout = 10;
@@ -27,6 +29,7 @@ class Request extends Message implements RequestInterface
     private int $maxRedirects = 5;
     private bool $verifySSL = true;
     private ?string $userAgent = null;
+    /** @var array{string, string, string}|null */
     private ?array $auth = null;
     private ?RetryConfig $retryConfig = null;
     private ?CacheConfig $cacheConfig = null;
@@ -37,7 +40,7 @@ class Request extends Message implements RequestInterface
      * @param  HttpHandler  $handler  The core handler responsible for dispatching the request.
      * @param  string  $method  The HTTP method for the request.
      * @param  string|UriInterface  $uri  The URI for the request.
-     * @param  array  $headers  An associative array of headers.
+     * @param  array<string, string|string[]>  $headers  An associative array of headers.
      * @param  mixed|null  $body  The request body.
      * @param  string  $version  The HTTP protocol version.
      */
@@ -51,13 +54,15 @@ class Request extends Message implements RequestInterface
         $this->userAgent = 'FiberAsync-HTTP/1.0';
 
         if ($body !== '' && $body !== null) {
-            $this->body = $body instanceof Stream ? $body : new Stream(fopen('php://temp', 'r+'), null);
+            $this->body = $body instanceof Stream ? $body : $this->createTempStream();
             if (! ($body instanceof Stream)) {
-                $this->body->write($body);
+                // Handle mixed body type safely
+                $bodyString = $this->convertToString($body);
+                $this->body->write($bodyString);
                 $this->body->rewind();
             }
         } else {
-            $this->body = new Stream(fopen('php://temp', 'r+'), null);
+            $this->body = $this->createTempStream();
         }
     }
 
@@ -75,7 +80,7 @@ class Request extends Message implements RequestInterface
             $target = '/';
         }
         if ($this->uri->getQuery() !== '') {
-            $target .= '?'.$this->uri->getQuery();
+            $target .= '?' . $this->uri->getQuery();
         }
 
         return $target;
@@ -171,7 +176,7 @@ class Request extends Message implements RequestInterface
      */
     public function header(string $name, string $value): self
     {
-        $this->headers[strtolower($name)] = $value;
+        $this->headers[strtolower($name)] = [$value]; // Fix: Ensure it's always an array
 
         return $this;
     }
@@ -342,7 +347,7 @@ class Request extends Message implements RequestInterface
      */
     public function body(string $content): self
     {
-        $this->body = new Stream(fopen('php://temp', 'r+'), null);
+        $this->body = $this->createTempStream();
         $this->body->write($content);
         $this->body->rewind();
 
@@ -353,12 +358,16 @@ class Request extends Message implements RequestInterface
      * Set the request body as JSON.
      * Automatically sets the Content-Type header to 'application/json'.
      *
-     * @param  array  $data  The data to be JSON-encoded.
+     * @param  array<string, mixed>  $data  The data to be JSON-encoded.
      * @return self For fluent method chaining.
      */
     public function json(array $data): self
     {
-        $this->body(json_encode($data));
+        $jsonContent = json_encode($data);
+        if ($jsonContent === false) {
+            throw new \InvalidArgumentException('Failed to encode data as JSON');
+        }
+        $this->body($jsonContent);
         $this->contentType('application/json');
 
         return $this;
@@ -368,7 +377,7 @@ class Request extends Message implements RequestInterface
      * Set the request body as a URL-encoded form.
      * Automatically sets the Content-Type header to 'application/x-www-form-urlencoded'.
      *
-     * @param  array  $data  The form data.
+     * @param  array<string, mixed>  $data  The form data.
      * @return self For fluent method chaining.
      */
     public function form(array $data): self
@@ -382,12 +391,12 @@ class Request extends Message implements RequestInterface
     /**
      * Set the request body as multipart/form-data.
      *
-     * @param  array  $data  The multipart data.
+     * @param  array<string, mixed>  $data  The multipart data.
      * @return self For fluent method chaining.
      */
     public function multipart(array $data): self
     {
-        $this->body = new Stream(fopen('php://temp', 'r+'), null);
+        $this->body = $this->createTempStream();
         $this->options['multipart'] = $data;
         unset($this->headers['content-type']);
 
@@ -399,9 +408,9 @@ class Request extends Message implements RequestInterface
      *
      * @param  string  $url  The URL to stream from.
      * @param  callable|null  $onChunk  An optional callback for each data chunk. `function(string $chunk): void`
-     * @return PromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse.
+     * @return CancellablePromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse.
      */
-    public function stream(string $url, ?callable $onChunk = null): PromiseInterface
+    public function stream(string $url, ?callable $onChunk = null): CancellablePromiseInterface
     {
         $options = $this->buildCurlOptions('GET', $url);
 
@@ -413,9 +422,9 @@ class Request extends Message implements RequestInterface
      *
      * @param  string  $url  The URL of the file to download.
      * @param  string  $destination  The local file path to save to.
-     * @return PromiseInterface<array{file: string, status: int|null, headers: array}> A promise that resolves with download metadata.
+     * @return CancellablePromiseInterface<array{file: string, status: int, headers: array<mixed>}> A promise that resolves with download metadata.
      */
-    public function download(string $url, string $destination): PromiseInterface
+    public function download(string $url, string $destination): CancellablePromiseInterface
     {
         $options = $this->buildCurlOptions('GET', $url);
 
@@ -428,12 +437,12 @@ class Request extends Message implements RequestInterface
      * @param  string  $url  The target URL.
      * @param  mixed|null  $body  The request body.
      * @param  callable|null  $onChunk  An optional callback for each data chunk. `function(string $chunk): void`
-     * @return PromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse.
+     * @return CancellablePromiseInterface<StreamingResponse> A promise that resolves with a StreamingResponse.
      */
-    public function streamPost(string $url, $body = null, ?callable $onChunk = null): PromiseInterface
+    public function streamPost(string $url, $body = null, ?callable $onChunk = null): CancellablePromiseInterface
     {
         if ($body !== null) {
-            $this->body($body);
+            $this->body($this->convertToString($body));
         }
         $options = $this->buildCurlOptions('POST', $url);
         $options[CURLOPT_HEADER] = false;
@@ -445,13 +454,13 @@ class Request extends Message implements RequestInterface
      * Performs an asynchronous GET request.
      *
      * @param  string  $url  The target URL.
-     * @param  array  $query  Optional query parameters to append to the URL.
+     * @param  array<string, mixed>  $query  Optional query parameters to append to the URL.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function get(string $url, array $query = []): PromiseInterface
     {
-        if ($query) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
+        if (count($query) > 0) {
+            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
         }
 
         return $this->send('GET', $url);
@@ -461,12 +470,12 @@ class Request extends Message implements RequestInterface
      * Performs an asynchronous POST request.
      *
      * @param  string  $url  The target URL.
-     * @param  array  $data  If provided, will be JSON-encoded and set as the request body.
+     * @param  array<string, mixed>  $data  If provided, will be JSON-encoded and set as the request body.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function post(string $url, array $data = []): PromiseInterface
     {
-        if ($data && ! $this->body->getSize() && ! isset($this->options['multipart'])) {
+        if (count($data) > 0 && $this->body->getSize() === 0 && ! isset($this->options['multipart'])) {
             $this->json($data);
         }
 
@@ -477,12 +486,12 @@ class Request extends Message implements RequestInterface
      * Performs an asynchronous PUT request.
      *
      * @param  string  $url  The target URL.
-     * @param  array  $data  If provided, will be JSON-encoded and set as the request body.
+     * @param  array<string, mixed>  $data  If provided, will be JSON-encoded and set as the request body.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function put(string $url, array $data = []): PromiseInterface
     {
-        if ($data && ! $this->body->getSize() && ! isset($this->options['multipart'])) {
+        if (count($data) > 0 && $this->body->getSize() === 0 && ! isset($this->options['multipart'])) {
             $this->json($data);
         }
 
@@ -555,7 +564,7 @@ class Request extends Message implements RequestInterface
      *
      * @param  string  $method  The HTTP method.
      * @param  string  $url  The target URL.
-     * @return array The final cURL options array.
+     * @return array<int, mixed> The final cURL options array.
      */
     private function buildCurlOptions(string $method, string $url): array
     {
@@ -603,14 +612,14 @@ class Request extends Message implements RequestInterface
     /**
      * Adds configured headers to the cURL options.
      *
-     * @param  array  &$options  The cURL options array passed by reference.
+     * @param  array<int, mixed>  &$options  The cURL options array passed by reference.
      */
     private function addHeaderOptions(array &$options): void
     {
-        if ($this->headers) {
+        if (count($this->headers) > 0) {
             $headerStrings = [];
             foreach ($this->headers as $name => $value) {
-                $headerStrings[] = "{$name}: {$value}";
+                $headerStrings[] = "{$name}: " . implode(', ', $value);
             }
             $options[CURLOPT_HTTPHEADER] = $headerStrings;
         }
@@ -619,7 +628,7 @@ class Request extends Message implements RequestInterface
     /**
      * Adds the configured body to the cURL options.
      *
-     * @param  array  &$options  The cURL options array passed by reference.
+     * @param  array<int, mixed>  &$options  The cURL options array passed by reference.
      */
     private function addBodyOptions(array &$options): void
     {
@@ -633,11 +642,11 @@ class Request extends Message implements RequestInterface
     /**
      * Adds configured authentication details to the cURL options.
      *
-     * @param  array  &$options  The cURL options array passed by reference.
+     * @param  array<int, mixed>  &$options  The cURL options array passed by reference.
      */
     private function addAuthenticationOptions(array &$options): void
     {
-        if ($this->auth) {
+        if ($this->auth !== null) {
             [$type, $username, $password] = $this->auth;
             if ($type === 'basic') {
                 $options[CURLOPT_USERPWD] = "{$username}:{$password}";
@@ -657,7 +666,7 @@ class Request extends Message implements RequestInterface
         }
 
         if (($port = $this->uri->getPort()) !== null) {
-            $host .= ':'.$port;
+            $host .= ':' . $port;
         }
 
         if (isset($this->headerNames['host'])) {
@@ -667,5 +676,36 @@ class Request extends Message implements RequestInterface
             $this->headerNames['host'] = 'Host';
         }
         $this->headers[$header] = [$host];
+    }
+
+    /**
+     * Creates a temporary stream resource safely.
+     */
+    private function createTempStream(): Stream
+    {
+        $resource = fopen('php://temp', 'r+');
+        if ($resource === false) {
+            throw new \RuntimeException('Unable to create temporary stream');
+        }
+        return new Stream($resource, null);
+    }
+
+    /**
+     * Safely converts mixed values to string.
+     * 
+     * @param mixed $value The value to convert to string
+     */
+    private function convertToString($value): string
+    {
+        if (is_string($value)) {
+            return $value;
+        }
+        if (is_scalar($value) || is_null($value)) {
+            return (string) $value;
+        }
+        if (is_object($value) && method_exists($value, '__toString')) {
+            return (string) $value;
+        }
+        return var_export($value, true);
     }
 }

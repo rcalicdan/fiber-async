@@ -189,7 +189,7 @@ abstract class Message implements MessageInterface
 
         foreach ($headers as $header => $value) {
             if (is_int($header)) {
-                $header = (string) $header;
+                $header = (string) $header; // This is safe because we know it's an int
             }
             $value = $this->normalizeHeaderValue($value);
             $normalized = strtolower($header);
@@ -214,7 +214,15 @@ abstract class Message implements MessageInterface
     private function normalizeHeaderValue($value): array
     {
         if (! is_array($value)) {
-            return [trim((string) $value)];
+            if (is_object($value) && method_exists($value, '__toString')) {
+                return [trim((string) $value)];
+            }
+
+            if (is_scalar($value) || $value === null) {
+                return [trim((string) $value)];
+            }
+           
+            return [trim(var_export($value, true))];
         }
 
         if (count($value) === 0) {
@@ -222,7 +230,15 @@ abstract class Message implements MessageInterface
         }
 
         return array_map(function ($v) {
-            return trim((string) $v);
+            if (is_object($v) && method_exists($v, '__toString')) {
+                return trim((string) $v);
+            }
+
+            if (is_scalar($v) || $v === null) {
+                return trim((string) $v);
+            }
+
+            return trim(var_export($v, true));
         }, array_values($value));
     }
 }

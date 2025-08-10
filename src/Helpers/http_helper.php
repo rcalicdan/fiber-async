@@ -5,6 +5,7 @@ use Rcalicdan\FiberAsync\Http\Handlers\RetryHelperHandler;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 if (! function_exists('http')) {
@@ -33,7 +34,7 @@ if (! function_exists('http_get')) {
      * without blocking the event loop.
      *
      * @param  string  $url  The URL to send the request to
-     * @param  array  $query  Optional query parameters
+     * @param  array<string, mixed>  $query  Optional query parameters
      * @return PromiseInterface<Response> Promise that resolves with the response
      *
      * @example
@@ -53,7 +54,7 @@ if (! function_exists('http_post')) {
      * without blocking the event loop.
      *
      * @param  string  $url  The URL to send the request to
-     * @param  array  $data  Optional data payload
+     * @param  array<string, mixed>  $data  Optional data payload
      * @return PromiseInterface<Response> Promise that resolves with the response
      *
      * @example
@@ -73,17 +74,18 @@ if (! function_exists('http_stream')) {
      * calling the provided callback for each chunk of data received.
      *
      * @param  string  $url  The URL to stream from
-     * @param  array  $options  Request options
+     * @param  array<int|string, mixed>  $options  Request options
      * @param  callable|null  $onChunk  Callback to handle each chunk
-     * @return PromiseInterface<StreamingResponse> Promise that resolves when streaming completes
+     * @return CancellablePromiseInterface<StreamingResponse> Promise that resolves when streaming completes
      *
      * @example
      * await(http_stream('https://api.example.com/data', [], function($chunk) {
      *     echo "Received: " . $chunk;
      * }));
      */
-    function http_stream(string $url, array $options = [], ?callable $onChunk = null): PromiseInterface
+    function http_stream(string $url, array $options = [], ?callable $onChunk = null): CancellablePromiseInterface
     {
+        /** @var CancellablePromiseInterface<StreamingResponse> */
         return AsyncHttp::stream($url, $options, $onChunk);
     }
 }
@@ -97,13 +99,13 @@ if (! function_exists('http_download')) {
      *
      * @param  string  $url  The URL to download from
      * @param  string  $destination  The local path to save the file
-     * @param  array  $options  Download options
-     * @return PromiseInterface<array> Promise that resolves when download completes
+     * @param  array<int|string, mixed>  $options  Download options
+     * @return CancellablePromiseInterface<array{file: string, status: int, headers: array<mixed>}> Promise that resolves when download completes
      *
      * @example
      * await(http_download('https://example.com/file.zip', '/local/file.zip'));
      */
-    function http_download(string $url, string $destination, array $options = []): PromiseInterface
+    function http_download(string $url, string $destination, array $options = []): CancellablePromiseInterface
     {
         return AsyncHttp::download($url, $destination, $options);
     }
@@ -117,7 +119,7 @@ if (! function_exists('http_put')) {
      * without blocking the event loop.
      *
      * @param  string  $url  The URL to send the request to
-     * @param  array  $data  Optional data payload
+     * @param  array<string, mixed>  $data  Optional data payload
      * @return PromiseInterface<Response> Promise that resolves with the response
      *
      * @example
@@ -155,7 +157,7 @@ if (! function_exists('fetch')) {
      * with flexible options configuration.
      *
      * @param  string  $url  The URL to fetch from
-     * @param  array  $options  Request options (method, headers, body, etc.)
+     * @param  array<int|string, mixed>  $options  Request options (method, headers, body, etc.)
      * @return PromiseInterface<Response> Promise that resolves with the response
      *
      * @example
@@ -179,13 +181,30 @@ if (! function_exists('fetch_with_retry')) {
      * exponential backoff to space out retry attempts.
      *
      * @param  string  $url  The URL to fetch from
-     * @param  array  $options  Request options
+     * @param  array{
+     *     headers?: array<string, string>,
+     *     method?: string,
+     *     body?: string,
+     *     json?: array<string, mixed>,
+     *     form?: array<string, mixed>,
+     *     timeout?: int,
+     *     user_agent?: string,
+     *     verify_ssl?: bool,
+     *     auth?: array{
+     *         bearer?: string,
+     *         basic?: array{username: string, password: string}
+     *     }
+     * }  $options  Request options
      * @param  int  $maxRetries  Maximum number of retry attempts
      * @param  float  $baseDelay  Base delay between retries in seconds
      * @return PromiseInterface<Response> Promise that resolves with the response
      *
      * @example
-     * $response = await(fetch_with_retry('https://api.example.com', [], 3, 1.0));
+     * $response = await(fetch_with_retry('https://api.example.com', [
+     *     'method' => 'POST',
+     *     'headers' => ['Content-Type' => 'application/json'],
+     *     'json' => ['key' => 'value']
+     * ], 3, 1.0));
      */
     function fetch_with_retry(string $url, array $options = [], int $maxRetries = 3, float $baseDelay = 1.0): PromiseInterface
     {

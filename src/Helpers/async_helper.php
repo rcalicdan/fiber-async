@@ -3,6 +3,7 @@
 use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Api\Timer;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 if (! function_exists('in_fiber')) {
@@ -45,21 +46,18 @@ if (! function_exists('async')) {
 
 if (! function_exists('await')) {
     /**
-     * Suspend the current fiber until the promise resolves or rejects.
+     * Suspends the current fiber until the promise is fulfilled or rejected.
      *
-     * This function pauses execution of the current fiber and returns control
-     * to the event loop until the promise settles. Must be called from within
-     * a fiber context. Returns the resolved value or throws on rejection.
+     * This method is the heart of the await pattern. It pauses the fiber's
+     * execution, allowing the event loop to run other tasks. When the promise
+     * settles, the fiber is resumed.
      *
-     * @template T The type of the resolved value of the promise.
+     * @template TValue The expected type of the resolved value from the promise.
      *
-     * @param  PromiseInterface<T>  $promise  The promise to await.
-     * @return T The resolved value of the promise.
+     * @param  PromiseInterface<TValue>  $promise  The promise to await.
+     * @return TValue The resolved value of the promise.
      *
-     * @throws Exception If the promise is rejected
-     *
-     * @example
-     * $result = await(http_get('https://api.example.com'));
+     * @throws \Exception If the promise is rejected, this method throws the rejection reason.
      */
     function await(PromiseInterface $promise): mixed
     {
@@ -76,12 +74,12 @@ if (! function_exists('delay')) {
      * without blocking the event loop.
      *
      * @param  float  $seconds  Number of seconds to delay
-     * @return PromiseInterface A promise that resolves after the delay
+     * @return CancellablePromiseInterface<null> A promise that resolves after the delay
      *
      * @example
      * await(delay(2.5)); // Wait 2.5 seconds
      */
-    function delay(float $seconds): PromiseInterface
+    function delay(float $seconds): CancellablePromiseInterface
     {
         return Timer::delay($seconds);
     }
@@ -95,8 +93,8 @@ if (! function_exists('all')) {
      * an array of their results in the same order. If any promise rejects,
      * the returned promise immediately rejects with the first rejection reason.
      *
-     * @param  array  $promises  Array of promises to wait for
-     * @return PromiseInterface A promise that resolves with an array of all results
+     * @param  array<mixed>  $promises  Array of promises to wait for
+     * @return PromiseInterface<array<mixed>> A promise that resolves with an array of all results
      *
      * @example
      * $results = await(all([
@@ -118,8 +116,8 @@ if (! function_exists('race')) {
      * promise in the array to settle. Useful for timeout scenarios or when
      * you need the fastest response from multiple sources.
      *
-     * @param  array  $promises  Array of promises to race
-     * @return PromiseInterface A promise that settles with the first result
+     * @param  array<PromiseInterface<mixed>>  $promises  Array of promises to race
+     * @return PromiseInterface<mixed> A promise that settles with the first result
      *
      * @example
      * $fastest = await(race([
@@ -140,8 +138,8 @@ if (! function_exists('any')) {
      * Returns a promise that resolves with the value of the first
      * promise that resolves, or rejects if all promises reject.
      *
-     * @param  array  $promises  Array of promises to wait for
-     * @return PromiseInterface A promise that resolves with the first settled value
+     * @param  array<PromiseInterface<mixed>>  $promises  Array of promises to wait for
+     * @return PromiseInterface<mixed> A promise that resolves with the first settled value
      *
      * @example
      * $promises = [
@@ -164,8 +162,9 @@ if (! function_exists('timeout')) {
      * Executes the provided promises and ensures they complete within the
      * operation and automatically throws execption if the timout timer won.
      *
+     * @param  callable|PromiseInterface<mixed>|array<PromiseInterface<mixed>>  $promises  Number of seconds to wait before resolving
      * @param  float  $seconds  Number of seconds to wait before resolving
-     * @return PromiseInterface A promise that resolves after the delay
+     * @return PromiseInterface<mixed> A promise that resolves after the delay
      */
     function timeout(callable|PromiseInterface|array $promises, float $seconds): PromiseInterface
     {
@@ -180,8 +179,9 @@ if (! function_exists('resolve')) {
      * This is useful for creating resolved promises in async workflows or
      * for converting synchronous values into promise-compatible form.
      *
-     * @param  mixed  $value  The value to resolve the promise with
-     * @return PromiseInterface A promise resolved with the provided value
+     * @template T
+     * @param  T  $value  The value to resolve the promise with
+     * @return PromiseInterface<T> A promise resolved with the provided value
      *
      * @example
      * $promise = resolve('Hello World');
@@ -201,7 +201,7 @@ if (! function_exists('reject')) {
      * for converting exceptions into promise-compatible form.
      *
      * @param  mixed  $reason  The reason for rejection (typically an exception)
-     * @return PromiseInterface A promise rejected with the provided reason
+     * @return PromiseInterface<never> A promise rejected with the provided reason
      *
      * @example
      * $promise = reject(new Exception('Something went wrong'));
@@ -220,11 +220,11 @@ if (! function_exists('concurrent')) {
      * Promises, not pre-created Promise instances. Pre-created Promises are already
      * running and cannot be subject to concurrency limiting.
      *
-     * @param  array  $tasks  Array of callables that return Promises, or Promise instances
+     * @param  array<callable|PromiseInterface<mixed>>  $tasks  Array of callables that return Promises, or Promise instances
      *                        Note: Promise instances will be awaited but cannot be truly
      *                        limited since they're already running
      * @param  int  $concurrency  Maximum number of tasks to run simultaneously
-     * @return PromiseInterface Promise that resolves with an array of all results
+     * @return PromiseInterface<array<mixed>> Promise that resolves with an array of all results
      */
     function concurrent(array $tasks, int $concurrency = 10): PromiseInterface
     {
@@ -241,12 +241,12 @@ if (! function_exists('batch')) {
      * processing large datasets or performing operations that require
      * significant resources without overwhelming the system.
      *
-     * @param  array  $tasks  Array of callables that return Promises, or Promise instances
+     * @param  array<callable|PromiseInterface<mixed>>  $tasks  Array of callables that return Promises, or Promise instances
      *                        Note: Promise instances will be awaited but cannot be truly
      *                        limited since they're already running
      * @param  int  $batchSize  Size of each batch to process concurrently
-     * @param  int  $concurrency  Maximum number of concurrent executions per batch
-     * @return PromiseInterface A promise that resolves with all results
+     * @param  int|null  $concurrency  Maximum number of concurrent executions per batch
+     * @return PromiseInterface<array<mixed>> A promise that resolves with all results
      *
      * @example
      * $tasks = array_map(fn($url) => fn() => http_get($url), $urls);

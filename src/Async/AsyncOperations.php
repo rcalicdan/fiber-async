@@ -10,6 +10,7 @@ use Rcalicdan\FiberAsync\Async\Handlers\PromiseCollectionHandler;
 use Rcalicdan\FiberAsync\Async\Handlers\PromiseHandler;
 use Rcalicdan\FiberAsync\Async\Handlers\TimerHandler;
 use Rcalicdan\FiberAsync\Async\Interfaces\AsyncOperationsInterface;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -147,9 +148,9 @@ class AsyncOperations implements AsyncOperationsInterface
      * Create a promise that resolves after a specified delay.
      *
      * @param float $seconds Number of seconds to delay
-     * @return PromiseInterface<null> A promise that resolves after the delay
+     * @return CancellablePromiseInterface<null> A promise that resolves after the delay
      */
-    public function delay(float $seconds): PromiseInterface
+    public function delay(float $seconds): CancellablePromiseInterface
     {
         return $this->timerHandler->delay($seconds);
     }

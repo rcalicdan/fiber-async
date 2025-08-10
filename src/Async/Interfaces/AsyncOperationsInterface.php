@@ -2,6 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Async\Interfaces;
 
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Throwable;
 
@@ -65,9 +66,9 @@ interface AsyncOperationsInterface
      * Creates a promise that resolves with null after the specified delay.
      *
      * @param float $seconds The delay in seconds (supports fractions for milliseconds).
-     * @return PromiseInterface<null> A promise that resolves with null after the delay.
+     * @return CancellablePromiseInterface<null> A promise that resolves with null after the delay.
      */
-    public function delay(float $seconds): PromiseInterface;
+    public function delay(float $seconds): CancellablePromiseInterface;
 
     /**
      * Waits for all promises to resolve or any to reject.

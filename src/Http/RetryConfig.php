@@ -50,17 +50,15 @@ class RetryConfig
      */
     public function shouldRetry(int $attempt, ?int $statusCode = null, ?string $error = null): bool
     {
-        // We check attempt against maxRetries. Note that attempt starts at 1.
-        // So with maxRetries=2, we allow attempts 1, 2, and 3. Attempt 4 should fail.
         if ($attempt > $this->maxRetries) {
             return false;
         }
 
-        if ($statusCode !== null && in_array($statusCode, $this->retryableStatusCodes)) {
+        if ($statusCode !== null && in_array($statusCode, $this->retryableStatusCodes, true)) {
             return true;
         }
 
-        if ($error && $this->isRetryableError($error)) {
+        if ($error !== null && $this->isRetryableError($error)) {
             return true;
         }
 
