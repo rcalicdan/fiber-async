@@ -164,9 +164,9 @@ if (! function_exists('timeout')) {
      *
      * @param  callable|PromiseInterface<mixed>|array<PromiseInterface<mixed>>  $promises  Number of seconds to wait before resolving
      * @param  float  $seconds  Number of seconds to wait before resolving
-     * @return PromiseInterface<mixed> A promise that resolves after the delay
+     * @return CancellablePromiseInterface<mixed> A promise that resolves after the delay
      */
-    function timeout(callable|PromiseInterface|array $promises, float $seconds): PromiseInterface
+    function timeout(callable|PromiseInterface|array $promises, float $seconds): CancellablePromiseInterface
     {
         return Promise::timeout($promises, $seconds);
     }

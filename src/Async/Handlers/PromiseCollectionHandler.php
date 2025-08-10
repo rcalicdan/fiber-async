@@ -5,6 +5,7 @@ namespace Rcalicdan\FiberAsync\Async\Handlers;
 use Exception;
 use InvalidArgumentException;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
+use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Promise;
 use RuntimeException;
@@ -162,7 +163,7 @@ final readonly class PromiseCollectionHandler
     public function timeout(
         callable|PromiseInterface|array $operations,
         float $seconds
-    ): PromiseInterface {
+    ): CancellablePromiseInterface {
         if ($seconds <= 0) {
             throw new InvalidArgumentException('Timeout must be greater than zero');
         }
@@ -180,7 +181,7 @@ final readonly class PromiseCollectionHandler
             ->then(fn () => throw new Exception("Operation timed out after {$seconds} seconds"))
         ;
 
-        /** @var array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>> $racePromises */
+        /** @var array<int|string, callable(): CancellablePromiseInterface<mixed>|CancellablePromiseInterface<mixed>> $racePromises */
         $racePromises = [...$promises, $timeoutPromise];
 
         return $this->race($racePromises);
