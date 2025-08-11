@@ -257,9 +257,7 @@ describe('CancellablePromise', function () {
         $promise->cancel();
 
         expect($promise->isCancelled())->toBeTrue();
-
-        // Test that the chained promise has access to the root cancellable
-        // (this depends on the internal implementation)
+        
         if (method_exists($chainedPromise, 'getRootCancellable')) {
             expect($chainedPromise->getRootCancellable())->toBe($promise);
         }
