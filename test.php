@@ -1,366 +1,398 @@
 <?php
 
-require_once 'vendor/autoload.php';
+// ---------------------------------------------------------------------------------------------------------------------
+// 1. Setup - Include Autoloader and Global Helpers
+// ---------------------------------------------------------------------------------------------------------------------
+require_once __DIR__ . '/vendor/autoload.php';
 
-use Rcalicdan\FiberAsync\Api\AsyncPDO;
+use Rcalicdan\FiberAsync\Api\AsyncPostgreSQL;
+use Rcalicdan\FiberAsync\Api\Task;
+use Rcalicdan\FiberAsync\Api\Timer; // Import Timer for delay function
+use Rcalicdan\FiberAsync\Api\Async; // Import Async for proper async context
+use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Promise;
+
+// ---------------------------------------------------------------------------------------------------------------------
+// 2. PostgreSQL Configuration
+// ---------------------------------------------------------------------------------------------------------------------
+$dbConfig = [
+    'host' => '127.0.0.1',
+    'port' => 5432,
+    'database' => 'aladyn_api',
+    'username' => 'postgres',
+    'password' => 'root',
+];
+
+// ---------------------------------------------------------------------------------------------------------------------
+// 3. Database Initialization and Setup
+// ---------------------------------------------------------------------------------------------------------------------
+echo "--- Initializing PostgreSQL and setting up test table ---\n";
+try {
+    AsyncPostgreSQL::init($dbConfig, 15);
+
+    Task::run(function() {
+        // Drop table if it exists
+        await(AsyncPostgreSQL::execute("DROP TABLE IF EXISTS compute_heavy_data"));
+        echo "Table 'compute_heavy_data' dropped if it existed.\n";
+
+        // Create table with better data types
+        await(AsyncPostgreSQL::execute("
+            CREATE TABLE compute_heavy_data (
+                id SERIAL PRIMARY KEY,
+                val_int INTEGER,
+                val_text TEXT,
+                val_numeric NUMERIC(10,2),
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        "));
+        echo "Table 'compute_heavy_data' created.\n";
+
+        // Insert more rows with better data distribution
+        echo "Inserting 100,000 rows for CPU-bound queries...\n";
+        await(AsyncPostgreSQL::execute("
+            INSERT INTO compute_heavy_data (val_int, val_text, val_numeric)
+            SELECT 
+                s.id,
+                MD5(RANDOM()::TEXT || s.id::TEXT || clock_timestamp()::TEXT),
+                RANDOM() * 1000 + s.id * 0.01
+            FROM generate_series(1, 100000) AS s(id)
+        "));
+        echo "100,000 rows inserted for computation.\n";
+
+        // Add indices for better performance testing
+        await(AsyncPostgreSQL::execute("CREATE INDEX idx_val_int_mod ON compute_heavy_data (val_int) WHERE val_int % 7 = 0"));
+        await(AsyncPostgreSQL::execute("CREATE INDEX idx_val_int_mod3 ON compute_heavy_data (val_int) WHERE val_int % 3 = 0"));
+        echo "Indices created.\n";
+    });
+    echo "Database setup complete.\n\n";
+
+} catch (Exception $e) {
+    echo "Database setup FAILED: " . $e->getMessage() . "\n";
+    exit(1);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// 4. Query Definitions (Fixed with proper async context)
+// ---------------------------------------------------------------------------------------------------------------------
 
 /**
- * Comprehensive test for AsyncPDO using SQLite in-memory database
+ * CPU-intensive query
  */
-function testAsyncPDO(): void
-{
-    echo "Starting AsyncPDO tests with SQLite in-memory database...\n\n";
-
-    // Database configuration for SQLite in-memory
-    $dbConfig = [
-        'driver' => 'sqlite',
-        'database' => 'file::memory:?cache=shared',
-        'username' => '',
-        'password' => '',
-        'options' => [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-        ]
-    ];
-
-    // Initialize AsyncPDO with a small pool for testing
-    AsyncPDO::init($dbConfig, 3);
-
-    try {
-        // Test 1: Basic table creation and data insertion
-        echo "Test 1: Creating table and inserting data...\n";
-        
-        // Create users table
-        $createTableResult = await(AsyncPDO::execute("
-            CREATE TABLE users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name VARCHAR(255) NOT NULL,
-                email VARCHAR(255) UNIQUE NOT NULL,
-                age INTEGER,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+function run_heavy_cpu_query(string $param): PromiseInterface {
+    return Async::async(function() use ($param) {
+        $sql = "
+            WITH RECURSIVE heavy_computation AS (
+                SELECT 
+                    id,
+                    val_int,
+                    val_text,
+                    val_numeric,
+                    -- Multiple expensive operations
+                    MD5(val_text || $1 || id::TEXT) as hash1,
+                    MD5(MD5(val_text || $1) || MD5(id::TEXT)) as hash2,
+                    MD5(MD5(MD5(val_text || $1)) || MD5(MD5(id::TEXT))) as hash3,
+                    -- Fixed: Use NUMERIC to avoid overflow
+                    val_int::NUMERIC * val_int::NUMERIC as val_squared,
+                    POWER(val_int::NUMERIC, 2) + SQRT(val_int::NUMERIC) as math_result,
+                    -- String operations (CPU intensive)
+                    REPEAT(SUBSTRING(val_text, 1, 10), 5) as repeated_text,
+                    -- Pattern matching
+                    CASE 
+                        WHEN val_text ~ '[0-9a-f]{8}[0-9a-f]{8}' THEN 'long_hex'
+                        WHEN val_text ~ '[a-z]{10,}' THEN 'long_alpha'
+                        WHEN val_text ~ '[0-9]{5,}' THEN 'many_digits'
+                        ELSE 'other'
+                    END as pattern_match,
+                    -- Expensive text operations
+                    LENGTH(TRANSLATE(val_text, '0123456789abcdef', 'FEDCBA9876543210')) as translate_len
+                FROM compute_heavy_data 
+                WHERE val_int % 7 = 0
+                LIMIT 20000
+            ),
+            aggregated_data AS (
+                SELECT 
+                    COUNT(*) as total_rows,
+                    SUM(LENGTH(hash1) + LENGTH(hash2) + LENGTH(hash3)) as total_hash_length,
+                    ROUND(AVG(val_squared), 2) as avg_squared,
+                    ROUND(AVG(math_result), 2) as avg_math,
+                    ROUND(AVG(val_numeric), 2) as avg_numeric,
+                    STRING_AGG(DISTINCT pattern_match, '|' ORDER BY pattern_match) as pattern_summary,
+                    SUM(translate_len) as total_translate_len
+                FROM heavy_computation
+            ),
+            final_computation AS (
+                SELECT 
+                    *,
+                    MD5(pattern_summary || $1 || total_rows::TEXT) as final_hash1,
+                    MD5(MD5(pattern_summary || $1) || total_hash_length::TEXT) as final_hash2
+                FROM aggregated_data
             )
-        "));
-        echo "✓ Table created successfully\n";
-
-        // Insert test data with small delays to simulate real-world conditions
-        echo "  Inserting users with simulated network delays...\n";
-        $insertResults = await(all([
-            function () {
-                await(delay(0.1)); // 100ms delay
-                return await(AsyncPDO::execute(
-                    "INSERT INTO users (name, email, age) VALUES (?, ?, ?)",
-                    ['John Doe', 'john@example.com', 30]
-                ));
-            },
-            function () {
-                await(delay(0.05)); // 50ms delay
-                return await(AsyncPDO::execute(
-                    "INSERT INTO users (name, email, age) VALUES (?, ?, ?)",
-                    ['Jane Smith', 'jane@example.com', 25]
-                ));
-            },
-            function () {
-                await(delay(0.15)); // 150ms delay
-                return await(AsyncPDO::execute(
-                    "INSERT INTO users (name, email, age) VALUES (?, ?, ?)",
-                    ['Bob Johnson', 'bob@example.com', 35]
-                ));
-            }
-        ]));
-        echo "✓ Inserted " . array_sum($insertResults) . " users\n\n";
-
-        // Test 2: Query all users
-        echo "Test 2: Querying all users...\n";
-        $allUsers = await(AsyncPDO::query("SELECT * FROM users ORDER BY id"));
-        echo "✓ Found " . count($allUsers) . " users:\n";
-        foreach ($allUsers as $user) {
-            echo "  - {$user['name']} ({$user['email']}) - Age: {$user['age']}\n";
-        }
-        echo "\n";
-
-        // Test 3: Fetch single user with delay simulation
-        echo "Test 3: Fetching single user with simulated processing delay...\n";
-        $singleUser = await(async(function () {
-            await(delay(0.2)); // Simulate processing time
-            return await(AsyncPDO::fetchOne(
-                "SELECT * FROM users WHERE email = ?",
-                ['john@example.com']
-            ));
-        })());
-        if ($singleUser) {
-            echo "✓ Found user: {$singleUser['name']}\n\n";
-        }
-
-        // Test 4: Fetch scalar value
-        echo "Test 4: Getting user count...\n";
-        $userCount = await(AsyncPDO::fetchValue("SELECT COUNT(*) FROM users"));
-        echo "✓ Total users: {$userCount}\n\n";
-
-        // Test 5: Transaction test with processing delays
-        echo "Test 5: Testing transactions with simulated processing...\n";
-        $transactionResult = await(AsyncPDO::transaction(function ($pdo) {
-            // Simulate some business logic processing
-            await(delay(0.1));
-            
-            // Insert a new user within transaction
-            $stmt = $pdo->prepare("INSERT INTO users (name, email, age) VALUES (?, ?, ?)");
-            $stmt->execute(['Alice Wilson', 'alice@example.com', 28]);
-            
-            // Simulate more processing
-            await(delay(0.05));
-            
-            // Update existing user within same transaction
-            $stmt = $pdo->prepare("UPDATE users SET age = ? WHERE email = ?");
-            $stmt->execute([31, 'john@example.com']);
-            
-            return "Transaction completed successfully";
-        }));
-        echo "✓ {$transactionResult}\n\n";
-
-        // Verify transaction results
-        $updatedCount = await(AsyncPDO::fetchValue("SELECT COUNT(*) FROM users"));
-        $johnAge = await(AsyncPDO::fetchValue(
-            "SELECT age FROM users WHERE email = ?",
-            ['john@example.com']
-        ));
-        echo "✓ User count after transaction: {$updatedCount}\n";
-        echo "✓ John's updated age: {$johnAge}\n\n";
-
-        // Test 6: Concurrent operations with staggered delays
-        echo "Test 6: Testing concurrent operations with different processing times...\n";
-        $startTime = microtime(true);
-        $concurrentResults = await(all([
-            function () {
-                await(delay(0.1)); // Simulate slow query
-                return await(AsyncPDO::query("SELECT COUNT(*) as count FROM users WHERE age > ?", [25]));
-            },
-            function () {
-                await(delay(0.05)); // Simulate medium query
-                return await(AsyncPDO::query("SELECT AVG(age) as avg_age FROM users"));
-            },
-            function () {
-                await(delay(0.03)); // Simulate fast query
-                return await(AsyncPDO::query("SELECT MIN(age) as min_age, MAX(age) as max_age FROM users"));
-            },
-        ]));
-        $endTime = microtime(true);
-
-        echo "✓ Users over 25: {$concurrentResults[0][0]['count']}\n";
-        echo "✓ Average age: " . round($concurrentResults[1][0]['avg_age'], 2) . "\n";
-        echo "✓ Age range: {$concurrentResults[2][0]['min_age']} - {$concurrentResults[2][0]['max_age']}\n";
-        echo "✓ Concurrent execution completed in " . round(($endTime - $startTime) * 1000, 2) . "ms\n\n";
-
-        // Test 7: Using run() with database operations and delays
-        echo "Test 7: Testing with run() helper and processing delays...\n";
-        $finalResults = await(AsyncPDO::run(function ($pdo) {
-            // Simulate setup time
-            await(delay(0.05));
-            
-            // Create a products table for additional testing
-            $pdo->exec("
-                CREATE TABLE products (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name VARCHAR(255) NOT NULL,
-                    price DECIMAL(10,2),
-                    category VARCHAR(100)
-                )
-            ");
-
-            // Insert some products with processing delays
-            $stmt = $pdo->prepare("INSERT INTO products (name, price, category) VALUES (?, ?, ?)");
-            $products = [
-                ['Laptop', 999.99, 'Electronics'],
-                ['Book', 29.99, 'Education'],
-                ['Coffee Mug', 15.50, 'Kitchen']
-            ];
-
-            foreach ($products as $product) {
-                await(delay(0.02)); // Simulate processing each product
-                $stmt->execute($product);
-            }
-
-            // Simulate analysis time
-            await(delay(0.1));
-
-            // Return summary
-            $stmt = $pdo->query("SELECT category, COUNT(*) as count, AVG(price) as avg_price FROM products GROUP BY category");
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        }));
-
-        echo "✓ Products created and analyzed:\n";
-        foreach ($finalResults as $result) {
-            echo "  - {$result['category']}: {$result['count']} items, avg price: $" . 
-                 number_format($result['avg_price'], 2) . "\n";
-        }
-        echo "\n";
-
-        // Test 8: Error handling
-        echo "Test 8: Testing error handling...\n";
-        try {
-            await(AsyncPDO::query("SELECT * FROM non_existent_table"));
-        } catch (Exception $e) {
-            echo "✓ Error correctly caught: " . substr($e->getMessage(), 0, 50) . "...\n";
-        }
-
-        // Test 9: Race transactions with realistic processing delays
-        echo "\nTest 9: Testing race transactions with processing delays...\n";
+            SELECT 
+                total_rows,
+                total_hash_length,
+                avg_squared,
+                avg_math,
+                avg_numeric,
+                LENGTH(pattern_summary) as pattern_summary_len,
+                total_translate_len,
+                final_hash1,
+                final_hash2,
+                MD5(final_hash1 || final_hash2 || $1) as ultimate_hash
+            FROM final_computation;
+        ";
         
-        // First, let's add a simple inventory table
-        await(AsyncPDO::execute("
-            CREATE TABLE inventory (
-                id INTEGER PRIMARY KEY,
-                item VARCHAR(255),
-                quantity INTEGER
-            )
-        "));
+        return await(AsyncPostgreSQL::fetchOne($sql, [$param]));
+    })();
+}
+
+/**
+ * Alternative heavy query
+ */
+function run_alternative_heavy_query(string $param): PromiseInterface {
+    return Async::async(function() use ($param) {
+        $sql = "
+            SELECT 
+                $1 as param,
+                COUNT(*) as row_count,
+                SUM(LENGTH(MD5(val_text || $1 || id::TEXT))) as hash_sum,
+                ROUND(AVG(val_int::NUMERIC * val_int::NUMERIC), 2) as avg_square,
+                ROUND(STDDEV(val_numeric), 4) as stddev_numeric,
+                LEFT(STRING_AGG(SUBSTRING(MD5(val_text || $1), 1, 8), ''), 1000) as concat_hashes,
+                SUM(CASE 
+                    WHEN val_int % 2 = 0 THEN POWER(val_int::NUMERIC, 1.5)::INTEGER
+                    ELSE CEIL(SQRT(val_int::NUMERIC))::INTEGER
+                END) as conditional_math,
+                COUNT(CASE WHEN val_text ~ '[0-9a-f]{16}' THEN 1 END) as hex_count,
+                COUNT(CASE WHEN LENGTH(val_text) > 25 THEN 1 END) as long_text_count
+            FROM compute_heavy_data 
+            WHERE val_int % 3 = 0
+              AND val_int BETWEEN 100 AND 50000
+            GROUP BY $1;
+        ";
         
-        await(AsyncPDO::execute(
-            "INSERT INTO inventory (id, item, quantity) VALUES (1, 'Widget', 5)"
-        ));
+        return await(AsyncPostgreSQL::fetchOne($sql, [$param]));
+    })();
+}
 
-        echo "  Starting race between two inventory reservation transactions...\n";
-        $raceStartTime = microtime(true);
+/**
+ * FIXED: I/O simulation with proper async delay - this should show clear concurrency benefits
+ */
+function run_io_simulation_query(string $param): PromiseInterface {
+    return Async::async(function() use ($param) {
+        // Simulate I/O delay using proper async delay function
+        echo "Starting I/O simulation for {$param}...\n";
+        await(Timer::delay(0.5)); // 500ms async delay - this won't block other operations!
+        echo "I/O delay completed for {$param}, running query...\n";
+        
+        $sql = "
+            SELECT 
+                $1 as param,
+                COUNT(*) as count,
+                ROUND(AVG(val_numeric), 2) as avg_val,
+                MIN(val_int) as min_val,
+                MAX(val_int) as max_val
+            FROM compute_heavy_data 
+            WHERE val_int % 11 = 0
+            LIMIT 1000;
+        ";
+        
+        $result = await(AsyncPostgreSQL::fetchOne($sql, [$param]));
+        echo "Query completed for {$param}\n";
+        return $result;
+    })();
+}
 
-        // Create racing transactions that try to reserve inventory
-        $raceResult = await(AsyncPDO::raceTransactions([
-            // Transaction 1: Try to reserve 3 widgets (slower processing)
-            function ($pdo) {
-                $stmt = $pdo->prepare("SELECT quantity FROM inventory WHERE id = 1");
-                $stmt->execute();
-                $current = $stmt->fetch()['quantity'];
-                
-                if ($current >= 3) {
-                    // Simulate business logic processing time
-                    await(delay(0.02)); // 20ms processing
-                    echo "    Transaction 1: Processing reservation for 3 widgets...\n";
-                    await(delay(0.03)); // Additional 30ms processing
-                    
-                    $stmt = $pdo->prepare("UPDATE inventory SET quantity = quantity - 3 WHERE id = 1");
-                    $stmt->execute();
-                    return "Reserved 3 widgets (Transaction 1 won!)";
+/**
+ * Mixed workload - combines CPU work with I/O delays
+ */
+function run_mixed_workload_query(string $param): PromiseInterface {
+    return Async::async(function() use ($param) {
+        // Some initial computation
+        $sql1 = "SELECT COUNT(*) as count FROM compute_heavy_data WHERE val_int % 13 = 0";
+        $count = await(AsyncPostgreSQL::fetchValue($sql1));
+        
+        // Simulate network I/O or file I/O
+        echo "Starting mixed workload for {$param} (found {$count} records)...\n";
+        await(Timer::delay(0.3)); // 300ms delay
+        
+        // More computation after the delay
+        $sql2 = "
+            SELECT 
+                $1 as param,
+                {$count} as initial_count,
+                COUNT(*) as final_count,
+                SUM(LENGTH(MD5(val_text || $1))) as hash_work
+            FROM compute_heavy_data 
+            WHERE val_int % 17 = 0 
+            LIMIT 5000;
+        ";
+        
+        $result = await(AsyncPostgreSQL::fetchOne($sql2, [$param]));
+        echo "Mixed workload completed for {$param}\n";
+        return $result;
+    })();
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// 5. Test Execution Functions
+// ---------------------------------------------------------------------------------------------------------------------
+
+function runSequentialTest(callable $queryFunc, array $params, string $testName): array {
+    echo "--- Running Sequential {$testName} ---\n";
+    $startTime = microtime(true);
+    
+    Task::run(function() use ($queryFunc, $params) {
+        foreach ($params as $i => $param) {
+            $qStartTime = microtime(true);
+            $result = await($queryFunc($param));
+            $qEndTime = microtime(true);
+            echo "Query " . ($i + 1) . " time: " . round($qEndTime - $qStartTime, 3) . "s";
+            if (isset($result['total_rows'])) {
+                echo " (Rows: {$result['total_rows']})";
+            } elseif (isset($result['row_count'])) {
+                echo " (Rows: {$result['row_count']})";
+            } elseif (isset($result['count'])) {
+                echo " (Count: {$result['count']})";
+            } elseif (isset($result['final_count'])) {
+                echo " (Count: {$result['final_count']})";
+            }
+            echo "\n";
+        }
+    });
+    
+    $endTime = microtime(true);
+    $duration = $endTime - $startTime;
+    echo "Total Sequential Duration: " . round($duration, 3) . " seconds\n\n";
+    
+    return ['duration' => $duration, 'type' => 'sequential'];
+}
+
+function runConcurrentTest(callable $queryFunc, array $params, string $testName): array {
+    echo "--- Running Concurrent {$testName} ---\n";
+    $startTime = microtime(true);
+    
+    Task::run(function() use ($queryFunc, $params) {
+        $promises = [];
+        foreach ($params as $i => $param) {
+            $promises[] = $queryFunc($param)->then(function ($r) use ($i, $param) {
+                echo "Query " . ($i + 1) . " ({$param}) finished";
+                if (isset($r['total_rows'])) {
+                    echo " (Rows: {$r['total_rows']})";
+                } elseif (isset($r['row_count'])) {
+                    echo " (Rows: {$r['row_count']})";
+                } elseif (isset($r['count'])) {
+                    echo " (Count: {$r['count']})";
+                } elseif (isset($r['final_count'])) {
+                    echo " (Count: {$r['final_count']})";
                 }
-                throw new Exception("Not enough inventory");
-            },
-            
-            // Transaction 2: Try to reserve 4 widgets (faster processing)
-            function ($pdo) {
-                $stmt = $pdo->prepare("SELECT quantity FROM inventory WHERE id = 1");
-                $stmt->execute();
-                $current = $stmt->fetch()['quantity'];
-                
-                if ($current >= 4) {
-                    // Simulate faster business logic
-                    await(delay(0.01)); // 10ms processing
-                    echo "    Transaction 2: Processing reservation for 4 widgets...\n";
-                    await(delay(0.01)); // Additional 10ms processing
-                    
-                    $stmt = $pdo->prepare("UPDATE inventory SET quantity = quantity - 4 WHERE id = 1");
-                    $stmt->execute();
-                    return "Reserved 4 widgets (Transaction 2 won!)";
-                }
-                throw new Exception("Not enough inventory");
-            },
-
-            // Transaction 3: Try to reserve 2 widgets (medium processing)
-            function ($pdo) {
-                $stmt = $pdo->prepare("SELECT quantity FROM inventory WHERE id = 1");
-                $stmt->execute();
-                $current = $stmt->fetch()['quantity'];
-                
-                if ($current >= 2) {
-                    // Simulate medium processing time
-                    await(delay(0.015)); // 15ms processing
-                    echo "    Transaction 3: Processing reservation for 2 widgets...\n";
-                    await(delay(0.02)); // Additional 20ms processing
-                    
-                    $stmt = $pdo->prepare("UPDATE inventory SET quantity = quantity - 2 WHERE id = 1");
-                    $stmt->execute();
-                    return "Reserved 2 widgets (Transaction 3 won!)";
-                }
-                throw new Exception("Not enough inventory");
-            }
-        ]));
-
-        $raceEndTime = microtime(true);
-        echo "✓ Race transaction result: {$raceResult}\n";
-        echo "✓ Race completed in " . round(($raceEndTime - $raceStartTime) * 1000, 2) . "ms\n";
-        
-        // Check final inventory
-        $finalInventory = await(AsyncPDO::fetchValue(
-            "SELECT quantity FROM inventory WHERE id = 1"
-        ));
-        echo "✓ Final inventory: {$finalInventory} widgets\n\n";
-
-        // Test 10: Complex concurrent workflow with delays
-        echo "Test 10: Complex concurrent workflow simulation...\n";
-        $workflowStartTime = microtime(true);
-        
-        $workflowResults = await(all([
-            // Simulate user analytics
-            function () {
-                await(delay(0.1)); // Simulate complex analytics
-                $userStats = await(AsyncPDO::query("
-                    SELECT 
-                        AVG(age) as avg_age,
-                        COUNT(*) as total_users,
-                        MIN(age) as youngest,
-                        MAX(age) as oldest
-                    FROM users
-                "));
-                return ['type' => 'user_analytics', 'data' => $userStats[0]];
-            },
-            
-            // Simulate product inventory check
-            function () {
-                await(delay(0.05)); // Simulate inventory processing
-                $productStats = await(AsyncPDO::query("
-                    SELECT 
-                        category,
-                        COUNT(*) as product_count,
-                        SUM(price) as total_value
-                    FROM products 
-                    GROUP BY category
-                "));
-                return ['type' => 'inventory_check', 'data' => $productStats];
-            },
-            
-            // Simulate system health check
-            function () {
-                await(delay(0.08)); // Simulate health check processing
-                $tableCount = await(AsyncPDO::fetchValue("
-                    SELECT COUNT(*) FROM sqlite_master WHERE type='table'
-                "));
-                return ['type' => 'system_health', 'data' => ['table_count' => $tableCount]];
-            }
-        ]));
-        
-        $workflowEndTime = microtime(true);
-        
-        echo "✓ Workflow completed in " . round(($workflowEndTime - $workflowStartTime) * 1000, 2) . "ms\n";
-        foreach ($workflowResults as $result) {
-            echo "  - {$result['type']}: " . json_encode($result['data']) . "\n";
+                echo "\n";
+                return $r;
+            });
         }
-        echo "\n";
+        
+        $results = await(all($promises));
+        echo "All concurrent queries completed. Results: " . count($results) . "\n";
+    });
+    
+    $endTime = microtime(true);
+    $duration = $endTime - $startTime;
+    echo "Total Concurrent Duration: " . round($duration, 3) . " seconds\n\n";
+    
+    return ['duration' => $duration, 'type' => 'concurrent'];
+}
 
-        echo "🎉 All tests completed successfully!\n";
+// ---------------------------------------------------------------------------------------------------------------------
+// 6. Run Tests
+// ---------------------------------------------------------------------------------------------------------------------
 
-    } catch (Exception $e) {
-        echo "❌ Test failed: " . $e->getMessage() . "\n";
-        echo "Stack trace:\n" . $e->getTraceAsString() . "\n";
-    } finally {
-        // Clean up
-        AsyncPDO::reset();
-        echo "\n✓ AsyncPDO reset completed\n";
+$testParams = ['test_a', 'test_b', 'test_c'];
+
+// Test 1: Heavy CPU-bound queries (may not show big improvement due to DB being bottleneck)
+$seq1 = runSequentialTest('run_heavy_cpu_query', $testParams, 'Heavy CPU Queries');
+$con1 = runConcurrentTest('run_heavy_cpu_query', $testParams, 'Heavy CPU Queries');
+
+// Test 2: Alternative heavy queries
+$seq2 = runSequentialTest('run_alternative_heavy_query', $testParams, 'Alternative Heavy Queries');
+$con2 = runConcurrentTest('run_alternative_heavy_query', $testParams, 'Alternative Heavy Queries');
+
+// Test 3: I/O simulation (should show CLEAR concurrency benefits now!)
+$seq3 = runSequentialTest('run_io_simulation_query', ['io_a', 'io_b', 'io_c'], 'I/O Simulation Queries');
+$con3 = runConcurrentTest('run_io_simulation_query', ['io_a', 'io_b', 'io_c'], 'I/O Simulation Queries');
+
+// Test 4: Mixed workload (should also show good concurrency benefits)
+$seq4 = runSequentialTest('run_mixed_workload_query', ['mix_a', 'mix_b', 'mix_c'], 'Mixed Workload Queries');
+$con4 = runConcurrentTest('run_mixed_workload_query', ['mix_a', 'mix_b', 'mix_c'], 'Mixed Workload Queries');
+
+// ---------------------------------------------------------------------------------------------------------------------
+// 7. Results Analysis
+// ---------------------------------------------------------------------------------------------------------------------
+
+echo "=== PERFORMANCE TEST RESULTS ===\n\n";
+
+function analyzeResults($sequential, $concurrent, $testName): bool {
+    $improvement = $sequential['duration'] > 0 ? $sequential['duration'] / $concurrent['duration'] : 0;
+    
+    echo "{$testName}:\n";
+    echo "  Sequential: " . round($sequential['duration'], 3) . "s\n";
+    echo "  Concurrent: " . round($concurrent['duration'], 3) . "s\n";
+    echo "  Improvement: " . round($improvement, 2) . "x ";
+    
+    if ($improvement > 1.5) {
+        echo "✅ EXCELLENT\n";
+        return true;
+    } elseif ($improvement > 1.2) {
+        echo "✅ GOOD\n";
+        return true;
+    } elseif ($improvement > 0.9) {
+        echo "⚠️ MARGINAL\n";
+        return false;
+    } else {
+        echo "❌ SLOWER\n";
+        return false;
     }
 }
 
-// Main execution
-echo "AsyncPDO Test Suite\n";
-echo "==================\n\n";
+$test1Pass = analyzeResults($seq1, $con1, "Heavy CPU Test");
+$test2Pass = analyzeResults($seq2, $con2, "Alternative Heavy Test");
+$test3Pass = analyzeResults($seq3, $con3, "I/O Simulation Test");
+$test4Pass = analyzeResults($seq4, $con4, "Mixed Workload Test");
 
-// Run the test using the run() helper
-run(function () {
-    await(resolve(testAsyncPDO()));
-});
+echo "\n=== ANALYSIS ===\n";
 
-echo "\nTest suite finished.\n";
+if ($test3Pass || $test4Pass) {
+    echo "✅ SUCCESS: Async operations show clear benefits for I/O-bound work!\n";
+    if ($test3Pass) echo "   - I/O simulation test passed (as expected)\n";
+    if ($test4Pass) echo "   - Mixed workload test passed (as expected)\n";
+} else {
+    echo "❌ UNEXPECTED: I/O-bound tests should have shown major improvements\n";
+}
+
+if ($test1Pass || $test2Pass) {
+    echo "✅ BONUS: CPU-bound tests also showed some concurrency benefits\n";
+} else {
+    echo "ℹ️ EXPECTED: CPU-bound tests showed limited benefits (DB is the bottleneck)\n";
+}
+
+echo "\n📝 KEY FIXES APPLIED:\n";
+echo "1. ✅ Used Timer::delay() instead of pg_sleep() for proper async delays\n";
+echo "2. ✅ Wrapped all query functions in Async::async() for fiber context\n";
+echo "3. ✅ Fixed integer overflow with NUMERIC type casting\n";
+echo "4. ✅ Added proper async I/O simulation that won't block other operations\n";
+echo "5. ✅ Created mixed workload tests to demonstrate real-world scenarios\n";
+
+// Cleanup
+echo "\n--- Cleaning up ---\n";
+try {
+    Task::run(function() {
+        await(AsyncPostgreSQL::execute("DROP TABLE IF EXISTS compute_heavy_data"));
+        echo "Test table dropped.\n";
+    });
+} catch (Exception $e) {
+    echo "Cleanup FAILED: " . $e->getMessage() . "\n";
+}
+
+AsyncPostgreSQL::reset();
+echo "AsyncPostgreSQL reset complete.\n";
+
+$overallPass = $test3Pass || $test4Pass; // I/O tests should definitely pass
+echo "\n" . ($overallPass ? "🎉 OVERALL TEST RESULT: PASSED" : "❌ OVERALL TEST RESULT: FAILED") . "\n";

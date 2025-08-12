@@ -150,7 +150,7 @@ final class AsyncPostgreSQL
                     pg_query($connection, 'ROLLBACK');
                     self::getPool()->release($connection);
                 } catch (Throwable $e) {
-                    error_log("Failed to cancel transaction {$index}: ".$e->getMessage());
+                    error_log("Failed to cancel transaction {$index}: " . $e->getMessage());
                     self::getPool()->release($connection);
                 }
             }
@@ -188,7 +188,7 @@ final class AsyncPostgreSQL
                     echo "Transaction $winnerIndex: Winner committed!\n";
                     self::getPool()->release($connection);
                 } catch (Throwable $e) {
-                    error_log("Failed to commit winner transaction {$winnerIndex}: ".$e->getMessage());
+                    error_log("Failed to commit winner transaction {$winnerIndex}: " . $e->getMessage());
                     pg_query($connection, 'ROLLBACK');
                     self::getPool()->release($connection);
 
@@ -209,7 +209,7 @@ final class AsyncPostgreSQL
                         pg_query($connection, 'ROLLBACK');
                         self::getPool()->release($connection);
                     } catch (Throwable $e) {
-                        error_log("Failed to rollback transaction {$index}: ".$e->getMessage());
+                        error_log("Failed to rollback transaction {$index}: " . $e->getMessage());
                         self::getPool()->release($connection);
                     }
                 })();
@@ -227,14 +227,17 @@ final class AsyncPostgreSQL
 
             try {
                 if (! empty($params)) {
-                    $result = pg_query_params($connection, $sql, $params);
+                    // Use async version for parameterized queries
+                    if (! pg_send_query_params($connection, $sql, $params)) {
+                        throw new \RuntimeException('Failed to send parameterized query: ' . pg_last_error($connection));
+                    }
                 } else {
                     if (! pg_send_query($connection, $sql)) {
-                        throw new \RuntimeException('Failed to send query: '.pg_last_error($connection));
+                        throw new \RuntimeException('Failed to send query: ' . pg_last_error($connection));
                     }
-
-                    $result = await(self::waitForAsyncCompletion($connection));
                 }
+
+                $result = await(self::waitForAsyncCompletion($connection));
 
                 return self::processResult($result, $resultType, $connection);
             } finally {
@@ -263,7 +266,7 @@ final class AsyncPostgreSQL
         if ($result === false) {
             $error = pg_last_error($connection);
 
-            throw new \RuntimeException('Query execution failed: '.($error ?: 'Unknown error'));
+            throw new \RuntimeException('Query execution failed: ' . ($error ?: 'Unknown error'));
         }
 
         return match ($resultType) {
