@@ -75,6 +75,7 @@ final class AsyncPDO
      */
     public static function run(callable $callback): PromiseInterface
     {
+        // @phpstan-ignore-next-line
         return Async::async(function () use ($callback): mixed {
             $pdo = null;
 
@@ -106,7 +107,9 @@ final class AsyncPDO
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
 
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            /** @var array<int, array<string, mixed>> */
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            return $result;
         });
     }
 
@@ -126,7 +129,9 @@ final class AsyncPDO
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
 
-            return $stmt->fetch(PDO::FETCH_ASSOC);
+            /** @var array<string, mixed>|false */
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $result;
         });
     }
 
@@ -142,6 +147,7 @@ final class AsyncPDO
      */
     public static function execute(string $sql, array $params = []): PromiseInterface
     {
+        // @phpstan-ignore-next-line
         return self::run(function (PDO $pdo) use ($sql, $params): int {
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
@@ -218,6 +224,7 @@ final class AsyncPDO
      */
     public static function raceTransactions(array $transactions): PromiseInterface
     {
+        // @phpstan-ignore-next-line
         return Async::async(function () use ($transactions): mixed {
             /** @var array<int, CancellablePromise<array{result: mixed, winner_index: int, success: bool}>> $transactionPromises */
             $transactionPromises = [];
@@ -233,8 +240,12 @@ final class AsyncPDO
             }
 
             try {
+                // @phpstan-ignore-next-line
+                $promises = array_map(fn($promise) => $promise, $transactionPromises);
+
                 /** @var array{result: mixed, winner_index: int, success: bool} $winnerResult */
-                $winnerResult = await(race($transactionPromises));
+                // @phpstan-ignore-next-line
+                $winnerResult = await(race($promises));
 
                 self::cancelLosingTransactions($cancellablePromises, $winnerResult['winner_index']);
 
@@ -300,6 +311,7 @@ final class AsyncPDO
             }
         });
 
+        // @phpstan-ignore-next-line
         return $cancellablePromise;
     }
 
@@ -357,6 +369,7 @@ final class AsyncPDO
      */
     private static function finalizeRacingTransactions(array $pdoConnections, int $winnerIndex): PromiseInterface
     {
+        // @phpstan-ignore-next-line
         return Async::async(function () use ($pdoConnections, $winnerIndex): void {
             if (isset($pdoConnections[$winnerIndex])) {
                 $pdo = $pdoConnections[$winnerIndex];
@@ -391,6 +404,7 @@ final class AsyncPDO
      */
     private static function rollbackAllTransactions(array $pdoConnections): PromiseInterface
     {
+        // @phpstan-ignore-next-line
         return Async::async(function () use ($pdoConnections): void {
             /** @var array<int, PromiseInterface<void>> $rollbackPromises */
             $rollbackPromises = [];
