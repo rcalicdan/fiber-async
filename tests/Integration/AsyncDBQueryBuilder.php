@@ -1089,12 +1089,7 @@ describe('AsyncQueryBuilder Performance and Edge Cases', function () {
 
             await(AsyncDB::table('complex_test')->insertBatch($data));
 
-            // First, let's check if data was inserted correctly
-            $allData = await(AsyncDB::table('complex_test')->get());
-            echo "All inserted data:\n";
-            print_r($allData);
-
-            // Build the query with debugging
+            await(AsyncDB::table('complex_test')->get());
             $queryBuilder = AsyncDB::table('complex_test')
                 ->where('active', 1)
                 ->whereIn('category', ['Electronics', 'Office'])
@@ -1103,19 +1098,223 @@ describe('AsyncQueryBuilder Performance and Edge Cases', function () {
                 ->orderBy('price', 'DESC')
                 ->limit(2);
 
-            echo "Generated SQL: " . $queryBuilder->toSql() . "\n";
-            echo "Bindings: ";
-            print_r($queryBuilder->getBindings());
-
             $result = await($queryBuilder->get());
-
-            echo "Query result count: " . count($result) . "\n";
-            echo "Query results:\n";
-            print_r($result);
 
             expect($result)->toHaveCount(2);
             expect($result[0]['name'])->toBe('Product B');
             expect($result[1]['name'])->toBe('Product A');
+        });
+    });
+
+    it('handles complex nested AND/OR logic with grouped conditions', function () {
+        run(function () {
+            $query = AsyncDB::table('complex_test')
+                ->where('active', 1)
+                ->whereNested(function ($q) {
+                    $q->whereGroup(function ($q2) {
+                        $q2->where('category', 'Electronics')->where('price', '>', 400);
+                    })
+                        ->orWhereNested(function ($q2) {
+                            $q2->where('category', 'Office')->like('tags', 'popular');
+                        });
+                })
+                ->orderBy('name');
+
+            $result = await($query->get());
+
+            expect($result)->toHaveCount(2);
+            expect(array_column($result, 'name'))->toBe(['Product B', 'Product E']);
+        });
+    });
+});
+
+describe('AsyncQueryBuilder Advanced Expressions and Aggregates', function () {
+    beforeEach(function () {
+        run(function () {
+            await(AsyncDB::rawExecute("DROP TABLE IF EXISTS sales_data"));
+
+            await(AsyncDB::rawExecute("
+                CREATE TABLE sales_data (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    product_name VARCHAR(255),
+                    category VARCHAR(100),
+                    quantity_sold INTEGER,
+                    unit_price DECIMAL(10,2),
+                    order_date DATETIME
+                )
+            "));
+
+            $data = [
+                ['product_name' => 'Laptop', 'category' => 'Electronics', 'quantity_sold' => 5, 'unit_price' => 1200.00, 'order_date' => '2023-01-15'],
+                ['product_name' => 'Mouse', 'category' => 'Electronics', 'quantity_sold' => 20, 'unit_price' => 25.00, 'order_date' => '2023-01-20'],
+                ['product_name' => 'Keyboard', 'category' => 'Electronics', 'quantity_sold' => 15, 'unit_price' => 75.00, 'order_date' => '2023-02-01'],
+                ['product_name' => 'Async PHP', 'category' => 'Books', 'quantity_sold' => 50, 'unit_price' => 40.00, 'order_date' => '2023-01-05'],
+                ['product_name' => 'Pest Cookbook', 'category' => 'Books', 'quantity_sold' => 30, 'unit_price' => 30.00, 'order_date' => '2023-02-10'],
+                ['product_name' => 'Stapler', 'category' => 'Office', 'quantity_sold' => 100, 'unit_price' => 10.00, 'order_date' => '2023-01-25'],
+            ];
+
+            await(AsyncDB::table('sales_data')->insertBatch($data));
+        });
+    });
+
+    it('can use raw expressions in select and order by with a CASE statement', function () {
+        run(function () {
+            $revenueExpression = 'quantity_sold * unit_price';
+
+            $tierExpression = "CASE
+                WHEN {$revenueExpression} >= 6000 THEN 'Tier A'
+                WHEN {$revenueExpression} >= 2000 THEN 'Tier B'
+                ELSE 'Tier C'
+            END";
+
+            $query = AsyncDB::table('sales_data')
+                ->select([
+                    'product_name',
+                    "$revenueExpression as total_revenue",
+                    "$tierExpression as performance_tier"
+                ])
+                ->orderBy('performance_tier')
+                ->orderBy('total_revenue', 'DESC');
+
+            $result = await($query->get());
+
+            expect($result)->toHaveCount(6);
+
+            expect($result[0]['product_name'])->toBe('Laptop');
+            expect($result[0]['performance_tier'])->toBe('Tier A');
+
+            expect($result[1]['product_name'])->toBe('Async PHP');
+            expect($result[1]['performance_tier'])->toBe('Tier B');
+
+            expect($result[5]['product_name'])->toBe('Mouse');
+            expect($result[5]['performance_tier'])->toBe('Tier C');
+        });
+    });
+
+    it('can handle complex aggregate queries with multiple HAVING clauses', function () {
+        run(function () {
+            $query = AsyncDB::table('sales_data')
+                ->select([
+                    'category',
+                    'AVG(unit_price) as avg_price',
+                    'COUNT(id) as item_count'
+                ])
+                ->groupBy('category')
+                ->having('item_count', '>', 1)
+                ->having('avg_price', '>', 100)
+                ->orderBy('category');
+
+            // --- DEBUGGING STATEMENTS ADDED HERE ---
+            echo "\n--- DEBUGGING AGGREGATE/HAVING QUERY ---\n";
+            echo "Generated SQL: " . $query->toSql() . "\n";
+            echo "Bindings: ";
+            print_r($query->getBindings());
+            echo "\n--------------------------------------\n";
+            // --- END DEBUGGING ---
+
+            $result = await($query->get());
+
+            // Also output the actual result to be certain
+            echo "Actual query result count: " . count($result) . "\n";
+            print_r($result);
+            echo "\n";
+
+            expect($result)->toHaveCount(1);
+            expect($result[0]['category'])->toBe('Electronics');
+        });
+    });
+
+    it('can handle scalar subqueries in whereRaw', function () {
+        run(function () {
+            $subQuery = AsyncDB::table('sales_data')->select('AVG(unit_price)');
+            $subSql = $subQuery->toSql();
+
+            $query = AsyncDB::table('sales_data')
+                ->whereRaw("unit_price > ({$subSql})")
+                ->orderBy('unit_price', 'DESC');
+
+            $result = await($query->get());
+
+            expect($result)->toHaveCount(1);
+            expect($result[0]['product_name'])->toBe('Laptop');
+        });
+    });
+});
+
+describe('AsyncQueryBuilder Advanced Subqueries', function () {
+    beforeEach(function () {
+        run(function () {
+            await(AsyncDB::rawExecute("DROP TABLE IF EXISTS products"));
+            await(AsyncDB::rawExecute("DROP TABLE IF EXISTS categories"));
+
+            await(AsyncDB::rawExecute("
+                CREATE TABLE IF NOT EXISTS categories (
+                    id INTEGER PRIMARY KEY,
+                    name VARCHAR(255) UNIQUE
+                )
+            "));
+
+            await(AsyncDB::rawExecute("
+                CREATE TABLE IF NOT EXISTS products (
+                    id INTEGER PRIMARY KEY,
+                    name VARCHAR(255),
+                    category_id INTEGER,
+                    price DECIMAL(10,2),
+                    active BOOLEAN DEFAULT 1
+                )
+            "));
+
+            await(AsyncDB::table('categories')->insertBatch([
+                ['id' => 1, 'name' => 'Electronics'],
+                ['id' => 2, 'name' => 'Books'],
+                ['id' => 3, 'name' => 'Office'],
+                ['id' => 4, 'name' => 'Apparel']
+            ]));
+
+            await(AsyncDB::table('products')->insertBatch([
+                ['name' => 'Laptop', 'category_id' => 1, 'price' => 1200.00, 'active' => 1],
+                ['name' => 'Mouse', 'category_id' => 1, 'price' => 29.99, 'active' => 1],
+                ['name' => 'Book', 'category_id' => 2, 'price' => 19.99, 'active' => 1],
+                ['name' => 'Premium Pen', 'category_id' => 3, 'price' => 99.00, 'active' => 0],
+                ['name' => 'T-Shirt', 'category_id' => 4, 'price' => 25.00, 'active' => 1]
+            ]));
+        });
+    });
+
+    it('can filter using whereExists with a correlated subquery', function () {
+        run(function () {
+            $query = AsyncDB::table('categories')
+                ->whereExists(function ($q) {
+                    $q->select('1')
+                        ->table('products')
+                        ->whereRaw('products.category_id = categories.id')
+                        ->where('active', 1)
+                        ->where('price', '>', 500);
+                });
+
+            $result = await($query->get());
+
+            expect($result)->toHaveCount(1);
+            expect($result[0]['name'])->toBe('Electronics');
+        });
+    });
+
+    it('can filter using whereNotExists', function () {
+        run(function () {
+            $query = AsyncDB::table('categories')
+                ->whereNotExists(function ($q) {
+                    $q->select('1')
+                        ->table('products')
+                        ->whereRaw('products.category_id = categories.id')
+                        ->where('active', 1)
+                        ->where('price', '>', 500);
+                })
+                ->orderBy('name');
+
+            $result = await($query->get());
+
+            expect($result)->toHaveCount(3);
+            expect(array_column($result, 'name'))->toBe(['Apparel', 'Books', 'Office']);
         });
     });
 });

@@ -83,7 +83,7 @@ class AsyncQueryBuilder
      * @var array<string> Raw OR WHERE conditions.
      */
     protected array $orWhereRaw = [];
-    
+
     /**
      * @var array<string> The GROUP BY clauses for the query.
      */
@@ -110,9 +110,18 @@ class AsyncQueryBuilder
     protected ?int $offset = null;
 
     /**
-     * @var array<mixed> The parameter bindings for the query.
+     * @var array<string, array<mixed>> The parameter bindings for the query, grouped by type.
      */
-    protected array $bindings = [];
+    protected array $bindings = [
+        'where' => [],
+        'whereIn' => [],
+        'whereNotIn' => [],
+        'whereBetween' => [],
+        'whereRaw' => [],
+        'orWhere' => [],
+        'orWhereRaw' => [],
+        'having' => [],
+    ];
 
     /**
      * @var int The current binding index counter.
@@ -225,7 +234,7 @@ class AsyncQueryBuilder
 
         $placeholder = $this->getPlaceholder();
         $this->where[] = "{$column} {$operator} {$placeholder}";
-        $this->bindings[] = $value;
+        $this->bindings['where'][] = $value;
 
         return $this;
     }
@@ -252,7 +261,7 @@ class AsyncQueryBuilder
 
         $placeholder = $this->getPlaceholder();
         $this->orWhere[] = "{$column} {$operator} {$placeholder}";
-        $this->bindings[] = $value;
+        $this->bindings['orWhere'][] = $value;
 
         return $this;
     }
@@ -269,7 +278,7 @@ class AsyncQueryBuilder
         $placeholders = [];
         foreach ($values as $value) {
             $placeholders[] = $this->getPlaceholder();
-            $this->bindings[] = $value;
+            $this->bindings['whereIn'][] = $value;
         }
         $this->whereIn[] = "{$column} IN (" . implode(', ', $placeholders) . ')';
 
@@ -288,7 +297,7 @@ class AsyncQueryBuilder
         $placeholders = [];
         foreach ($values as $value) {
             $placeholders[] = $this->getPlaceholder();
-            $this->bindings[] = $value;
+            $this->bindings['whereNotIn'][] = $value;
         }
         $this->whereNotIn[] = "{$column} NOT IN (" . implode(', ', $placeholders) . ')';
 
@@ -312,8 +321,8 @@ class AsyncQueryBuilder
         $placeholder1 = $this->getPlaceholder();
         $placeholder2 = $this->getPlaceholder();
         $this->whereBetween[] = "{$column} BETWEEN {$placeholder1} AND {$placeholder2}";
-        $this->bindings[] = $values[0];
-        $this->bindings[] = $values[1];
+        $this->bindings['whereBetween'][] = $values[0];
+        $this->bindings['whereBetween'][] = $values[1];
 
         return $this;
     }
@@ -364,7 +373,7 @@ class AsyncQueryBuilder
             default => $value
         };
 
-        $this->bindings[] = $likeValue;
+        $this->bindings['where'][] = $likeValue;
 
         return $this;
     }
@@ -407,7 +416,7 @@ class AsyncQueryBuilder
 
         $placeholder = $this->getPlaceholder();
         $this->having[] = "{$column} {$operator} {$placeholder}";
-        $this->bindings[] = $value;
+        $this->bindings['having'][] = $value;
 
         return $this;
     }
@@ -465,7 +474,7 @@ class AsyncQueryBuilder
     {
         $sql = $this->buildSelectQuery();
 
-        return AsyncPDO::query($sql, $this->bindings);
+        return AsyncPDO::query($sql, $this->getCompiledBindings());
     }
 
     /**
@@ -480,7 +489,7 @@ class AsyncQueryBuilder
         $sql = $this->buildSelectQuery();
         $this->limit = $originalLimit;
 
-        return AsyncPDO::fetchOne($sql, $this->bindings);
+        return AsyncPDO::fetchOne($sql, $this->getCompiledBindings());
     }
 
     /**
@@ -546,7 +555,7 @@ class AsyncQueryBuilder
     {
         $sql = $this->buildCountQuery($column);
 
-        return AsyncPDO::fetchValue($sql, $this->bindings);
+        return AsyncPDO::fetchValue($sql, $this->getCompiledBindings());
     }
 
     /**
@@ -620,7 +629,8 @@ class AsyncQueryBuilder
     public function update(array $data): PromiseInterface
     {
         $sql = $this->buildUpdateQuery($data);
-        $bindings = array_merge(array_values($data), $this->bindings);
+        $whereBindings = $this->getCompiledBindings();
+        $bindings = array_merge(array_values($data), $whereBindings);
 
         return AsyncPDO::execute($sql, $bindings);
     }
@@ -634,7 +644,7 @@ class AsyncQueryBuilder
     {
         $sql = $this->buildDeleteQuery();
 
-        return AsyncPDO::execute($sql, $this->bindings);
+        return AsyncPDO::execute($sql, $this->getCompiledBindings());
     }
 
     /**
@@ -689,7 +699,10 @@ class AsyncQueryBuilder
         }
 
         // Add where clauses
-        $sql .= $this->buildWhereClause();
+        $whereSql = $this->buildWhereClause();
+        if ($whereSql !== '') {
+            $sql .= ' WHERE ' . $whereSql;
+        }
 
         // Add group by
         if (count($this->groupBy) > 0) {
@@ -733,7 +746,10 @@ class AsyncQueryBuilder
         }
 
         // Add where clauses
-        $sql .= $this->buildWhereClause();
+        $whereSql = $this->buildWhereClause();
+        if ($whereSql !== '') {
+            $sql .= ' WHERE ' . $whereSql;
+        }
 
         // Add group by
         if (count($this->groupBy) > 0) {
@@ -797,7 +813,10 @@ class AsyncQueryBuilder
             $setClauses[] = "{$column} = ?";
         }
         $sql = "UPDATE {$this->table} SET " . implode(', ', $setClauses);
-        $sql .= $this->buildWhereClause();
+        $whereSql = $this->buildWhereClause();
+        if ($whereSql !== '') {
+            $sql .= ' WHERE ' . $whereSql;
+        }
 
         return $sql;
     }
@@ -810,7 +829,10 @@ class AsyncQueryBuilder
     protected function buildDeleteQuery(): string
     {
         $sql = "DELETE FROM {$this->table}";
-        $sql .= $this->buildWhereClause();
+        $whereSql = $this->buildWhereClause();
+        if ($whereSql !== '') {
+            $sql .= ' WHERE ' . $whereSql;
+        }
 
         return $sql;
     }
@@ -828,7 +850,7 @@ class AsyncQueryBuilder
             return '';
         }
 
-        return ' WHERE ' . $this->combineConditionParts($allParts);
+        return $this->combineConditionParts($allParts);
     }
 
     /**
@@ -1032,23 +1054,17 @@ class AsyncQueryBuilder
      */
     public function whereGroup(callable $callback, string $logicalOperator = 'AND'): self
     {
-        $subBuilder = new static();
+        $subBuilder = new static($this->table);
         $callback($subBuilder);
 
-        $subConditions = $subBuilder->getAllConditions();
-        $hasConditions = !empty($subConditions['AND']) || !empty($subConditions['OR']);
+        $subSql = $subBuilder->buildWhereClause();
 
-        if ($hasConditions) {
-            $this->conditionGroups[] = [
-                'type' => 'group',
-                'conditions' => $subConditions,
-                'operator' => strtoupper($logicalOperator),
-                'bindings' => $subBuilder->bindings
-            ];
-
-            // Merge bindings
-            $this->bindings = array_merge($this->bindings, $subBuilder->bindings);
+        // If the subquery is empty, do nothing.
+        if ($subSql === '') {
+            return $this;
         }
+
+        $this->whereRaw("({$subSql})", $subBuilder->getCompiledBindings(), $logicalOperator);
 
         return $this;
     }
@@ -1077,11 +1093,11 @@ class AsyncQueryBuilder
     {
         if (strtoupper($operator) === 'OR') {
             $this->orWhereRaw[] = $condition;
+            $this->bindings['orWhereRaw'] = array_merge($this->bindings['orWhereRaw'], $bindings);
         } else {
             $this->whereRaw[] = $condition;
+            $this->bindings['whereRaw'] = array_merge($this->bindings['whereRaw'], $bindings);
         }
-
-        $this->bindings = array_merge($this->bindings, $bindings);
 
         return $this;
     }
@@ -1113,7 +1129,7 @@ class AsyncQueryBuilder
         $subSql = $subBuilder->buildSelectQuery();
         $condition = "EXISTS ({$subSql})";
 
-        return $this->whereRaw($condition, $subBuilder->bindings, $operator);
+        return $this->whereRaw($condition, $subBuilder->getCompiledBindings(), $operator);
     }
 
     /**
@@ -1131,7 +1147,18 @@ class AsyncQueryBuilder
         $subSql = $subBuilder->buildSelectQuery();
         $condition = "NOT EXISTS ({$subSql})";
 
-        return $this->whereRaw($condition, $subBuilder->bindings, $operator);
+        return $this->whereRaw($condition, $subBuilder->getCompiledBindings(), $operator);
+    }
+
+    /**
+     * Add a nested OR WHERE condition with custom logic.
+     *
+     * @param  callable  $callback  Callback function for nested conditions.
+     * @return self Returns the query builder instance for method chaining.
+     */
+    public function orWhereNested(callable $callback): self
+    {
+        return $this->whereGroup($callback, 'OR');
     }
 
     /**
@@ -1151,7 +1178,7 @@ class AsyncQueryBuilder
      */
     public function getBindings(): array
     {
-        return $this->bindings;
+        return $this->getCompiledBindings();
     }
 
     /**
@@ -1171,7 +1198,16 @@ class AsyncQueryBuilder
         $this->whereRaw = [];
         $this->orWhereRaw = [];
         $this->conditionGroups = [];
-        $this->bindings = [];
+        $this->bindings = [
+            'where' => [],
+            'whereIn' => [],
+            'whereNotIn' => [],
+            'whereBetween' => [],
+            'whereRaw' => [],
+            'orWhere' => [],
+            'orWhereRaw' => [],
+            'having' => [],
+        ];
         $this->bindingIndex = 0;
 
         return $this;
@@ -1185,5 +1221,34 @@ class AsyncQueryBuilder
     protected function getPlaceholder(): string
     {
         return '?';
+    }
+
+    /**
+     * Compiles the final bindings array in the correct order for execution.
+     *
+     * @return array<mixed>
+     */
+    protected function getCompiledBindings(): array
+    {
+        // This merge order MUST match the order in `collectAllConditionParts()`
+        // and the order of the final query construction.
+        $whereBindings = array_merge(
+            $this->bindings['where'],
+            $this->bindings['whereIn'],
+            $this->bindings['whereNotIn'],
+            $this->bindings['whereBetween'],
+            $this->bindings['whereRaw'],
+            $this->bindings['orWhere'],
+            $this->bindings['orWhereRaw']
+        );
+
+        // This handles bindings from complex groups like whereGroup
+        foreach ($this->conditionGroups as $group) {
+            if (isset($group['bindings'])) {
+                $whereBindings = array_merge($whereBindings, $group['bindings']);
+            }
+        }
+
+        return array_merge($whereBindings, $this->bindings['having']);
     }
 }
