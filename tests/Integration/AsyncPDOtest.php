@@ -482,10 +482,7 @@ describe('AsyncPDO Performance', function () {
             ]));
             $concurrentTime = (microtime(true) - $concurrentStart) * 1000;
 
-            // Verify results are the same
             expect($sequentialResults)->toEqual($concurrentResults);
-
-            // Verify concurrent execution is significantly faster
             expect($concurrentTime)->toBeLessThan($sequentialTime * 0.4); // At least 60% faster
             expect($sequentialTime)->toBeGreaterThan(240); // Sequential should take ~250ms
             expect($concurrentTime)->toBeLessThan(100); // Concurrent should take ~50ms + overhead

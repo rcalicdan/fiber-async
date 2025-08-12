@@ -70,6 +70,21 @@ class AsyncQueryBuilder
     protected array $whereNotNull = [];
 
     /**
+     * @var array<array{type: string, conditions: array<string>, operator: string, bindings: array<mixed>}> Complex condition groups.
+     */
+    protected array $conditionGroups = [];
+
+    /**
+     * @var array<string> Raw WHERE conditions.
+     */
+    protected array $whereRaw = [];
+
+    /**
+     * @var array<string> Raw OR WHERE conditions.
+     */
+    protected array $orWhereRaw = [];
+    
+    /**
      * @var array<string> The GROUP BY clauses for the query.
      */
     protected array $groupBy = [];
@@ -256,7 +271,7 @@ class AsyncQueryBuilder
             $placeholders[] = $this->getPlaceholder();
             $this->bindings[] = $value;
         }
-        $this->whereIn[] = "{$column} IN (".implode(', ', $placeholders).')';
+        $this->whereIn[] = "{$column} IN (" . implode(', ', $placeholders) . ')';
 
         return $this;
     }
@@ -275,7 +290,7 @@ class AsyncQueryBuilder
             $placeholders[] = $this->getPlaceholder();
             $this->bindings[] = $value;
         }
-        $this->whereNotIn[] = "{$column} NOT IN (".implode(', ', $placeholders).')';
+        $this->whereNotIn[] = "{$column} NOT IN (" . implode(', ', $placeholders) . ')';
 
         return $this;
     }
@@ -406,7 +421,7 @@ class AsyncQueryBuilder
      */
     public function orderBy(string $column, string $direction = 'ASC'): self
     {
-        $this->orderBy[] = "{$column} ".strtoupper($direction);
+        $this->orderBy[] = "{$column} " . strtoupper($direction);
 
         return $this;
     }
@@ -665,8 +680,8 @@ class AsyncQueryBuilder
      */
     protected function buildSelectQuery(): string
     {
-        $sql = 'SELECT '.implode(', ', $this->select);
-        $sql .= ' FROM '.$this->table;
+        $sql = 'SELECT ' . implode(', ', $this->select);
+        $sql .= ' FROM ' . $this->table;
 
         // Add joins
         foreach ($this->joins as $join) {
@@ -678,24 +693,24 @@ class AsyncQueryBuilder
 
         // Add group by
         if (count($this->groupBy) > 0) {
-            $sql .= ' GROUP BY '.implode(', ', $this->groupBy);
+            $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
         }
 
         // Add having
         if (count($this->having) > 0) {
-            $sql .= ' HAVING '.implode(' AND ', $this->having);
+            $sql .= ' HAVING ' . implode(' AND ', $this->having);
         }
 
         // Add order by
         if (count($this->orderBy) > 0) {
-            $sql .= ' ORDER BY '.implode(', ', $this->orderBy);
+            $sql .= ' ORDER BY ' . implode(', ', $this->orderBy);
         }
 
         // Add limit and offset
         if ($this->limit !== null) {
-            $sql .= ' LIMIT '.$this->limit;
+            $sql .= ' LIMIT ' . $this->limit;
             if ($this->offset !== null) {
-                $sql .= ' OFFSET '.$this->offset;
+                $sql .= ' OFFSET ' . $this->offset;
             }
         }
 
@@ -710,7 +725,7 @@ class AsyncQueryBuilder
      */
     protected function buildCountQuery(string $column = '*'): string
     {
-        $sql = "SELECT COUNT({$column}) FROM ".$this->table;
+        $sql = "SELECT COUNT({$column}) FROM " . $this->table;
 
         // Add joins
         foreach ($this->joins as $join) {
@@ -722,12 +737,12 @@ class AsyncQueryBuilder
 
         // Add group by
         if (count($this->groupBy) > 0) {
-            $sql .= ' GROUP BY '.implode(', ', $this->groupBy);
+            $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
         }
 
         // Add having
         if (count($this->having) > 0) {
-            $sql .= ' HAVING '.implode(' AND ', $this->having);
+            $sql .= ' HAVING ' . implode(' AND ', $this->having);
         }
 
         return $sql;
@@ -763,7 +778,7 @@ class AsyncQueryBuilder
         }
 
         $columns = implode(', ', array_keys($firstRow));
-        $placeholders = '('.implode(', ', array_fill(0, count($firstRow), '?')).')';
+        $placeholders = '(' . implode(', ', array_fill(0, count($firstRow), '?')) . ')';
         $allPlaceholders = implode(', ', array_fill(0, count($data), $placeholders));
 
         return "INSERT INTO {$this->table} ({$columns}) VALUES {$allPlaceholders}";
@@ -781,7 +796,7 @@ class AsyncQueryBuilder
         foreach (array_keys($data) as $column) {
             $setClauses[] = "{$column} = ?";
         }
-        $sql = "UPDATE {$this->table} SET ".implode(', ', $setClauses);
+        $sql = "UPDATE {$this->table} SET " . implode(', ', $setClauses);
         $sql .= $this->buildWhereClause();
 
         return $sql;
@@ -807,33 +822,359 @@ class AsyncQueryBuilder
      */
     protected function buildWhereClause(): string
     {
-        $conditions = array_merge(
+        $allParts = $this->collectAllConditionParts();
+
+        if (empty($allParts)) {
+            return '';
+        }
+
+        return ' WHERE ' . $this->combineConditionParts($allParts);
+    }
+
+    /**
+     * Collect all condition parts from different sources.
+     *
+     * @return array<array{conditions: array<string>, operator: string, priority: int}> All condition parts.
+     */
+    protected function collectAllConditionParts(): array
+    {
+        $parts = [];
+
+        // Basic AND conditions (highest priority)
+        $andConditions = array_merge(
             $this->where,
             $this->whereIn,
             $this->whereNotIn,
             $this->whereBetween,
             $this->whereNull,
-            $this->whereNotNull
+            $this->whereNotNull,
+            $this->whereRaw
         );
 
-        if (count($conditions) === 0 && count($this->orWhere) === 0) {
+        if (!empty($andConditions)) {
+            $parts[] = [
+                'conditions' => array_filter($andConditions, fn($condition) => !empty(trim($condition))),
+                'operator' => 'AND',
+                'priority' => 1
+            ];
+        }
+
+        // Basic OR conditions
+        $orConditions = array_merge($this->orWhere, $this->orWhereRaw);
+        if (!empty($orConditions)) {
+            $parts[] = [
+                'conditions' => array_filter($orConditions, fn($condition) => !empty(trim($condition))),
+                'operator' => 'OR',
+                'priority' => 2
+            ];
+        }
+
+        // Complex condition groups
+        foreach ($this->conditionGroups as $group) {
+            if (!empty($group['conditions'])) {
+                $parts[] = [
+                    'conditions' => [$this->buildNestedConditions($group['conditions'])],
+                    'operator' => $group['operator'],
+                    'priority' => 3
+                ];
+            }
+        }
+
+        return $parts;
+    }
+
+    /**
+     * Build nested conditions from a condition group.
+     *
+     * @param  array<string, array<string>>  $conditions  Grouped conditions.
+     * @return string The built nested condition string.
+     */
+    protected function buildNestedConditions(array $conditions): string
+    {
+        $parts = [];
+
+        if (!empty($conditions['AND'])) {
+            $andPart = $this->buildConditionGroup($conditions['AND'], 'AND');
+            if ($andPart !== '') {
+                $parts[] = $andPart;
+            }
+        }
+
+        if (!empty($conditions['OR'])) {
+            $orPart = $this->buildConditionGroup($conditions['OR'], 'OR');
+            if ($orPart !== '') {
+                $parts[] = $orPart;
+            }
+        }
+
+        if (count($parts) > 1) {
+            return '(' . implode(' OR ', $parts) . ')';
+        }
+
+        return $parts[0] ?? '';
+    }
+
+    /**
+     * Build a group of conditions with the same logical operator.
+     *
+     * @param  array<string>  $conditions  Array of condition strings.
+     * @param  string  $operator  The logical operator (AND/OR).
+     * @return string The built condition group.
+     */
+    protected function buildConditionGroup(array $conditions, string $operator): string
+    {
+        $conditions = array_filter($conditions, fn($condition) => !empty(trim($condition)));
+
+        if (empty($conditions)) {
             return '';
         }
 
-        $sql = ' WHERE ';
-
-        if (count($conditions) > 0) {
-            $sql .= implode(' AND ', $conditions);
+        if (count($conditions) === 1) {
+            return reset($conditions);
         }
 
-        if (count($this->orWhere) > 0) {
-            if (count($conditions) > 0) {
-                $sql .= ' OR ';
+        return '(' . implode(' ' . strtoupper($operator) . ' ', $conditions) . ')';
+    }
+
+    /**
+     * Combine different condition parts with appropriate logic.
+     *
+     * @param  array<array{conditions: array<string>, operator: string, priority: int}>  $parts  Array of condition parts.
+     * @return string The combined condition string.
+     */
+    protected function combineConditionParts(array $parts): string
+    {
+        if (empty($parts)) {
+            return '';
+        }
+
+        usort($parts, fn($a, $b) => $a['priority'] <=> $b['priority']);
+
+        $andParts = [];
+        $orParts = [];
+
+        foreach ($parts as $part) {
+            if (empty($part['conditions'])) {
+                continue;
             }
-            $sql .= implode(' OR ', $this->orWhere);
+
+            $conditionString = $this->buildConditionGroup($part['conditions'], $part['operator']);
+
+            if ($conditionString === '') {
+                continue;
+            }
+
+            if ($part['operator'] === 'AND') {
+                $andParts[] = $conditionString;
+            } else {
+                $orParts[] = $conditionString;
+            }
         }
 
-        return $sql;
+        return $this->combineAndOrParts($andParts, $orParts);
+    }
+
+    /**
+     * Combine AND and OR parts with proper precedence.
+     *
+     * @param  array<string>  $andParts  AND condition parts.
+     * @param  array<string>  $orParts  OR condition parts.
+     * @return string The combined condition string.
+     */
+    protected function combineAndOrParts(array $andParts, array $orParts): string
+    {
+        $finalParts = [];
+
+        // Combine all AND parts
+        if (!empty($andParts)) {
+            if (count($andParts) === 1) {
+                $finalParts[] = $andParts[0];
+            } else {
+                $finalParts[] = '(' . implode(' AND ', $andParts) . ')';
+            }
+        }
+
+        // Add OR parts
+        foreach ($orParts as $orPart) {
+            $finalParts[] = $orPart;
+        }
+
+        return implode(' OR ', $finalParts);
+    }
+
+    /**
+     * Get all conditions organized by their logical operators.
+     *
+     * @return array<string, array<string>> Array of conditions grouped by operator type.
+     */
+    protected function getAllConditions(): array
+    {
+        return [
+            'AND' => array_merge(
+                $this->where,
+                $this->whereIn,
+                $this->whereNotIn,
+                $this->whereBetween,
+                $this->whereNull,
+                $this->whereNotNull,
+                $this->whereRaw
+            ),
+            'OR' => array_merge($this->orWhere, $this->orWhereRaw)
+        ];
+    }
+
+    /**
+     * Add a custom condition group with specific logic.
+     *
+     * @param  callable  $callback  Callback function that receives a new query builder instance.
+     * @param  string  $logicalOperator  How this group connects to others ('AND' or 'OR').
+     * @return self Returns the query builder instance for method chaining.
+     */
+    public function whereGroup(callable $callback, string $logicalOperator = 'AND'): self
+    {
+        $subBuilder = new static();
+        $callback($subBuilder);
+
+        $subConditions = $subBuilder->getAllConditions();
+        $hasConditions = !empty($subConditions['AND']) || !empty($subConditions['OR']);
+
+        if ($hasConditions) {
+            $this->conditionGroups[] = [
+                'type' => 'group',
+                'conditions' => $subConditions,
+                'operator' => strtoupper($logicalOperator),
+                'bindings' => $subBuilder->bindings
+            ];
+
+            // Merge bindings
+            $this->bindings = array_merge($this->bindings, $subBuilder->bindings);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Add nested WHERE conditions with custom logic.
+     *
+     * @param  callable  $callback  Callback function for nested conditions.
+     * @param  string  $operator  How to connect with existing conditions.
+     * @return self Returns the query builder instance for method chaining.
+     */
+    public function whereNested(callable $callback, string $operator = 'AND'): self
+    {
+        return $this->whereGroup($callback, $operator);
+    }
+
+    /**
+     * Add a raw WHERE condition.
+     *
+     * @param  string  $condition  The raw SQL condition.
+     * @param  array<mixed>  $bindings  Parameter bindings for the condition.
+     * @param  string  $operator  Logical operator ('AND' or 'OR').
+     * @return self Returns the query builder instance for method chaining.
+     */
+    public function whereRaw(string $condition, array $bindings = [], string $operator = 'AND'): self
+    {
+        if (strtoupper($operator) === 'OR') {
+            $this->orWhereRaw[] = $condition;
+        } else {
+            $this->whereRaw[] = $condition;
+        }
+
+        $this->bindings = array_merge($this->bindings, $bindings);
+
+        return $this;
+    }
+
+    /**
+     * Add a raw OR WHERE condition.
+     *
+     * @param  string  $condition  The raw SQL condition.
+     * @param  array<mixed>  $bindings  Parameter bindings for the condition.
+     * @return self Returns the query builder instance for method chaining.
+     */
+    public function orWhereRaw(string $condition, array $bindings = []): self
+    {
+        return $this->whereRaw($condition, $bindings, 'OR');
+    }
+
+    /**
+     * Add conditions with EXISTS clause.
+     *
+     * @param  callable  $callback  Callback function for the EXISTS subquery.
+     * @param  string  $operator  Logical operator ('AND' or 'OR').
+     * @return self Returns the query builder instance for method chaining.
+     */
+    public function whereExists(callable $callback, string $operator = 'AND'): self
+    {
+        $subBuilder = new static();
+        $callback($subBuilder);
+
+        $subSql = $subBuilder->buildSelectQuery();
+        $condition = "EXISTS ({$subSql})";
+
+        return $this->whereRaw($condition, $subBuilder->bindings, $operator);
+    }
+
+    /**
+     * Add conditions with NOT EXISTS clause.
+     *
+     * @param  callable  $callback  Callback function for the NOT EXISTS subquery.
+     * @param  string  $operator  Logical operator ('AND' or 'OR').
+     * @return self Returns the query builder instance for method chaining.
+     */
+    public function whereNotExists(callable $callback, string $operator = 'AND'): self
+    {
+        $subBuilder = new static();
+        $callback($subBuilder);
+
+        $subSql = $subBuilder->buildSelectQuery();
+        $condition = "NOT EXISTS ({$subSql})";
+
+        return $this->whereRaw($condition, $subBuilder->bindings, $operator);
+    }
+
+    /**
+     * Get the built SQL query for debugging purposes.
+     *
+     * @return string The complete SQL query.
+     */
+    public function toSql(): string
+    {
+        return $this->buildSelectQuery();
+    }
+
+    /**
+     * Get the parameter bindings for debugging purposes.
+     *
+     * @return array<mixed> The parameter bindings.
+     */
+    public function getBindings(): array
+    {
+        return $this->bindings;
+    }
+
+    /**
+     * Reset all WHERE conditions and bindings.
+     *
+     * @return self Returns the query builder instance for method chaining.
+     */
+    public function resetWhere(): self
+    {
+        $this->where = [];
+        $this->orWhere = [];
+        $this->whereIn = [];
+        $this->whereNotIn = [];
+        $this->whereBetween = [];
+        $this->whereNull = [];
+        $this->whereNotNull = [];
+        $this->whereRaw = [];
+        $this->orWhereRaw = [];
+        $this->conditionGroups = [];
+        $this->bindings = [];
+        $this->bindingIndex = 0;
+
+        return $this;
     }
 
     /**
