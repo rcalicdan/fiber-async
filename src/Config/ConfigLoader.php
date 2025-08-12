@@ -16,6 +16,8 @@ final class ConfigLoader
 {
     private static ?self $instance = null;
     private ?string $rootPath = null;
+    
+    /** @var array<string, mixed> */
     private array $config = [];
 
     /**
@@ -26,7 +28,7 @@ final class ConfigLoader
     {
         $this->rootPath = $this->findProjectRoot();
 
-        if ($this->rootPath) {
+        if ($this->rootPath !== null) {
             $this->loadDotEnv();
             $this->loadConfigFiles();
         }
@@ -55,6 +57,9 @@ final class ConfigLoader
     /**
      * Retrieves a configuration array by its key (the filename).
      * e.g., get('database') loads and returns config/database.php
+     * 
+     * @param mixed $default
+     * @return mixed
      */
     public function get(string $key, $default = null)
     {
@@ -86,6 +91,10 @@ final class ConfigLoader
 
     private function loadDotEnv(): void
     {
+        if ($this->rootPath === null) {
+            throw new Exception("Root path not found, cannot load .env file");
+        }
+
         $envFile = $this->rootPath.'/.env';
 
         if (file_exists($envFile)) {
@@ -107,13 +116,18 @@ final class ConfigLoader
      */
     private function loadConfigFiles(): void
     {
+        if ($this->rootPath === null) {
+            throw new Exception("Root path not found, cannot load config files");
+        }
+
         $configDir = $this->rootPath.'/config';
         if (is_dir($configDir)) {
             $files = glob($configDir.'/*.php');
-            foreach ($files as $file) {
-                // The array key becomes the filename, e.g., 'database'
-                $key = basename($file, '.php');
-                $this->config[$key] = require $file;
+            if ($files !== false) {
+                foreach ($files as $file) {
+                    $key = basename($file, '.php');
+                    $this->config[$key] = require $file;
+                }
             }
         }
     }
