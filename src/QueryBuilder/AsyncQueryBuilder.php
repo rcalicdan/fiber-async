@@ -422,6 +422,22 @@ class AsyncQueryBuilder
     }
 
     /**
+     * Add a raw HAVING condition.
+     *
+     * @param  string  $condition  The raw SQL condition.
+     * @param  array<mixed>  $bindings  Parameter bindings for the condition.
+     * @return self Returns the query builder instance for method chaining.
+     */
+    public function havingRaw(string $condition, array $bindings = []): self
+    {
+        $this->having[] = $condition;
+        $this->bindings['having'] = array_merge($this->bindings['having'], $bindings);
+
+        return $this;
+    }
+
+
+    /**
      * Add an ORDER BY clause to the query.
      *
      * @param  string  $column  The column name.
