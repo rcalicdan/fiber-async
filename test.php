@@ -373,13 +373,6 @@ if ($test1Pass || $test2Pass) {
     echo "ℹ️ EXPECTED: CPU-bound tests showed limited benefits (DB is the bottleneck)\n";
 }
 
-echo "\n📝 KEY FIXES APPLIED:\n";
-echo "1. ✅ Used Timer::delay() instead of pg_sleep() for proper async delays\n";
-echo "2. ✅ Wrapped all query functions in Async::async() for fiber context\n";
-echo "3. ✅ Fixed integer overflow with NUMERIC type casting\n";
-echo "4. ✅ Added proper async I/O simulation that won't block other operations\n";
-echo "5. ✅ Created mixed workload tests to demonstrate real-world scenarios\n";
-
 // Cleanup
 echo "\n--- Cleaning up ---\n";
 try {
