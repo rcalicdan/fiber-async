@@ -30,7 +30,10 @@ final class AsyncPDO
      * using any other AsyncPDO methods. Multiple calls are ignored.
      *
      * @param  array<string, mixed>  $dbConfig  Database configuration array containing:
-     *                           - dsn: Database connection string
+     *                           - driver: Database driver (e.g., 'mysql', 'pgsql')
+     *                           - host: Database host (e.g., 'localhost')
+     *                           - database: Database name
+     *                           - port: Database port
      *                           - username: Database username
      *                           - password: Database password
      *                           - options: PDO options array (optional)

@@ -70,11 +70,6 @@ class AsyncQueryBuilder
     protected array $whereNotNull = [];
 
     /**
-     * @var array<array{type: string, conditions: array<string>, operator: string, bindings: array<mixed>}> Complex condition groups.
-     */
-    protected array $conditionGroups = [];
-
-    /**
      * @var array<string> Raw WHERE conditions.
      */
     protected array $whereRaw = [];
@@ -133,7 +128,7 @@ class AsyncQueryBuilder
      *
      * @param  string  $table  The table name to query.
      */
-    public function __construct(string $table = '')
+    final public function __construct(string $table = '')
     {
         if ($table !== '') {
             $this->table = $table;
@@ -227,7 +222,6 @@ class AsyncQueryBuilder
             $operator = '=';
         }
 
-        // Ensure operator is a string, default to '=' if null
         if (! is_string($operator)) {
             $operator = '=';
         }
@@ -254,7 +248,6 @@ class AsyncQueryBuilder
             $operator = '=';
         }
 
-        // Ensure operator is a string, default to '=' if null
         if (! is_string($operator)) {
             $operator = '=';
         }
@@ -275,12 +268,13 @@ class AsyncQueryBuilder
      */
     public function whereIn(string $column, array $values): self
     {
-        $placeholders = [];
-        foreach ($values as $value) {
-            $placeholders[] = $this->getPlaceholder();
-            $this->bindings['whereIn'][] = $value;
+        if ($values === []) {
+            $this->whereRaw('0=1');
+            return $this;
         }
-        $this->whereIn[] = "{$column} IN (" . implode(', ', $placeholders) . ')';
+        $placeholders = implode(', ', array_fill(0, count($values), $this->getPlaceholder()));
+        $this->whereIn[] = "{$column} IN ({$placeholders})";
+        $this->bindings['whereIn'] = array_merge($this->bindings['whereIn'], $values);
 
         return $this;
     }
@@ -294,12 +288,12 @@ class AsyncQueryBuilder
      */
     public function whereNotIn(string $column, array $values): self
     {
-        $placeholders = [];
-        foreach ($values as $value) {
-            $placeholders[] = $this->getPlaceholder();
-            $this->bindings['whereNotIn'][] = $value;
+        if ($values === []) {
+            return $this;
         }
-        $this->whereNotIn[] = "{$column} NOT IN (" . implode(', ', $placeholders) . ')';
+        $placeholders = implode(', ', array_fill(0, count($values), $this->getPlaceholder()));
+        $this->whereNotIn[] = "{$column} NOT IN ({$placeholders})";
+        $this->bindings['whereNotIn'] = array_merge($this->bindings['whereNotIn'], $values);
 
         return $this;
     }
@@ -307,8 +301,8 @@ class AsyncQueryBuilder
     /**
      * Add a WHERE BETWEEN clause to the query.
      *
-     * @param  string  $column  The column name.
      * @param  array<mixed>  $values  An array with exactly 2 values for the range.
+     * @param  string  $column  The column name.
      * @return self Returns the query builder instance for method chaining.
      *
      * @throws \InvalidArgumentException When values array doesn't contain exactly 2 elements.
@@ -409,7 +403,6 @@ class AsyncQueryBuilder
             $operator = '=';
         }
 
-        // Ensure operator is a string, default to '=' if null
         if (! is_string($operator)) {
             $operator = '=';
         }
@@ -484,7 +477,7 @@ class AsyncQueryBuilder
     /**
      * Execute the query and return all results.
      *
-     * @return PromiseInterface<mixed> A promise that resolves to the query results.
+     * @return PromiseInterface<array<int, array<string, mixed>>> A promise that resolves to the query results.
      */
     public function get(): PromiseInterface
     {
@@ -496,7 +489,7 @@ class AsyncQueryBuilder
     /**
      * Get the first result from the query.
      *
-     * @return PromiseInterface<mixed> A promise that resolves to the first result or null.
+     * @return PromiseInterface<array<string, mixed>|false> A promise that resolves to the first result or false.
      */
     public function first(): PromiseInterface
     {
@@ -513,7 +506,7 @@ class AsyncQueryBuilder
      *
      * @param  mixed  $id  The ID value to search for.
      * @param  string  $column  The column name to search in.
-     * @return PromiseInterface<mixed> A promise that resolves to the found record or null.
+     * @return PromiseInterface<array<string, mixed>|false> A promise that resolves to the found record or false.
      */
     public function find(mixed $id, string $column = 'id'): PromiseInterface
     {
@@ -525,22 +518,19 @@ class AsyncQueryBuilder
      *
      * @param  mixed  $id  The ID value to search for.
      * @param  string  $column  The column name to search in.
-     * @return PromiseInterface<mixed> A promise that resolves to the found record.
+     * @return PromiseInterface<array<string, mixed>> A promise that resolves to the found record.
      *
      * @throws \RuntimeException When no record is found.
      */
     public function findOrFail(mixed $id, string $column = 'id'): PromiseInterface
     {
-        /** @var PromiseInterface<mixed> */
-        return Async::async(function () use ($id, $column): mixed {
+        // @phpstan-ignore-next-line
+        return Async::async(function () use ($id, $column): array {
             $result = await($this->find($id, $column));
             if ($result === null || $result === false) {
-                // Convert $id to string safely
-                $idString = $id === null ? 'null' : (is_scalar($id) ? (string) $id : 'complex_type');
-
+                $idString = is_scalar($id) ? (string) $id : 'complex_type';
                 throw new \RuntimeException("Record not found with {$column} = {$idString}");
             }
-
             return $result;
         })();
     }
@@ -553,11 +543,10 @@ class AsyncQueryBuilder
      */
     public function value(string $column): PromiseInterface
     {
-        /** @var PromiseInterface<mixed> */
+        // @phpstan-ignore-next-line
         return Async::async(function () use ($column): mixed {
             $result = await($this->select($column)->first());
-
-            return ($result !== null && is_array($result) && isset($result[$column])) ? $result[$column] : null;
+            return ($result !== false && isset($result[$column])) ? $result[$column] : null;
         })();
     }
 
@@ -565,26 +554,26 @@ class AsyncQueryBuilder
      * Count the number of records.
      *
      * @param  string  $column  The column to count.
-     * @return PromiseInterface<mixed> A promise that resolves to the record count.
+     * @return PromiseInterface<int> A promise that resolves to the record count.
      */
     public function count(string $column = '*'): PromiseInterface
     {
         $sql = $this->buildCountQuery($column);
-
-        return AsyncPDO::fetchValue($sql, $this->getCompiledBindings());
+        /** @var PromiseInterface<int> */
+        $promise = AsyncPDO::fetchValue($sql, $this->getCompiledBindings());
+        return $promise;
     }
 
     /**
      * Check if any records exist.
      *
-     * @return PromiseInterface<mixed> A promise that resolves to true if records exist, false otherwise.
+     * @return PromiseInterface<bool> A promise that resolves to true if records exist, false otherwise.
      */
     public function exists(): PromiseInterface
     {
-        /** @var PromiseInterface<mixed> */
-        return Async::async(function (): mixed {
+        // @phpstan-ignore-next-line
+        return Async::async(function (): bool {
             $count = await($this->count());
-
             return $count > 0;
         })();
     }
@@ -593,12 +582,14 @@ class AsyncQueryBuilder
      * Insert a single record.
      *
      * @param  array<string, mixed>  $data  The data to insert as column => value pairs.
-     * @return PromiseInterface<mixed> A promise that resolves to the result of the insert operation.
+     * @return PromiseInterface<int> A promise that resolves to the number of affected rows.
      */
     public function insert(array $data): PromiseInterface
     {
+        if ($data === []) {
+            return Promise::resolve(0);
+        }
         $sql = $this->buildInsertQuery($data);
-
         return AsyncPDO::execute($sql, array_values($data));
     }
 
@@ -606,11 +597,11 @@ class AsyncQueryBuilder
      * Insert multiple records in a batch operation.
      *
      * @param  array<array<string, mixed>>  $data  An array of records to insert.
-     * @return PromiseInterface<mixed> A promise that resolves to the result of the batch insert operation.
+     * @return PromiseInterface<int> A promise that resolves to the number of affected rows.
      */
     public function insertBatch(array $data): PromiseInterface
     {
-        if (count($data) === 0) {
+        if ($data === []) {
             return Promise::resolve(0);
         }
 
@@ -629,7 +620,7 @@ class AsyncQueryBuilder
      * Create a new record (alias for insert).
      *
      * @param  array<string, mixed>  $data  The data to insert as column => value pairs.
-     * @return PromiseInterface<mixed> A promise that resolves to the result of the insert operation.
+     * @return PromiseInterface<int> A promise that resolves to the number of affected rows.
      */
     public function create(array $data): PromiseInterface
     {
@@ -640,10 +631,13 @@ class AsyncQueryBuilder
      * Update records matching the query conditions.
      *
      * @param  array<string, mixed>  $data  The data to update as column => value pairs.
-     * @return PromiseInterface<mixed> A promise that resolves to the result of the update operation.
+     * @return PromiseInterface<int> A promise that resolves to the number of affected rows.
      */
     public function update(array $data): PromiseInterface
     {
+        if ($data === []) {
+            return Promise::resolve(0);
+        }
         $sql = $this->buildUpdateQuery($data);
         $whereBindings = $this->getCompiledBindings();
         $bindings = array_merge(array_values($data), $whereBindings);
@@ -654,7 +648,7 @@ class AsyncQueryBuilder
     /**
      * Delete records matching the query conditions.
      *
-     * @return PromiseInterface<mixed> A promise that resolves to the result of the delete operation.
+     * @return PromiseInterface<int> A promise that resolves to the number of affected rows.
      */
     public function delete(): PromiseInterface
     {
@@ -668,7 +662,7 @@ class AsyncQueryBuilder
      *
      * @param  string  $sql  The raw SQL query.
      * @param  array<mixed>  $bindings  The parameter bindings for the query.
-     * @return PromiseInterface<mixed> A promise that resolves to the query results.
+     * @return PromiseInterface<array<int, array<string, mixed>>> A promise that resolves to the query results.
      */
     public function raw(string $sql, array $bindings = []): PromiseInterface
     {
@@ -680,7 +674,7 @@ class AsyncQueryBuilder
      *
      * @param  string  $sql  The raw SQL query.
      * @param  array<mixed>  $bindings  The parameter bindings for the query.
-     * @return PromiseInterface<mixed> A promise that resolves to the first result or null.
+     * @return PromiseInterface<array<string, mixed>|false> A promise that resolves to the first result or false.
      */
     public function rawFirst(string $sql, array $bindings = []): PromiseInterface
     {
@@ -709,33 +703,27 @@ class AsyncQueryBuilder
         $sql = 'SELECT ' . implode(', ', $this->select);
         $sql .= ' FROM ' . $this->table;
 
-        // Add joins
         foreach ($this->joins as $join) {
             $sql .= " {$join['type']} JOIN {$join['table']} ON {$join['condition']}";
         }
 
-        // Add where clauses
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
             $sql .= ' WHERE ' . $whereSql;
         }
 
-        // Add group by
-        if (count($this->groupBy) > 0) {
+        if ($this->groupBy !== []) {
             $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
         }
 
-        // Add having
-        if (count($this->having) > 0) {
+        if ($this->having !== []) {
             $sql .= ' HAVING ' . implode(' AND ', $this->having);
         }
 
-        // Add order by
-        if (count($this->orderBy) > 0) {
+        if ($this->orderBy !== []) {
             $sql .= ' ORDER BY ' . implode(', ', $this->orderBy);
         }
 
-        // Add limit and offset
         if ($this->limit !== null) {
             $sql .= ' LIMIT ' . $this->limit;
             if ($this->offset !== null) {
@@ -756,24 +744,20 @@ class AsyncQueryBuilder
     {
         $sql = "SELECT COUNT({$column}) FROM " . $this->table;
 
-        // Add joins
         foreach ($this->joins as $join) {
             $sql .= " {$join['type']} JOIN {$join['table']} ON {$join['condition']}";
         }
 
-        // Add where clauses
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
             $sql .= ' WHERE ' . $whereSql;
         }
 
-        // Add group by
-        if (count($this->groupBy) > 0) {
+        if ($this->groupBy !== []) {
             $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
         }
 
-        // Add having
-        if (count($this->having) > 0) {
+        if ($this->having !== []) {
             $sql .= ' HAVING ' . implode(' AND ', $this->having);
         }
 
@@ -862,7 +846,7 @@ class AsyncQueryBuilder
     {
         $allParts = $this->collectAllConditionParts();
 
-        if (empty($allParts)) {
+        if ($allParts === []) {
             return '';
         }
 
@@ -878,7 +862,6 @@ class AsyncQueryBuilder
     {
         $parts = [];
 
-        // Basic AND conditions (highest priority)
         $andConditions = array_merge(
             $this->where,
             $this->whereIn,
@@ -889,67 +872,18 @@ class AsyncQueryBuilder
             $this->whereRaw
         );
 
-        if (!empty($andConditions)) {
-            $parts[] = [
-                'conditions' => array_filter($andConditions, fn($condition) => !empty(trim($condition))),
-                'operator' => 'AND',
-                'priority' => 1
-            ];
+        $filteredAnd = array_filter($andConditions, fn($condition) => trim($condition) !== '');
+        if ($filteredAnd !== []) {
+            $parts[] = ['conditions' => $filteredAnd, 'operator' => 'AND', 'priority' => 1];
         }
 
-        // Basic OR conditions
         $orConditions = array_merge($this->orWhere, $this->orWhereRaw);
-        if (!empty($orConditions)) {
-            $parts[] = [
-                'conditions' => array_filter($orConditions, fn($condition) => !empty(trim($condition))),
-                'operator' => 'OR',
-                'priority' => 2
-            ];
-        }
-
-        // Complex condition groups
-        foreach ($this->conditionGroups as $group) {
-            if (!empty($group['conditions'])) {
-                $parts[] = [
-                    'conditions' => [$this->buildNestedConditions($group['conditions'])],
-                    'operator' => $group['operator'],
-                    'priority' => 3
-                ];
-            }
+        $filteredOr = array_filter($orConditions, fn($condition) => trim($condition) !== '');
+        if ($filteredOr !== []) {
+            $parts[] = ['conditions' => $filteredOr, 'operator' => 'OR', 'priority' => 2];
         }
 
         return $parts;
-    }
-
-    /**
-     * Build nested conditions from a condition group.
-     *
-     * @param  array<string, array<string>>  $conditions  Grouped conditions.
-     * @return string The built nested condition string.
-     */
-    protected function buildNestedConditions(array $conditions): string
-    {
-        $parts = [];
-
-        if (!empty($conditions['AND'])) {
-            $andPart = $this->buildConditionGroup($conditions['AND'], 'AND');
-            if ($andPart !== '') {
-                $parts[] = $andPart;
-            }
-        }
-
-        if (!empty($conditions['OR'])) {
-            $orPart = $this->buildConditionGroup($conditions['OR'], 'OR');
-            if ($orPart !== '') {
-                $parts[] = $orPart;
-            }
-        }
-
-        if (count($parts) > 1) {
-            return '(' . implode(' OR ', $parts) . ')';
-        }
-
-        return $parts[0] ?? '';
     }
 
     /**
@@ -961,17 +895,17 @@ class AsyncQueryBuilder
      */
     protected function buildConditionGroup(array $conditions, string $operator): string
     {
-        $conditions = array_filter($conditions, fn($condition) => !empty(trim($condition)));
+        $filteredConditions = array_filter($conditions, fn($condition) => trim($condition) !== '');
 
-        if (empty($conditions)) {
+        if ($filteredConditions === []) {
             return '';
         }
 
-        if (count($conditions) === 1) {
-            return reset($conditions);
+        if (count($filteredConditions) === 1) {
+            return reset($filteredConditions);
         }
 
-        return '(' . implode(' ' . strtoupper($operator) . ' ', $conditions) . ')';
+        return '(' . implode(' ' . strtoupper($operator) . ' ', $filteredConditions) . ')';
     }
 
     /**
@@ -982,7 +916,7 @@ class AsyncQueryBuilder
      */
     protected function combineConditionParts(array $parts): string
     {
-        if (empty($parts)) {
+        if ($parts === []) {
             return '';
         }
 
@@ -992,7 +926,7 @@ class AsyncQueryBuilder
         $orParts = [];
 
         foreach ($parts as $part) {
-            if (empty($part['conditions'])) {
+            if ($part['conditions'] === []) {
                 continue;
             }
 
@@ -1023,8 +957,7 @@ class AsyncQueryBuilder
     {
         $finalParts = [];
 
-        // Combine all AND parts
-        if (!empty($andParts)) {
+        if ($andParts !== []) {
             if (count($andParts) === 1) {
                 $finalParts[] = $andParts[0];
             } else {
@@ -1032,7 +965,6 @@ class AsyncQueryBuilder
             }
         }
 
-        // Add OR parts
         foreach ($orParts as $orPart) {
             $finalParts[] = $orPart;
         }
@@ -1064,7 +996,7 @@ class AsyncQueryBuilder
     /**
      * Add a custom condition group with specific logic.
      *
-     * @param  callable  $callback  Callback function that receives a new query builder instance.
+     * @param  callable(static): void  $callback  Callback function that receives a new query builder instance.
      * @param  string  $logicalOperator  How this group connects to others ('AND' or 'OR').
      * @return self Returns the query builder instance for method chaining.
      */
@@ -1075,7 +1007,6 @@ class AsyncQueryBuilder
 
         $subSql = $subBuilder->buildWhereClause();
 
-        // If the subquery is empty, do nothing.
         if ($subSql === '') {
             return $this;
         }
@@ -1088,7 +1019,7 @@ class AsyncQueryBuilder
     /**
      * Add nested WHERE conditions with custom logic.
      *
-     * @param  callable  $callback  Callback function for nested conditions.
+     * @param  callable(static): void  $callback  Callback function for nested conditions.
      * @param  string  $operator  How to connect with existing conditions.
      * @return self Returns the query builder instance for method chaining.
      */
@@ -1133,7 +1064,7 @@ class AsyncQueryBuilder
     /**
      * Add conditions with EXISTS clause.
      *
-     * @param  callable  $callback  Callback function for the EXISTS subquery.
+     * @param  callable(static): void  $callback  Callback function for the EXISTS subquery.
      * @param  string  $operator  Logical operator ('AND' or 'OR').
      * @return self Returns the query builder instance for method chaining.
      */
@@ -1151,7 +1082,7 @@ class AsyncQueryBuilder
     /**
      * Add conditions with NOT EXISTS clause.
      *
-     * @param  callable  $callback  Callback function for the NOT EXISTS subquery.
+     * @param  callable(static): void  $callback  Callback function for the NOT EXISTS subquery.
      * @param  string  $operator  Logical operator ('AND' or 'OR').
      * @return self Returns the query builder instance for method chaining.
      */
@@ -1169,7 +1100,7 @@ class AsyncQueryBuilder
     /**
      * Add a nested OR WHERE condition with custom logic.
      *
-     * @param  callable  $callback  Callback function for nested conditions.
+     * @param  callable(static): void  $callback  Callback function for nested conditions.
      * @return self Returns the query builder instance for method chaining.
      */
     public function orWhereNested(callable $callback): self
@@ -1213,7 +1144,6 @@ class AsyncQueryBuilder
         $this->whereNotNull = [];
         $this->whereRaw = [];
         $this->orWhereRaw = [];
-        $this->conditionGroups = [];
         $this->bindings = [
             'where' => [],
             'whereIn' => [],
@@ -1247,7 +1177,6 @@ class AsyncQueryBuilder
     protected function getCompiledBindings(): array
     {
         // This merge order MUST match the order in `collectAllConditionParts()`
-        // and the order of the final query construction.
         $whereBindings = array_merge(
             $this->bindings['where'],
             $this->bindings['whereIn'],
@@ -1257,13 +1186,6 @@ class AsyncQueryBuilder
             $this->bindings['orWhere'],
             $this->bindings['orWhereRaw']
         );
-
-        // This handles bindings from complex groups like whereGroup
-        foreach ($this->conditionGroups as $group) {
-            if (isset($group['bindings'])) {
-                $whereBindings = array_merge($whereBindings, $group['bindings']);
-            }
-        }
 
         return array_merge($whereBindings, $this->bindings['having']);
     }
