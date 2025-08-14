@@ -19,10 +19,10 @@ function isPostgreSQLAvailable(): bool
     }
 
     $config = [
-        'host' => getenv('POSTGRES_HOST') ?: 'localhost',
-        'user' => getenv('POSTGRES_USER') ?: 'postgres',
-        'dbname' => getenv('POSTGRES_DB') ?: 'postgres',
-        'password' => getenv('POSTGRES_PASSWORD') ?: ''
+        'host' => getenv('POSTGRES_HOST') ?: 'testdb',
+        'user' => getenv('POSTGRES_USER') ?: 'testuser',
+        'dbname' => getenv('POSTGRES_DB') ?: 'testdb',
+        'password' => getenv('POSTGRES_PASSWORD') ?: 'testpass'
     ];
 
     $connectionString = implode(' ', array_map(
