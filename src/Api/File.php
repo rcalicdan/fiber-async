@@ -41,7 +41,7 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
  * });
  * ```
  */
-final class AsyncFile
+final class File
 {
     /**
      * @var AsyncFileOperations|null Cached singleton instance of the async operations handler
