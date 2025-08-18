@@ -1,13 +1,13 @@
 <?php
 
-use Rcalicdan\FiberAsync\Api\AsyncDB;
+use Rcalicdan\FiberAsync\Api\DB;
 use Rcalicdan\FiberAsync\Config\ConfigLoader;
 
 $dbFile = sys_get_temp_dir() . '/advanced_query_test_' . uniqid() . '.sqlite';
 
 beforeAll(function () use ($dbFile) {
     run(function () use ($dbFile) {
-        AsyncDB::reset();
+        DB::reset();
 
         $fileBasedConfig = [
             'database' => [
@@ -25,7 +25,7 @@ beforeAll(function () use ($dbFile) {
         $instance = ConfigLoader::getInstance();
         $configProperty->setValue($instance, $fileBasedConfig);
 
-        await(AsyncDB::rawExecute("
+        await(DB::rawExecute("
             CREATE TABLE sales_data (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 product_name VARCHAR(255),
@@ -45,12 +45,12 @@ beforeAll(function () use ($dbFile) {
             ['product_name' => 'Stapler', 'category' => 'Office', 'quantity_sold' => 100, 'unit_price' => 10.00, 'order_date' => '2023-01-25'],
         ];
 
-        await(AsyncDB::table('sales_data')->insertBatch($data));
+        await(DB::table('sales_data')->insertBatch($data));
     });
 });
 
 afterAll(function () use ($dbFile) {
-    AsyncDB::reset();
+    DB::reset();
     if (file_exists($dbFile)) {
         unlink($dbFile);
     }
@@ -61,7 +61,7 @@ describe('AsyncQueryBuilder Advanced Expressions and Aggregates', function () {
         run(function () {
             $revenueExpression = 'quantity_sold * unit_price';
             $tierExpression = "CASE WHEN {$revenueExpression} >= 6000 THEN 'Tier A' WHEN {$revenueExpression} >= 2000 THEN 'Tier B' ELSE 'Tier C' END";
-            $query = AsyncDB::table('sales_data')->select(["product_name", "$revenueExpression as total_revenue", "$tierExpression as performance_tier"])->orderBy('performance_tier')->orderBy('total_revenue', 'DESC');
+            $query = DB::table('sales_data')->select(["product_name", "$revenueExpression as total_revenue", "$tierExpression as performance_tier"])->orderBy('performance_tier')->orderBy('total_revenue', 'DESC');
             $result = await($query->get());
             expect($result)->toHaveCount(6)->and($result[0]['product_name'])->toBe('Laptop');
         });
@@ -69,7 +69,7 @@ describe('AsyncQueryBuilder Advanced Expressions and Aggregates', function () {
 
     it('can handle complex aggregate queries with multiple HAVING clauses', function () {
         run(function () {
-            $query = AsyncDB::table('sales_data')
+            $query = DB::table('sales_data')
                 ->select(['category', 'AVG(unit_price) as avg_price', 'COUNT(id) as item_count'])
                 ->groupBy('category')
                 ->havingRaw('COUNT(id) > 1 AND AVG(unit_price) > 100.0') 
@@ -84,9 +84,9 @@ describe('AsyncQueryBuilder Advanced Expressions and Aggregates', function () {
 
     it('can handle scalar subqueries in whereRaw', function () {
         run(function () {
-            $subQuery = AsyncDB::table('sales_data')->select('AVG(unit_price)');
+            $subQuery = DB::table('sales_data')->select('AVG(unit_price)');
             $subSql = $subQuery->toSql();
-            $query = AsyncDB::table('sales_data')->whereRaw("unit_price > ({$subSql})")->orderBy('unit_price', 'DESC');
+            $query = DB::table('sales_data')->whereRaw("unit_price > ({$subSql})")->orderBy('unit_price', 'DESC');
             $result = await($query->get());
             expect($result)->toHaveCount(1)->and($result[0]['product_name'])->toBe('Laptop');
         });

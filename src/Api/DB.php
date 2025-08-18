@@ -7,13 +7,13 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\QueryBuilder\AsyncQueryBuilder;
 
 /**
- * AsyncDb API - Main entry point for auto-configured async database operations 
+ * DB API - Main entry point for auto-configured async database operations 
  * with asynchonous query builder support.
  *
  * This API automatically loads configuration from .env and config/database.php
  * the first time it is used, providing a zero-setup experience for the developer.
  */
-class AsyncDB
+class DB
 {
     private static bool $isInitialized = false;
     private static bool $hasValidationError = false;

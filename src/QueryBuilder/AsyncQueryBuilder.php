@@ -11,11 +11,11 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
  * Async Query Builder for easy way to write asynchronous SQL queries.
  *
  * Usage:
- * - AsyncDb::table('users')->select('id, name')->where('active', 1)->get()
- * - AsyncDb::table('users')->find(1)
- * - AsyncDb::table('users')->create(['name' => 'John', 'email' => 'john@example.com'])
- * - AsyncDb::table('users')->where('id', 1)->update(['name' => 'Jane'])
- * - AsyncDb::table('users')->where('id', 1)->delete()
+ * - DB::table('users')->select('id, name')->where('active', 1)->get()
+ * - DB::table('users')->find(1)
+ * - DB::table('users')->create(['name' => 'John', 'email' => 'john@example.com'])
+ * - DB::table('users')->where('id', 1)->update(['name' => 'Jane'])
+ * - DB::table('users')->where('id', 1)->delete()
  */
 class AsyncQueryBuilder
 {
