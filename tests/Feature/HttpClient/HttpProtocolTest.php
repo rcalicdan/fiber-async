@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\HttpClient;
 
-use Rcalicdan\FiberAsync\Api\AsyncHttp;
+use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Http\CacheConfig;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Response;
@@ -75,12 +75,12 @@ class HttpProtocolTest extends HttpHandler
  */
 function setupTestHandler()
 {
-    AsyncHttp::setInstance(new HttpProtocolTest);
+    Http::setInstance(new HttpProtocolTest);
 }
 
 beforeEach(function () {
     resetEventLoop();
-    AsyncHttp::reset();
+    Http::reset();
 });
 
 describe('HTTP Protocol Negotiation', function () {

@@ -1,7 +1,7 @@
 <?php
 
 use Psr\SimpleCache\CacheInterface;
-use Rcalicdan\FiberAsync\Api\AsyncHttp;
+use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Http\CacheConfig;
 
 /**
@@ -99,7 +99,7 @@ class TrackableCache implements CacheInterface
 }
 
 beforeEach(function () {
-    AsyncHttp::reset();
+    Http::reset();
     clearFilesystemCache();
 });
 
