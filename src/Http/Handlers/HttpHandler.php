@@ -175,7 +175,7 @@ class HttpHandler
      */
     public static function generateCacheKey(string $url): string
     {
-        return 'http_'.sha1($url);
+        return 'http_' . sha1($url);
     }
 
     /**
@@ -231,12 +231,12 @@ class HttpHandler
 
                 if (isset($cachedItem['headers']['etag'])) {
                     $etag = is_array($cachedItem['headers']['etag']) ? $cachedItem['headers']['etag'][0] : $cachedItem['headers']['etag'];
-                    $httpHeaders[] = 'If-None-Match: '.$etag;
+                    $httpHeaders[] = 'If-None-Match: ' . $etag;
                 }
 
                 if (isset($cachedItem['headers']['last-modified'])) {
                     $lastModified = is_array($cachedItem['headers']['last-modified']) ? $cachedItem['headers']['last-modified'][0] : $cachedItem['headers']['last-modified'];
-                    $httpHeaders[] = 'If-Modified-Since: '.$lastModified;
+                    $httpHeaders[] = 'If-Modified-Since: ' . $lastModified;
                 }
 
                 $curlOptions[CURLOPT_HTTPHEADER] = $httpHeaders;
@@ -286,17 +286,114 @@ class HttpHandler
         return $this->fetch($url, $curlOptions);
     }
 
+
     /**
-     * A flexible, fetch-like method for making HTTP requests.
+     * A flexible, fetch-like method for making HTTP requests with advanced features.
      *
      * @param  string  $url  The target URL.
-     * @param  array<int|string, mixed>  $options  An associative array of request options (method, headers, body, etc.).
+     * @param  array<int|string, mixed>  $options  Request options (method, headers, body, retry, cache, etc.).
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     public function fetch(string $url, array $options = []): PromiseInterface
     {
+        $retryConfig = $this->extractRetryConfig($options);
+        $cacheConfig = $this->extractCacheConfig($options);
+
         $curlOptions = $this->normalizeFetchOptions($url, $options);
-        /** @var CancellablePromise<Response> $promise */
+
+        // Use the advanced sendRequest method instead of direct execution
+        if ($retryConfig !== null || $cacheConfig !== null) {
+            return $this->sendRequest($url, $curlOptions, $cacheConfig, $retryConfig);
+        }
+
+        return $this->executeBasicFetch($url, $curlOptions);
+    }
+
+    /**
+     * Extracts retry configuration from options array.
+     */
+    private function extractRetryConfig(array $options): ?RetryConfig
+    {
+        if (!isset($options['retry'])) {
+            return null;
+        }
+
+        $retry = $options['retry'];
+
+        if ($retry === true) {
+            return new RetryConfig();
+        }
+
+        if ($retry instanceof RetryConfig) {
+            return $retry;
+        }
+
+        // Handle array configuration
+        if (is_array($retry)) {
+            return new RetryConfig(
+                maxRetries: $retry['max_retries'] ?? 3,
+                baseDelay: $retry['base_delay'] ?? 1.0,
+                maxDelay: $retry['max_delay'] ?? 60.0,
+                backoffMultiplier: $retry['backoff_multiplier'] ?? 2.0,
+                jitter: $retry['jitter'] ?? true,
+                retryableStatusCodes: $retry['retryable_status_codes'] ?? [408, 429, 500, 502, 503, 504],
+                retryableExceptions: $retry['retryable_exceptions'] ?? [
+                    'cURL error',
+                    'timeout',
+                    'connection failed',
+                    'Could not resolve host',
+                    'Resolving timed out',
+                    'Connection timed out',
+                    'SSL connection timeout',
+                ]
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * Extracts cache configuration from options array.
+     */
+    private function extractCacheConfig(array $options): ?CacheConfig
+    {
+        if (!isset($options['cache'])) {
+            return null;
+        }
+
+        $cache = $options['cache'];
+
+        if ($cache === true) {
+            return new CacheConfig();
+        }
+
+        // Handle CacheConfig object
+        if ($cache instanceof CacheConfig) {
+            return $cache;
+        }
+
+        // Handle array configuration
+        if (is_array($cache)) {
+            return new CacheConfig(
+                ttlSeconds: $cache['ttl'] ?? 3600,
+                respectServerHeaders: $cache['respect_server_headers'] ?? true,
+                cache: $cache['cache_instance'] ?? null
+            );
+        }
+
+        // Handle integer as TTL
+        if (is_int($cache)) {
+            return new CacheConfig($cache);
+        }
+
+        return null;
+    }
+
+    /**
+     * Executes basic fetch without advanced features 
+     */
+    private function executeBasicFetch(string $url, array $curlOptions): PromiseInterface
+    {
         $promise = new CancellablePromise;
 
         $requestId = EventLoop::getInstance()->addHttpRequest(
@@ -310,7 +407,6 @@ class HttpHandler
                 if ($error !== null) {
                     $promise->reject(new HttpException("HTTP Request failed: {$error}"));
                 } else {
-                    /** @var array<string, array<string>|string> $normalizedHeaders */
                     $normalizedHeaders = $this->normalizeHeaders($headers);
                     $promise->resolve(new Response($response ?? '', $httpCode ?? 0, $normalizedHeaders));
                 }
@@ -343,30 +439,36 @@ class HttpHandler
 
         $executeRequest = function () use ($url, $options, $retryConfig, $promise, &$attempt, &$totalAttempts, &$requestId, &$executeRequest) {
             $totalAttempts++;
+
             $requestId = EventLoop::getInstance()->addHttpRequest(
                 $url,
                 $options,
-                function (?string $error, ?string $responseBody, ?int $httpCode, array $headers = []) use ($retryConfig, $promise, &$attempt, $totalAttempts, &$executeRequest) {
+                function (?string $error, ?string $responseBody, ?int $httpCode, array $headers = []) use ($retryConfig, $promise, &$attempt, &$totalAttempts, &$executeRequest) {
                     if ($promise->isCancelled()) {
                         return;
                     }
 
+
                     $isRetryable = ($error !== null && $retryConfig->isRetryableError($error)) ||
                         ($httpCode !== null && in_array($httpCode, $retryConfig->retryableStatusCodes, true));
+
 
                     if ($isRetryable && $attempt < $retryConfig->maxRetries) {
                         $attempt++;
                         $delay = $retryConfig->getDelay($attempt);
-                        EventLoop::getInstance()->addTimer($delay, $executeRequest);
 
+                        EventLoop::getInstance()->addTimer($delay, $executeRequest);
                         return;
                     }
 
+                    // If we've exhausted retries or it's not retryable, handle the final result
                     if ($error !== null) {
                         $promise->reject(new HttpException("HTTP Request failed after {$totalAttempts} attempts: {$error}"));
                     } elseif ($isRetryable) {
+                        // This means we exceeded max retries with a retryable status code
                         $promise->reject(new HttpException("HTTP Request failed with status {$httpCode} after {$totalAttempts} attempts."));
                     } else {
+                        // Success case
                         /** @var array<string, array<string>|string> $normalizedHeaders */
                         $normalizedHeaders = $this->normalizeHeaders($headers);
                         $promise->resolve(new Response($responseBody ?? '', $httpCode ?? 0, $normalizedHeaders));
@@ -375,6 +477,7 @@ class HttpHandler
             );
         };
 
+        // Start the first request
         $executeRequest();
 
         $promise->setCancelHandler(function () use (&$requestId) {
@@ -397,7 +500,7 @@ class HttpHandler
     {
         if ($this->isCurlOptionsFormat($options)) {
             /** @var array<int, mixed> */
-            return array_filter($options, fn ($key) => is_int($key), ARRAY_FILTER_USE_KEY);
+            return array_filter($options, fn($key) => is_int($key), ARRAY_FILTER_USE_KEY);
         }
 
         /** @var array<int, mixed> $curlOptions */
