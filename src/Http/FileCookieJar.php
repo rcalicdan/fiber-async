@@ -10,6 +10,9 @@ class FileCookieJar extends CookieJar
     private string $filename;
     private bool $storeSessionCookies;
 
+    /**
+     * Creates a new file-based cookie jar.
+     */
     public function __construct(string $filename, bool $storeSessionCookies = false)
     {
         $this->filename = $filename;
@@ -17,17 +20,26 @@ class FileCookieJar extends CookieJar
         $this->load();
     }
 
+    /**
+     * Saves cookies to file when the object is destroyed.
+     */
     public function __destruct()
     {
         $this->save();
     }
 
+    /**
+     * Sets a cookie and saves to file.
+     */
     public function setCookie(Cookie $cookie): void
     {
         parent::setCookie($cookie);
         $this->save();
     }
 
+    /**
+     * Clears all cookies and saves to file.
+     */
     public function clear(): void
     {
         parent::clear();
@@ -35,7 +47,7 @@ class FileCookieJar extends CookieJar
     }
 
     /**
-     * Load cookies from file.
+     * Loads cookies from file.
      */
     private function load(): void
     {
@@ -58,17 +70,48 @@ class FileCookieJar extends CookieJar
                 continue;
             }
 
-            $cookie = new Cookie(
-                $cookieData['name'] ?? '',
-                $cookieData['value'] ?? '',
-                $cookieData['expires'] ?? null,
-                $cookieData['domain'] ?? null,
-                $cookieData['path'] ?? null,
-                $cookieData['secure'] ?? false,
-                $cookieData['httpOnly'] ?? false,
-                $cookieData['maxAge'] ?? null,
-                $cookieData['sameSite'] ?? null
-            );
+            $name = isset($cookieData['name']) && is_string($cookieData['name']) ? $cookieData['name'] : '';
+            $value = isset($cookieData['value']) && is_string($cookieData['value']) ? $cookieData['value'] : '';
+            
+            $expires = null;
+            if (isset($cookieData['expires'])) {
+                if (is_int($cookieData['expires'])) {
+                    $expires = $cookieData['expires'];
+                }
+            }
+            
+            $domain = null;
+            if (isset($cookieData['domain'])) {
+                if (is_string($cookieData['domain'])) {
+                    $domain = $cookieData['domain'];
+                }
+            }
+            
+            $path = null;
+            if (isset($cookieData['path'])) {
+                if (is_string($cookieData['path'])) {
+                    $path = $cookieData['path'];
+                }
+            }
+            
+            $secure = isset($cookieData['secure']) && is_bool($cookieData['secure']) ? $cookieData['secure'] : false;
+            $httpOnly = isset($cookieData['httpOnly']) && is_bool($cookieData['httpOnly']) ? $cookieData['httpOnly'] : false;
+            
+            $maxAge = null;
+            if (isset($cookieData['maxAge'])) {
+                if (is_int($cookieData['maxAge'])) {
+                    $maxAge = $cookieData['maxAge'];
+                }
+            }
+            
+            $sameSite = null;
+            if (isset($cookieData['sameSite'])) {
+                if (is_string($cookieData['sameSite'])) {
+                    $sameSite = $cookieData['sameSite'];
+                }
+            }
+
+            $cookie = new Cookie($name, $value, $expires, $domain, $path, $secure, $httpOnly, $maxAge, $sameSite);
 
             if (!$cookie->isExpired()) {
                 $this->cookies[] = $cookie;
@@ -77,7 +120,7 @@ class FileCookieJar extends CookieJar
     }
 
     /**
-     * Save cookies to file.
+     * Saves cookies to file.
      */
     private function save(): void
     {

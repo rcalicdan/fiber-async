@@ -12,6 +12,9 @@ class CookieJar implements CookieJarInterface
     /** @var Cookie[] */
     protected array $cookies = [];
 
+    /**
+     * Sets a cookie in the jar, replacing any existing cookie with the same name, domain, and path.
+     */
     public function setCookie(Cookie $cookie): void
     {
         $this->cookies = array_filter($this->cookies, function (Cookie $existingCookie) use ($cookie) {
@@ -25,6 +28,9 @@ class CookieJar implements CookieJarInterface
         $this->cookies[] = $cookie;
     }
 
+    /**
+     * Gets all cookies that match the given domain and path.
+     */
     public function getCookies(string $domain, string $path, bool $isSecure = false): array
     {
         $this->clearExpired();
@@ -34,11 +40,17 @@ class CookieJar implements CookieJarInterface
         });
     }
 
+    /**
+     * Gets all cookies in the jar.
+     */
     public function getAllCookies(): array
     {
         return $this->cookies;
     }
 
+    /**
+     * Removes expired cookies from the jar.
+     */
     public function clearExpired(): void
     {
         $this->cookies = array_filter($this->cookies, function (Cookie $cookie) {
@@ -46,16 +58,22 @@ class CookieJar implements CookieJarInterface
         });
     }
 
+    /**
+     * Clears all cookies from the jar.
+     */
     public function clear(): void
     {
         $this->cookies = [];
     }
 
+    /**
+     * Gets the Cookie header value for matching cookies.
+     */
     public function getCookieHeader(string $domain, string $path, bool $isSecure = false): string
     {
         $matchingCookies = $this->getCookies($domain, $path, $isSecure);
 
-        if (empty($matchingCookies)) {
+        if (count($matchingCookies) === 0) {
             return '';
         }
 
@@ -65,14 +83,13 @@ class CookieJar implements CookieJarInterface
     }
 
     /**
-     * Create a cookie jar from an array of Set-Cookie headers.
+     * Creates a cookie jar from an array of Set-Cookie headers.
      *
      * @param string[] $setCookieHeaders Array of Set-Cookie header values
-     * @return static
      */
     public static function fromSetCookieHeaders(array $setCookieHeaders): self
     {
-        $jar = new self();
+        $jar = new self(); 
 
         foreach ($setCookieHeaders as $header) {
             $cookie = Cookie::fromSetCookieHeader($header);

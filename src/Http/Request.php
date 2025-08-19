@@ -594,7 +594,7 @@ class Request extends Message implements RequestInterface
             $cookieStrings[] = $name . '=' . urlencode($value);
         }
 
-        if (!empty($cookieStrings)) {
+        if ($cookieStrings !== []) {
             return $this->header('Cookie', implode('; ', $cookieStrings));
         }
 
@@ -657,7 +657,7 @@ class Request extends Message implements RequestInterface
             $uri = new Uri($url);
             $cookieHeader = $this->cookieJar->getCookieHeader(
                 $uri->getHost(),
-                $uri->getPath() ?: '/',
+                $uri->getPath() !== '' ? $uri->getPath() : '/',
                 $uri->getScheme() === 'https'
             );
 

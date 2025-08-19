@@ -17,6 +17,9 @@ class Cookie
     private bool $httpOnly = false;
     private ?string $sameSite = null;
 
+    /**
+     * Creates a new Cookie instance.
+     */
     public function __construct(
         string $name,
         string $value,
@@ -39,53 +42,80 @@ class Cookie
         $this->sameSite = $sameSite;
     }
 
+    /**
+     * Gets the cookie name.
+     */
     public function getName(): string
     {
         return $this->name;
     }
 
+    /**
+     * Gets the cookie value.
+     */
     public function getValue(): string
     {
         return $this->value;
     }
 
+    /**
+     * Gets the cookie domain.
+     */
     public function getDomain(): ?string
     {
         return $this->domain;
     }
 
+    /**
+     * Gets the cookie path, defaults to '/'.
+     */
     public function getPath(): string
     {
         return $this->path ?? '/';
     }
 
+    /**
+     * Gets the cookie expiration timestamp.
+     */
     public function getExpires(): ?int
     {
         return $this->expires;
     }
 
+    /**
+     * Gets the cookie max-age value.
+     */
     public function getMaxAge(): ?int
     {
         return $this->maxAge;
     }
 
+    /**
+     * Checks if the cookie is secure.
+     */
     public function isSecure(): bool
     {
         return $this->secure;
     }
 
+    /**
+     * Checks if the cookie is HTTP-only.
+     */
     public function isHttpOnly(): bool
     {
         return $this->httpOnly;
     }
 
+    /**
+     * Gets the SameSite attribute value.
+     */
     public function getSameSite(): ?string
     {
         return $this->sameSite;
     }
 
     /**
-     * Check if the cookie has expired.
+     * Checks if the cookie has expired.
      */
     public function isExpired(): bool
     {
@@ -94,8 +124,6 @@ class Cookie
         }
 
         if ($this->maxAge !== null) {
-            // For max-age, we'd need to track when the cookie was set
-            // This is a simplified check
             return $this->maxAge <= 0;
         }
 
@@ -103,7 +131,7 @@ class Cookie
     }
 
     /**
-     * Check if this cookie matches the given domain and path.
+     * Checks if this cookie matches the given domain and path.
      */
     public function matches(string $domain, string $path, bool $isSecure = false): bool
     {
@@ -131,7 +159,7 @@ class Cookie
     }
 
     /**
-     * Check if the cookie's domain matches the request domain.
+     * Checks if the cookie's domain matches the request domain.
      */
     private function matchesDomain(string $requestDomain): bool
     {
@@ -141,17 +169,14 @@ class Cookie
 
         $cookieDomain = $this->domain;
 
-        // Remove leading dot for domain comparison
         if (str_starts_with($cookieDomain, '.')) {
             $cookieDomain = substr($cookieDomain, 1);
         }
 
-        // Exact match
         if ($cookieDomain === $requestDomain) {
             return true;
         }
 
-        // Subdomain match (cookie domain starts with .)
         if (str_starts_with($this->domain, '.')) {
             return str_ends_with($requestDomain, '.' . $cookieDomain) || $requestDomain === $cookieDomain;
         }
@@ -160,7 +185,7 @@ class Cookie
     }
 
     /**
-     * Check if the cookie's path matches the request path.
+     * Checks if the cookie's path matches the request path.
      */
     private function matchesPath(string $requestPath): bool
     {
@@ -175,7 +200,6 @@ class Cookie
 
         // Path prefix match
         if (str_starts_with($requestPath, $this->path)) {
-            // Ensure path ends with / or the next character in request path is /
             return str_ends_with($this->path, '/') ||
                 (isset($requestPath[strlen($this->path)]) && $requestPath[strlen($this->path)] === '/');
         }
@@ -184,7 +208,7 @@ class Cookie
     }
 
     /**
-     * Convert cookie to Set-Cookie header format.
+     * Converts cookie to Set-Cookie header format.
      */
     public function toSetCookieHeader(): string
     {
@@ -222,7 +246,7 @@ class Cookie
     }
 
     /**
-     * Convert cookie to Cookie header format (name=value).
+     * Converts cookie to Cookie header format (name=value).
      */
     public function toCookieHeader(): string
     {
@@ -230,13 +254,13 @@ class Cookie
     }
 
     /**
-     * Create a Cookie from a Set-Cookie header value.
+     * Creates a Cookie from a Set-Cookie header value.
      */
     public static function fromSetCookieHeader(string $setCookieHeader): ?self
     {
         $parts = array_map('trim', explode(';', $setCookieHeader));
 
-        if (empty($parts)) {
+        if (count($parts) === 0) {
             return null;
         }
 
@@ -270,7 +294,8 @@ class Cookie
 
                 switch (strtolower($attrName)) {
                     case 'expires':
-                        $expires = strtotime($attrValue);
+                        $timestamp = strtotime($attrValue);
+                        $expires = $timestamp !== false ? $timestamp : null;
                         break;
                     case 'max-age':
                         $maxAge = (int) $attrValue;
@@ -291,6 +316,9 @@ class Cookie
         return new self($name, $value, $expires, $domain, $path, $secure, $httpOnly, $maxAge, $sameSite);
     }
 
+    /**
+     * Returns the cookie as a string in Cookie header format.
+     */
     public function __toString(): string
     {
         return $this->toCookieHeader();

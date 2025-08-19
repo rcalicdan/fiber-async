@@ -32,6 +32,9 @@ class HttpHandler
     private static ?CacheInterface $defaultCache = null;
     private ?CookieJarInterface $defaultCookieJar = null;
 
+    /**
+     * Creates a new HttpHandler instance.
+     */
     public function __construct(?StreamingHandler $streamingHandler = null, ?FetchHandler $fetchHandler = null)
     {
         $this->streamingHandler = $streamingHandler ?? new StreamingHandler();
@@ -296,9 +299,9 @@ class HttpHandler
      *
      * @param  string  $url  The target URL.
      * @param  array<int|string, mixed>  $options  An associative array of request options.
-     * @return PromiseInterface<Response>|CancellablePromiseInterface<StreamingResponse> A promise that resolves with a Response or StreamingResponse object.
+     * @return PromiseInterface<Response>|CancellablePromiseInterface<StreamingResponse>|CancellablePromiseInterface<array{file: string, status: int, headers: array<mixed>}> A promise that resolves with a Response, StreamingResponse, or download metadata depending on options.
      */
-    public function fetch(string $url, array $options = []): PromiseInterface
+    public function fetch(string $url, array $options = []): PromiseInterface|CancellablePromiseInterface
     {
         return $this->fetchHandler->fetch($url, $options);
     }
@@ -320,9 +323,14 @@ class HttpHandler
     /**
      * Executes basic fetch without advanced features.
      * This method is kept for backward compatibility with existing sendRequest logic.
+     *
+     * @param  string  $url  The target URL.
+     * @param  array<int, mixed>  $curlOptions  cURL options for the request.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
     private function executeBasicFetch(string $url, array $curlOptions): PromiseInterface
     {
+        /** @var CancellablePromise<Response> $promise */
         $promise = new CancellablePromise;
 
         $requestId = EventLoop::getInstance()->addHttpRequest(
@@ -349,6 +357,7 @@ class HttpHandler
         $promise->setCancelHandler(function () use ($requestId) {
             EventLoop::getInstance()->cancelHttpRequest($requestId);
         });
+
 
         return $promise;
     }
