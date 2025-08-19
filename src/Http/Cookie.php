@@ -54,9 +54,9 @@ class Cookie
         return $this->domain;
     }
 
-    public function getPath(): ?string
+    public function getPath(): string
     {
-        return $this->path;
+        return $this->path ?? '/';
     }
 
     public function getExpires(): ?int
@@ -140,7 +140,7 @@ class Cookie
         }
 
         $cookieDomain = $this->domain;
-        
+
         // Remove leading dot for domain comparison
         if (str_starts_with($cookieDomain, '.')) {
             $cookieDomain = substr($cookieDomain, 1);
@@ -176,8 +176,8 @@ class Cookie
         // Path prefix match
         if (str_starts_with($requestPath, $this->path)) {
             // Ensure path ends with / or the next character in request path is /
-            return str_ends_with($this->path, '/') || 
-                   (isset($requestPath[strlen($this->path)]) && $requestPath[strlen($this->path)] === '/');
+            return str_ends_with($this->path, '/') ||
+                (isset($requestPath[strlen($this->path)]) && $requestPath[strlen($this->path)] === '/');
         }
 
         return false;
@@ -235,7 +235,7 @@ class Cookie
     public static function fromSetCookieHeader(string $setCookieHeader): ?self
     {
         $parts = array_map('trim', explode(';', $setCookieHeader));
-        
+
         if (empty($parts)) {
             return null;
         }
@@ -243,7 +243,7 @@ class Cookie
         // Parse name=value pair
         $nameValuePair = array_shift($parts);
         $equalPos = strpos($nameValuePair, '=');
-        
+
         if ($equalPos === false) {
             return null;
         }
@@ -267,7 +267,7 @@ class Cookie
                 $httpOnly = true;
             } elseif (str_contains($part, '=')) {
                 [$attrName, $attrValue] = array_map('trim', explode('=', $part, 2));
-                
+
                 switch (strtolower($attrName)) {
                     case 'expires':
                         $expires = strtotime($attrValue);

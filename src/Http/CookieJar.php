@@ -14,17 +14,15 @@ class CookieJar implements CookieJarInterface
 
     public function setCookie(Cookie $cookie): void
     {
-        // Remove any existing cookie with the same name, domain, and path
         $this->cookies = array_filter($this->cookies, function (Cookie $existingCookie) use ($cookie) {
-            return !($existingCookie->getName() === $cookie->getName() &&
-                    $existingCookie->getDomain() === $cookie->getDomain() &&
-                    $existingCookie->getPath() === $cookie->getPath());
+            return !(
+                $existingCookie->getName() === $cookie->getName() &&
+                $existingCookie->getDomain() === $cookie->getDomain() &&
+                $existingCookie->getPath() === $cookie->getPath()
+            );
         });
 
-        // Add the new cookie if it's not expired
-        if (!$cookie->isExpired()) {
-            $this->cookies[] = $cookie;
-        }
+        $this->cookies[] = $cookie;
     }
 
     public function getCookies(string $domain, string $path, bool $isSecure = false): array
@@ -38,7 +36,6 @@ class CookieJar implements CookieJarInterface
 
     public function getAllCookies(): array
     {
-        $this->clearExpired();
         return $this->cookies;
     }
 
@@ -57,7 +54,7 @@ class CookieJar implements CookieJarInterface
     public function getCookieHeader(string $domain, string $path, bool $isSecure = false): string
     {
         $matchingCookies = $this->getCookies($domain, $path, $isSecure);
-        
+
         if (empty($matchingCookies)) {
             return '';
         }
@@ -76,7 +73,7 @@ class CookieJar implements CookieJarInterface
     public static function fromSetCookieHeaders(array $setCookieHeaders): self
     {
         $jar = new self();
-        
+
         foreach ($setCookieHeaders as $header) {
             $cookie = Cookie::fromSetCookieHeader($header);
             if ($cookie !== null) {
