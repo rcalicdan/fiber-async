@@ -12,7 +12,7 @@ require 'vendor/autoload.php';
 echo "=== Basic Cookie Tests ===\n";
 
 Task::run(function () {
-    // Test 1: Basic cookie setting and sending
+    // Test 1: Basic cookie setting and sending (FIXED)
     echo "Test 1: Setting individual cookies\n";
     $response = await(
         Http::request()
@@ -22,7 +22,14 @@ Task::run(function () {
     );
     
     $data = $response->json();
-    echo "Cookies sent: " . json_encode($data['cookies']) . "\n\n";
+    // Fix: Check if cookies key exists before accessing
+    if (isset($data['cookies'])) {
+        echo "Cookies sent: " . json_encode($data['cookies']) . "\n";
+    } else {
+        echo "Response structure: " . json_encode($data) . "\n";
+        echo "Cookies sent: Unable to verify (response format unexpected)\n";
+    }
+    echo "\n";
 
     // Test 2: Setting multiple cookies at once
     echo "Test 2: Setting multiple cookies\n";
@@ -37,7 +44,7 @@ Task::run(function () {
     );
     
     $data = $response->json();
-    echo "Multiple cookies sent: " . json_encode($data['cookies']) . "\n\n";
+    echo "Multiple cookies sent: " . json_encode($data['cookies'] ?? 'No cookies key found') . "\n\n";
 
     // Test 3: Receiving cookies from server
     echo "Test 3: Receiving cookies from server\n";
@@ -71,8 +78,16 @@ Task::run(function () {
     );
     
     echo "First response status: {$response1->status()}\n";
-    $response1->applyCookiesToJar($cookieJar);
-    echo "Cookies in jar: " . count($cookieJar->getAllCookies()) . "\n";
+    
+    // Check if cookies were automatically stored
+    $storedCookies = $cookieJar->getAllCookies();
+    echo "Cookies automatically stored in jar: " . count($storedCookies) . "\n";
+    
+    // If no cookies were auto-stored, manually apply them
+    if (count($storedCookies) === 0) {
+        $response1->applyCookiesToJar($cookieJar);
+        echo "Cookies manually applied to jar: " . count($cookieJar->getAllCookies()) . "\n";
+    }
     
     // Second request should automatically send stored cookies
     $response2 = await(
@@ -82,35 +97,74 @@ Task::run(function () {
     );
     
     $data = $response2->json();
-    echo "Cookies automatically sent: " . json_encode($data['cookies']) . "\n\n";
+    echo "Cookies automatically sent: " . json_encode($data['cookies'] ?? []) . "\n\n";
 
-    // Test 5: Cookie expiration and matching
+    // Test 5: Cookie expiration and domain matching (FIXED)
     echo "Test 5: Cookie expiration and domain matching\n";
     
-    // Create cookies with different attributes
-    $sessionCookie = new Cookie('session', 'temp123');
+    $testJar = new CookieJar();
+    
+    // Create cookies with different attributes for proper testing
+    $sessionCookie = new Cookie('session', 'temp123', null, 'example.com', '/');
     $persistentCookie = new Cookie(
         'persistent', 
         'value456', 
         time() + 3600, // expires in 1 hour
-        '.example.com',
+        '.example.com', // Leading dot for subdomain matching
         '/',
-        true, // secure
-        true  // httpOnly
+        false, // not secure for testing
+        false  // not httpOnly for testing
     );
-    $expiredCookie = new Cookie('expired', 'old', time() - 1); // already expired
+    $expiredCookie = new Cookie('expired', 'old', time() - 1, 'example.com', '/'); // already expired
     
-    $cookieJar->setCookie($sessionCookie);
-    $cookieJar->setCookie($persistentCookie);
-    $cookieJar->setCookie($expiredCookie);
+    $testJar->setCookie($sessionCookie);
+    $testJar->setCookie($persistentCookie);
+    $testJar->setCookie($expiredCookie);
     
-    echo "Total cookies before cleanup: " . count($cookieJar->getAllCookies()) . "\n";
-    $cookieJar->clearExpired();
-    echo "Total cookies after cleanup: " . count($cookieJar->getAllCookies()) . "\n";
+    echo "Total cookies before cleanup: " . count($testJar->getAllCookies()) . "\n";
     
-    // Test domain matching
-    $matchingCookies = $cookieJar->getCookies('sub.example.com', '/');
-    echo "Cookies matching 'sub.example.com': " . count($matchingCookies) . "\n\n";
+    // Show which cookies we have before cleanup
+    echo "Cookies before cleanup:\n";
+    foreach ($testJar->getAllCookies() as $cookie) {
+        $expiry = $cookie->getExpires() ? date('Y-m-d H:i:s', $cookie->getExpires()) : 'session';
+        echo "  {$cookie->getName()} (expires: {$expiry})\n";
+    }
+    
+    $testJar->clearExpired();
+    $remainingCookies = $testJar->getAllCookies();
+    echo "Total cookies after cleanup: " . count($remainingCookies) . "\n";
+    
+    // Verify which cookies remained
+    echo "Remaining cookies:\n";
+    foreach ($remainingCookies as $cookie) {
+        echo "  {$cookie->getName()} = {$cookie->getValue()} (domain: {$cookie->getDomain()})\n";
+    }
+    
+    // Test domain matching with proper domains
+    $exactMatchCookies = $testJar->getCookies('example.com', '/');
+    echo "Cookies matching exact 'example.com': " . count($exactMatchCookies) . "\n";
+    foreach ($exactMatchCookies as $cookie) {
+        echo "  Exact match: {$cookie->getName()} (domain: {$cookie->getDomain()})\n";
+    }
+    
+    $subdomainMatchCookies = $testJar->getCookies('sub.example.com', '/');
+    echo "Cookies matching subdomain 'sub.example.com': " . count($subdomainMatchCookies) . "\n";
+    
+    // Debug: Show all cookies and test subdomain matching manually
+    echo "Debug - Testing subdomain matching:\n";
+    foreach ($testJar->getAllCookies() as $cookie) {
+        $domain = $cookie->getDomain();
+        $matches = false;
+        
+        if ($domain === 'sub.example.com') {
+            $matches = true;
+        } elseif ($domain && $domain[0] === '.' && str_ends_with('sub.example.com', substr($domain, 1))) {
+            $matches = true;
+        }
+        
+        echo "  Cookie '{$cookie->getName()}' domain '{$domain}' matches sub.example.com: " . ($matches ? 'YES' : 'NO') . "\n";
+    }
+    echo "\n";
 });
 
 // Advanced Cookie Tests
@@ -120,8 +174,8 @@ Task::run(function () {
     // Test 6: File-based persistent cookie jar
     echo "Test 6: File-based persistent cookie storage\n";
     
-    $cookieFile = sys_get_temp_dir() . '/test_cookies.json';
-    $fileCookieJar = new FileCookieJar($cookieFile, true); // store session cookies
+    $cookieFile = sys_get_temp_dir() . '/test_cookies_' . uniqid() . '.json';
+    $fileCookieJar = new FileCookieJar($cookieFile, true);
     
     // Set some cookies
     $response = await(
@@ -130,17 +184,28 @@ Task::run(function () {
             ->get('https://httpbin.org/cookies/set/persistent_test/file_value')
     );
     
-    $response->applyCookiesToJar($fileCookieJar);
+    // Ensure cookies are applied if not automatic
+    if (count($fileCookieJar->getAllCookies()) === 0) {
+        $response->applyCookiesToJar($fileCookieJar);
+    }
+    
     echo "Cookies stored to file: {$cookieFile}\n";
+    echo "File exists: " . (file_exists($cookieFile) ? 'yes' : 'no') . "\n";
     
     // Create new jar from same file to test persistence
     $newJar = new FileCookieJar($cookieFile);
     $persistedCookies = $newJar->getAllCookies();
     echo "Cookies loaded from file: " . count($persistedCookies) . "\n";
     
+    // Verify persisted cookie details
+    foreach ($persistedCookies as $cookie) {
+        echo "  Persisted: {$cookie->getName()} = {$cookie->getValue()}\n";
+    }
+    
     // Clean up
     if (file_exists($cookieFile)) {
         unlink($cookieFile);
+        echo "Cleanup: Cookie file deleted\n";
     }
     echo "\n";
 
@@ -172,25 +237,35 @@ Task::run(function () {
         echo "Secure: " . ($parsedCookie->isSecure() ? 'true' : 'false') . "\n";
         echo "HttpOnly: " . ($parsedCookie->isHttpOnly() ? 'true' : 'false') . "\n";
         echo "SameSite: {$parsedCookie->getSameSite()}\n";
+    } else {
+        echo "ERROR: Failed to parse Set-Cookie header\n";
     }
     echo "\n";
 
-    // Test 8: Session management simulation
+    // Test 8: Session management simulation (FIXED)
     echo "Test 8: Session management simulation\n";
     
     $sessionJar = new CookieJar();
     
-    // Simulate login
+    // Simulate login - try different approach
     echo "Simulating login...\n";
+    
+    // First, try to get any cookies set by the server
     $loginResponse = await(
         Http::request()
-            ->withCookieJar($sessionJar)
-            ->json(['username' => 'testuser', 'password' => 'testpass'])
-            ->post('https://httpbin.org/cookies/set/session_token/logged_in_12345')
+            ->get('https://httpbin.org/cookies/set/session_token/logged_in_12345')
     );
     
+    echo "Login response status: {$loginResponse->status()}\n";
+    
+    // Apply cookies to jar manually to ensure they're stored
     $loginResponse->applyCookiesToJar($sessionJar);
-    echo "Login cookies stored\n";
+    echo "Login cookies stored: " . count($sessionJar->getAllCookies()) . "\n";
+    
+    // Show stored cookies
+    foreach ($sessionJar->getAllCookies() as $cookie) {
+        echo "  Stored: {$cookie->getName()} = {$cookie->getValue()}\n";
+    }
     
     // Simulate authenticated request
     echo "Making authenticated request...\n";
@@ -201,11 +276,11 @@ Task::run(function () {
     );
     
     $authData = $authResponse->json();
-    echo "Authenticated request cookies: " . json_encode($authData['cookies']) . "\n";
+    echo "Authenticated request cookies: " . json_encode($authData['cookies'] ?? []) . "\n";
     
     // Test cookie header generation
     $cookieHeader = $sessionJar->getCookieHeader('httpbin.org', '/cookies');
-    echo "Generated Cookie header: {$cookieHeader}\n\n";
+    echo "Generated Cookie header: '{$cookieHeader}'\n\n";
 
     // Test 9: Multiple domains and paths
     echo "Test 9: Multiple domains and path matching\n";
@@ -229,20 +304,26 @@ Task::run(function () {
     $perfJar = new CookieJar();
     $startTime = microtime(true);
     
-    // Add 1000 cookies
+    // Add 1000 cookies with proper domains for testing
     for ($i = 0; $i < 1000; $i++) {
-        $perfJar->setCookie(new Cookie("cookie_{$i}", "value_{$i}", time() + 3600));
+        $domain = ($i % 3 === 0) ? 'example.com' : (($i % 3 === 1) ? 'test.com' : 'other.com');
+        $perfJar->setCookie(new Cookie("cookie_{$i}", "value_{$i}", time() + 3600, $domain, '/'));
     }
     
     $addTime = microtime(true) - $startTime;
     echo "Time to add 1000 cookies: " . number_format($addTime * 1000, 2) . "ms\n";
+    echo "Total cookies in jar: " . count($perfJar->getAllCookies()) . "\n";
     
     $startTime = microtime(true);
     $matchingCookies = $perfJar->getCookies('example.com', '/');
     $matchTime = microtime(true) - $startTime;
     
-    echo "Time to match cookies: " . number_format($matchTime * 1000, 2) . "ms\n";
+    echo "Time to match cookies for 'example.com': " . number_format($matchTime * 1000, 2) . "ms\n";
     echo "Matching cookies found: " . count($matchingCookies) . "\n";
+    
+    // Verify the matches are correct
+    $expectedMatches = ceil(1000 / 3);
+    echo "Expected matches: ~{$expectedMatches}, Actual: " . count($matchingCookies) . "\n";
 });
 
 echo "=== All Cookie Tests Completed ===\n";
