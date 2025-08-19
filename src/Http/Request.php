@@ -178,7 +178,15 @@ class Request extends Message implements RequestInterface
      */
     public function header(string $name, string $value): self
     {
-        $this->headers[strtolower($name)] = [$value]; // Fix: Ensure it's always an array
+        $normalized = strtolower($name);
+
+        if (isset($this->headerNames[$normalized])) {
+            $originalName = $this->headerNames[$normalized];
+            $this->headers[$originalName] = [$value];
+        } else {
+            $this->headerNames[$normalized] = $name;
+            $this->headers[$name] = [$value];
+        }
 
         return $this;
     }
@@ -606,12 +614,10 @@ class Request extends Message implements RequestInterface
         $newCookie = $name . '=' . urlencode($value);
 
         if ($existingCookies !== '') {
-            $this->header('Cookie', $existingCookies . '; ' . $newCookie);
+            return $this->header('Cookie', $existingCookies . '; ' . $newCookie);
         } else {
-            $this->header('Cookie', $newCookie);
+            return $this->header('Cookie', $newCookie);
         }
-
-        return $this;
     }
 
     /**
