@@ -21,7 +21,7 @@ use Symfony\Component\Cache\Psr16Cache;
 /**
  * Core handler for creating and dispatching asynchronous HTTP requests.
  *
- * This class acts as the workhorse for the AsyncHttp Api, translating high-level
+ * This class acts as the workhorse for the Http Api, translating high-level
  * requests into low-level operations managed by the event loop.
  */
 class HttpHandler

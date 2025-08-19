@@ -1,7 +1,7 @@
 <?php
 
 use Psr\SimpleCache\CacheInterface;
-use Rcalicdan\FiberAsync\Api\AsyncHttp;
+use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Http\CacheConfig;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Response;
@@ -102,7 +102,7 @@ describe('HTTP Client Cache Invalidation', function () {
             $cacheKey = HttpHandler::generateCacheKey($url);
             $trackableCache->delete($cacheKey);
             expect($trackableCache->getOperationsCount('delete'))->toBe(1);
-
+            
             // 5. Third GET: Cache miss, repopulates the cache.
             await(http()->cacheWith($cacheConfig)->get($url));
             expect($trackableCache->getOperationsCount('set'))->toBe(2);
@@ -116,7 +116,7 @@ describe('HTTP Client Cache Invalidation', function () {
             ->andReturn(resolve(new Response('{"data":"mocked"}', 200)))
         ;
 
-        AsyncHttp::setInstance($handlerMock);
+        Http::setInstance($handlerMock);
 
         $trackableCache = new TrackableCacheTest;
         $cacheConfig = new CacheConfig(cache: $trackableCache);

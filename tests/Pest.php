@@ -7,7 +7,7 @@
 */
 
 use Rcalicdan\FiberAsync\Api\Async;
-use Rcalicdan\FiberAsync\Api\AsyncHttp;
+use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 
 pest()->extend(Tests\TestCase::class)->in('Feature', 'Integration');
@@ -41,7 +41,7 @@ function resetEventLoop()
 {
     EventLoop::reset();
     Async::reset();
-    AsyncHttp::reset();
+    Http::reset();
     clearFilesystemCache();
 }
 

@@ -1,6 +1,6 @@
 <?php
 
-use Rcalicdan\FiberAsync\Api\AsyncHttp;
+use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Http\Handlers\RetryHelperHandler;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
@@ -22,7 +22,7 @@ if (! function_exists('http')) {
      */
     function http(): Request
     {
-        return AsyncHttp::request();
+        return Http::request();
     }
 }
 
@@ -42,7 +42,7 @@ if (! function_exists('http_get')) {
      */
     function http_get(string $url, array $query = []): PromiseInterface
     {
-        return AsyncHttp::get($url, $query);
+        return Http::get($url, $query);
     }
 }
 
@@ -62,7 +62,7 @@ if (! function_exists('http_post')) {
      */
     function http_post(string $url, array $data = []): PromiseInterface
     {
-        return AsyncHttp::post($url, $data);
+        return Http::post($url, $data);
     }
 }
 
@@ -86,7 +86,7 @@ if (! function_exists('http_stream')) {
     function http_stream(string $url, array $options = [], ?callable $onChunk = null): CancellablePromiseInterface
     {
         /** @var CancellablePromiseInterface<StreamingResponse> */
-        return AsyncHttp::stream($url, $options, $onChunk);
+        return Http::stream($url, $options, $onChunk);
     }
 }
 
@@ -107,7 +107,7 @@ if (! function_exists('http_download')) {
      */
     function http_download(string $url, string $destination, array $options = []): CancellablePromiseInterface
     {
-        return AsyncHttp::download($url, $destination, $options);
+        return Http::download($url, $destination, $options);
     }
 }
 
@@ -127,7 +127,7 @@ if (! function_exists('http_put')) {
      */
     function http_put(string $url, array $data = []): PromiseInterface
     {
-        return AsyncHttp::put($url, $data);
+        return Http::put($url, $data);
     }
 }
 
@@ -145,7 +145,7 @@ if (! function_exists('http_delete')) {
      */
     function http_delete(string $url): PromiseInterface
     {
-        return AsyncHttp::delete($url);
+        return Http::delete($url);
     }
 }
 
@@ -169,7 +169,7 @@ if (! function_exists('fetch')) {
      */
     function fetch(string $url, array $options = []): PromiseInterface
     {
-        return AsyncHttp::fetch($url, $options);
+        return Http::fetch($url, $options);
     }
 }
 
@@ -208,7 +208,7 @@ if (! function_exists('fetch_with_retry')) {
      */
     function fetch_with_retry(string $url, array $options = [], int $maxRetries = 3, float $baseDelay = 1.0): PromiseInterface
     {
-        $request = AsyncHttp::request()->retry($maxRetries, $baseDelay);
+        $request = Http::request()->retry($maxRetries, $baseDelay);
         $response = RetryHelperHandler::getRetryLogic($request, $url, $options);
 
         return $response;

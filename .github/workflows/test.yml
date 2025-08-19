@@ -1,24 +1,81 @@
 name: Tests
- 
-on: ['push', 'pull_request']
- 
+
+on: [push, pull_request]
+
 jobs:
   ci:
     runs-on: ubuntu-latest
- 
+
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [mysql, pgsql]
+
+    services:
+      mysql:
+        image: mysql:8.0
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: testdb
+          MYSQL_USER: testuser
+          MYSQL_PASSWORD: testpass
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root --password=root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      postgres:
+        image: postgres:15
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: testdb
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+        options: >-
+          --health-cmd="pg_isready -U testuser -d testdb"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
- 
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: 8.2
           tools: composer:v2
           coverage: xdebug
- 
+          extensions: pdo_mysql, pdo_pgsql
+
       - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
- 
-      - name: Tests
+
+      - name: Wait for DB
+        run: |
+          if [ "${{ matrix.db }}" = "mysql" ]; then
+            echo "Waiting for MySQL..."
+            until mysqladmin ping -h 127.0.0.1 -u root --password=root --silent; do
+              sleep 2
+            done
+          else
+            echo "Waiting for PostgreSQL..."
+            until pg_isready -h 127.0.0.1 -U testuser -d testdb; do
+              sleep 2
+            done
+          fi
+
+      - name: Run Pest Tests
+        env:
+          DB_CONNECTION: ${{ matrix.db }}
+          DB_HOST: 127.0.0.1
+          DB_PORT: ${{ matrix.db == 'mysql' && '3306' || '5432' }}
+          DB_DATABASE: testdb
+          DB_USERNAME: testuser
+          DB_PASSWORD: testpass
         run: ./vendor/bin/pest --ci

@@ -1,6 +1,6 @@
 <?php
 
-use Rcalicdan\FiberAsync\Api\AsyncFile;
+use Rcalicdan\FiberAsync\Api\File;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 
 if (! function_exists('read_file_async')) {
@@ -10,7 +10,7 @@ if (! function_exists('read_file_async')) {
      * This function reads a file completely into memory and returns the contents
      * as a string. For large files that might consume significant memory,
      * consider using read_file_stream_async() instead for better memory efficiency.
-     * This is a convenience wrapper around AsyncFile::read().
+     * This is a convenience wrapper around File::read().
      *
      * @param  string  $path  The path to the file to read
      * @param  array<string, mixed>  $options  Optional configuration options:
@@ -35,7 +35,7 @@ if (! function_exists('read_file_async')) {
      */
     function read_file_async(string $path, array $options = []): CancellablePromiseInterface
     {
-        return AsyncFile::read($path, $options);
+        return File::read($path, $options);
     }
 }
 
@@ -46,7 +46,7 @@ if (! function_exists('write_file_async')) {
      * This function writes the provided data to a file, creating the file if it
      * doesn't exist or completely overwriting it if it does exist. For large
      * amounts of data or when memory efficiency is important, consider using
-     * write_file_stream_async() instead. This is a convenience wrapper around AsyncFile::write().
+     * write_file_stream_async() instead. This is a convenience wrapper around File::write().
      *
      * @param  string  $path  The path where the file should be written
      * @param  string  $data  The data to write to the file
@@ -73,7 +73,7 @@ if (! function_exists('write_file_async')) {
      */
     function write_file_async(string $path, string $data, array $options = []): CancellablePromiseInterface
     {
-        return AsyncFile::write($path, $data, $options);
+        return File::write($path, $data, $options);
     }
 }
 
@@ -84,7 +84,7 @@ if (! function_exists('append_file_async')) {
      * This function adds the provided data to the end of an existing file without
      * modifying the existing content. If the file doesn't exist, it will be created.
      * This is particularly useful for logging, incremental data writing, or building
-     * files progressively. This is a convenience wrapper around AsyncFile::append().
+     * files progressively. This is a convenience wrapper around File::append().
      *
      * @param  string  $path  The path to the file to append data to
      * @param  string  $data  The data to append to the end of the file
@@ -103,7 +103,7 @@ if (! function_exists('append_file_async')) {
      */
     function append_file_async(string $path, string $data): CancellablePromiseInterface
     {
-        return AsyncFile::append($path, $data);
+        return File::append($path, $data);
     }
 }
 
@@ -114,7 +114,7 @@ if (! function_exists('file_exists_async')) {
      * This function performs a non-blocking check to determine whether the specified
      * path exists in the filesystem. It works for both files and directories and
      * doesn't require read permissions on the target, making it safe for checking
-     * existence without triggering access-related errors. This is a convenience wrapper around AsyncFile::exists().
+     * existence without triggering access-related errors. This is a convenience wrapper around File::exists().
      *
      * @param  string  $path  The filesystem path to check for existence
      * @return CancellablePromiseInterface<bool> Promise that resolves with true if the path exists, false otherwise
@@ -134,7 +134,7 @@ if (! function_exists('file_exists_async')) {
      */
     function file_exists_async(string $path): CancellablePromiseInterface
     {
-        return AsyncFile::exists($path);
+        return File::exists($path);
     }
 }
 
@@ -145,7 +145,7 @@ if (! function_exists('file_stats_async')) {
      * This function returns comprehensive information about a file or directory,
      * including size, timestamps, permissions, and type information. The returned
      * data is similar to PHP's built-in stat() function but obtained asynchronously
-     * without blocking the event loop. This is a convenience wrapper around AsyncFile::stats().
+     * without blocking the event loop. This is a convenience wrapper around File::stats().
      *
      * @param  string  $path  The path to get statistics and metadata for
      * @return CancellablePromiseInterface<array<string, mixed>> Promise that resolves with detailed file information:
@@ -172,7 +172,7 @@ if (! function_exists('file_stats_async')) {
      */
     function file_stats_async(string $path): CancellablePromiseInterface
     {
-        return AsyncFile::stats($path);
+        return File::stats($path);
     }
 }
 
@@ -183,7 +183,7 @@ if (! function_exists('delete_file_async')) {
      * This function permanently removes the specified file from the filesystem.
      * The operation will fail if the target is a directory, the file is currently
      * in use, or insufficient permissions exist. Use with caution as this operation
-     * cannot be undone without backup systems in place. This is a convenience wrapper around AsyncFile::delete().
+     * cannot be undone without backup systems in place. This is a convenience wrapper around File::delete().
      *
      * @param  string  $path  The path to the file to permanently delete
      * @return CancellablePromiseInterface<bool> Promise that resolves with true on successful deletion
@@ -207,7 +207,7 @@ if (! function_exists('delete_file_async')) {
      */
     function delete_file_async(string $path): CancellablePromiseInterface
     {
-        return AsyncFile::delete($path);
+        return File::delete($path);
     }
 }
 
@@ -218,7 +218,7 @@ if (! function_exists('copy_file_async')) {
      * This function creates a complete copy of a file at a new location. If the
      * destination file already exists, it will be overwritten. Parent directories
      * of the destination path will be created automatically if they don't exist.
-     * The original file remains unchanged after the copy operation. This is a convenience wrapper around AsyncFile::copy().
+     * The original file remains unchanged after the copy operation. This is a convenience wrapper around File::copy().
      *
      * @param  string  $source  The path to the source file to copy
      * @param  string  $destination  The path where the copy should be created
@@ -239,7 +239,7 @@ if (! function_exists('copy_file_async')) {
      */
     function copy_file_async(string $source, string $destination): CancellablePromiseInterface
     {
-        return AsyncFile::copy($source, $destination);
+        return File::copy($source, $destination);
     }
 }
 
@@ -250,7 +250,7 @@ if (! function_exists('rename_file_async')) {
      * This function changes the name or location of a file by moving it from the
      * old path to the new path. This operation can rename files within the same
      * directory or move them to entirely different locations. If a file exists
-     * at the new path, it will be overwritten without warning. This is a convenience wrapper around AsyncFile::rename().
+     * at the new path, it will be overwritten without warning. This is a convenience wrapper around File::rename().
      *
      * @param  string  $oldPath  The current path of the file to rename or move
      * @param  string  $newPath  The new path where the file should be moved to
@@ -272,7 +272,7 @@ if (! function_exists('rename_file_async')) {
      */
     function rename_file_async(string $oldPath, string $newPath): CancellablePromiseInterface
     {
-        return AsyncFile::rename($oldPath, $newPath);
+        return File::rename($oldPath, $newPath);
     }
 }
 
@@ -284,7 +284,7 @@ if (! function_exists('watch_file_async')) {
      * path for changes and executes a callback function when changes occur. The
      * watcher operates asynchronously and doesn't block execution. Multiple
      * watchers can be active simultaneously for different paths or even the same path.
-     * This is a convenience wrapper around AsyncFile::watch().
+     * This is a convenience wrapper around File::watch().
      *
      * @param  string  $path  The filesystem path to monitor for changes
      * @param  callable  $callback  Function to execute when changes are detected:
@@ -323,7 +323,7 @@ if (! function_exists('watch_file_async')) {
      */
     function watch_file_async(string $path, callable $callback, array $options = []): string
     {
-        return AsyncFile::watch($path, $callback, $options);
+        return File::watch($path, $callback, $options);
     }
 }
 
@@ -335,7 +335,7 @@ if (! function_exists('unwatch_file_async')) {
      * unique identifier. Once removed, the associated callback function will no
      * longer be executed when changes occur to the monitored path. This is important
      * for preventing memory leaks when watchers are no longer needed.
-     * This is a convenience wrapper around AsyncFile::unwatch().
+     * This is a convenience wrapper around File::unwatch().
      *
      * @param  string  $watcherId  The unique watcher identifier returned by watch_file_async()
      * @return bool True if the watcher was successfully removed, false if the watcher ID was not found
@@ -357,7 +357,7 @@ if (! function_exists('unwatch_file_async')) {
      */
     function unwatch_file_async(string $watcherId): bool
     {
-        return AsyncFile::unwatch($watcherId);
+        return File::unwatch($watcherId);
     }
 }
 
@@ -369,7 +369,7 @@ if (! function_exists('create_directory_async')) {
      * configuration for permissions and recursive creation. If parent directories
      * don't exist, they can be automatically created when the recursive option
      * is enabled, making it easy to create deep directory structures in one operation.
-     * This is a convenience wrapper around AsyncFile::createDirectory().
+     * This is a convenience wrapper around File::createDirectory().
      *
      * @param  string  $path  The path where the directory should be created
      * @param  array<string, mixed>  $options  Optional configuration options:
@@ -396,7 +396,7 @@ if (! function_exists('create_directory_async')) {
      */
     function create_directory_async(string $path, array $options = []): CancellablePromiseInterface
     {
-        return AsyncFile::createDirectory($path, $options);
+        return File::createDirectory($path, $options);
     }
 }
 
@@ -407,7 +407,7 @@ if (! function_exists('remove_directory_async')) {
      * This function removes a directory from the filesystem. The directory must be
      * completely empty (no files or subdirectories) before it can be removed.
      * For recursive directory removal, all contents must be deleted first using
-     * other file and directory operations. This is a convenience wrapper around AsyncFile::removeDirectory().
+     * other file and directory operations. This is a convenience wrapper around File::removeDirectory().
      *
      * @param  string  $path  The path to the directory to remove
      * @return CancellablePromiseInterface<bool> Promise that resolves with true on successful directory removal
@@ -431,7 +431,7 @@ if (! function_exists('remove_directory_async')) {
      */
     function remove_directory_async(string $path): CancellablePromiseInterface
     {
-        return AsyncFile::removeDirectory($path);
+        return File::removeDirectory($path);
     }
 }
 
@@ -442,7 +442,7 @@ if (! function_exists('mkdir_recursive_async')) {
      * This function creates a directory and all necessary parent directories without blocking
      * the event loop. This is a convenience function for recursive directory creation
      * that automatically enables the recursive option and sets permissions.
-     * This is a convenience wrapper around AsyncFile::createDirectory().
+     * This is a convenience wrapper around File::createDirectory().
      *
      * @param  string  $path  The directory path to create
      * @param  int  $permissions  Directory permissions in octal format (default: 0755)
@@ -463,7 +463,7 @@ if (! function_exists('mkdir_recursive_async')) {
      */
     function mkdir_recursive_async(string $path, int $permissions = 0755): CancellablePromiseInterface
     {
-        return AsyncFile::createDirectory($path, ['recursive' => true, 'mode' => $permissions]);
+        return File::createDirectory($path, ['recursive' => true, 'mode' => $permissions]);
     }
 }
 
@@ -497,7 +497,7 @@ if (! function_exists('get_file_size_async')) {
      */
     function get_file_stats_async(string $path): CancellablePromiseInterface
     {
-        return AsyncFile::stats($path);
+        return File::stats($path);
     }
 }
 
@@ -510,7 +510,7 @@ if (! function_exists('read_file_stream_async')) {
      * This is particularly useful for processing large files, log files, or
      * when memory usage needs to be controlled. Remember to properly close
      * the stream resource when finished to prevent resource leaks.
-     * This is a convenience wrapper around AsyncFile::readFileStream().
+     * This is a convenience wrapper around File::readFileStream().
      *
      * @param  string  $path  The path to the file to open for streaming reads
      * @param  array<string, mixed>  $options  Optional configuration options:
@@ -540,7 +540,7 @@ if (! function_exists('read_file_stream_async')) {
      */
     function read_file_stream_async(string $path, array $options = []): CancellablePromiseInterface
     {
-        return AsyncFile::readFileStream($path, $options);
+        return File::readFileStream($path, $options);
     }
 }
 
@@ -553,7 +553,7 @@ if (! function_exists('write_file_stream_async')) {
      * data in chunks rather than loading everything into memory at once, making
      * it suitable for handling very large datasets. The target file will be
      * created if it doesn't exist or truncated if it does.
-     * This is a convenience wrapper around AsyncFile::writeFileStream().
+     * This is a convenience wrapper around File::writeFileStream().
      *
      * @param  string  $path  The path where the file should be written
      * @param  string  $data  The data to write to the file using streaming
@@ -582,7 +582,7 @@ if (! function_exists('write_file_stream_async')) {
      */
     function write_file_stream_async(string $path, string $data, array $options = []): CancellablePromiseInterface
     {
-        return AsyncFile::writeFileStream($path, $data, $options);
+        return File::writeFileStream($path, $data, $options);
     }
 }
 
@@ -595,7 +595,7 @@ if (! function_exists('copy_file_stream_async')) {
      * file is copied in chunks, making it suitable for very large files that
      * wouldn't fit comfortably in memory. Parent directories will be created
      * automatically if needed for the destination path.
-     * This is a convenience wrapper around AsyncFile::copyFileStream().
+     * This is a convenience wrapper around File::copyFileStream().
      *
      * @param  string  $source  The path to the source file to copy
      * @param  string  $destination  The path where the file copy should be created
@@ -623,6 +623,6 @@ if (! function_exists('copy_file_stream_async')) {
      */
     function copy_file_stream_async(string $source, string $destination): CancellablePromiseInterface
     {
-        return AsyncFile::copyFileStream($source, $destination);
+        return File::copyFileStream($source, $destination);
     }
 }

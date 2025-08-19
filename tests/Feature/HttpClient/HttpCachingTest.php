@@ -1,7 +1,7 @@
 <?php
 
 use Psr\SimpleCache\CacheInterface;
-use Rcalicdan\FiberAsync\Api\AsyncHttp;
+use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Http\CacheConfig;
 
 /**
@@ -99,7 +99,7 @@ class TrackableCache implements CacheInterface
 }
 
 beforeEach(function () {
-    AsyncHttp::reset();
+    Http::reset();
     clearFilesystemCache();
 });
 
@@ -177,11 +177,9 @@ describe('HTTP Client Caching - Core Functionality', function () {
         $cacheConfig = new CacheConfig(ttlSeconds: 60, cache: $trackableCache);
 
         run(function () use ($trackableCache, $cacheConfig) {
-            // Make POST requests with caching enabled
             await(http()->cacheWith($cacheConfig)->post('https://httpbin.org/post', ['test' => 'data1']));
             await(http()->cacheWith($cacheConfig)->post('https://httpbin.org/post', ['test' => 'data2']));
 
-            // Should not have used cache at all for POST requests
             expect($trackableCache->getOperationsCount('get'))->toBe(0);
             expect($trackableCache->getOperationsCount('set'))->toBe(0);
         });
@@ -196,13 +194,12 @@ describe('HTTP Client Caching - Performance & Timing', function () {
         $url = 'https://httpbin.org/delay/1'; // 1 second delay endpoint
 
         run(function () use ($cacheConfig, $url) {
-            // First call - should be slow (network + 1 second delay)
             $start1 = microtime(true);
             $response1 = await(http()->cacheWith($cacheConfig)->get($url));
             $time1 = microtime(true) - $start1;
 
             expect($response1->status())->toBe(200);
-            expect($time1)->toBeGreaterThan(1.0); // Should take at least 1 second
+            expect($time1)->toBeGreaterThan(1.0); 
 
             // Second call - should be fast (cached)
             $start2 = microtime(true);
@@ -210,8 +207,8 @@ describe('HTTP Client Caching - Performance & Timing', function () {
             $time2 = microtime(true) - $start2;
 
             expect($response2->status())->toBe(200);
-            expect($time2)->toBeLessThan(0.1); // Should be under 100ms
-            expect($time2)->toBeLessThan($time1 / 10); // At least 10x faster
+            expect($time2)->toBeLessThan(0.1); 
+            expect($time2)->toBeLessThan($time1 / 10); 
 
             // Responses should be identical
             expect($response1->body())->toBe($response2->body());
@@ -221,10 +218,9 @@ describe('HTTP Client Caching - Performance & Timing', function () {
     test('concurrent requests to same URL only hit network once', function () {
         $trackableCache = new TrackableCache;
         $cacheConfig = new CacheConfig(ttlSeconds: 60, cache: $trackableCache);
-        $url = 'https://httpbin.org/uuid';
+        $url = 'https://jsonplaceholder.typicode.com/posts/1';
 
         run(function () use ($trackableCache, $cacheConfig, $url) {
-            // Make multiple concurrent requests to the same URL
             $promises = [];
             for ($i = 0; $i < 3; $i++) {
                 $promises[] = http()->cacheWith($cacheConfig)->get($url);
@@ -232,13 +228,10 @@ describe('HTTP Client Caching - Performance & Timing', function () {
 
             $responses = await(all($promises));
 
-            // All responses should be successful
             foreach ($responses as $response) {
                 expect($response->status())->toBe(200);
             }
 
-            // Due to the nature of async execution, this might still result in
-            // some concurrent network calls, but cache should be populated
             expect($trackableCache->getOperationsCount('set'))->toBeGreaterThan(0);
         });
     });
@@ -298,7 +291,6 @@ describe('HTTP Client Caching - Edge Cases', function () {
 
         run(function () use ($trackableCache, $cacheConfig) {
             try {
-                // This should fail (invalid URL)
                 await(http()->cacheWith($cacheConfig)->get('https://httpbin.org/status/404'));
             } catch (Exception $e) {
                 // Expected to fail
