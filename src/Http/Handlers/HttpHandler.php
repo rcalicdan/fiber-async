@@ -27,11 +27,13 @@ use Symfony\Component\Cache\Psr16Cache;
 class HttpHandler
 {
     private StreamingHandler $streamingHandler;
+    private FetchHandler $fetchHandler;
     private static ?CacheInterface $defaultCache = null;
 
-    public function __construct()
+    public function __construct(?StreamingHandler $streamingHandler = null, ?FetchHandler $fetchHandler = null)
     {
-        $this->streamingHandler = new StreamingHandler;
+        $this->streamingHandler = $streamingHandler ?? new StreamingHandler();
+        $this->fetchHandler = $fetchHandler ?? new FetchHandler($this->streamingHandler);
     }
 
     /**
@@ -283,114 +285,39 @@ class HttpHandler
             return $this->fetchWithRetry($url, $curlOptions, $retryConfig);
         }
 
-        return $this->fetch($url, $curlOptions);
-    }
-
-
-    /**
-     * A flexible, fetch-like method for making HTTP requests with advanced features.
-     *
-     * @param  string  $url  The target URL.
-     * @param  array<int|string, mixed>  $options  Request options (method, headers, body, retry, cache, etc.).
-     * @return PromiseInterface<Response> A promise that resolves with a Response object.
-     */
-    public function fetch(string $url, array $options = []): PromiseInterface
-    {
-        $retryConfig = $this->extractRetryConfig($options);
-        $cacheConfig = $this->extractCacheConfig($options);
-
-        $curlOptions = $this->normalizeFetchOptions($url, $options);
-
-        // Use the advanced sendRequest method instead of direct execution
-        if ($retryConfig !== null || $cacheConfig !== null) {
-            return $this->sendRequest($url, $curlOptions, $cacheConfig, $retryConfig);
-        }
-
         return $this->executeBasicFetch($url, $curlOptions);
     }
 
     /**
-     * Extracts retry configuration from options array.
+     * A flexible, fetch-like method for making HTTP requests with streaming support.
+     * This method delegates to the FetchHandler for implementation.
+     *
+     * @param  string  $url  The target URL.
+     * @param  array<int|string, mixed>  $options  An associative array of request options.
+     * @return PromiseInterface<Response>|CancellablePromiseInterface<StreamingResponse> A promise that resolves with a Response or StreamingResponse object.
      */
-    private function extractRetryConfig(array $options): ?RetryConfig
+    public function fetch(string $url, array $options = []): PromiseInterface
     {
-        if (!isset($options['retry'])) {
-            return null;
-        }
-
-        $retry = $options['retry'];
-
-        if ($retry === true) {
-            return new RetryConfig();
-        }
-
-        if ($retry instanceof RetryConfig) {
-            return $retry;
-        }
-
-        // Handle array configuration
-        if (is_array($retry)) {
-            return new RetryConfig(
-                maxRetries: $retry['max_retries'] ?? 3,
-                baseDelay: $retry['base_delay'] ?? 1.0,
-                maxDelay: $retry['max_delay'] ?? 60.0,
-                backoffMultiplier: $retry['backoff_multiplier'] ?? 2.0,
-                jitter: $retry['jitter'] ?? true,
-                retryableStatusCodes: $retry['retryable_status_codes'] ?? [408, 429, 500, 502, 503, 504],
-                retryableExceptions: $retry['retryable_exceptions'] ?? [
-                    'cURL error',
-                    'timeout',
-                    'connection failed',
-                    'Could not resolve host',
-                    'Resolving timed out',
-                    'Connection timed out',
-                    'SSL connection timeout',
-                ]
-            );
-        }
-
-        return null;
+        return $this->fetchHandler->fetch($url, $options);
     }
 
     /**
-     * Extracts cache configuration from options array.
+     * Sends a request with automatic retry logic on failure.
+     * This method delegates to the FetchHandler for implementation.
+     *
+     * @param  string  $url  The target URL.
+     * @param  array<int, mixed>  $options  An array of cURL options.
+     * @param  RetryConfig  $retryConfig  Configuration object for retry behavior.
+     * @return PromiseInterface<Response> A promise that resolves with a Response object or rejects with an HttpException on final failure.
      */
-    private function extractCacheConfig(array $options): ?CacheConfig
+    public function fetchWithRetry(string $url, array $options, RetryConfig $retryConfig): PromiseInterface
     {
-        if (!isset($options['cache'])) {
-            return null;
-        }
-
-        $cache = $options['cache'];
-
-        if ($cache === true) {
-            return new CacheConfig();
-        }
-
-        // Handle CacheConfig object
-        if ($cache instanceof CacheConfig) {
-            return $cache;
-        }
-
-        // Handle array configuration
-        if (is_array($cache)) {
-            return new CacheConfig(
-                ttlSeconds: $cache['ttl'] ?? 3600,
-                respectServerHeaders: $cache['respect_server_headers'] ?? true,
-                cache: $cache['cache_instance'] ?? null
-            );
-        }
-
-        // Handle integer as TTL
-        if (is_int($cache)) {
-            return new CacheConfig($cache);
-        }
-
-        return null;
+        return $this->fetchHandler->fetchWithRetry($url, $options, $retryConfig);
     }
 
     /**
-     * Executes basic fetch without advanced features 
+     * Executes basic fetch without advanced features.
+     * This method is kept for backward compatibility with existing sendRequest logic.
      */
     private function executeBasicFetch(string $url, array $curlOptions): PromiseInterface
     {
@@ -421,76 +348,8 @@ class HttpHandler
     }
 
     /**
-     * Sends a request with automatic retry logic on failure.
-     *
-     * @param  string  $url  The target URL.
-     * @param  array<int, mixed>  $options  An array of cURL options.
-     * @param  RetryConfig  $retryConfig  Configuration object for retry behavior.
-     * @return PromiseInterface<Response> A promise that resolves with a Response object or rejects with an HttpException on final failure.
-     */
-    public function fetchWithRetry(string $url, array $options, RetryConfig $retryConfig): PromiseInterface
-    {
-        /** @var CancellablePromise<Response> $promise */
-        $promise = new CancellablePromise;
-        $attempt = 0;
-        $totalAttempts = 0;
-        /** @var string|null $requestId */
-        $requestId = null;
-
-        $executeRequest = function () use ($url, $options, $retryConfig, $promise, &$attempt, &$totalAttempts, &$requestId, &$executeRequest) {
-            $totalAttempts++;
-
-            $requestId = EventLoop::getInstance()->addHttpRequest(
-                $url,
-                $options,
-                function (?string $error, ?string $responseBody, ?int $httpCode, array $headers = []) use ($retryConfig, $promise, &$attempt, &$totalAttempts, &$executeRequest) {
-                    if ($promise->isCancelled()) {
-                        return;
-                    }
-
-
-                    $isRetryable = ($error !== null && $retryConfig->isRetryableError($error)) ||
-                        ($httpCode !== null && in_array($httpCode, $retryConfig->retryableStatusCodes, true));
-
-
-                    if ($isRetryable && $attempt < $retryConfig->maxRetries) {
-                        $attempt++;
-                        $delay = $retryConfig->getDelay($attempt);
-
-                        EventLoop::getInstance()->addTimer($delay, $executeRequest);
-                        return;
-                    }
-
-                    // If we've exhausted retries or it's not retryable, handle the final result
-                    if ($error !== null) {
-                        $promise->reject(new HttpException("HTTP Request failed after {$totalAttempts} attempts: {$error}"));
-                    } elseif ($isRetryable) {
-                        // This means we exceeded max retries with a retryable status code
-                        $promise->reject(new HttpException("HTTP Request failed with status {$httpCode} after {$totalAttempts} attempts."));
-                    } else {
-                        // Success case
-                        /** @var array<string, array<string>|string> $normalizedHeaders */
-                        $normalizedHeaders = $this->normalizeHeaders($headers);
-                        $promise->resolve(new Response($responseBody ?? '', $httpCode ?? 0, $normalizedHeaders));
-                    }
-                }
-            );
-        };
-
-        // Start the first request
-        $executeRequest();
-
-        $promise->setCancelHandler(function () use (&$requestId) {
-            if ($requestId !== null) {
-                EventLoop::getInstance()->cancelHttpRequest($requestId);
-            }
-        });
-
-        return $promise;
-    }
-
-    /**
      * Normalizes fetch options from various formats to cURL options.
+     * This method delegates to the FetchHandler for implementation.
      *
      * @param  string  $url  The target URL.
      * @param  array<int|string, mixed>  $options  The options to normalize.
@@ -498,73 +357,7 @@ class HttpHandler
      */
     private function normalizeFetchOptions(string $url, array $options): array
     {
-        if ($this->isCurlOptionsFormat($options)) {
-            /** @var array<int, mixed> */
-            return array_filter($options, fn($key) => is_int($key), ARRAY_FILTER_USE_KEY);
-        }
-
-        /** @var array<int, mixed> $curlOptions */
-        $curlOptions = [
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HEADER => true,
-            CURLOPT_NOBODY => false,
-        ];
-
-        if (isset($options['method']) && is_string($options['method'])) {
-            $curlOptions[CURLOPT_CUSTOMREQUEST] = strtoupper($options['method']);
-        }
-
-        if (isset($options['headers']) && is_array($options['headers'])) {
-            $headerStrings = [];
-            foreach ($options['headers'] as $name => $value) {
-                if (is_string($name) && (is_string($value) || is_scalar($value))) {
-                    $headerStrings[] = "{$name}: {$value}";
-                }
-            }
-            $curlOptions[CURLOPT_HTTPHEADER] = $headerStrings;
-        }
-
-        if (isset($options['body'])) {
-            $curlOptions[CURLOPT_POSTFIELDS] = $options['body'];
-        }
-
-        if (isset($options['timeout']) && is_numeric($options['timeout'])) {
-            $curlOptions[CURLOPT_TIMEOUT] = (int) $options['timeout'];
-        }
-
-        if (isset($options['follow_redirects'])) {
-            $curlOptions[CURLOPT_FOLLOWLOCATION] = (bool) $options['follow_redirects'];
-        }
-
-        if (isset($options['verify_ssl'])) {
-            $verifySSL = (bool) $options['verify_ssl'];
-            $curlOptions[CURLOPT_SSL_VERIFYPEER] = $verifySSL;
-            $curlOptions[CURLOPT_SSL_VERIFYHOST] = $verifySSL ? 2 : 0;
-        }
-
-        if (isset($options['user_agent']) && is_string($options['user_agent'])) {
-            $curlOptions[CURLOPT_USERAGENT] = $options['user_agent'];
-        }
-
-        return $curlOptions;
-    }
-
-    /**
-     * Determines if the options array is in cURL format (integer keys) or fetch format (string keys).
-     *
-     * @param  array<int|string, mixed>  $options  The options to check.
-     * @return bool True if options are in cURL format.
-     */
-    private function isCurlOptionsFormat(array $options): bool
-    {
-        foreach (array_keys($options) as $key) {
-            if (is_int($key) && $key > 0) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->fetchHandler->normalizeFetchOptions($url, $options);
     }
 
     /**
