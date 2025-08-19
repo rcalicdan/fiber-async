@@ -6,6 +6,7 @@ use Psr\SimpleCache\CacheInterface;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Http\CacheConfig;
 use Rcalicdan\FiberAsync\Http\Exceptions\HttpException;
+use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
@@ -29,6 +30,7 @@ class HttpHandler
     private StreamingHandler $streamingHandler;
     private FetchHandler $fetchHandler;
     private static ?CacheInterface $defaultCache = null;
+    private ?CookieJarInterface $defaultCookieJar = null;
 
     public function __construct(?StreamingHandler $streamingHandler = null, ?FetchHandler $fetchHandler = null)
     {
@@ -326,7 +328,7 @@ class HttpHandler
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
             $curlOptions,
-            function (?string $error, ?string $response, ?int $httpCode, array $headers = []) use ($promise) {
+            function (?string $error, ?string $response, ?int $httpCode, array $headers = []) use ($promise, $url) {
                 if ($promise->isCancelled()) {
                     return;
                 }
@@ -335,7 +337,11 @@ class HttpHandler
                     $promise->reject(new HttpException("HTTP Request failed: {$error}"));
                 } else {
                     $normalizedHeaders = $this->normalizeHeaders($headers);
-                    $promise->resolve(new Response($response ?? '', $httpCode ?? 0, $normalizedHeaders));
+                    $responseObj = new Response($response ?? '', $httpCode ?? 0, $normalizedHeaders);
+
+                    $this->processCookies($responseObj, $url, null);
+
+                    $promise->resolve($responseObj);
                 }
             }
         );
@@ -345,6 +351,36 @@ class HttpHandler
         });
 
         return $promise;
+    }
+
+    /**
+     * Set a default cookie jar for all requests.
+     */
+    public function setCookieJar(CookieJarInterface $cookieJar): void
+    {
+        $this->defaultCookieJar = $cookieJar;
+    }
+
+    /**
+     * Get the default cookie jar.
+     */
+    public function getCookieJar(): ?CookieJarInterface
+    {
+        return $this->defaultCookieJar;
+    }
+
+    /**
+     * Process response cookies and update the cookie jar.
+     */
+    private function processCookies(Response $response, string $url, ?CookieJarInterface $cookieJar): void
+    {
+        if ($cookieJar === null) {
+            $cookieJar = $this->defaultCookieJar;
+        }
+
+        if ($cookieJar !== null) {
+            $response->applyCookiesToJar($cookieJar);
+        }
     }
 
     /**

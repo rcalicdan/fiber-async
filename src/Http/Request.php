@@ -3,6 +3,7 @@
 namespace Rcalicdan\FiberAsync\Http;
 
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
+use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\RequestInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\UriInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
@@ -18,6 +19,7 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 class Request extends Message implements RequestInterface
 {
     private HttpHandler $handler;
+    private ?CookieJarInterface $cookieJar = null;
     private string $method = 'GET';
     private ?string $requestTarget = null;
     private UriInterface $uri;
@@ -80,7 +82,7 @@ class Request extends Message implements RequestInterface
             $target = '/';
         }
         if ($this->uri->getQuery() !== '') {
-            $target .= '?'.$this->uri->getQuery();
+            $target .= '?' . $this->uri->getQuery();
         }
 
         return $target;
@@ -460,7 +462,7 @@ class Request extends Message implements RequestInterface
     public function get(string $url, array $query = []): PromiseInterface
     {
         if (count($query) > 0) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
         }
 
         return $this->send('GET', $url);
@@ -560,6 +562,59 @@ class Request extends Message implements RequestInterface
     }
 
     /**
+     * Set a cookie jar for automatic cookie handling.
+     *
+     * @param CookieJarInterface $cookieJar The cookie jar to use
+     * @return self For fluent method chaining.
+     */
+    public function withCookieJar(CookieJarInterface $cookieJar): self
+    {
+        $this->cookieJar = $cookieJar;
+        return $this;
+    }
+
+    /**
+     * Set individual cookies for this request.
+     *
+     * @param array<string, string> $cookies Associative array of cookie name => value pairs
+     * @return self For fluent method chaining.
+     */
+    public function cookies(array $cookies): self
+    {
+        $cookieStrings = [];
+        foreach ($cookies as $name => $value) {
+            $cookieStrings[] = $name . '=' . urlencode($value);
+        }
+
+        if (!empty($cookieStrings)) {
+            return $this->header('Cookie', implode('; ', $cookieStrings));
+        }
+
+        return $this;
+    }
+
+    /**
+     * Set a single cookie for this request.
+     *
+     * @param string $name Cookie name
+     * @param string $value Cookie value
+     * @return self For fluent method chaining.
+     */
+    public function cookie(string $name, string $value): self
+    {
+        $existingCookies = $this->getHeaderLine('Cookie');
+        $newCookie = $name . '=' . urlencode($value);
+
+        if ($existingCookies !== '') {
+            $this->header('Cookie', $existingCookies . '; ' . $newCookie);
+        } else {
+            $this->header('Cookie', $newCookie);
+        }
+
+        return $this;
+    }
+
+    /**
      * Compiles all configured options into a cURL options array.
      *
      * @param  string  $method  The HTTP method.
@@ -592,6 +647,25 @@ class Request extends Message implements RequestInterface
             default => CURL_HTTP_VERSION_1_1,
         };
 
+        if ($this->cookieJar !== null) {
+            $uri = new Uri($url);
+            $cookieHeader = $this->cookieJar->getCookieHeader(
+                $uri->getHost(),
+                $uri->getPath() ?: '/',
+                $uri->getScheme() === 'https'
+            );
+
+            if ($cookieHeader !== '') {
+                // Merge with existing Cookie header if present
+                $existingCookies = $this->getHeaderLine('Cookie');
+                if ($existingCookies !== '') {
+                    $this->header('Cookie', $existingCookies . '; ' . $cookieHeader);
+                } else {
+                    $this->header('Cookie', $cookieHeader);
+                }
+            }
+        }
+
         if (strtoupper($method) === 'HEAD') {
             $options[CURLOPT_NOBODY] = true;
         }
@@ -619,7 +693,7 @@ class Request extends Message implements RequestInterface
         if (count($this->headers) > 0) {
             $headerStrings = [];
             foreach ($this->headers as $name => $value) {
-                $headerStrings[] = "{$name}: ".implode(', ', $value);
+                $headerStrings[] = "{$name}: " . implode(', ', $value);
             }
             $options[CURLOPT_HTTPHEADER] = $headerStrings;
         }
@@ -666,7 +740,7 @@ class Request extends Message implements RequestInterface
         }
 
         if (($port = $this->uri->getPort()) !== null) {
-            $host .= ':'.$port;
+            $host .= ':' . $port;
         }
 
         if (isset($this->headerNames['host'])) {

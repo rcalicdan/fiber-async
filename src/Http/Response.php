@@ -2,6 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Http;
 
+use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\ResponseInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\StreamInterface;
 
@@ -158,6 +159,36 @@ class Response extends Message implements ResponseInterface
         $new->reasonPhrase = $reasonPhrase;
 
         return $new;
+    }
+
+    /**
+     * Get cookies from Set-Cookie headers.
+     *
+     * @return Cookie[]
+     */
+    public function getCookies(): array
+    {
+        $setCookieHeaders = $this->getHeader('Set-Cookie');
+        $cookies = [];
+
+        foreach ($setCookieHeaders as $header) {
+            $cookie = Cookie::fromSetCookieHeader($header);
+            if ($cookie !== null) {
+                $cookies[] = $cookie;
+            }
+        }
+
+        return $cookies;
+    }
+
+    /**
+     * Apply cookies from this response to a cookie jar.
+     */
+    public function applyCookiesToJar(CookieJarInterface $cookieJar): void
+    {
+        foreach ($this->getCookies() as $cookie) {
+            $cookieJar->setCookie($cookie);
+        }
     }
 
     /**
