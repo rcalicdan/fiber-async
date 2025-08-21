@@ -30,7 +30,7 @@ if (! function_exists('async')) {
      * primary method for creating async functions from synchronous code.
      *
      * @param  callable  $asyncFunction  The function to convert to async
-     * @return callable An async version that returns a Promise
+     * @return PromiseInterface<mixed> An async version that returns a Promise
      *
      * @example
      * $asyncFunc = async(function($data) {
@@ -38,9 +38,9 @@ if (! function_exists('async')) {
      *     return $result;
      * });
      */
-    function async(callable $asyncFunction): callable
+    function async(callable $asyncFunction): PromiseInterface
     {
-        return Async::async($asyncFunction);
+        return Async::async($asyncFunction)();
     }
 }
 

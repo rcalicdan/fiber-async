@@ -4,6 +4,7 @@
 
 namespace Rcalicdan\FiberAsync\MySQL\Handlers;
 
+use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\MySQL\MySQLClient;
 use Rcalicdan\FiberAsync\MySQL\PreparedStatement;
 use Rcalicdan\FiberAsync\MySQL\Protocol\BinaryResultSetParser;
@@ -29,7 +30,7 @@ class QueryHandler
 
     public function query(string $sql): PromiseInterface
     {
-        return async(function () use ($sql) {
+        return Async::async(function () use ($sql) {
             $lock = $this->client->getMutex();
 
             try {
@@ -44,7 +45,7 @@ class QueryHandler
 
     public function prepare(string $sql): PromiseInterface
     {
-        return async(function () use ($sql) {
+        return Async::async(function () use ($sql) {
             $lock = $this->client->getMutex();
 
             try {
@@ -59,7 +60,7 @@ class QueryHandler
 
     public function executeStatement(int $statementId, array $params): PromiseInterface
     {
-        return async(function () use ($statementId, $params) {
+        return Async::async(function () use ($statementId, $params) {
             $lock = $this->client->getMutex();
 
             try {
@@ -74,7 +75,7 @@ class QueryHandler
 
     public function closeStatement(int $statementId): PromiseInterface
     {
-        return async(function () use ($statementId) {
+        return Async::async(function () use ($statementId) {
             $lock = $this->client->getMutex();
 
             try {

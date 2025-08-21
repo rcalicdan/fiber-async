@@ -47,7 +47,7 @@ final class AsyncMySQL
      */
     public static function run(callable $callback): PromiseInterface
     {
-        return async(function () use ($callback) {
+        return Async::async(function () use ($callback) {
             $client = null;
 
             try {

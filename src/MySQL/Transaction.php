@@ -2,6 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\MySQL;
 
+use PHPUnit\Framework\Assert;
+use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\MySQL\Handlers\TransactionHandler;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
@@ -21,7 +23,7 @@ class Transaction
 
     public function query(string $sql): PromiseInterface
     {
-        return async(function () use ($sql) {
+        return Async::async(function () use ($sql) {
             $this->ensureTransactionActive();
 
             return await($this->client->query($sql));
@@ -30,7 +32,7 @@ class Transaction
 
     public function prepare(string $sql): PromiseInterface
     {
-        return async(function () use ($sql) {
+        return Async::async(function () use ($sql) {
             $this->ensureTransactionActive();
 
             return await($this->client->prepare($sql));
@@ -39,7 +41,7 @@ class Transaction
 
     public function commit(): PromiseInterface
     {
-        return async(function () {
+        return Async::async(function () {
             $this->ensureTransactionActive();
 
             try {
@@ -64,7 +66,7 @@ class Transaction
 
     public function rollback(): PromiseInterface
     {
-        return async(function () {
+        return Async::async(function () {
             $this->ensureTransactionActive();
 
             $result = await($this->transactionHandler->rollback());
@@ -76,7 +78,7 @@ class Transaction
 
     public function savepoint(string $name): PromiseInterface
     {
-        return async(function () use ($name) {
+        return Async::async(function () use ($name) {
             $this->ensureTransactionActive();
 
             $result = await($this->transactionHandler->savepoint($name));
@@ -88,7 +90,7 @@ class Transaction
 
     public function rollbackToSavepoint(string $name): PromiseInterface
     {
-        return async(function () use ($name) {
+        return Async::async(function () use ($name) {
             $this->ensureTransactionActive();
 
             if (! in_array($name, $this->savepoints)) {
@@ -101,7 +103,7 @@ class Transaction
 
     public function releaseSavepoint(string $name): PromiseInterface
     {
-        return async(function () use ($name) {
+        return Async::async(function () use ($name) {
             $this->ensureTransactionActive();
 
             if (! in_array($name, $this->savepoints)) {
@@ -117,7 +119,7 @@ class Transaction
 
     public function execute(callable $callback): PromiseInterface
     {
-        return async(function () use ($callback) {
+        return Async::async(function () use ($callback) {
             try {
                 $result = await($callback($this));
                 await($this->commit());

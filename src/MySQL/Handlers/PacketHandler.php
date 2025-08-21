@@ -2,6 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\MySQL\Handlers;
 
+use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\MySQL\MySQLClient;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
@@ -16,7 +17,7 @@ class PacketHandler
 
     public function readNextPacketPayload(): PromiseInterface
     {
-        return async(function () {
+        return Async::async(function () {
             $packetReader = $this->client->getPacketReader();
             $socket = $this->client->getSocket();
 

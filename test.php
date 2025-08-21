@@ -1,329 +1,395 @@
 <?php
 
-use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Api\Task;
-use Rcalicdan\FiberAsync\Http\Cookie;
-use Rcalicdan\FiberAsync\Http\CookieJar;
-use Rcalicdan\FiberAsync\Http\FileCookieJar;
+use Rcalicdan\FiberAsync\Promise\Promise;
 
-require 'vendor/autoload.php';
+require "vendor/autoload.php";
 
-// Basic Cookie Tests
-echo "=== Basic Cookie Tests ===\n";
+$start = microtime(true);
 
-Task::run(function () {
-    // Test 1: Basic cookie setting and sending (FIXED)
-    echo "Test 1: Setting individual cookies\n";
-    $response = await(
-        Http::request()
-            ->cookie('session_id', '12345')
-            ->cookie('user_pref', 'dark_mode')
-            ->get('https://httpbin.org/cookies')
-    );
-    
-    $data = $response->json();
-    // Fix: Check if cookies key exists before accessing
-    if (isset($data['cookies'])) {
-        echo "Cookies sent: " . json_encode($data['cookies']) . "\n";
-    } else {
-        echo "Response structure: " . json_encode($data) . "\n";
-        echo "Cookies sent: Unable to verify (response format unexpected)\n";
-    }
-    echo "\n";
-
-    // Test 2: Setting multiple cookies at once
-    echo "Test 2: Setting multiple cookies\n";
-    $response = await(
-        Http::request()
-            ->cookies([
-                'auth_token' => 'abc123',
-                'language' => 'en',
-                'theme' => 'light'
-            ])
-            ->get('https://httpbin.org/cookies')
-    );
-    
-    $data = $response->json();
-    echo "Multiple cookies sent: " . json_encode($data['cookies'] ?? 'No cookies key found') . "\n\n";
-
-    // Test 3: Receiving cookies from server
-    echo "Test 3: Receiving cookies from server\n";
-    $response = await(
-        Http::request()
-            ->get('https://httpbin.org/cookies/set?test_cookie=test_value&another=value2')
-    );
-    
-    $cookies = $response->getCookies();
-    echo "Received " . count($cookies) . " cookies:\n";
-    foreach ($cookies as $cookie) {
-        echo "  {$cookie->getName()} = {$cookie->getValue()}\n";
-    }
-    echo "\n";
+$data = Task::run(function () {
+    $users = Promise::all(array_map(
+        fn($id) => http()->cache()->withProtocolVersion("2.0")->get("https://jsonplaceholder.typicode.com/users/$id"),
+        range(1, 10)
+    ));
+    return array_map(fn($user) => $user->json(), await($users));
 });
 
-// Intermediate Cookie Tests with CookieJar
-echo "=== Intermediate Cookie Tests (CookieJar) ===\n";
+$phpTime = round((microtime(true) - $start) * 1000, 2);
+?>
 
-Task::run(function () {
-    $cookieJar = new CookieJar();
-    
-    // Test 4: Using cookie jar for automatic handling
-    echo "Test 4: Cookie jar automatic handling\n";
-    
-    // First request sets cookies
-    $response1 = await(
-        Http::request()
-            ->withCookieJar($cookieJar)
-            ->get('https://httpbin.org/cookies/set/jar_test/12345')
-    );
-    
-    echo "First response status: {$response1->status()}\n";
-    
-    // Check if cookies were automatically stored
-    $storedCookies = $cookieJar->getAllCookies();
-    echo "Cookies automatically stored in jar: " . count($storedCookies) . "\n";
-    
-    // If no cookies were auto-stored, manually apply them
-    if (count($storedCookies) === 0) {
-        $response1->applyCookiesToJar($cookieJar);
-        echo "Cookies manually applied to jar: " . count($cookieJar->getAllCookies()) . "\n";
-    }
-    
-    // Second request should automatically send stored cookies
-    $response2 = await(
-        Http::request()
-            ->withCookieJar($cookieJar)
-            ->get('https://httpbin.org/cookies')
-    );
-    
-    $data = $response2->json();
-    echo "Cookies automatically sent: " . json_encode($data['cookies'] ?? []) . "\n\n";
+<!DOCTYPE html>
+<html lang="en">
 
-    // Test 5: Cookie expiration and domain matching (FIXED)
-    echo "Test 5: Cookie expiration and domain matching\n";
-    
-    $testJar = new CookieJar();
-    
-    // Create cookies with different attributes for proper testing
-    $sessionCookie = new Cookie('session', 'temp123', null, 'example.com', '/');
-    $persistentCookie = new Cookie(
-        'persistent', 
-        'value456', 
-        time() + 3600, // expires in 1 hour
-        '.example.com', // Leading dot for subdomain matching
-        '/',
-        false, // not secure for testing
-        false  // not httpOnly for testing
-    );
-    $expiredCookie = new Cookie('expired', 'old', time() - 1, 'example.com', '/'); // already expired
-    
-    $testJar->setCookie($sessionCookie);
-    $testJar->setCookie($persistentCookie);
-    $testJar->setCookie($expiredCookie);
-    
-    echo "Total cookies before cleanup: " . count($testJar->getAllCookies()) . "\n";
-    
-    // Show which cookies we have before cleanup
-    echo "Cookies before cleanup:\n";
-    foreach ($testJar->getAllCookies() as $cookie) {
-        $expiry = $cookie->getExpires() ? date('Y-m-d H:i:s', $cookie->getExpires()) : 'session';
-        echo "  {$cookie->getName()} (expires: {$expiry})\n";
-    }
-    
-    $testJar->clearExpired();
-    $remainingCookies = $testJar->getAllCookies();
-    echo "Total cookies after cleanup: " . count($remainingCookies) . "\n";
-    
-    // Verify which cookies remained
-    echo "Remaining cookies:\n";
-    foreach ($remainingCookies as $cookie) {
-        echo "  {$cookie->getName()} = {$cookie->getValue()} (domain: {$cookie->getDomain()})\n";
-    }
-    
-    // Test domain matching with proper domains
-    $exactMatchCookies = $testJar->getCookies('example.com', '/');
-    echo "Cookies matching exact 'example.com': " . count($exactMatchCookies) . "\n";
-    foreach ($exactMatchCookies as $cookie) {
-        echo "  Exact match: {$cookie->getName()} (domain: {$cookie->getDomain()})\n";
-    }
-    
-    $subdomainMatchCookies = $testJar->getCookies('sub.example.com', '/');
-    echo "Cookies matching subdomain 'sub.example.com': " . count($subdomainMatchCookies) . "\n";
-    
-    // Debug: Show all cookies and test subdomain matching manually
-    echo "Debug - Testing subdomain matching:\n";
-    foreach ($testJar->getAllCookies() as $cookie) {
-        $domain = $cookie->getDomain();
-        $matches = false;
-        
-        if ($domain === 'sub.example.com') {
-            $matches = true;
-        } elseif ($domain && $domain[0] === '.' && str_ends_with('sub.example.com', substr($domain, 1))) {
-            $matches = true;
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHP vs JavaScript Performance</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+    <div class="container my-5">
+        <h1 class="text-center mb-4">
+            <i class="bi bi-speedometer2"></i>
+            PHP vs JavaScript Performance Comparison
+        </h1>
+
+        <!-- Performance Results Cards -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card border-success">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-success">
+                            <i class="bi bi-server"></i> PHP (Server-side)
+                        </h5>
+                        <h2 class="text-success"><?= $phpTime ?>ms</h2>
+                        <small class="text-muted">Fiber-based concurrent execution</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-info">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-info">
+                            <i class="bi bi-browser-chrome"></i> JavaScript (Client-side)
+                        </h5>
+                        <h2 class="text-info" id="jsTime">Testing...</h2>
+                        <small class="text-muted">Promise.all() concurrent execution</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Analysis -->
+        <div id="analysis" class="alert alert-info" style="display: none;">
+            <h5><i class="bi bi-graph-up"></i> Performance Analysis</h5>
+            <div id="analysisContent"></div>
+        </div>
+
+        <div class="text-center mb-4">
+            <button id="testAgainBtn" class="btn btn-primary" onclick="testJavaScriptPerformance()" style="display: none;">
+                <i class="bi bi-arrow-clockwise"></i> Test JavaScript Performance Again
+            </button>
+            <button id="clearCacheBtn" class="btn btn-warning ms-2" onclick="clearJavaScriptCache()" style="display: none;">
+                <i class="bi bi-trash"></i> Clear JavaScript Cache
+            </button>
+        </div>
+
+        <!-- Method Comparison Table -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-table"></i> Method Comparison</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Aspect</th>
+                            <th>PHP (Fiber-based)</th>
+                            <th>JavaScript (Browser)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Execution Environment</strong></td>
+                            <td>Server-side</td>
+                            <td>Client-side</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Network Location</strong></td>
+                            <td>Server → API</td>
+                            <td>Browser → API</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Concurrency Model</strong></td>
+                            <td>PHP Fibers</td>
+                            <td>Browser Event Loop</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Caching</strong></td>
+                            <td>Server-side cache</td>
+                            <td>Browser cache</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Network Overhead</strong></td>
+                            <td>Direct server connection</td>
+                            <td>User's internet connection</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Users Data -->
+        <div class="card shadow">
+            <div class="card-header">
+                <h5><i class="bi bi-people"></i> Users Data (PHP Generated)</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-striped table-hover" id="phpTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($data as $user): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($user['id']) ?></td>
+                                <td><?= htmlspecialchars($user['name']) ?></td>
+                                <td>
+                                    <a href="mailto:<?= htmlspecialchars($user['email']) ?>">
+                                        <?= htmlspecialchars($user['email']) ?>
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- JavaScript Results -->
+        <div class="card shadow mt-4">
+            <div class="card-header">
+                <h5><i class="bi bi-globe"></i> Users Data (JavaScript Generated)</h5>
+            </div>
+            <div class="card-body">
+                <div id="jsLoading" class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Fetching data with JavaScript...</p>
+                </div>
+                <table class="table table-striped table-hover" id="jsTable" style="display: none;">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Code Comparison -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6><i class="bi bi-server"></i> PHP Fiber Code</h6>
+                    </div>
+                    <div class="card-body">
+                        <pre class="bg-light p-3 rounded"><code>// PHP Concurrent Execution
+$users = Promise::all(array_map(
+    fn($id) => fetch(".../$id"),
+    range(1, 10)
+));
+$result = await($users);</code></pre>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h6><i class="bi bi-browser-chrome"></i> JavaScript Code</h6>
+                    </div>
+                    <div class="card-body">
+                        <pre class="bg-light p-3 rounded"><code>// JavaScript Concurrent Execution
+const promises = Array.from({length: 10}, 
+    (_, i) => fetch(`.../${i + 1}`)
+);
+const users = await Promise.all(promises);</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+        let cacheHits = 0;
+        let cacheMisses = 0;
+
+        // Persistent cache using localStorage
+        function getCachedData(url) {
+            try {
+                const cached = localStorage.getItem(`user_cache_${url}`);
+                if (cached) {
+                    const data = JSON.parse(cached);
+                    if (Date.now() - data.timestamp < CACHE_TTL) {
+                        return data.user;
+                    } else {
+                        // Cache expired, remove it
+                        localStorage.removeItem(`user_cache_${url}`);
+                    }
+                }
+            } catch (error) {
+                console.error('Cache read error:', error);
+            }
+            return null;
         }
-        
-        echo "  Cookie '{$cookie->getName()}' domain '{$domain}' matches sub.example.com: " . ($matches ? 'YES' : 'NO') . "\n";
-    }
-    echo "\n";
-});
 
-// Advanced Cookie Tests
-echo "=== Advanced Cookie Tests ===\n";
+        function setCachedData(url, userData) {
+            try {
+                const cacheData = {
+                    user: userData,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(`user_cache_${url}`, JSON.stringify(cacheData));
+            } catch (error) {
+                console.error('Cache write error:', error);
+            }
+        }
 
-Task::run(function () {
-    // Test 6: File-based persistent cookie jar
-    echo "Test 6: File-based persistent cookie storage\n";
-    
-    $cookieFile = sys_get_temp_dir() . '/test_cookies_' . uniqid() . '.json';
-    $fileCookieJar = new FileCookieJar($cookieFile, true);
-    
-    // Set some cookies
-    $response = await(
-        Http::request()
-            ->withCookieJar($fileCookieJar)
-            ->get('https://httpbin.org/cookies/set/persistent_test/file_value')
-    );
-    
-    // Ensure cookies are applied if not automatic
-    if (count($fileCookieJar->getAllCookies()) === 0) {
-        $response->applyCookiesToJar($fileCookieJar);
-    }
-    
-    echo "Cookies stored to file: {$cookieFile}\n";
-    echo "File exists: " . (file_exists($cookieFile) ? 'yes' : 'no') . "\n";
-    
-    // Create new jar from same file to test persistence
-    $newJar = new FileCookieJar($cookieFile);
-    $persistedCookies = $newJar->getAllCookies();
-    echo "Cookies loaded from file: " . count($persistedCookies) . "\n";
-    
-    // Verify persisted cookie details
-    foreach ($persistedCookies as $cookie) {
-        echo "  Persisted: {$cookie->getName()} = {$cookie->getValue()}\n";
-    }
-    
-    // Clean up
-    if (file_exists($cookieFile)) {
-        unlink($cookieFile);
-        echo "Cleanup: Cookie file deleted\n";
-    }
-    echo "\n";
+        async function fetchWithCache(url) {
+            // Check persistent cache first
+            const cached = getCachedData(url);
+            if (cached) {
+                console.log(`Cache hit for: ${url}`);
+                cacheHits++;
+                return cached;
+            }
 
-    // Test 7: Complex cookie attributes
-    echo "Test 7: Complex cookie attributes and SameSite\n";
-    
-    $complexCookie = new Cookie(
-        'complex',
-        'test_value',
-        time() + 7200, // 2 hours
-        '.httpbin.org',
-        '/cookies',
-        true,  // secure
-        true,  // httpOnly
-        7200,  // maxAge
-        'Strict' // sameSite
-    );
-    
-    echo "Cookie header format: " . $complexCookie->toSetCookieHeader() . "\n";
-    echo "Simple cookie format: " . $complexCookie->toCookieHeader() . "\n";
-    
-    // Test parsing Set-Cookie header
-    $setCookieHeader = 'test=value; Domain=.example.com; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=3600';
-    $parsedCookie = Cookie::fromSetCookieHeader($setCookieHeader);
-    
-    if ($parsedCookie) {
-        echo "Parsed cookie - Name: {$parsedCookie->getName()}, Value: {$parsedCookie->getValue()}\n";
-        echo "Domain: {$parsedCookie->getDomain()}, Path: {$parsedCookie->getPath()}\n";
-        echo "Secure: " . ($parsedCookie->isSecure() ? 'true' : 'false') . "\n";
-        echo "HttpOnly: " . ($parsedCookie->isHttpOnly() ? 'true' : 'false') . "\n";
-        echo "SameSite: {$parsedCookie->getSameSite()}\n";
-    } else {
-        echo "ERROR: Failed to parse Set-Cookie header\n";
-    }
-    echo "\n";
+            console.log(`Cache miss for: ${url}`);
+            cacheMisses++;
 
-    // Test 8: Session management simulation (FIXED)
-    echo "Test 8: Session management simulation\n";
-    
-    $sessionJar = new CookieJar();
-    
-    // Simulate login - try different approach
-    echo "Simulating login...\n";
-    
-    // First, try to get any cookies set by the server
-    $loginResponse = await(
-        Http::request()
-            ->get('https://httpbin.org/cookies/set/session_token/logged_in_12345')
-    );
-    
-    echo "Login response status: {$loginResponse->status()}\n";
-    
-    // Apply cookies to jar manually to ensure they're stored
-    $loginResponse->applyCookiesToJar($sessionJar);
-    echo "Login cookies stored: " . count($sessionJar->getAllCookies()) . "\n";
-    
-    // Show stored cookies
-    foreach ($sessionJar->getAllCookies() as $cookie) {
-        echo "  Stored: {$cookie->getName()} = {$cookie->getValue()}\n";
-    }
-    
-    // Simulate authenticated request
-    echo "Making authenticated request...\n";
-    $authResponse = await(
-        Http::request()
-            ->withCookieJar($sessionJar)
-            ->get('https://httpbin.org/cookies')
-    );
-    
-    $authData = $authResponse->json();
-    echo "Authenticated request cookies: " . json_encode($authData['cookies'] ?? []) . "\n";
-    
-    // Test cookie header generation
-    $cookieHeader = $sessionJar->getCookieHeader('httpbin.org', '/cookies');
-    echo "Generated Cookie header: '{$cookieHeader}'\n\n";
+            // Fetch fresh data
+            const response = await fetch(url);
+            const data = await response.json();
 
-    // Test 9: Multiple domains and paths
-    echo "Test 9: Multiple domains and path matching\n";
-    
-    $multiJar = new CookieJar();
-    
-    // Add cookies for different domains and paths
-    $multiJar->setCookie(new Cookie('site1', 'value1', null, 'example.com', '/'));
-    $multiJar->setCookie(new Cookie('site2', 'value2', null, 'test.com', '/api'));
-    $multiJar->setCookie(new Cookie('site3', 'value3', null, '.example.com', '/admin'));
-    
-    echo "Cookies for 'example.com' '/': " . count($multiJar->getCookies('example.com', '/')) . "\n";
-    echo "Cookies for 'sub.example.com' '/': " . count($multiJar->getCookies('sub.example.com', '/')) . "\n";
-    echo "Cookies for 'example.com' '/admin': " . count($multiJar->getCookies('example.com', '/admin')) . "\n";
-    echo "Cookies for 'test.com' '/api': " . count($multiJar->getCookies('test.com', '/api')) . "\n";
-    echo "\n";
+            // Store in persistent cache
+            setCachedData(url, data);
 
-    // Test 10: Performance test with many cookies
-    echo "Test 10: Performance test with many cookies\n";
-    
-    $perfJar = new CookieJar();
-    $startTime = microtime(true);
-    
-    // Add 1000 cookies with proper domains for testing
-    for ($i = 0; $i < 1000; $i++) {
-        $domain = ($i % 3 === 0) ? 'example.com' : (($i % 3 === 1) ? 'test.com' : 'other.com');
-        $perfJar->setCookie(new Cookie("cookie_{$i}", "value_{$i}", time() + 3600, $domain, '/'));
-    }
-    
-    $addTime = microtime(true) - $startTime;
-    echo "Time to add 1000 cookies: " . number_format($addTime * 1000, 2) . "ms\n";
-    echo "Total cookies in jar: " . count($perfJar->getAllCookies()) . "\n";
-    
-    $startTime = microtime(true);
-    $matchingCookies = $perfJar->getCookies('example.com', '/');
-    $matchTime = microtime(true) - $startTime;
-    
-    echo "Time to match cookies for 'example.com': " . number_format($matchTime * 1000, 2) . "ms\n";
-    echo "Matching cookies found: " . count($matchingCookies) . "\n";
-    
-    // Verify the matches are correct
-    $expectedMatches = ceil(1000 / 3);
-    echo "Expected matches: ~{$expectedMatches}, Actual: " . count($matchingCookies) . "\n";
-});
+            return data;
+        }
 
-echo "=== All Cookie Tests Completed ===\n";
+        async function testJavaScriptPerformance() {
+            // Reset cache counters for each test
+            cacheHits = 0;
+            cacheMisses = 0;
+
+            const start = performance.now();
+
+            try {
+                const promises = Array.from({
+                        length: 10
+                    }, (_, i) =>
+                    fetchWithCache(`https://jsonplaceholder.typicode.com/users/${i + 1}`)
+                );
+
+                const users = await Promise.all(promises);
+
+                const end = performance.now();
+                const jsTime = Math.round((end - start) * 100) / 100;
+
+                // Display results
+                document.getElementById('jsTime').textContent = jsTime + 'ms';
+                document.getElementById('jsLoading').style.display = 'none';
+                document.getElementById('jsTable').style.display = 'block';
+
+                // Show the test again button and clear cache button
+                document.getElementById('testAgainBtn').style.display = 'block';
+                document.getElementById('clearCacheBtn').style.display = 'block';
+
+                // Populate table
+                const tbody = document.getElementById('jsTableBody');
+                tbody.innerHTML = '';
+                users.forEach(user => {
+                    const row = document.createElement('tr');
+                    const idCell = document.createElement('td');
+                    idCell.textContent = user.id;
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = user.name;
+                    const emailCell = document.createElement('td');
+                    const emailLink = document.createElement('a');
+                    emailLink.href = `mailto:${user.email}`;
+                    emailLink.textContent = user.email;
+                    emailCell.appendChild(emailLink);
+                    row.appendChild(idCell);
+                    row.appendChild(nameCell);
+                    row.appendChild(emailCell);
+                    tbody.appendChild(row);
+                });
+
+                // Performance analysis
+                analyzePerformance(<?= $phpTime ?>, jsTime);
+
+            } catch (error) {
+                console.error('JavaScript fetch failed:', error);
+                document.getElementById('jsTime').textContent = 'Error';
+                document.getElementById('jsLoading').innerHTML =
+                    '<div class="alert alert-danger">Failed to fetch data</div>';
+            }
+        }
+
+        function clearJavaScriptCache() {
+            // Clear all user cache entries
+            for (let i = 1; i <= 10; i++) {
+                localStorage.removeItem(`user_cache_https://jsonplaceholder.typicode.com/users/${i}`);
+            }
+            alert('JavaScript cache cleared! Refresh the page to test without cache.');
+        }
+
+        function analyzePerformance(phpTime, jsTime) {
+            const difference = Math.abs(phpTime - jsTime);
+            const faster = phpTime < jsTime ? 'PHP' : 'JavaScript';
+            const slower = phpTime > jsTime ? 'PHP' : 'JavaScript';
+            const percentage = Math.round((difference / Math.max(phpTime, jsTime)) * 100);
+
+            const analysisDiv = document.getElementById('analysis');
+            const contentDiv = document.getElementById('analysisContent');
+
+            contentDiv.innerHTML = `
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Performance Winner:</strong> ${faster} is ${percentage}% faster<br>
+                    <strong>Time Difference:</strong> ${difference}ms
+                </div>
+                <div class="col-md-4">
+                    <strong>PHP Time:</strong> ${phpTime}ms<br>
+                    <strong>JavaScript Time:</strong> ${jsTime}ms
+                </div>
+                <div class="col-md-4">
+                    <strong>Cache Hits:</strong> ${cacheHits}<br>
+                    <strong>Cache Misses:</strong> ${cacheMisses}
+                </div>
+            </div>
+            <hr>
+            <h6>Why ${faster} is faster:</h6>
+            <ul>
+                ${faster === 'PHP' ? `
+                    <li>Server-side persistent caching is highly effective</li>
+                    <li>No browser overhead or CORS preflight requests</li>
+                    <li>Better network connectivity to APIs</li>
+                    <li>Fiber-based concurrency is highly optimized</li>
+                ` : `
+                    <li>Browser's optimized JavaScript engine</li>
+                    <li>Effective persistent client-side caching (${cacheHits} hits)</li>
+                    <li>Native Promise.all() implementation</li>
+                    <li>localStorage provides persistent cache across page loads</li>
+                `}
+            </ul>
+            <div class="alert alert-warning mt-2">
+                <small><strong>Fair Test:</strong> Both PHP and JavaScript now use persistent caching that survives page reloads.</small>
+            </div>
+        `;
+
+            analysisDiv.style.display = 'block';
+        }
+
+        // Start the JavaScript test
+        window.addEventListener('load', () => {
+            setTimeout(testJavaScriptPerformance, 1000);
+        });
+    </script>
+</body>
+
+</html>

@@ -2,6 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\MySQL;
 
+use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -31,7 +32,7 @@ class PooledTransaction
 
     public function commit(): PromiseInterface
     {
-        return async(function () {
+        return Async::async(function () {
             try {
                 $result = await($this->client->commit());
 
@@ -44,7 +45,7 @@ class PooledTransaction
 
     public function rollback(): PromiseInterface
     {
-        return async(function () {
+        return Async::async(function () {
             try {
                 $result = await($this->client->rollback());
 

@@ -2,6 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\MySQL\Handlers;
 
+use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Api\AsyncSocket;
 use Rcalicdan\FiberAsync\MySQL\MySQLClient;
 use Rcalicdan\FiberAsync\MySQL\Protocol\PacketBuilder;
@@ -29,7 +30,7 @@ class ConnectionHandler
 
     public function connect(): PromiseInterface
     {
-        return async(function () {
+        return Async::async(function () {
             $this->establishSocketConnection();
             $this->initializeConnection();
             $this->performHandshake();
@@ -42,7 +43,7 @@ class ConnectionHandler
 
     public function close(): PromiseInterface
     {
-        return async(function () {
+        return Async::async(function () {
             $socket = $this->client->getSocket();
 
             if ($this->shouldCloseSocket($socket)) {
@@ -54,7 +55,7 @@ class ConnectionHandler
 
     public function ensureConnection(): PromiseInterface
     {
-        return async(function () {
+        return Async::async(function () {
             $socket = $this->client->getSocket();
 
             if (! $socket || $socket->isClosed()) {

@@ -41,6 +41,18 @@ interface PromiseCollectionInterface
     public static function all(array $promises): PromiseInterface;
 
     /**
+     * Wait for all promises to settle (either resolve or reject).
+     * 
+     * Unlike all(), this method waits for every promise to complete and returns
+     * all results, including both successful values and rejection reasons.
+     * This method never rejects - it always resolves with an array of settlement results.
+     *
+     * @param  array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>>  $promises
+     * @return PromiseInterface<array<int|string, array{status: 'fulfilled'|'rejected', value?: mixed, reason?: mixed}>>
+     */
+    public static function allSettled(array $promises): PromiseInterface;
+
+    /**
      * Wait for the first promise to resolve or reject.
      *
      * Returns a promise that settles with the same value/reason as

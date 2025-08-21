@@ -82,8 +82,8 @@ class Promise implements PromiseCollectionInterface, PromiseInterface
 
         $this->executorHandler->executeExecutor(
             $executor,
-            fn ($value) => $this->resolve($value),
-            fn ($reason) => $this->reject($reason)
+            fn($value) => $this->resolve($value),
+            fn($reason) => $this->reject($reason)
         );
     }
 
@@ -178,9 +178,9 @@ class Promise implements PromiseCollectionInterface, PromiseInterface
                 };
 
                 if ($this->stateHandler->isResolved()) {
-                    $this->chainHandler->scheduleHandler(fn () => $handleResolve($this->stateHandler->getValue()));
+                    $this->chainHandler->scheduleHandler(fn() => $handleResolve($this->stateHandler->getValue()));
                 } elseif ($this->stateHandler->isRejected()) {
-                    $this->chainHandler->scheduleHandler(fn () => $handleReject($this->stateHandler->getReason()));
+                    $this->chainHandler->scheduleHandler(fn() => $handleReject($this->stateHandler->getReason()));
                 } else {
                     $this->callbackHandler->addThenCallback($handleResolve);
                     $this->callbackHandler->addCatchCallback($handleReject);
@@ -329,6 +329,15 @@ class Promise implements PromiseCollectionInterface, PromiseInterface
     {
         return self::getAsyncOps()->all($promises);
     }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function allSettled(array $promises): PromiseInterface
+    {
+        return self::getAsyncOps()->allSettled($promises);
+    }
+
 
     /**
      * {@inheritdoc}

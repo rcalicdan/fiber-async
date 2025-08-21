@@ -2,6 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\MySQL\Handlers;
 
+use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\MySQL\MySQLClient;
 use Rcalicdan\FiberAsync\MySQL\Transaction;
 use Rcalicdan\FiberAsync\MySQL\TransactionIsolationLevel;
@@ -49,7 +50,7 @@ class TransactionHandler
 
     public function beginTransaction(TransactionIsolationLevel|string|null $isolationLevel = null): PromiseInterface
     {
-        return async(function () use ($isolationLevel) {
+        return Async::async(function () use ($isolationLevel) {
             if ($this->activeTransaction) {
                 throw new \RuntimeException('Transaction already active');
             }
@@ -72,7 +73,7 @@ class TransactionHandler
 
     public function commit(): PromiseInterface
     {
-        return async(function () {
+        return Async::async(function () {
             if ($this->activeTransaction) {
                 $this->client->debug('Committing formal transaction');
                 $result = await($this->queryHandler->query('COMMIT'));
@@ -94,7 +95,7 @@ class TransactionHandler
 
     public function rollback(): PromiseInterface
     {
-        return async(function () {
+        return Async::async(function () {
             if ($this->activeTransaction) {
                 $this->client->debug('Rolling back formal transaction');
                 $result = await($this->queryHandler->query('ROLLBACK'));
@@ -116,7 +117,7 @@ class TransactionHandler
 
     public function savepoint(string $name): PromiseInterface
     {
-        return async(function () use ($name) {
+        return Async::async(function () use ($name) {
             if (! $this->activeTransaction) {
                 throw new \RuntimeException('No active transaction');
             }
@@ -129,7 +130,7 @@ class TransactionHandler
 
     public function rollbackToSavepoint(string $name): PromiseInterface
     {
-        return async(function () use ($name) {
+        return Async::async(function () use ($name) {
             if (! $this->activeTransaction) {
                 throw new \RuntimeException('No active transaction');
             }
@@ -142,7 +143,7 @@ class TransactionHandler
 
     public function releaseSavepoint(string $name): PromiseInterface
     {
-        return async(function () use ($name) {
+        return Async::async(function () use ($name) {
             if (! $this->activeTransaction) {
                 throw new \RuntimeException('No active transaction');
             }
@@ -165,7 +166,7 @@ class TransactionHandler
 
     public function setAutoCommit(bool $autoCommit): PromiseInterface
     {
-        return async(function () use ($autoCommit) {
+        return Async::async(function () use ($autoCommit) {
             $value = $autoCommit ? 1 : 0;
             $this->client->debug("Setting autocommit to: {$value}");
 
@@ -175,7 +176,7 @@ class TransactionHandler
 
     public function getAutoCommit(): PromiseInterface
     {
-        return async(function () {
+        return Async::async(function () {
             $result = await($this->queryHandler->query('SELECT @@autocommit'));
 
             return $result[0]['@@autocommit'] ?? 1;

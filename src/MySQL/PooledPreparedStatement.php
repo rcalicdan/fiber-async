@@ -2,6 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\MySQL;
 
+use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -23,7 +24,7 @@ class PooledPreparedStatement
 
     public function execute(array $params = []): PromiseInterface
     {
-        return async(function () use ($params) {
+        return Async::async(function () use ($params) {
             try {
                 return await($this->statement->execute($params));
             } catch (\Throwable $e) {
@@ -36,7 +37,7 @@ class PooledPreparedStatement
 
     public function close(): PromiseInterface
     {
-        return async(function () {
+        return Async::async(function () {
             try {
                 await($this->statement->close());
             } finally {

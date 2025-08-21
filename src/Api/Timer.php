@@ -61,4 +61,23 @@ final class Timer
     {
         return self::getAsyncOperations()->delay($seconds);
     }
+
+    /**
+     * Pause execution for a specified duration.
+     *
+     * This method blocks the current fiber's execution for the given number
+     * of seconds. It's useful for creating synchronous delays in async code
+     * without blocking the event loop.
+     *
+     * @param  float  $seconds  Number of seconds to sleep (supports fractional seconds)
+     * @return null Always returns null after the sleep duration
+     */
+    public static function sleep(float $seconds): null
+    {
+        if (!Async::inFiber()) {
+            throw new \RuntimeException('Timer::sleep() must be called from within an async context');
+        }
+
+        return Async::await(self::getAsyncOperations()->delay($seconds));
+    }
 }

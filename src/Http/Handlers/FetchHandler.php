@@ -3,6 +3,7 @@
 namespace Rcalicdan\FiberAsync\Http\Handlers;
 
 use Psr\SimpleCache\CacheInterface;
+use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Http\CacheConfig;
 use Rcalicdan\FiberAsync\Http\Exceptions\HttpException;
@@ -386,7 +387,7 @@ class FetchHandler
         $cacheKey = $this->generateCacheKey($url);
 
         /** @var PromiseInterface<Response> */
-        return async(function () use ($cache, $cacheKey, $url, $curlOptions, $cacheConfig, $retryConfig): Response {
+        return Async::async(function () use ($cache, $cacheKey, $url, $curlOptions, $cacheConfig, $retryConfig): Response {
             /** @var array{body: string, status: int, headers: array<string, array<string>|string>, expires_at: int}|null $cachedItem */
             $cachedItem = $cache->get($cacheKey);
 
