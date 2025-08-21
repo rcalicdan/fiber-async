@@ -621,6 +621,40 @@ class Request extends Message implements RequestInterface
     }
 
     /**
+     * Set the HTTP version for negotiation.
+     *
+     * @param string $version The HTTP version ('1.0', '1.1', '2.0', '2', '3.0', '3')
+     * @return self For fluent method chaining.
+     */
+    public function httpVersion(string $version): self
+    {
+        $this->protocol = $version;
+        return $this;
+    }
+
+    /**
+     * Force HTTP/2 negotiation with fallback to HTTP/1.1.
+     *
+     * @return self For fluent method chaining.
+     */
+    public function http2(): self
+    {
+        $this->protocol = '2.0';
+        return $this;
+    }
+
+    /**
+     * Force HTTP/3 negotiation with fallback to HTTP/1.1.
+     *
+     * @return self For fluent method chaining.
+     */
+    public function http3(): self
+    {
+        $this->protocol = '3.0';
+        return $this;
+    }
+
+    /**
      * Compiles all configured options into a cURL options array.
      *
      * @param  string  $method  The HTTP method.

@@ -78,6 +78,7 @@ class Response extends Message implements ResponseInterface
 
     private int $statusCode;
     private string $reasonPhrase;
+    private ?string $negotiatedHttpVersion = null;
 
     /**
      * Initializes a new Response instance.
@@ -327,5 +328,29 @@ class Response extends Message implements ResponseInterface
     public function serverError(): bool
     {
         return $this->statusCode >= 500;
+    }
+
+    /**
+     * Get the negotiated HTTP version from the actual response
+     */
+    public function getHttpVersion(): ?string
+    {
+        return $this->negotiatedHttpVersion;
+    }
+
+    /**
+     * Set the negotiated HTTP version (called internally)
+     */
+    public function setHttpVersion(?string $version): void
+    {
+        $this->negotiatedHttpVersion = $version;
+    }
+
+    /**
+     * Get a more detailed version string
+     */
+    public function getHttpVersionString(): string
+    {
+        return $this->negotiatedHttpVersion ?? 'HTTP/' . $this->protocol;
     }
 }

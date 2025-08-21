@@ -337,7 +337,7 @@ class HttpHandler
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
             $curlOptions,
-            function (?string $error, ?string $response, ?int $httpCode, array $headers = []) use ($promise, $url) {
+            function (?string $error, ?string $response, ?int $httpCode, array $headers = [], ?string $httpVersion = null) use ($promise, $url) {
                 if ($promise->isCancelled()) {
                     return;
                 }
@@ -348,8 +348,11 @@ class HttpHandler
                     $normalizedHeaders = $this->normalizeHeaders($headers);
                     $responseObj = new Response($response ?? '', $httpCode ?? 0, $normalizedHeaders);
 
-                    $this->processCookies($responseObj, $url, null);
+                    if ($httpVersion !== null) {
+                        $responseObj->setHttpVersion("HTTP/{$httpVersion}");
+                    }
 
+                    $this->processCookies($responseObj, $url, null);
                     $promise->resolve($responseObj);
                 }
             }
@@ -358,7 +361,6 @@ class HttpHandler
         $promise->setCancelHandler(function () use ($requestId) {
             EventLoop::getInstance()->cancelHttpRequest($requestId);
         });
-
 
         return $promise;
     }

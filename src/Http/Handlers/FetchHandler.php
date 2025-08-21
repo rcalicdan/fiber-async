@@ -521,7 +521,21 @@ class FetchHandler
 
         if ($this->isCurlOptionsFormat($cleanOptions)) {
             /** @var array<int, mixed> */
-            return array_filter($cleanOptions, fn($key) => is_int($key), ARRAY_FILTER_USE_KEY);
+            $curlOptions = array_filter($cleanOptions, fn($key) => is_int($key), ARRAY_FILTER_USE_KEY);
+
+            $curlOptions[CURLOPT_URL] = $url;
+
+            if (!isset($curlOptions[CURLOPT_RETURNTRANSFER])) {
+                $curlOptions[CURLOPT_RETURNTRANSFER] = true;
+            }
+            if (!isset($curlOptions[CURLOPT_HEADER])) {
+                $curlOptions[CURLOPT_HEADER] = true;
+            }
+            if (!isset($curlOptions[CURLOPT_NOBODY])) {
+                $curlOptions[CURLOPT_NOBODY] = false;
+            }
+
+            return $curlOptions;
         }
 
         /** @var array<int, mixed> $curlOptions */
@@ -544,6 +558,28 @@ class FetchHandler
                 }
             }
             $curlOptions[CURLOPT_HTTPHEADER] = $headerStrings;
+        }
+
+        if (isset($options['http_version']) && is_string($options['http_version'])) {
+            $curlOptions[CURLOPT_HTTP_VERSION] = match ($options['http_version']) {
+                '2.0', '2' => CURL_HTTP_VERSION_2TLS,
+                '3.0', '3' => defined('CURL_HTTP_VERSION_3')
+                    ? CURL_HTTP_VERSION_3
+                    : CURL_HTTP_VERSION_1_1,
+                '1.0' => CURL_HTTP_VERSION_1_0,
+                default => CURL_HTTP_VERSION_1_1,
+            };
+        }
+
+        if (isset($options['protocol']) && is_string($options['protocol'])) {
+            $curlOptions[CURLOPT_HTTP_VERSION] = match ($options['protocol']) {
+                '2.0', '2' => CURL_HTTP_VERSION_2TLS,
+                '3.0', '3' => defined('CURL_HTTP_VERSION_3')
+                    ? CURL_HTTP_VERSION_3
+                    : CURL_HTTP_VERSION_1_1,
+                '1.0' => CURL_HTTP_VERSION_1_0,
+                default => CURL_HTTP_VERSION_1_1,
+            };
         }
 
         if (isset($options['body'])) {

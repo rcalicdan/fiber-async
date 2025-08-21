@@ -43,7 +43,7 @@ class HttpRequestManager
      *
      * @param  string  $url  The URL for the request.
      * @param  array<int, mixed>  $options  cURL options for the request.
-     * @param  callable(string|null, string|null, int|null, array<string, mixed>): void  $callback  The callback to execute upon completion.
+     * @param  callable(string|null, string|null, int|null, array<string, mixed>, string|null): void  $callback  The callback to execute upon completion.
      * @return string A unique ID for the request, which can be used for cancellation.
      */
     public function addHttpRequest(string $url, array $options, callable $callback): string
@@ -74,7 +74,7 @@ class HttpRequestManager
         $this->pendingRequests = array_values(
             array_filter(
                 $this->pendingRequests,
-                static fn (HttpRequest $r): bool => spl_object_hash($r) !== $requestId
+                static fn(HttpRequest $r): bool => spl_object_hash($r) !== $requestId
             )
         );
 

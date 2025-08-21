@@ -32,6 +32,15 @@ final readonly class HttpResponseHandler
         $headerStr = substr($fullResponse, 0, $headerSize);
         $body = substr($fullResponse, $headerSize);
 
+        $httpVersion = curl_getinfo($handle, CURLINFO_HTTP_VERSION);
+        $versionString = match ($httpVersion) {
+            CURL_HTTP_VERSION_1_0 => '1.0',
+            CURL_HTTP_VERSION_1_1 => '1.1',
+            CURL_HTTP_VERSION_2_0 => '2.0',
+            CURL_HTTP_VERSION_3 => '3.0',
+            default => null
+        };
+
         $parsedHeaders = [];
         $headerLines = explode("\r\n", trim($headerStr));
         array_shift($headerLines);
@@ -53,7 +62,8 @@ final readonly class HttpResponseHandler
             }
         }
 
-        $request->executeCallback(null, $body, $httpCode, $parsedHeaders);
+        // Pass the HTTP version information to the callback
+        $request->executeCallback(null, $body, $httpCode, $parsedHeaders, $versionString);
     }
 
     /**

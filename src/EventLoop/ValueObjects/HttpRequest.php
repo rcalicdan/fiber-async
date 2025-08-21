@@ -105,9 +105,9 @@ class HttpRequest implements AsyncHttpRequestInterface
      *
      * @throws \Throwable Any exception thrown by the callback is propagated
      */
-    public function executeCallback(?string $error, ?string $response, ?int $httpCode, array $headers = []): void
+    public function executeCallback(?string $error, ?string $response, ?int $httpCode, array $headers = [], ?string $httpVersion = null): void
     {
-        ($this->callback)($error, $response, $httpCode, $headers);
+        ($this->callback)($error, $response, $httpCode, $headers, $httpVersion);
     }
 
     /**
