@@ -74,7 +74,7 @@ class HttpRequestManager
         $this->pendingRequests = array_values(
             array_filter(
                 $this->pendingRequests,
-                static fn(HttpRequest $r): bool => spl_object_hash($r) !== $requestId
+                static fn (HttpRequest $r): bool => spl_object_hash($r) !== $requestId
             )
         );
 
@@ -88,7 +88,7 @@ class HttpRequestManager
 
         unset($this->requestsById[$requestId]);
 
-        $request->getCallback()('Request cancelled', null, 0, []);
+        $request->getCallback()('Request cancelled', null, 0, [], null);
 
         return true;
     }

@@ -82,7 +82,7 @@ class Request extends Message implements RequestInterface
             $target = '/';
         }
         if ($this->uri->getQuery() !== '') {
-            $target .= '?' . $this->uri->getQuery();
+            $target .= '?'.$this->uri->getQuery();
         }
 
         return $target;
@@ -470,7 +470,7 @@ class Request extends Message implements RequestInterface
     public function get(string $url, array $query = []): PromiseInterface
     {
         if (count($query) > 0) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
         }
 
         return $this->send('GET', $url);
@@ -572,26 +572,27 @@ class Request extends Message implements RequestInterface
     /**
      * Set a cookie jar for automatic cookie handling.
      *
-     * @param CookieJarInterface $cookieJar The cookie jar to use
+     * @param  CookieJarInterface  $cookieJar  The cookie jar to use
      * @return self For fluent method chaining.
      */
     public function withCookieJar(CookieJarInterface $cookieJar): self
     {
         $this->cookieJar = $cookieJar;
+
         return $this;
     }
 
     /**
      * Set individual cookies for this request.
      *
-     * @param array<string, string> $cookies Associative array of cookie name => value pairs
+     * @param  array<string, string>  $cookies  Associative array of cookie name => value pairs
      * @return self For fluent method chaining.
      */
     public function cookies(array $cookies): self
     {
         $cookieStrings = [];
         foreach ($cookies as $name => $value) {
-            $cookieStrings[] = $name . '=' . urlencode($value);
+            $cookieStrings[] = $name.'='.urlencode($value);
         }
 
         if ($cookieStrings !== []) {
@@ -604,17 +605,17 @@ class Request extends Message implements RequestInterface
     /**
      * Set a single cookie for this request.
      *
-     * @param string $name Cookie name
-     * @param string $value Cookie value
+     * @param  string  $name  Cookie name
+     * @param  string  $value  Cookie value
      * @return self For fluent method chaining.
      */
     public function cookie(string $name, string $value): self
     {
         $existingCookies = $this->getHeaderLine('Cookie');
-        $newCookie = $name . '=' . urlencode($value);
+        $newCookie = $name.'='.urlencode($value);
 
         if ($existingCookies !== '') {
-            return $this->header('Cookie', $existingCookies . '; ' . $newCookie);
+            return $this->header('Cookie', $existingCookies.'; '.$newCookie);
         } else {
             return $this->header('Cookie', $newCookie);
         }
@@ -623,12 +624,13 @@ class Request extends Message implements RequestInterface
     /**
      * Set the HTTP version for negotiation.
      *
-     * @param string $version The HTTP version ('1.0', '1.1', '2.0', '2', '3.0', '3')
+     * @param  string  $version  The HTTP version ('1.0', '1.1', '2.0', '2', '3.0', '3')
      * @return self For fluent method chaining.
      */
     public function httpVersion(string $version): self
     {
         $this->protocol = $version;
+
         return $this;
     }
 
@@ -640,6 +642,7 @@ class Request extends Message implements RequestInterface
     public function http2(): self
     {
         $this->protocol = '2.0';
+
         return $this;
     }
 
@@ -651,6 +654,7 @@ class Request extends Message implements RequestInterface
     public function http3(): self
     {
         $this->protocol = '3.0';
+
         return $this;
     }
 
@@ -699,7 +703,7 @@ class Request extends Message implements RequestInterface
                 // Merge with existing Cookie header if present
                 $existingCookies = $this->getHeaderLine('Cookie');
                 if ($existingCookies !== '') {
-                    $this->header('Cookie', $existingCookies . '; ' . $cookieHeader);
+                    $this->header('Cookie', $existingCookies.'; '.$cookieHeader);
                 } else {
                     $this->header('Cookie', $cookieHeader);
                 }
@@ -733,7 +737,7 @@ class Request extends Message implements RequestInterface
         if (count($this->headers) > 0) {
             $headerStrings = [];
             foreach ($this->headers as $name => $value) {
-                $headerStrings[] = "{$name}: " . implode(', ', $value);
+                $headerStrings[] = "{$name}: ".implode(', ', $value);
             }
             $options[CURLOPT_HTTPHEADER] = $headerStrings;
         }
@@ -780,7 +784,7 @@ class Request extends Message implements RequestInterface
         }
 
         if (($port = $this->uri->getPort()) !== null) {
-            $host .= ':' . $port;
+            $host .= ':'.$port;
         }
 
         if (isset($this->headerNames['host'])) {

@@ -1,32 +1,32 @@
 <?php
 
-use Rcalicdan\FiberAsync\Api\DB;
 use Rcalicdan\FiberAsync\Api\AsyncPDO;
+use Rcalicdan\FiberAsync\Api\DB;
+use Rcalicdan\FiberAsync\Config\ConfigLoader;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\PDO\DatabaseConfigFactory;
-use Rcalicdan\FiberAsync\Config\ConfigLoader;
 
 beforeEach(function () {
-    $testDir = sys_get_temp_dir() . '/async-db-test-' . uniqid();
+    $testDir = sys_get_temp_dir().'/async-db-test-'.uniqid();
     mkdir($testDir);
-    mkdir($testDir . '/config');
-    mkdir($testDir . '/vendor'); 
+    mkdir($testDir.'/config');
+    mkdir($testDir.'/vendor');
 
     // Create database config file
     $databaseConfig = [
         'default' => 'test',
         'connections' => [
-            'test' => DatabaseConfigFactory::sqlite('file::memory:?cache=shared')
+            'test' => DatabaseConfigFactory::sqlite('file::memory:?cache=shared'),
         ],
-        'pool_size' => 5
+        'pool_size' => 5,
     ];
 
     file_put_contents(
-        $testDir . '/config/database.php',
-        '<?php return ' . var_export($databaseConfig, true) . ';'
+        $testDir.'/config/database.php',
+        '<?php return '.var_export($databaseConfig, true).';'
     );
 
-    file_put_contents($testDir . '/.env', 'DB_CONNECTION=test');
+    file_put_contents($testDir.'/.env', 'DB_CONNECTION=test');
 
     // Mock the ConfigLoader to use our test directory
     $reflection = new ReflectionClass(ConfigLoader::class);
@@ -50,10 +50,10 @@ afterEach(function () {
 
     // Clean up test directory
     if (isset($this->testDir) && is_dir($this->testDir)) {
-        array_map('unlink', glob($this->testDir . '/config/*'));
-        rmdir($this->testDir . '/config');
-        unlink($this->testDir . '/.env');
-        rmdir($this->testDir . '/vendor');
+        array_map('unlink', glob($this->testDir.'/config/*'));
+        rmdir($this->testDir.'/config');
+        unlink($this->testDir.'/.env');
+        rmdir($this->testDir.'/vendor');
         rmdir($this->testDir);
     }
 });
@@ -62,10 +62,11 @@ describe('DB Configuration and Initialization', function () {
     it('can auto-initialize from config files', function () {
         run(function () {
             // This should auto-initialize DB
-            $result = await(DB::raw("SELECT 1 as test"));
+            $result = await(DB::raw('SELECT 1 as test'));
 
             expect($result)->toHaveCount(1)
-                ->and($result[0]['test'])->toBe(1);
+                ->and($result[0]['test'])->toBe(1)
+            ;
         });
     });
 
@@ -84,7 +85,7 @@ describe('DB Configuration and Initialization', function () {
 
         try {
             run(function () {
-                await(DB::raw("SELECT 1"));
+                await(DB::raw('SELECT 1'));
             });
         } catch (RuntimeException $e) {
             $exceptionThrown = true;
@@ -106,9 +107,10 @@ describe('DB Configuration and Initialization', function () {
         $configProperty->setValue($instance, ['database' => ['default' => 123]]); // Invalid
 
         $firstExceptionThrown = false;
+
         try {
             run(function () {
-                await(DB::raw("SELECT 1"));
+                await(DB::raw('SELECT 1'));
             });
         } catch (RuntimeException $e) {
             $firstExceptionThrown = true;
@@ -120,14 +122,14 @@ describe('DB Configuration and Initialization', function () {
         $validConfig = [
             'default' => 'test',
             'connections' => [
-                'test' => DatabaseConfigFactory::sqlite('file::memory:?cache=shared')
+                'test' => DatabaseConfigFactory::sqlite('file::memory:?cache=shared'),
             ],
-            'pool_size' => 5
+            'pool_size' => 5,
         ];
         $configProperty->setValue($instance, ['database' => $validConfig]);
 
         run(function () {
-            $result = await(DB::raw("SELECT 1 as test"));
+            $result = await(DB::raw('SELECT 1 as test'));
             expect($result[0]['test'])->toBe(1);
         });
     });
@@ -136,12 +138,12 @@ describe('DB Configuration and Initialization', function () {
 describe('DB Raw Query Methods', function () {
     it('can execute raw queries', function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE test_raw (
                     id INTEGER PRIMARY KEY,
                     name VARCHAR(255)
                 )
-            "));
+            '));
 
             $result = await(DB::raw("SELECT name FROM sqlite_master WHERE type='table' AND name='test_raw'"));
             expect($result)->toHaveCount(1);
@@ -150,58 +152,60 @@ describe('DB Raw Query Methods', function () {
 
     it('can execute raw queries with bindings', function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE users (
                     id INTEGER PRIMARY KEY,
                     name VARCHAR(255),
                     email VARCHAR(255)
                 )
-            "));
+            '));
 
             await(DB::rawExecute(
-                "INSERT INTO users (name, email) VALUES (?, ?)",
+                'INSERT INTO users (name, email) VALUES (?, ?)',
                 ['John Doe', 'john@example.com']
             ));
 
-            $result = await(DB::raw("SELECT * FROM users WHERE email = ?", ['john@example.com']));
+            $result = await(DB::raw('SELECT * FROM users WHERE email = ?', ['john@example.com']));
 
             expect($result)->toHaveCount(1)
                 ->and($result[0]['name'])->toBe('John Doe')
-                ->and($result[0]['email'])->toBe('john@example.com');
+                ->and($result[0]['email'])->toBe('john@example.com')
+            ;
         });
     });
 
     it('can fetch first result with rawFirst', function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE users (
                     id INTEGER PRIMARY KEY,
                     name VARCHAR(255)
                 )
-            "));
+            '));
 
-            await(DB::rawExecute("INSERT INTO users (name) VALUES (?)", ['Alice']));
-            await(DB::rawExecute("INSERT INTO users (name) VALUES (?)", ['Bob']));
+            await(DB::rawExecute('INSERT INTO users (name) VALUES (?)', ['Alice']));
+            await(DB::rawExecute('INSERT INTO users (name) VALUES (?)', ['Bob']));
 
-            $result = await(DB::rawFirst("SELECT * FROM users ORDER BY id"));
+            $result = await(DB::rawFirst('SELECT * FROM users ORDER BY id'));
 
             expect($result)->toBeArray()
-                ->and($result['name'])->toBe('Alice');
+                ->and($result['name'])->toBe('Alice')
+            ;
         });
     });
 
     it('can fetch scalar values with rawValue', function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE counters (
                     id INTEGER PRIMARY KEY,
                     count INTEGER
                 )
-            "));
+            '));
 
-            await(DB::rawExecute("INSERT INTO counters (count) VALUES (42)"));
+            await(DB::rawExecute('INSERT INTO counters (count) VALUES (42)'));
 
-            $result = await(DB::rawValue("SELECT count FROM counters WHERE id = 1"));
+            $result = await(DB::rawValue('SELECT count FROM counters WHERE id = 1'));
 
             expect($result)->toBe(42);
         });
@@ -209,26 +213,26 @@ describe('DB Raw Query Methods', function () {
 
     it('can execute transactions', function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE accounts (
                     id INTEGER PRIMARY KEY,
                     balance REAL
                 )
-            "));
+            '));
 
-            await(DB::rawExecute("INSERT INTO accounts (id, balance) VALUES (1, 1000.0)"));
+            await(DB::rawExecute('INSERT INTO accounts (id, balance) VALUES (1, 1000.0)'));
 
             $result = await(DB::transaction(function ($pdo) {
-                $stmt = $pdo->prepare("UPDATE accounts SET balance = balance - 100 WHERE id = 1");
+                $stmt = $pdo->prepare('UPDATE accounts SET balance = balance - 100 WHERE id = 1');
                 $stmt->execute();
 
-                $stmt = $pdo->prepare("SELECT balance FROM accounts WHERE id = 1");
+                $stmt = $pdo->prepare('SELECT balance FROM accounts WHERE id = 1');
                 $stmt->execute();
 
                 return $stmt->fetch()['balance'];
             }));
 
-            expect((float)$result)->toBe(900.0);
+            expect((float) $result)->toBe(900.0);
         });
     });
 });
@@ -236,7 +240,7 @@ describe('DB Raw Query Methods', function () {
 describe('AsyncQueryBuilder Basic Operations', function () {
     beforeEach(function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name VARCHAR(255) NOT NULL,
@@ -245,7 +249,7 @@ describe('AsyncQueryBuilder Basic Operations', function () {
                     active BOOLEAN DEFAULT 1,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            "));
+            '));
         });
     });
 
@@ -254,7 +258,7 @@ describe('AsyncQueryBuilder Basic Operations', function () {
             $result = await(DB::table('users')->insert([
                 'name' => 'John Doe',
                 'email' => 'john@example.com',
-                'age' => 30
+                'age' => 30,
             ]));
 
             expect($result)->toBe(1);
@@ -269,7 +273,7 @@ describe('AsyncQueryBuilder Basic Operations', function () {
             $result = await(DB::table('users')->create([
                 'name' => 'Jane Smith',
                 'email' => 'jane@example.com',
-                'age' => 25
+                'age' => 25,
             ]));
 
             expect($result)->toBe(1);
@@ -281,7 +285,7 @@ describe('AsyncQueryBuilder Basic Operations', function () {
             $users = [
                 ['name' => 'User 1', 'email' => 'user1@example.com', 'age' => 20],
                 ['name' => 'User 2', 'email' => 'user2@example.com', 'age' => 21],
-                ['name' => 'User 3', 'email' => 'user3@example.com', 'age' => 22]
+                ['name' => 'User 3', 'email' => 'user3@example.com', 'age' => 22],
             ];
 
             $result = await(DB::table('users')->insertBatch($users));
@@ -303,7 +307,7 @@ describe('AsyncQueryBuilder Basic Operations', function () {
 describe('AsyncQueryBuilder Select Operations', function () {
     beforeEach(function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name VARCHAR(255),
@@ -311,14 +315,14 @@ describe('AsyncQueryBuilder Select Operations', function () {
                     age INTEGER,
                     active BOOLEAN DEFAULT 1
                 )
-            "));
+            '));
 
             // Insert test data
             $users = [
                 ['name' => 'Alice', 'email' => 'alice@example.com', 'age' => 25, 'active' => 1],
                 ['name' => 'Bob', 'email' => 'bob@example.com', 'age' => 30, 'active' => 1],
                 ['name' => 'Charlie', 'email' => 'charlie@example.com', 'age' => 35, 'active' => 0],
-                ['name' => 'Diana', 'email' => 'diana@example.com', 'age' => 28, 'active' => 1]
+                ['name' => 'Diana', 'email' => 'diana@example.com', 'age' => 28, 'active' => 1],
             ];
 
             await(DB::table('users')->insertBatch($users));
@@ -332,7 +336,8 @@ describe('AsyncQueryBuilder Select Operations', function () {
             expect($result)->toHaveCount(4);
             expect($result[0])->toHaveKey('name')
                 ->and($result[0])->toHaveKey('email')
-                ->and($result[0])->not->toHaveKey('age');
+                ->and($result[0])->not->toHaveKey('age')
+            ;
         });
     });
 
@@ -342,7 +347,8 @@ describe('AsyncQueryBuilder Select Operations', function () {
 
             expect($result)->toHaveCount(4);
             expect($result[0])->toHaveKey('name')
-                ->and($result[0])->toHaveKey('email');
+                ->and($result[0])->toHaveKey('email')
+            ;
         });
     });
 
@@ -358,7 +364,8 @@ describe('AsyncQueryBuilder Select Operations', function () {
             $result = await(DB::table('users')->orderBy('name')->first());
 
             expect($result)->toBeArray()
-                ->and($result['name'])->toBe('Alice');
+                ->and($result['name'])->toBe('Alice')
+            ;
         });
     });
 
@@ -368,7 +375,8 @@ describe('AsyncQueryBuilder Select Operations', function () {
 
             expect($result)->toBeArray()
                 ->and($result['id'])->toBe(1)
-                ->and($result['name'])->toBe('Alice');
+                ->and($result['name'])->toBe('Alice')
+            ;
         });
     });
 
@@ -377,7 +385,8 @@ describe('AsyncQueryBuilder Select Operations', function () {
             $result = await(DB::table('users')->find('alice@example.com', 'email'));
 
             expect($result)->toBeArray()
-                ->and($result['name'])->toBe('Alice');
+                ->and($result['name'])->toBe('Alice')
+            ;
         });
     });
 
@@ -435,7 +444,7 @@ describe('AsyncQueryBuilder Select Operations', function () {
 describe('AsyncQueryBuilder Where Clauses', function () {
     beforeEach(function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE products (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name VARCHAR(255),
@@ -444,14 +453,14 @@ describe('AsyncQueryBuilder Where Clauses', function () {
                     tags TEXT,
                     active BOOLEAN DEFAULT 1
                 )
-            "));
+            '));
 
             $products = [
                 ['name' => 'Laptop', 'price' => 999.99, 'category_id' => 1, 'tags' => 'electronics,computer', 'active' => 1],
                 ['name' => 'Mouse', 'price' => 29.99, 'category_id' => 1, 'tags' => 'electronics,accessory', 'active' => 1],
                 ['name' => 'Book', 'price' => 19.99, 'category_id' => 2, 'tags' => 'education,reading', 'active' => 1],
                 ['name' => 'Pen', 'price' => 2.99, 'category_id' => 3, 'tags' => 'office,writing', 'active' => 0],
-                ['name' => 'Phone', 'price' => 699.99, 'category_id' => 1, 'tags' => 'electronics,mobile', 'active' => 1]
+                ['name' => 'Phone', 'price' => 699.99, 'category_id' => 1, 'tags' => 'electronics,mobile', 'active' => 1],
             ];
 
             await(DB::table('products')->insertBatch($products));
@@ -521,7 +530,7 @@ describe('AsyncQueryBuilder Where Clauses', function () {
     it('can use whereNull', function () {
         run(function () {
             // First, update one record to have null price
-            await(DB::rawExecute("UPDATE products SET price = NULL WHERE id = 1"));
+            await(DB::rawExecute('UPDATE products SET price = NULL WHERE id = 1'));
 
             $result = await(DB::table('products')->whereNull('price')->get());
             expect($result)->toHaveCount(1);
@@ -545,7 +554,7 @@ describe('AsyncQueryBuilder Where Clauses', function () {
             $result = await(DB::table('products')->like('name', 'Lap', 'after')->get());
             expect($result)->toHaveCount(1); // Laptop
 
-            // Test 'before' - should find names that END with 'top' 
+            // Test 'before' - should find names that END with 'top'
             $result = await(DB::table('products')->like('name', 'top', 'before')->get());
             expect($result)->toHaveCount(1);
         });
@@ -555,33 +564,33 @@ describe('AsyncQueryBuilder Where Clauses', function () {
 describe('AsyncQueryBuilder Joins and Grouping', function () {
     beforeEach(function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE categories (
                     id INTEGER PRIMARY KEY,
                     name VARCHAR(255)
                 )
-            "));
+            '));
 
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE products (
                     id INTEGER PRIMARY KEY,
                     name VARCHAR(255),
                     category_id INTEGER,
                     price DECIMAL(10,2)
                 )
-            "));
+            '));
 
             await(DB::table('categories')->insertBatch([
                 ['id' => 1, 'name' => 'Electronics'],
                 ['id' => 2, 'name' => 'Books'],
-                ['id' => 3, 'name' => 'Office']
+                ['id' => 3, 'name' => 'Office'],
             ]));
 
             await(DB::table('products')->insertBatch([
                 ['name' => 'Laptop', 'category_id' => 1, 'price' => 999.99],
                 ['name' => 'Mouse', 'category_id' => 1, 'price' => 29.99],
                 ['name' => 'Book', 'category_id' => 2, 'price' => 19.99],
-                ['name' => 'Pen', 'category_id' => 3, 'price' => 2.99]
+                ['name' => 'Pen', 'category_id' => 3, 'price' => 2.99],
             ]));
         });
     });
@@ -595,7 +604,8 @@ describe('AsyncQueryBuilder Joins and Grouping', function () {
 
             expect($result)->toHaveCount(4);
             expect($result[0])->toHaveKey('product_name')
-                ->and($result[0])->toHaveKey('category_name');
+                ->and($result[0])->toHaveKey('category_name')
+            ;
         });
     });
 
@@ -645,12 +655,12 @@ describe('AsyncQueryBuilder Joins and Grouping', function () {
     it('can use having clauses', function () {
         run(function () {
             // Use raw query since SQLite has limitations with HAVING in query builder context
-            $result = await(DB::raw("
+            $result = await(DB::raw('
                 SELECT category_id, COUNT(*) as count 
                 FROM products 
                 GROUP BY category_id 
                 HAVING COUNT(*) > 1
-            "));
+            '));
 
             expect($result)->toHaveCount(1); // Only Electronics category has > 1 product
         });
@@ -660,21 +670,21 @@ describe('AsyncQueryBuilder Joins and Grouping', function () {
 describe('AsyncQueryBuilder Ordering and Limiting', function () {
     beforeEach(function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name VARCHAR(255),
                     age INTEGER,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            "));
+            '));
 
             $users = [
                 ['name' => 'Alice', 'age' => 25],
                 ['name' => 'Bob', 'age' => 30],
                 ['name' => 'Charlie', 'age' => 35],
                 ['name' => 'Diana', 'age' => 28],
-                ['name' => 'Eve', 'age' => 22]
+                ['name' => 'Eve', 'age' => 22],
             ];
 
             await(DB::table('users')->insertBatch($users));
@@ -725,19 +735,19 @@ describe('AsyncQueryBuilder Ordering and Limiting', function () {
 describe('AsyncQueryBuilder Update and Delete', function () {
     beforeEach(function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name VARCHAR(255),
                     email VARCHAR(255),
                     active BOOLEAN DEFAULT 1
                 )
-            "));
+            '));
 
             $users = [
                 ['name' => 'Alice', 'email' => 'alice@example.com', 'active' => 1],
                 ['name' => 'Bob', 'email' => 'bob@example.com', 'active' => 1],
-                ['name' => 'Charlie', 'email' => 'charlie@example.com', 'active' => 0]
+                ['name' => 'Charlie', 'email' => 'charlie@example.com', 'active' => 0],
             ];
 
             await(DB::table('users')->insertBatch($users));
@@ -800,12 +810,12 @@ describe('AsyncQueryBuilder Update and Delete', function () {
 describe('AsyncQueryBuilder Raw Methods', function () {
     beforeEach(function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE test_table (
                     id INTEGER PRIMARY KEY,
                     data VARCHAR(255)
                 )
-            "));
+            '));
 
             await(DB::rawExecute("INSERT INTO test_table (data) VALUES ('test data')"));
         });
@@ -813,17 +823,18 @@ describe('AsyncQueryBuilder Raw Methods', function () {
 
     it('can execute raw queries', function () {
         run(function () {
-            $result = await(DB::table('test_table')->raw("SELECT * FROM test_table"));
+            $result = await(DB::table('test_table')->raw('SELECT * FROM test_table'));
 
             expect($result)->toHaveCount(1)
-                ->and($result[0]['data'])->toBe('test data');
+                ->and($result[0]['data'])->toBe('test data')
+            ;
         });
     });
 
     it('can execute raw queries with bindings', function () {
         run(function () {
             $result = await(DB::table('test_table')->raw(
-                "SELECT * FROM test_table WHERE data = ?",
+                'SELECT * FROM test_table WHERE data = ?',
                 ['test data']
             ));
 
@@ -833,16 +844,17 @@ describe('AsyncQueryBuilder Raw Methods', function () {
 
     it('can execute rawFirst', function () {
         run(function () {
-            $result = await(DB::table('test_table')->rawFirst("SELECT * FROM test_table"));
+            $result = await(DB::table('test_table')->rawFirst('SELECT * FROM test_table'));
 
             expect($result)->toBeArray()
-                ->and($result['data'])->toBe('test data');
+                ->and($result['data'])->toBe('test data')
+            ;
         });
     });
 
     it('can execute rawValue', function () {
         run(function () {
-            $result = await(DB::table('test_table')->rawValue("SELECT data FROM test_table WHERE id = 1"));
+            $result = await(DB::table('test_table')->rawValue('SELECT data FROM test_table WHERE id = 1'));
 
             expect($result)->toBe('test data');
         });
@@ -852,13 +864,13 @@ describe('AsyncQueryBuilder Raw Methods', function () {
 describe('AsyncQueryBuilder Concurrency', function () {
     beforeEach(function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE concurrent_test (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name VARCHAR(255),
                     value INTEGER
                 )
-            "));
+            '));
 
             // Insert test data
             $data = [];
@@ -876,20 +888,24 @@ describe('AsyncQueryBuilder Concurrency', function () {
             $results = await(all([
                 function () {
                     await(delay(0.05));
+
                     return await(DB::table('concurrent_test')->where('value', '>', 100)->count());
                 },
                 function () {
                     await(delay(0.05));
+
                     return await(DB::table('concurrent_test')->where('value', '<', 50)->get());
                 },
                 function () {
                     await(delay(0.05));
+
                     return await(DB::table('concurrent_test')->orderBy('value', 'DESC')->first());
                 },
                 function () {
                     await(delay(0.05));
+
                     return await(DB::table('concurrent_test')->whereIn('value', [10, 20, 30])->get());
-                }
+                },
             ]));
 
             $endTime = microtime(true);
@@ -903,7 +919,8 @@ describe('AsyncQueryBuilder Concurrency', function () {
 
             // Verify concurrency - should complete in ~50ms, not ~200ms
             expect($executionTime)->toBeLessThan(100)
-                ->and($executionTime)->toBeGreaterThan(40);
+                ->and($executionTime)->toBeGreaterThan(40)
+            ;
         });
     });
 
@@ -914,9 +931,10 @@ describe('AsyncQueryBuilder Concurrency', function () {
             for ($i = 1; $i <= 5; $i++) {
                 $insertPromises[] = function () use ($i) {
                     await(delay(0.01 * $i));
+
                     return await(DB::table('concurrent_test')->insert([
                         'name' => "Concurrent Item {$i}",
-                        'value' => $i * 100
+                        'value' => $i * 100,
                     ]));
                 };
             }
@@ -950,7 +968,7 @@ describe('AsyncQueryBuilder Error Handling', function () {
 
     it('handles invalid column names in queries', function () {
         run(function () {
-            await(DB::rawExecute("CREATE TABLE test (id INTEGER PRIMARY KEY, name VARCHAR(255))"));
+            await(DB::rawExecute('CREATE TABLE test (id INTEGER PRIMARY KEY, name VARCHAR(255))'));
 
             $exceptionThrown = false;
 
@@ -967,12 +985,12 @@ describe('AsyncQueryBuilder Error Handling', function () {
 
     it('handles constraint violations', function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                CREATE TABLE unique_test (
                    id INTEGER PRIMARY KEY,
                    email VARCHAR(255) UNIQUE
                )
-           "));
+           '));
 
             await(DB::table('unique_test')->insert(['email' => 'test@example.com']));
 
@@ -993,12 +1011,12 @@ describe('AsyncQueryBuilder Error Handling', function () {
 describe('AsyncQueryBuilder Performance and Edge Cases', function () {
     it('handles large result sets efficiently', function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                CREATE TABLE large_test (
                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                    data VARCHAR(255)
                )
-           "));
+           '));
 
             // Insert a large batch of data
             $data = [];
@@ -1022,7 +1040,7 @@ describe('AsyncQueryBuilder Performance and Edge Cases', function () {
 
     it('handles empty results gracefully', function () {
         run(function () {
-            await(DB::rawExecute("CREATE TABLE empty_test (id INTEGER PRIMARY KEY, name VARCHAR(255))"));
+            await(DB::rawExecute('CREATE TABLE empty_test (id INTEGER PRIMARY KEY, name VARCHAR(255))'));
 
             $result = await(DB::table('empty_test')->get());
             expect($result)->toBeArray()->and($result)->toHaveCount(0);
@@ -1040,33 +1058,35 @@ describe('AsyncQueryBuilder Performance and Edge Cases', function () {
 
     it('handles null values correctly', function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                CREATE TABLE null_test (
                    id INTEGER PRIMARY KEY,
                    name VARCHAR(255),
                    optional_field VARCHAR(255)
                )
-           "));
+           '));
 
             await(DB::table('null_test')->insert([
                 'name' => 'Test Item',
-                'optional_field' => null
+                'optional_field' => null,
             ]));
 
             $result = await(DB::table('null_test')->whereNull('optional_field')->first());
             expect($result)->toBeArray()
                 ->and($result['name'])->toBe('Test Item')
-                ->and($result['optional_field'])->toBeNull();
+                ->and($result['optional_field'])->toBeNull()
+            ;
 
             $notNullResult = await(DB::table('null_test')->whereNotNull('name')->first());
             expect($notNullResult)->toBeArray()
-                ->and($notNullResult['name'])->toBe('Test Item');
+                ->and($notNullResult['name'])->toBe('Test Item')
+            ;
         });
     });
 
     it('handles complex query combinations', function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
            CREATE TABLE complex_test (
                id INTEGER PRIMARY KEY AUTOINCREMENT,
                name VARCHAR(255),
@@ -1075,14 +1095,14 @@ describe('AsyncQueryBuilder Performance and Edge Cases', function () {
                tags TEXT,
                active BOOLEAN DEFAULT 1
            )
-       "));
+       '));
 
             $data = [
                 ['name' => 'Product A', 'category' => 'Electronics', 'price' => 299.99, 'tags' => 'popular,new', 'active' => 1],
                 ['name' => 'Product B', 'category' => 'Electronics', 'price' => 499.99, 'tags' => 'premium,popular', 'active' => 1],
                 ['name' => 'Product C', 'category' => 'Books', 'price' => 19.99, 'tags' => 'education,new', 'active' => 1],
                 ['name' => 'Product D', 'category' => 'Electronics', 'price' => 99.99, 'tags' => 'budget', 'active' => 0],
-                ['name' => 'Product E', 'category' => 'Office', 'price' => 29.99, 'tags' => 'supplies,popular', 'active' => 1]
+                ['name' => 'Product E', 'category' => 'Office', 'price' => 29.99, 'tags' => 'supplies,popular', 'active' => 1],
             ];
 
             await(DB::table('complex_test')->insertBatch($data));
@@ -1094,7 +1114,8 @@ describe('AsyncQueryBuilder Performance and Edge Cases', function () {
                 ->whereBetween('price', [50, 500])
                 ->like('tags', 'popular')
                 ->orderBy('price', 'DESC')
-                ->limit(2);
+                ->limit(2)
+            ;
 
             $result = await($queryBuilder->get());
 
@@ -1114,9 +1135,11 @@ describe('AsyncQueryBuilder Performance and Edge Cases', function () {
                     })
                         ->orWhereNested(function ($q2) {
                             $q2->where('category', 'Office')->like('tags', 'popular');
-                        });
+                        })
+                    ;
                 })
-                ->orderBy('name');
+                ->orderBy('name')
+            ;
 
             $result = await($query->get());
 
@@ -1129,17 +1152,17 @@ describe('AsyncQueryBuilder Performance and Edge Cases', function () {
 describe('AsyncQueryBuilder Advanced Subqueries', function () {
     beforeEach(function () {
         run(function () {
-            await(DB::rawExecute("DROP TABLE IF EXISTS products"));
-            await(DB::rawExecute("DROP TABLE IF EXISTS categories"));
+            await(DB::rawExecute('DROP TABLE IF EXISTS products'));
+            await(DB::rawExecute('DROP TABLE IF EXISTS categories'));
 
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE IF NOT EXISTS categories (
                     id INTEGER PRIMARY KEY,
                     name VARCHAR(255) UNIQUE
                 )
-            "));
+            '));
 
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                 CREATE TABLE IF NOT EXISTS products (
                     id INTEGER PRIMARY KEY,
                     name VARCHAR(255),
@@ -1147,13 +1170,13 @@ describe('AsyncQueryBuilder Advanced Subqueries', function () {
                     price DECIMAL(10,2),
                     active BOOLEAN DEFAULT 1
                 )
-            "));
+            '));
 
             await(DB::table('categories')->insertBatch([
                 ['id' => 1, 'name' => 'Electronics'],
                 ['id' => 2, 'name' => 'Books'],
                 ['id' => 3, 'name' => 'Office'],
-                ['id' => 4, 'name' => 'Apparel']
+                ['id' => 4, 'name' => 'Apparel'],
             ]));
 
             await(DB::table('products')->insertBatch([
@@ -1161,7 +1184,7 @@ describe('AsyncQueryBuilder Advanced Subqueries', function () {
                 ['name' => 'Mouse', 'category_id' => 1, 'price' => 29.99, 'active' => 1],
                 ['name' => 'Book', 'category_id' => 2, 'price' => 19.99, 'active' => 1],
                 ['name' => 'Premium Pen', 'category_id' => 3, 'price' => 99.00, 'active' => 0],
-                ['name' => 'T-Shirt', 'category_id' => 4, 'price' => 25.00, 'active' => 1]
+                ['name' => 'T-Shirt', 'category_id' => 4, 'price' => 25.00, 'active' => 1],
             ]));
         });
     });
@@ -1174,8 +1197,10 @@ describe('AsyncQueryBuilder Advanced Subqueries', function () {
                         ->table('products')
                         ->whereRaw('products.category_id = categories.id')
                         ->where('active', 1)
-                        ->where('price', '>', 500);
-                });
+                        ->where('price', '>', 500)
+                    ;
+                })
+            ;
 
             $result = await($query->get());
 
@@ -1192,9 +1217,11 @@ describe('AsyncQueryBuilder Advanced Subqueries', function () {
                         ->table('products')
                         ->whereRaw('products.category_id = categories.id')
                         ->where('active', 1)
-                        ->where('price', '>', 500);
+                        ->where('price', '>', 500)
+                    ;
                 })
-                ->orderBy('name');
+                ->orderBy('name')
+            ;
 
             $result = await($query->get());
 
@@ -1208,11 +1235,11 @@ describe('AsyncQueryBuilder Method Chaining', function () {
     beforeEach(function () {
         run(function () {
             try {
-                await(DB::rawExecute("DROP TABLE IF EXISTS chain_test"));
+                await(DB::rawExecute('DROP TABLE IF EXISTS chain_test'));
             } catch (Exception $e) {
             }
 
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                CREATE TABLE chain_test (
                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                    name VARCHAR(255),
@@ -1220,14 +1247,14 @@ describe('AsyncQueryBuilder Method Chaining', function () {
                    priority INTEGER,
                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                )
-           "));
+           '));
 
             $data = [
                 ['name' => 'Task A', 'status' => 'pending', 'priority' => 1],
                 ['name' => 'Task B', 'status' => 'completed', 'priority' => 2],
                 ['name' => 'Task C', 'status' => 'pending', 'priority' => 3],
                 ['name' => 'Task D', 'status' => 'in_progress', 'priority' => 1],
-                ['name' => 'Task E', 'status' => 'pending', 'priority' => 2]
+                ['name' => 'Task E', 'status' => 'pending', 'priority' => 2],
             ];
 
             await(DB::table('chain_test')->insertBatch($data));
@@ -1255,7 +1282,8 @@ describe('AsyncQueryBuilder Method Chaining', function () {
         run(function () {
             $queryBuilder = DB::table('chain_test')
                 ->where('status', 'pending')
-                ->orderBy('priority');
+                ->orderBy('priority')
+            ;
 
             // Execute same query builder multiple times
             $result1 = await($queryBuilder->get());
@@ -1270,7 +1298,7 @@ describe('AsyncQueryBuilder Method Chaining', function () {
 describe('AsyncQueryBuilder Integration with Transactions', function () {
     beforeEach(function () {
         run(function () {
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                CREATE TABLE account_transactions (
                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                    account_id INTEGER,
@@ -1278,19 +1306,19 @@ describe('AsyncQueryBuilder Integration with Transactions', function () {
                    type VARCHAR(20),
                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                )
-           "));
+           '));
 
-            await(DB::rawExecute("
+            await(DB::rawExecute('
                CREATE TABLE accounts (
                    id INTEGER PRIMARY KEY,
                    name VARCHAR(255),
                    balance DECIMAL(10,2)
                )
-           "));
+           '));
 
             await(DB::table('accounts')->insertBatch([
                 ['id' => 1, 'name' => 'Account A', 'balance' => 1000.00],
-                ['id' => 2, 'name' => 'Account B', 'balance' => 500.00]
+                ['id' => 2, 'name' => 'Account B', 'balance' => 500.00],
             ]));
         });
     });
@@ -1302,27 +1330,28 @@ describe('AsyncQueryBuilder Integration with Transactions', function () {
                 $transferAmount = 200.00;
 
                 // Deduct from Account A
-                $stmt = $pdo->prepare("UPDATE accounts SET balance = balance - ? WHERE id = ?");
+                $stmt = $pdo->prepare('UPDATE accounts SET balance = balance - ? WHERE id = ?');
                 $stmt->execute([$transferAmount, 1]);
 
                 // Add to Account B
-                $stmt = $pdo->prepare("UPDATE accounts SET balance = balance + ? WHERE id = ?");
+                $stmt = $pdo->prepare('UPDATE accounts SET balance = balance + ? WHERE id = ?');
                 $stmt->execute([$transferAmount, 2]);
 
                 // Record transactions (these would normally use DB::table but within transaction we use PDO directly)
-                $stmt = $pdo->prepare("INSERT INTO account_transactions (account_id, amount, type) VALUES (?, ?, ?)");
+                $stmt = $pdo->prepare('INSERT INTO account_transactions (account_id, amount, type) VALUES (?, ?, ?)');
                 $stmt->execute([1, -$transferAmount, 'debit']);
                 $stmt->execute([2, $transferAmount, 'credit']);
 
                 // Return final balances
-                $stmt = $pdo->prepare("SELECT id, balance FROM accounts ORDER BY id");
+                $stmt = $pdo->prepare('SELECT id, balance FROM accounts ORDER BY id');
                 $stmt->execute();
+
                 return $stmt->fetchAll();
             }));
 
             expect($result)->toHaveCount(2);
-            expect((float)$result[0]['balance'])->toBe(800.00); // Account A: 1000 - 200
-            expect((float)$result[1]['balance'])->toBe(700.00); // Account B: 500 + 200
+            expect((float) $result[0]['balance'])->toBe(800.00); // Account A: 1000 - 200
+            expect((float) $result[1]['balance'])->toBe(700.00); // Account B: 500 + 200
 
             // Verify transaction records were created
             $transactionCount = await(DB::table('account_transactions')->count());

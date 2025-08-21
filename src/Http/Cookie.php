@@ -141,17 +141,17 @@ class Cookie
         }
 
         // Check secure flag
-        if ($this->secure && !$isSecure) {
+        if ($this->secure && ! $isSecure) {
             return false;
         }
 
         // Check domain
-        if (!$this->matchesDomain($domain)) {
+        if (! $this->matchesDomain($domain)) {
             return false;
         }
 
         // Check path
-        if (!$this->matchesPath($path)) {
+        if (! $this->matchesPath($path)) {
             return false;
         }
 
@@ -178,7 +178,7 @@ class Cookie
         }
 
         if (str_starts_with($this->domain, '.')) {
-            return str_ends_with($requestDomain, '.' . $cookieDomain) || $requestDomain === $cookieDomain;
+            return str_ends_with($requestDomain, '.'.$cookieDomain) || $requestDomain === $cookieDomain;
         }
 
         return false;
@@ -212,22 +212,22 @@ class Cookie
      */
     public function toSetCookieHeader(): string
     {
-        $parts = [$this->name . '=' . urlencode($this->value)];
+        $parts = [$this->name.'='.urlencode($this->value)];
 
         if ($this->expires !== null) {
-            $parts[] = 'Expires=' . gmdate('D, d M Y H:i:s T', $this->expires);
+            $parts[] = 'Expires='.gmdate('D, d M Y H:i:s T', $this->expires);
         }
 
         if ($this->maxAge !== null) {
-            $parts[] = 'Max-Age=' . $this->maxAge;
+            $parts[] = 'Max-Age='.$this->maxAge;
         }
 
         if ($this->domain !== null) {
-            $parts[] = 'Domain=' . $this->domain;
+            $parts[] = 'Domain='.$this->domain;
         }
 
         if ($this->path !== null) {
-            $parts[] = 'Path=' . $this->path;
+            $parts[] = 'Path='.$this->path;
         }
 
         if ($this->secure) {
@@ -239,7 +239,7 @@ class Cookie
         }
 
         if ($this->sameSite !== null) {
-            $parts[] = 'SameSite=' . $this->sameSite;
+            $parts[] = 'SameSite='.$this->sameSite;
         }
 
         return implode('; ', $parts);
@@ -250,7 +250,7 @@ class Cookie
      */
     public function toCookieHeader(): string
     {
-        return $this->name . '=' . $this->value;
+        return $this->name.'='.$this->value;
     }
 
     /**
@@ -296,18 +296,23 @@ class Cookie
                     case 'expires':
                         $timestamp = strtotime($attrValue);
                         $expires = $timestamp !== false ? $timestamp : null;
+
                         break;
                     case 'max-age':
                         $maxAge = (int) $attrValue;
+
                         break;
                     case 'domain':
                         $domain = $attrValue;
+
                         break;
                     case 'path':
                         $path = $attrValue;
+
                         break;
                     case 'samesite':
                         $sameSite = $attrValue;
+
                         break;
                 }
             }

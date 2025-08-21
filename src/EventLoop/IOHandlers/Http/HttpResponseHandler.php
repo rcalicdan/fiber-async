@@ -79,7 +79,7 @@ final readonly class HttpResponseHandler
     public function handleErrorResponse(\CurlHandle $handle, HttpRequest $request): void
     {
         $error = curl_error($handle);
-        $request->executeCallback($error, null, null, []);
+        $request->executeCallback($error, null, null, [], null);
     }
 
     /**

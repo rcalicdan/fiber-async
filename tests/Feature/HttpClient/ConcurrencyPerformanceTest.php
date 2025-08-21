@@ -8,16 +8,16 @@ describe('Async Performance and Concurrency', function () {
 
     test('sequential vs concurrent HTTP requests performance', function () {
         $urls = [
-           'https://jsonplaceholder.typicode.com/posts/1',
-           'https://jsonplaceholder.typicode.com/posts/2',
-           'https://jsonplaceholder.typicode.com/posts/3',
-           'https://jsonplaceholder.typicode.com/posts/4',
-           'https://jsonplaceholder.typicode.com/posts/5',
-           'https://jsonplaceholder.typicode.com/posts/6',
-           'https://jsonplaceholder.typicode.com/posts/7',
-           'https://jsonplaceholder.typicode.com/posts/8',
-           'https://jsonplaceholder.typicode.com/posts/9',
-           'https://jsonplaceholder.typicode.com/posts/10',
+            'https://jsonplaceholder.typicode.com/posts/1',
+            'https://jsonplaceholder.typicode.com/posts/2',
+            'https://jsonplaceholder.typicode.com/posts/3',
+            'https://jsonplaceholder.typicode.com/posts/4',
+            'https://jsonplaceholder.typicode.com/posts/5',
+            'https://jsonplaceholder.typicode.com/posts/6',
+            'https://jsonplaceholder.typicode.com/posts/7',
+            'https://jsonplaceholder.typicode.com/posts/8',
+            'https://jsonplaceholder.typicode.com/posts/9',
+            'https://jsonplaceholder.typicode.com/posts/10',
         ];
 
         $sequentialStart = microtime(true);

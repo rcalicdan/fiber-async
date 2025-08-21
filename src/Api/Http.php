@@ -2,17 +2,17 @@
 
 namespace Rcalicdan\FiberAsync\Api;
 
-use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
-use Rcalicdan\FiberAsync\Http\Request;
-use Rcalicdan\FiberAsync\Http\Response;
-use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Http\CacheConfig;
-use Rcalicdan\FiberAsync\Http\RetryConfig;
-use Rcalicdan\FiberAsync\Http\Stream;
+use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Interfaces\MessageInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\RequestInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\StreamInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\UriInterface;
+use Rcalicdan\FiberAsync\Http\Request;
+use Rcalicdan\FiberAsync\Http\Response;
+use Rcalicdan\FiberAsync\Http\RetryConfig;
+use Rcalicdan\FiberAsync\Http\Stream;
+use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
@@ -24,6 +24,7 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
  * underlying handler and event loop management for a more convenient API.
  *
  * Direct HTTP methods from HttpHandler:
+ *
  * @method static PromiseInterface<Response> get(string $url, array<string, mixed> $query = []) Performs a GET request.
  * @method static PromiseInterface<Response> post(string $url, array<string, mixed> $data = []) Performs a POST request.
  * @method static PromiseInterface<Response> put(string $url, array<string, mixed> $data = []) Performs a PUT request.
@@ -128,7 +129,7 @@ class Http
 
     /**
      * Magic method to handle dynamic static calls.
-     * 
+     *
      * This enables both direct HTTP methods (get, post, etc.) and request builder methods
      * (cache, timeout, headers, etc.) to be called directly on Http.
      *
@@ -155,6 +156,6 @@ class Http
             return $handler->{$method}(...$arguments);
         }
 
-        throw new \BadMethodCallException("Method {$method} does not exist on " . static::class);
+        throw new \BadMethodCallException("Method {$method} does not exist on ".static::class);
     }
 }

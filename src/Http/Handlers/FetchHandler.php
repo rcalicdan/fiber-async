@@ -18,7 +18,7 @@ use Symfony\Component\Cache\Psr16Cache;
 
 /**
  * Handler for fetch-style HTTP requests with advanced options support.
- * 
+ *
  * This class provides a flexible, fetch-like interface for making HTTP requests
  * with support for streaming, downloads, retry logic, and caching.
  */
@@ -29,7 +29,7 @@ class FetchHandler
 
     public function __construct(?StreamingHandler $streamingHandler = null)
     {
-        $this->streamingHandler = $streamingHandler ?? new StreamingHandler();
+        $this->streamingHandler = $streamingHandler ?? new StreamingHandler;
     }
 
     /**
@@ -89,7 +89,8 @@ class FetchHandler
             $requestId = EventLoop::getInstance()->addHttpRequest(
                 $url,
                 $options,
-                function (?string $error, ?string $responseBody, ?int $httpCode, array $headers = []) use ($retryConfig, $promise, &$attempt, &$totalAttempts, &$executeRequest) {
+                function (?string $error, ?string $responseBody, ?int $httpCode, array $headers = [], ?string $httpVersion = null) use ($retryConfig, $promise, &$attempt, &$totalAttempts, &$executeRequest) {
+
                     if ($promise->isCancelled()) {
                         return;
                     }
@@ -102,6 +103,7 @@ class FetchHandler
                         $delay = $retryConfig->getDelay($attempt);
 
                         EventLoop::getInstance()->addTimer($delay, $executeRequest);
+
                         return;
                     }
 
@@ -115,7 +117,13 @@ class FetchHandler
                         // Success case
                         /** @var array<string, array<string>|string> $normalizedHeaders */
                         $normalizedHeaders = $this->normalizeHeaders($headers);
-                        $promise->resolve(new Response($responseBody ?? '', $httpCode ?? 0, $normalizedHeaders));
+                        $responseObj = new Response($responseBody ?? '', $httpCode ?? 0, $normalizedHeaders);
+
+                        if ($httpVersion !== null) {
+                            $responseObj->setHttpVersion($httpVersion);
+                        }
+
+                        $promise->resolve($responseObj);
                     }
                 }
             );
@@ -144,7 +152,7 @@ class FetchHandler
     {
         $destination = $options['download'] ?? $options['save_to'] ?? null;
 
-        if (!is_string($destination)) {
+        if (! is_string($destination)) {
             throw new \InvalidArgumentException('Download destination must be a string path');
         }
 
@@ -221,14 +229,14 @@ class FetchHandler
      */
     private function extractRetryConfig(array $options): ?RetryConfig
     {
-        if (!isset($options['retry'])) {
+        if (! isset($options['retry'])) {
             return null;
         }
 
         $retry = $options['retry'];
 
         if ($retry === true) {
-            return new RetryConfig();
+            return new RetryConfig;
         }
 
         if ($retry instanceof RetryConfig) {
@@ -242,7 +250,7 @@ class FetchHandler
                 $codes = [];
                 foreach ($retry['retryable_status_codes'] as $code) {
                     if (is_numeric($code)) {
-                        $codes[] = (int)$code;
+                        $codes[] = (int) $code;
                     }
                 }
                 $retryableStatusCodes = $codes;
@@ -261,7 +269,7 @@ class FetchHandler
                 $exceptions = [];
                 foreach ($retry['retryable_exceptions'] as $exception) {
                     if (is_scalar($exception)) {
-                        $exceptions[] = (string)$exception;
+                        $exceptions[] = (string) $exception;
                     }
                 }
                 $retryableExceptions = $exceptions;
@@ -273,10 +281,10 @@ class FetchHandler
             $backoffMultiplier = $retry['backoff_multiplier'] ?? 2.0;
 
             return new RetryConfig(
-                maxRetries: is_numeric($maxRetries) ? (int)$maxRetries : 3,
-                baseDelay: is_numeric($baseDelay) ? (float)$baseDelay : 1.0,
-                maxDelay: is_numeric($maxDelay) ? (float)$maxDelay : 60.0,
-                backoffMultiplier: is_numeric($backoffMultiplier) ? (float)$backoffMultiplier : 2.0,
+                maxRetries: is_numeric($maxRetries) ? (int) $maxRetries : 3,
+                baseDelay: is_numeric($baseDelay) ? (float) $baseDelay : 1.0,
+                maxDelay: is_numeric($maxDelay) ? (float) $maxDelay : 60.0,
+                backoffMultiplier: is_numeric($backoffMultiplier) ? (float) $backoffMultiplier : 2.0,
                 jitter: (bool) ($retry['jitter'] ?? true),
                 retryableStatusCodes: $retryableStatusCodes,
                 retryableExceptions: $retryableExceptions
@@ -293,14 +301,14 @@ class FetchHandler
      */
     private function extractCacheConfig(array $options): ?CacheConfig
     {
-        if (!isset($options['cache'])) {
+        if (! isset($options['cache'])) {
             return null;
         }
 
         $cache = $options['cache'];
 
         if ($cache === true) {
-            return new CacheConfig();
+            return new CacheConfig;
         }
 
         // Handle CacheConfig object
@@ -318,7 +326,7 @@ class FetchHandler
             $ttl = $cache['ttl'] ?? 3600;
 
             return new CacheConfig(
-                ttlSeconds: is_numeric($ttl) ? (int)$ttl : 3600,
+                ttlSeconds: is_numeric($ttl) ? (int) $ttl : 3600,
                 respectServerHeaders: (bool) ($cache['respect_server_headers'] ?? true),
                 cache: $cacheInstance
             );
@@ -333,9 +341,8 @@ class FetchHandler
     }
 
     /**
-     * Executes basic fetch without advanced features 
+     * Executes basic fetch without advanced features
      *
-     * @param  string  $url
      * @param  array<int, mixed>  $curlOptions
      * @return PromiseInterface<Response>
      */
@@ -347,7 +354,7 @@ class FetchHandler
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
             $curlOptions,
-            function (?string $error, ?string $response, ?int $httpCode, array $headers = []) use ($promise) {
+            function (?string $error, ?string $response, ?int $httpCode, array $headers = [], ?string $httpVersion = null) use ($promise) {
                 if ($promise->isCancelled()) {
                     return;
                 }
@@ -356,7 +363,13 @@ class FetchHandler
                     $promise->reject(new HttpException("HTTP Request failed: {$error}"));
                 } else {
                     $normalizedHeaders = $this->normalizeHeaders($headers);
-                    $promise->resolve(new Response($response ?? '', $httpCode ?? 0, $normalizedHeaders));
+                    $responseObj = new Response($response ?? '', $httpCode ?? 0, $normalizedHeaders);
+
+                    if ($httpVersion !== null) {
+                        $responseObj->setHttpVersion($httpVersion);
+                    }
+
+                    $promise->resolve($responseObj);
                 }
             }
         );
@@ -406,7 +419,6 @@ class FetchHandler
 
                 $cachedHeaders = $cachedItem['headers'];
 
-                // Fix for line 528 - add proper type checking
                 if (isset($cachedHeaders['etag'])) {
                     $etagValue = $cachedHeaders['etag'];
                     if (is_string($etagValue)) {
@@ -418,11 +430,10 @@ class FetchHandler
                     }
 
                     if ($etag !== null) {
-                        $httpHeaders[] = 'If-None-Match: ' . $etag;
+                        $httpHeaders[] = 'If-None-Match: '.$etag;
                     }
                 }
 
-                // Fix for line 535 - add proper type checking
                 if (isset($cachedHeaders['last-modified'])) {
                     $lastModifiedValue = $cachedHeaders['last-modified'];
                     if (is_string($lastModifiedValue)) {
@@ -434,7 +445,7 @@ class FetchHandler
                     }
 
                     if ($lastModified !== null) {
-                        $httpHeaders[] = 'If-Modified-Since: ' . $lastModified;
+                        $httpHeaders[] = 'If-Modified-Since: '.$lastModified;
                     }
                 }
 
@@ -443,7 +454,6 @@ class FetchHandler
 
             $response = await($this->dispatchRequest($url, $curlOptions, $retryConfig));
 
-            // Fix for line 571 - add proper type checking before accessing array offset
             if ($response->status() === 304 && is_array($cachedItem)) {
                 $newExpiry = $this->calculateExpiry($response, $cacheConfig);
                 $cachedItem['expires_at'] = $newExpiry;
@@ -506,7 +516,7 @@ class FetchHandler
     {
         // Remove streaming-specific options before processing
         $cleanOptions = array_filter($options, function ($key) {
-            return !in_array($key, [
+            return ! in_array($key, [
                 'stream',
                 'on_chunk',
                 'onChunk',
@@ -515,23 +525,23 @@ class FetchHandler
                 'retry',
                 'cache',
                 'retry_config',
-                'cache_config'
+                'cache_config',
             ], true);
         }, ARRAY_FILTER_USE_KEY);
 
         if ($this->isCurlOptionsFormat($cleanOptions)) {
             /** @var array<int, mixed> */
-            $curlOptions = array_filter($cleanOptions, fn($key) => is_int($key), ARRAY_FILTER_USE_KEY);
+            $curlOptions = array_filter($cleanOptions, fn ($key) => is_int($key), ARRAY_FILTER_USE_KEY);
 
             $curlOptions[CURLOPT_URL] = $url;
 
-            if (!isset($curlOptions[CURLOPT_RETURNTRANSFER])) {
+            if (! isset($curlOptions[CURLOPT_RETURNTRANSFER])) {
                 $curlOptions[CURLOPT_RETURNTRANSFER] = true;
             }
-            if (!isset($curlOptions[CURLOPT_HEADER])) {
+            if (! isset($curlOptions[CURLOPT_HEADER])) {
                 $curlOptions[CURLOPT_HEADER] = true;
             }
-            if (!isset($curlOptions[CURLOPT_NOBODY])) {
+            if (! isset($curlOptions[CURLOPT_NOBODY])) {
                 $curlOptions[CURLOPT_NOBODY] = false;
             }
 
@@ -640,7 +650,7 @@ class FetchHandler
                 if (isset($curlOptions[CURLOPT_HTTPHEADER]) && is_array($curlOptions[CURLOPT_HTTPHEADER])) {
                     $headers = $curlOptions[CURLOPT_HTTPHEADER];
                 }
-                $headers[] = 'Authorization: Bearer ' . $auth['bearer'];
+                $headers[] = 'Authorization: Bearer '.$auth['bearer'];
                 $curlOptions[CURLOPT_HTTPHEADER] = $headers;
             }
 
@@ -650,7 +660,7 @@ class FetchHandler
                     isset($basic['username'], $basic['password']) &&
                     is_string($basic['username']) && is_string($basic['password'])
                 ) {
-                    $curlOptions[CURLOPT_USERPWD] = $basic['username'] . ':' . $basic['password'];
+                    $curlOptions[CURLOPT_USERPWD] = $basic['username'].':'.$basic['password'];
                     $curlOptions[CURLOPT_HTTPAUTH] = CURLAUTH_BASIC;
                 }
             }
@@ -711,7 +721,7 @@ class FetchHandler
      */
     private function generateCacheKey(string $url): string
     {
-        return 'http_' . sha1($url);
+        return 'http_'.sha1($url);
     }
 
     /**

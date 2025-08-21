@@ -270,6 +270,7 @@ class AsyncQueryBuilder
     {
         if ($values === []) {
             $this->whereRaw('0=1');
+
             return $this;
         }
         $placeholders = implode(', ', array_fill(0, count($values), $this->getPlaceholder()));
@@ -429,7 +430,6 @@ class AsyncQueryBuilder
         return $this;
     }
 
-
     /**
      * Add an ORDER BY clause to the query.
      *
@@ -439,7 +439,7 @@ class AsyncQueryBuilder
      */
     public function orderBy(string $column, string $direction = 'ASC'): self
     {
-        $this->orderBy[] = "{$column} " . strtoupper($direction);
+        $this->orderBy[] = "{$column} ".strtoupper($direction);
 
         return $this;
     }
@@ -529,8 +529,10 @@ class AsyncQueryBuilder
             $result = await($this->find($id, $column));
             if ($result === null || $result === false) {
                 $idString = is_scalar($id) ? (string) $id : 'complex_type';
+
                 throw new \RuntimeException("Record not found with {$column} = {$idString}");
             }
+
             return $result;
         })();
     }
@@ -546,6 +548,7 @@ class AsyncQueryBuilder
         // @phpstan-ignore-next-line
         return Async::async(function () use ($column): mixed {
             $result = await($this->select($column)->first());
+
             return ($result !== false && isset($result[$column])) ? $result[$column] : null;
         })();
     }
@@ -561,6 +564,7 @@ class AsyncQueryBuilder
         $sql = $this->buildCountQuery($column);
         /** @var PromiseInterface<int> */
         $promise = AsyncPDO::fetchValue($sql, $this->getCompiledBindings());
+
         return $promise;
     }
 
@@ -574,6 +578,7 @@ class AsyncQueryBuilder
         // @phpstan-ignore-next-line
         return Async::async(function (): bool {
             $count = await($this->count());
+
             return $count > 0;
         })();
     }
@@ -590,6 +595,7 @@ class AsyncQueryBuilder
             return Promise::resolve(0);
         }
         $sql = $this->buildInsertQuery($data);
+
         return AsyncPDO::execute($sql, array_values($data));
     }
 
@@ -700,8 +706,8 @@ class AsyncQueryBuilder
      */
     protected function buildSelectQuery(): string
     {
-        $sql = 'SELECT ' . implode(', ', $this->select);
-        $sql .= ' FROM ' . $this->table;
+        $sql = 'SELECT '.implode(', ', $this->select);
+        $sql .= ' FROM '.$this->table;
 
         foreach ($this->joins as $join) {
             $sql .= " {$join['type']} JOIN {$join['table']} ON {$join['condition']}";
@@ -709,25 +715,25 @@ class AsyncQueryBuilder
 
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
-            $sql .= ' WHERE ' . $whereSql;
+            $sql .= ' WHERE '.$whereSql;
         }
 
         if ($this->groupBy !== []) {
-            $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
+            $sql .= ' GROUP BY '.implode(', ', $this->groupBy);
         }
 
         if ($this->having !== []) {
-            $sql .= ' HAVING ' . implode(' AND ', $this->having);
+            $sql .= ' HAVING '.implode(' AND ', $this->having);
         }
 
         if ($this->orderBy !== []) {
-            $sql .= ' ORDER BY ' . implode(', ', $this->orderBy);
+            $sql .= ' ORDER BY '.implode(', ', $this->orderBy);
         }
 
         if ($this->limit !== null) {
-            $sql .= ' LIMIT ' . $this->limit;
+            $sql .= ' LIMIT '.$this->limit;
             if ($this->offset !== null) {
-                $sql .= ' OFFSET ' . $this->offset;
+                $sql .= ' OFFSET '.$this->offset;
             }
         }
 
@@ -742,7 +748,7 @@ class AsyncQueryBuilder
      */
     protected function buildCountQuery(string $column = '*'): string
     {
-        $sql = "SELECT COUNT({$column}) FROM " . $this->table;
+        $sql = "SELECT COUNT({$column}) FROM ".$this->table;
 
         foreach ($this->joins as $join) {
             $sql .= " {$join['type']} JOIN {$join['table']} ON {$join['condition']}";
@@ -750,15 +756,15 @@ class AsyncQueryBuilder
 
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
-            $sql .= ' WHERE ' . $whereSql;
+            $sql .= ' WHERE '.$whereSql;
         }
 
         if ($this->groupBy !== []) {
-            $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
+            $sql .= ' GROUP BY '.implode(', ', $this->groupBy);
         }
 
         if ($this->having !== []) {
-            $sql .= ' HAVING ' . implode(' AND ', $this->having);
+            $sql .= ' HAVING '.implode(' AND ', $this->having);
         }
 
         return $sql;
@@ -794,7 +800,7 @@ class AsyncQueryBuilder
         }
 
         $columns = implode(', ', array_keys($firstRow));
-        $placeholders = '(' . implode(', ', array_fill(0, count($firstRow), '?')) . ')';
+        $placeholders = '('.implode(', ', array_fill(0, count($firstRow), '?')).')';
         $allPlaceholders = implode(', ', array_fill(0, count($data), $placeholders));
 
         return "INSERT INTO {$this->table} ({$columns}) VALUES {$allPlaceholders}";
@@ -812,10 +818,10 @@ class AsyncQueryBuilder
         foreach (array_keys($data) as $column) {
             $setClauses[] = "{$column} = ?";
         }
-        $sql = "UPDATE {$this->table} SET " . implode(', ', $setClauses);
+        $sql = "UPDATE {$this->table} SET ".implode(', ', $setClauses);
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
-            $sql .= ' WHERE ' . $whereSql;
+            $sql .= ' WHERE '.$whereSql;
         }
 
         return $sql;
@@ -831,7 +837,7 @@ class AsyncQueryBuilder
         $sql = "DELETE FROM {$this->table}";
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
-            $sql .= ' WHERE ' . $whereSql;
+            $sql .= ' WHERE '.$whereSql;
         }
 
         return $sql;
@@ -872,13 +878,13 @@ class AsyncQueryBuilder
             $this->whereRaw
         );
 
-        $filteredAnd = array_filter($andConditions, fn($condition) => trim($condition) !== '');
+        $filteredAnd = array_filter($andConditions, fn ($condition) => trim($condition) !== '');
         if ($filteredAnd !== []) {
             $parts[] = ['conditions' => $filteredAnd, 'operator' => 'AND', 'priority' => 1];
         }
 
         $orConditions = array_merge($this->orWhere, $this->orWhereRaw);
-        $filteredOr = array_filter($orConditions, fn($condition) => trim($condition) !== '');
+        $filteredOr = array_filter($orConditions, fn ($condition) => trim($condition) !== '');
         if ($filteredOr !== []) {
             $parts[] = ['conditions' => $filteredOr, 'operator' => 'OR', 'priority' => 2];
         }
@@ -895,7 +901,7 @@ class AsyncQueryBuilder
      */
     protected function buildConditionGroup(array $conditions, string $operator): string
     {
-        $filteredConditions = array_filter($conditions, fn($condition) => trim($condition) !== '');
+        $filteredConditions = array_filter($conditions, fn ($condition) => trim($condition) !== '');
 
         if ($filteredConditions === []) {
             return '';
@@ -905,7 +911,7 @@ class AsyncQueryBuilder
             return reset($filteredConditions);
         }
 
-        return '(' . implode(' ' . strtoupper($operator) . ' ', $filteredConditions) . ')';
+        return '('.implode(' '.strtoupper($operator).' ', $filteredConditions).')';
     }
 
     /**
@@ -920,7 +926,7 @@ class AsyncQueryBuilder
             return '';
         }
 
-        usort($parts, fn($a, $b) => $a['priority'] <=> $b['priority']);
+        usort($parts, fn ($a, $b) => $a['priority'] <=> $b['priority']);
 
         $andParts = [];
         $orParts = [];
@@ -961,7 +967,7 @@ class AsyncQueryBuilder
             if (count($andParts) === 1) {
                 $finalParts[] = $andParts[0];
             } else {
-                $finalParts[] = '(' . implode(' AND ', $andParts) . ')';
+                $finalParts[] = '('.implode(' AND ', $andParts).')';
             }
         }
 
@@ -989,7 +995,7 @@ class AsyncQueryBuilder
                 $this->whereNotNull,
                 $this->whereRaw
             ),
-            'OR' => array_merge($this->orWhere, $this->orWhereRaw)
+            'OR' => array_merge($this->orWhere, $this->orWhereRaw),
         ];
     }
 
@@ -1070,7 +1076,7 @@ class AsyncQueryBuilder
      */
     public function whereExists(callable $callback, string $operator = 'AND'): self
     {
-        $subBuilder = new static();
+        $subBuilder = new static;
         $callback($subBuilder);
 
         $subSql = $subBuilder->buildSelectQuery();
@@ -1088,7 +1094,7 @@ class AsyncQueryBuilder
      */
     public function whereNotExists(callable $callback, string $operator = 'AND'): self
     {
-        $subBuilder = new static();
+        $subBuilder = new static;
         $callback($subBuilder);
 
         $subSql = $subBuilder->buildSelectQuery();

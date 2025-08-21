@@ -1,9 +1,8 @@
 <?php
 
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\PDO\AsyncPdoPool;
 use Rcalicdan\FiberAsync\PDO\DatabaseConfigFactory;
-use Rcalicdan\FiberAsync\EventLoop\EventLoop;
-use Rcalicdan\FiberAsync\Promise\Promise;
 
 function pdo_id(PDO $pdo): int
 {
@@ -21,18 +20,21 @@ describe('AsyncPdoPool Initialization and Configuration', function () {
     });
 
     it('throws an exception for empty configuration', function () {
-        expect(fn() => new AsyncPdoPool([], 5))
-            ->toThrow(InvalidArgumentException::class, 'Database configuration cannot be empty');
+        expect(fn () => new AsyncPdoPool([], 5))
+            ->toThrow(InvalidArgumentException::class, 'Database configuration cannot be empty')
+        ;
     });
 
     it('throws an exception for missing driver', function () {
-        expect(fn() => new AsyncPdoPool(['database' => ':memory:'], 5))
-            ->toThrow(InvalidArgumentException::class, "field 'driver' must be a non-empty string");
+        expect(fn () => new AsyncPdoPool(['database' => ':memory:'], 5))
+            ->toThrow(InvalidArgumentException::class, "field 'driver' must be a non-empty string")
+        ;
     });
 
     it('throws an exception for missing required fields for a driver', function () {
-        expect(fn() => new AsyncPdoPool(['driver' => 'mysql'], 5))
-            ->toThrow(InvalidArgumentException::class, "field 'host' cannot be empty for driver 'mysql'");
+        expect(fn () => new AsyncPdoPool(['driver' => 'mysql'], 5))
+            ->toThrow(InvalidArgumentException::class, "field 'host' cannot be empty for driver 'mysql'")
+        ;
     });
 });
 
@@ -53,20 +55,23 @@ describe('AsyncPdoPool Basic Operations', function () {
             $pool = $this->pool;
             $statsBefore = $pool->getStats();
             expect($statsBefore['active_connections'])->toBe(0)
-                ->and($statsBefore['pooled_connections'])->toBe(0);
+                ->and($statsBefore['pooled_connections'])->toBe(0)
+            ;
 
             $connection = await($pool->get());
             expect($connection)->toBeInstanceOf(PDO::class);
 
             $statsDuring = $pool->getStats();
             expect($statsDuring['active_connections'])->toBe(1)
-                ->and($statsDuring['pooled_connections'])->toBe(0);
+                ->and($statsDuring['pooled_connections'])->toBe(0)
+            ;
 
             $pool->release($connection);
 
             $statsAfter = $pool->getStats();
             expect($statsAfter['active_connections'])->toBe(1)
-                ->and($statsAfter['pooled_connections'])->toBe(1);
+                ->and($statsAfter['pooled_connections'])->toBe(1)
+            ;
         });
     });
 
@@ -91,7 +96,7 @@ describe('AsyncPdoPool Connection Limiting and Wait Queue', function () {
     afterEach(function () {
         EventLoop::reset();
     });
-    
+
     it('queues requests when pool is full', function () {
         run(function () {
             $config = DatabaseConfigFactory::sqlite(':memory:');
@@ -103,12 +108,12 @@ describe('AsyncPdoPool Connection Limiting and Wait Queue', function () {
             await(delay(0)); // Allow event loop to process requests
 
             expect($pool->getStats()['waiting_requests'])->toBe(1);
-            
+
             $firstConnection = await($firstGetPromise);
             $pool->release($firstConnection);
             $secondConnection = await($secondGetPromise);
             $pool->release($secondConnection);
-            
+
             $pool->close();
         });
     });
@@ -127,7 +132,7 @@ describe('AsyncPdoPool Concurrency and Health', function () {
 
     it('handles multiple concurrent requests efficiently', function () {
         $pool = $this->pool;
-        $tracker = new stdClass();
+        $tracker = new stdClass;
         $tracker->connectionIds = [];
 
         run(function () use ($pool, $tracker) {
@@ -142,7 +147,7 @@ describe('AsyncPdoPool Concurrency and Health', function () {
             }
             await(all($promises));
         });
-        
+
         expect(count($tracker->connectionIds))->toBe(2);
     });
 
@@ -159,6 +164,7 @@ describe('AsyncPdoPool Concurrency and Health', function () {
             $pool->close();
 
             $exceptionThrown = false;
+
             try {
                 await($waitingPromise);
             } catch (RuntimeException $e) {

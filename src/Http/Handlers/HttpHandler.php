@@ -38,7 +38,7 @@ class HttpHandler
      */
     public function __construct(?StreamingHandler $streamingHandler = null, ?FetchHandler $fetchHandler = null)
     {
-        $this->streamingHandler = $streamingHandler ?? new StreamingHandler();
+        $this->streamingHandler = $streamingHandler ?? new StreamingHandler;
         $this->fetchHandler = $fetchHandler ?? new FetchHandler($this->streamingHandler);
     }
 
@@ -183,7 +183,7 @@ class HttpHandler
      */
     public static function generateCacheKey(string $url): string
     {
-        return 'http_' . sha1($url);
+        return 'http_'.sha1($url);
     }
 
     /**
@@ -239,12 +239,12 @@ class HttpHandler
 
                 if (isset($cachedItem['headers']['etag'])) {
                     $etag = is_array($cachedItem['headers']['etag']) ? $cachedItem['headers']['etag'][0] : $cachedItem['headers']['etag'];
-                    $httpHeaders[] = 'If-None-Match: ' . $etag;
+                    $httpHeaders[] = 'If-None-Match: '.$etag;
                 }
 
                 if (isset($cachedItem['headers']['last-modified'])) {
                     $lastModified = is_array($cachedItem['headers']['last-modified']) ? $cachedItem['headers']['last-modified'][0] : $cachedItem['headers']['last-modified'];
-                    $httpHeaders[] = 'If-Modified-Since: ' . $lastModified;
+                    $httpHeaders[] = 'If-Modified-Since: '.$lastModified;
                 }
 
                 $curlOptions[CURLOPT_HTTPHEADER] = $httpHeaders;
@@ -349,7 +349,7 @@ class HttpHandler
                     $responseObj = new Response($response ?? '', $httpCode ?? 0, $normalizedHeaders);
 
                     if ($httpVersion !== null) {
-                        $responseObj->setHttpVersion("HTTP/{$httpVersion}");
+                        $responseObj->setHttpVersion($httpVersion);
                     }
 
                     $this->processCookies($responseObj, $url, null);

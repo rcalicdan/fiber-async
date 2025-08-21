@@ -84,9 +84,9 @@ interface AsyncOperationsInterface
      */
     public function all(array $promises): PromiseInterface;
 
-     /**
+    /**
      * Wait for all promises to settle (either resolve or reject).
-     * 
+     *
      * Unlike all(), this method waits for every promise to complete and returns
      * all results, including both successful values and rejection reasons.
      * This method never rejects - it always resolves with an array of settlement results.

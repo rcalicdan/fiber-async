@@ -51,7 +51,7 @@ class FileCookieJar extends CookieJar
      */
     private function load(): void
     {
-        if (!file_exists($this->filename)) {
+        if (! file_exists($this->filename)) {
             return;
         }
 
@@ -61,49 +61,49 @@ class FileCookieJar extends CookieJar
         }
 
         $data = json_decode($content, true);
-        if (!is_array($data)) {
+        if (! is_array($data)) {
             return;
         }
 
         foreach ($data as $cookieData) {
-            if (!is_array($cookieData)) {
+            if (! is_array($cookieData)) {
                 continue;
             }
 
             $name = isset($cookieData['name']) && is_string($cookieData['name']) ? $cookieData['name'] : '';
             $value = isset($cookieData['value']) && is_string($cookieData['value']) ? $cookieData['value'] : '';
-            
+
             $expires = null;
             if (isset($cookieData['expires'])) {
                 if (is_int($cookieData['expires'])) {
                     $expires = $cookieData['expires'];
                 }
             }
-            
+
             $domain = null;
             if (isset($cookieData['domain'])) {
                 if (is_string($cookieData['domain'])) {
                     $domain = $cookieData['domain'];
                 }
             }
-            
+
             $path = null;
             if (isset($cookieData['path'])) {
                 if (is_string($cookieData['path'])) {
                     $path = $cookieData['path'];
                 }
             }
-            
+
             $secure = isset($cookieData['secure']) && is_bool($cookieData['secure']) ? $cookieData['secure'] : false;
             $httpOnly = isset($cookieData['httpOnly']) && is_bool($cookieData['httpOnly']) ? $cookieData['httpOnly'] : false;
-            
+
             $maxAge = null;
             if (isset($cookieData['maxAge'])) {
                 if (is_int($cookieData['maxAge'])) {
                     $maxAge = $cookieData['maxAge'];
                 }
             }
-            
+
             $sameSite = null;
             if (isset($cookieData['sameSite'])) {
                 if (is_string($cookieData['sameSite'])) {
@@ -113,7 +113,7 @@ class FileCookieJar extends CookieJar
 
             $cookie = new Cookie($name, $value, $expires, $domain, $path, $secure, $httpOnly, $maxAge, $sameSite);
 
-            if (!$cookie->isExpired()) {
+            if (! $cookie->isExpired()) {
                 $this->cookies[] = $cookie;
             }
         }
@@ -125,10 +125,10 @@ class FileCookieJar extends CookieJar
     private function save(): void
     {
         $data = [];
-        
+
         foreach ($this->cookies as $cookie) {
             // Skip session cookies if not storing them
-            if (!$this->storeSessionCookies && $cookie->getExpires() === null && $cookie->getMaxAge() === null) {
+            if (! $this->storeSessionCookies && $cookie->getExpires() === null && $cookie->getMaxAge() === null) {
                 continue;
             }
 
@@ -146,7 +146,7 @@ class FileCookieJar extends CookieJar
         }
 
         $dir = dirname($this->filename);
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 

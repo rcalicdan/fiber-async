@@ -1,8 +1,8 @@
 <?php
 
-use Rcalicdan\FiberAsync\Promise\Promise;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Promise;
 
 describe('Promise', function () {
     beforeEach(function () {
@@ -11,11 +11,12 @@ describe('Promise', function () {
 
     describe('Constructor and Initial State', function () {
         it('creates a pending promise with no executor', function () {
-            $promise = new Promise();
+            $promise = new Promise;
 
             expect($promise->isPending())->toBeTrue()
                 ->and($promise->isResolved())->toBeFalse()
-                ->and($promise->isRejected())->toBeFalse();
+                ->and($promise->isRejected())->toBeFalse()
+            ;
         });
 
         it('executes provided executor immediately', function () {
@@ -31,7 +32,8 @@ describe('Promise', function () {
 
             expect($executed)->toBeTrue()
                 ->and($resolveCallback)->toBeCallable()
-                ->and($rejectCallback)->toBeCallable();
+                ->and($rejectCallback)->toBeCallable()
+            ;
         });
 
         it('handles executor that resolves immediately', function () {
@@ -40,7 +42,8 @@ describe('Promise', function () {
             });
 
             expect($promise->isResolved())->toBeTrue()
-                ->and($promise->getValue())->toBe('test value');
+                ->and($promise->getValue())->toBe('test value')
+            ;
         });
 
         it('handles executor that rejects immediately', function () {
@@ -50,7 +53,8 @@ describe('Promise', function () {
             });
 
             expect($promise->isRejected())->toBeTrue()
-                ->and($promise->getReason())->toBe($exception);
+                ->and($promise->getReason())->toBe($exception)
+            ;
         });
 
         it('handles executor that throws an exception', function () {
@@ -61,23 +65,25 @@ describe('Promise', function () {
             });
 
             expect($promise->isRejected())->toBeTrue()
-                ->and($promise->getReason())->toBe($exception);
+                ->and($promise->getReason())->toBe($exception)
+            ;
         });
     });
 
     describe('Resolution', function () {
         it('can be resolved with a value', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $promise->resolve('test value');
 
             expect($promise->isResolved())->toBeTrue()
                 ->and($promise->isPending())->toBeFalse()
                 ->and($promise->isRejected())->toBeFalse()
-                ->and($promise->getValue())->toBe('test value');
+                ->and($promise->getValue())->toBe('test value')
+            ;
         });
 
         it('ignores multiple resolution attempts', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $promise->resolve('first value');
             $promise->resolve('second value');
 
@@ -85,26 +91,28 @@ describe('Promise', function () {
         });
 
         it('ignores resolution after rejection', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $exception = new Exception('error');
 
             $promise->reject($exception);
             $promise->resolve('value');
 
             expect($promise->isRejected())->toBeTrue()
-                ->and($promise->getReason())->toBe($exception);
+                ->and($promise->getReason())->toBe($exception)
+            ;
         });
 
         it('can be resolved with null', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $promise->resolve(null);
 
             expect($promise->isResolved())->toBeTrue()
-                ->and($promise->getValue())->toBeNull();
+                ->and($promise->getValue())->toBeNull()
+            ;
         });
 
         it('can be resolved with complex data types', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $data = ['key' => 'value', 'nested' => ['array' => true]];
             $promise->resolve($data);
 
@@ -114,18 +122,19 @@ describe('Promise', function () {
 
     describe('Rejection', function () {
         it('can be rejected with a reason', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $exception = new Exception('test error');
             $promise->reject($exception);
 
             expect($promise->isRejected())->toBeTrue()
                 ->and($promise->isPending())->toBeFalse()
                 ->and($promise->isResolved())->toBeFalse()
-                ->and($promise->getReason())->toBe($exception);
+                ->and($promise->getReason())->toBe($exception)
+            ;
         });
 
         it('ignores multiple rejection attempts', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $firstError = new Exception('first error');
             $secondError = new Exception('second error');
 
@@ -136,20 +145,22 @@ describe('Promise', function () {
         });
 
         it('ignores rejection after resolution', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $promise->resolve('value');
             $promise->reject(new Exception('error'));
 
             expect($promise->isResolved())->toBeTrue()
-                ->and($promise->getValue())->toBe('value');
+                ->and($promise->getValue())->toBe('value')
+            ;
         });
 
         it('can be rejected with string reasons', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $promise->reject('simple error message');
 
             expect($promise->getReason())->toBeInstanceOf(Exception::class)
-                ->and($promise->getReason()->getMessage())->toBe('simple error message');
+                ->and($promise->getReason()->getMessage())->toBe('simple error message')
+            ;
         });
     });
 
@@ -159,7 +170,7 @@ describe('Promise', function () {
             $receivedValue = null;
 
             run(function () use (&$called, &$receivedValue) {
-                $promise = new Promise();
+                $promise = new Promise;
 
                 $promise->then(function ($value) use (&$called, &$receivedValue) {
                     $called = true;
@@ -170,7 +181,8 @@ describe('Promise', function () {
             });
 
             expect($called)->toBeTrue()
-                ->and($receivedValue)->toBe('test value');
+                ->and($receivedValue)->toBe('test value')
+            ;
         });
 
         it('calls onRejected when promise is rejected', function () {
@@ -178,7 +190,7 @@ describe('Promise', function () {
             $receivedReason = null;
 
             run(function () use (&$called, &$receivedReason) {
-                $promise = new Promise();
+                $promise = new Promise;
 
                 $promise->then(null, function ($reason) use (&$called, &$receivedReason) {
                     $called = true;
@@ -190,22 +202,24 @@ describe('Promise', function () {
             });
 
             expect($called)->toBeTrue()
-                ->and($receivedReason)->toBeInstanceOf(Exception::class);
+                ->and($receivedReason)->toBeInstanceOf(Exception::class)
+            ;
         });
 
         it('returns a new promise', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $newPromise = $promise->then(function ($value) {
                 return $value;
             });
 
             expect($newPromise)->toBeInstanceOf(PromiseInterface::class)
-                ->and($newPromise)->not->toBe($promise);
+                ->and($newPromise)->not->toBe($promise)
+            ;
         });
 
         it('transforms values through the chain', function () {
             $finalPromise = run(function () {
-                $promise = new Promise();
+                $promise = new Promise;
 
                 $finalPromise = $promise->then(function ($value) {
                     return $value * 2;
@@ -219,13 +233,14 @@ describe('Promise', function () {
             });
 
             expect($finalPromise->isResolved())->toBeTrue()
-                ->and($finalPromise->getValue())->toBe(11); // (5 * 2) + 1
+                ->and($finalPromise->getValue())->toBe(11) // (5 * 2) + 1
+            ;
         });
 
         it('handles promise returning from onFulfilled', function () {
             $chainedPromise = run(function () {
-                $promise = new Promise();
-                $innerPromise = new Promise();
+                $promise = new Promise;
+                $innerPromise = new Promise;
 
                 $chainedPromise = $promise->then(function ($value) use ($innerPromise) {
                     return $innerPromise;
@@ -240,12 +255,13 @@ describe('Promise', function () {
             });
 
             expect($chainedPromise->isResolved())->toBeTrue()
-                ->and($chainedPromise->getValue())->toBe('inner value');
+                ->and($chainedPromise->getValue())->toBe('inner value')
+            ;
         });
 
         it('handles exceptions in onFulfilled', function () {
             $chainedPromise = run(function () {
-                $promise = new Promise();
+                $promise = new Promise;
                 $exception = new Exception('handler error');
 
                 $chainedPromise = $promise->then(function ($value) use ($exception) {
@@ -259,7 +275,8 @@ describe('Promise', function () {
 
             expect($chainedPromise->isRejected())->toBeTrue()
                 ->and($chainedPromise->getReason())->toBeInstanceOf(Exception::class)
-                ->and($chainedPromise->getReason()->getMessage())->toBe('handler error');
+                ->and($chainedPromise->getReason()->getMessage())->toBe('handler error')
+            ;
         });
 
         it('calls handlers for already resolved promises', function () {
@@ -267,7 +284,7 @@ describe('Promise', function () {
             $receivedValue = null;
 
             run(function () use (&$called, &$receivedValue) {
-                $promise = new Promise();
+                $promise = new Promise;
                 $promise->resolve('test value');
 
                 $promise->then(function ($value) use (&$called, &$receivedValue) {
@@ -277,21 +294,22 @@ describe('Promise', function () {
             });
 
             expect($called)->toBeTrue()
-                ->and($receivedValue)->toBe('test value');
+                ->and($receivedValue)->toBe('test value')
+            ;
         });
 
         it('supports multiple then handlers', function () {
             $calls = [];
 
             run(function () use (&$calls) {
-                $promise = new Promise();
+                $promise = new Promise;
 
                 $promise->then(function ($value) use (&$calls) {
-                    $calls[] = 'first: ' . $value;
+                    $calls[] = 'first: '.$value;
                 });
 
                 $promise->then(function ($value) use (&$calls) {
-                    $calls[] = 'second: ' . $value;
+                    $calls[] = 'second: '.$value;
                 });
 
                 $promise->resolve('test');
@@ -299,7 +317,8 @@ describe('Promise', function () {
 
             expect($calls)->toHaveCount(2)
                 ->and($calls)->toContain('first: test')
-                ->and($calls)->toContain('second: test');
+                ->and($calls)->toContain('second: test')
+            ;
         });
     });
 
@@ -311,11 +330,12 @@ describe('Promise', function () {
             $receivedReason = null;
 
             run(function () use (&$called, &$receivedReason) {
-                $promise = new Promise();
+                $promise = new Promise;
 
                 $promise->catch(function ($reason) use (&$called, &$receivedReason) {
                     $called = true;
                     $receivedReason = $reason;
+
                     return 'recovered';
                 });
 
@@ -325,11 +345,12 @@ describe('Promise', function () {
 
             expect($called)->toBeTrue()
                 ->and($receivedReason)->toBeInstanceOf(Exception::class)
-                ->and($receivedReason->getMessage())->toBe('test error');
+                ->and($receivedReason->getMessage())->toBe('test error')
+            ;
         });
 
         it('does not handle resolved promises', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $called = false;
 
             $promise->catch(function ($reason) use (&$called) {
@@ -343,7 +364,7 @@ describe('Promise', function () {
 
         it('can recover from rejection', function () {
             $recoveredPromise = run(function () {
-                $promise = new Promise();
+                $promise = new Promise;
                 $exception = new Exception('error');
 
                 $recoveredPromise = $promise->catch(function ($reason) {
@@ -356,7 +377,8 @@ describe('Promise', function () {
             });
 
             expect($recoveredPromise->isResolved())->toBeTrue()
-                ->and($recoveredPromise->getValue())->toBe('recovered value');
+                ->and($recoveredPromise->getValue())->toBe('recovered value')
+            ;
         });
     });
 
@@ -365,7 +387,7 @@ describe('Promise', function () {
             $called = false;
 
             run(function () use (&$called) {
-                $promise = new Promise();
+                $promise = new Promise;
 
                 $promise->finally(function () use (&$called) {
                     $called = true;
@@ -381,7 +403,7 @@ describe('Promise', function () {
             $called = false;
 
             run(function () use (&$called) {
-                $promise = new Promise();
+                $promise = new Promise;
 
                 $promise->finally(function () use (&$called) {
                     $called = true;
@@ -394,7 +416,7 @@ describe('Promise', function () {
         });
 
         it('returns the same promise', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $finallyPromise = $promise->finally(function () {
                 // cleanup
             });
@@ -408,7 +430,8 @@ describe('Promise', function () {
             $promise = Promise::resolved('test value');
 
             expect($promise->isResolved())->toBeTrue()
-                ->and($promise->getValue())->toBe('test value');
+                ->and($promise->getValue())->toBe('test value')
+            ;
         });
 
         it('creates rejected promise with rejected()', function () {
@@ -416,7 +439,8 @@ describe('Promise', function () {
             $promise = Promise::rejected($exception);
 
             expect($promise->isRejected())->toBeTrue()
-                ->and($promise->getReason())->toBe($exception);
+                ->and($promise->getReason())->toBe($exception)
+            ;
         });
     });
 
@@ -464,7 +488,7 @@ describe('Promise', function () {
                 $promises = [
                     Promise::resolved('first'),
                     Promise::resolved('second'),
-                    Promise::resolved('third')
+                    Promise::resolved('third'),
                 ];
 
                 return await(Promise::all($promises));
@@ -472,7 +496,8 @@ describe('Promise', function () {
 
             expect($result[0])->toBe('first')
                 ->and($result[1])->toBe('second')
-                ->and($result[2])->toBe('third');
+                ->and($result[2])->toBe('third')
+            ;
         });
     });
 
@@ -510,9 +535,9 @@ describe('Promise', function () {
 
         it('resolves immediately with the first successful promise in mixed order', function () {
             $result = run(function () {
-                $promise1 = new Promise();
+                $promise1 = new Promise;
                 $promise2 = Promise::resolved('quick success');
-                $promise3 = new Promise();
+                $promise3 = new Promise;
 
                 // Reject the first promise after setting up any()
                 $anyPromise = Promise::any([$promise1, $promise2, $promise3]);
@@ -541,9 +566,9 @@ describe('Promise', function () {
         it('resolves with first successful promise when mixed with pending promises', function () {
             $result = run(function () {
                 $promise1 = Promise::rejected(new Exception('error'));
-                $promise2 = new Promise(); // Never settles
+                $promise2 = new Promise; // Never settles
                 $promise3 = Promise::resolved('success');
-                $promise4 = new Promise(); // Never settles
+                $promise4 = new Promise; // Never settles
 
                 return await(Promise::any([$promise1, $promise2, $promise3, $promise4]));
             });
@@ -556,8 +581,8 @@ describe('Promise', function () {
         it('resolves with the first settled promise value', function () {
             $result = run(function () {
                 $promise1 = Promise::resolved('fast');
-                $promise2 = new Promise(); // never settles
-                $promise3 = new Promise(); // never settles
+                $promise2 = new Promise; // never settles
+                $promise3 = new Promise; // never settles
 
                 return await(Promise::race([$promise1, $promise2, $promise3]));
             });
@@ -571,7 +596,7 @@ describe('Promise', function () {
             try {
                 run(function () use ($exception) {
                     $promise1 = Promise::rejected($exception);
-                    $promise2 = new Promise(); // never settles
+                    $promise2 = new Promise; // never settles
 
                     return await(Promise::race([$promise1, $promise2]));
                 });
@@ -585,24 +610,24 @@ describe('Promise', function () {
 
     describe('Error handling', function () {
         it('returns null when getting value of non-resolved promise', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             expect($promise->getValue())->toBeNull();
         });
 
         it('returns null when getting reason of non-rejected promise', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             expect($promise->getReason())->toBeNull();
         });
 
         it('allows getting value of resolved promise', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $promise->resolve('test');
 
             expect($promise->getValue())->toBe('test');
         });
 
         it('allows getting reason of rejected promise', function () {
-            $promise = new Promise();
+            $promise = new Promise;
             $exception = new Exception('error');
             $promise->reject($exception);
 
@@ -623,6 +648,7 @@ describe('Promise', function () {
                     $tasks[] = function () use ($i, &$executionOrder) {
                         return delay(0.1)->then(function () use ($i, &$executionOrder) {
                             $executionOrder[] = $i;
+
                             return "task-{$i}";
                         });
                     };
@@ -648,7 +674,7 @@ describe('Promise', function () {
 
                 // Create 7 tasks, each taking 0.1 seconds
                 for ($i = 0; $i < 7; $i++) {
-                    $tasks[] = fn() => delay(0.1)->then(fn() => "task-{$i}");
+                    $tasks[] = fn () => delay(0.1)->then(fn () => "task-{$i}");
                 }
 
                 return await(Promise::batch($tasks, 3)); // 3 tasks per batch
@@ -675,6 +701,7 @@ describe('Promise', function () {
                     $tasks[] = function () use ($i, &$executionTimes, $startTime) {
                         return delay(0.1)->then(function () use ($i, &$executionTimes, $startTime) {
                             $executionTimes[] = microtime(true) - $startTime;
+
                             return "task-{$i}";
                         });
                     };
@@ -685,7 +712,7 @@ describe('Promise', function () {
 
             // Batches should execute sequentially:
             // Batch 1 (tasks 0,1): ~0.1s
-            // Batch 2 (tasks 2,3): ~0.2s  
+            // Batch 2 (tasks 2,3): ~0.2s
             // Batch 3 (tasks 4,5): ~0.3s
             expect($executionTimes[0])->toBeLessThan(0.15); // First batch
             expect($executionTimes[2])->toBeGreaterThan(0.18); // Second batch
@@ -703,9 +730,9 @@ describe('Promise', function () {
         it('works with batch size larger than task count', function () {
             $result = run(function () {
                 $tasks = [
-                    fn() => delay(0.05)->then(fn() => 'task-0'),
-                    fn() => delay(0.05)->then(fn() => 'task-1'),
-                    fn() => delay(0.05)->then(fn() => 'task-2'),
+                    fn () => delay(0.05)->then(fn () => 'task-0'),
+                    fn () => delay(0.05)->then(fn () => 'task-1'),
+                    fn () => delay(0.05)->then(fn () => 'task-2'),
                 ];
 
                 return await(Promise::batch($tasks, 10)); // Batch size > task count
@@ -719,9 +746,9 @@ describe('Promise', function () {
             try {
                 run(function () {
                     $tasks = [
-                        fn() => delay(0.05)->then(fn() => 'task-0'),
-                        fn() => delay(0.05)->then(fn() => throw new Exception('batch error')),
-                        fn() => delay(0.05)->then(fn() => 'task-2'),
+                        fn () => delay(0.05)->then(fn () => 'task-0'),
+                        fn () => delay(0.05)->then(fn () => throw new Exception('batch error')),
+                        fn () => delay(0.05)->then(fn () => 'task-2'),
                     ];
 
                     return await(Promise::batch($tasks, 2));
@@ -740,7 +767,7 @@ describe('Promise', function () {
                 $tasks = [];
 
                 for ($i = 0; $i < 6; $i++) {
-                    $tasks[] = fn() => delay(0.1)->then(fn() => "task-{$i}");
+                    $tasks[] = fn () => delay(0.1)->then(fn () => "task-{$i}");
                 }
 
                 return await(Promise::batch($tasks, 3, 2));
@@ -760,7 +787,7 @@ describe('Promise', function () {
                 // Create tasks with same delay to avoid timing issues
                 for ($i = 0; $i < 6; $i++) {
                     $tasks[] = function () use ($i) {
-                        return delay(0.05)->then(fn() => "task-{$i}");
+                        return delay(0.05)->then(fn () => "task-{$i}");
                     };
                 }
 
@@ -779,7 +806,7 @@ describe('Promise', function () {
 
     describe('Integration with CancellablePromise', function () {
         it('tracks root cancellable promise in chain', function () {
-            $cancellable = new CancellablePromise();
+            $cancellable = new CancellablePromise;
             $chained = $cancellable->then(function ($value) {
                 return $value * 2;
             });
@@ -788,11 +815,12 @@ describe('Promise', function () {
         });
 
         it('skips handlers when root promise is cancelled', function () {
-            $cancellable = new CancellablePromise();
+            $cancellable = new CancellablePromise;
             $handlerCalled = false;
 
             $chained = $cancellable->then(function ($value) use (&$handlerCalled) {
                 $handlerCalled = true;
+
                 return $value;
             });
 

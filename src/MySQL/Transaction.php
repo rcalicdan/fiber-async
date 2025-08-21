@@ -2,7 +2,6 @@
 
 namespace Rcalicdan\FiberAsync\MySQL;
 
-use PHPUnit\Framework\Assert;
 use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\MySQL\Handlers\TransactionHandler;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;

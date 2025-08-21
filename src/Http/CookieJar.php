@@ -18,7 +18,7 @@ class CookieJar implements CookieJarInterface
     public function setCookie(Cookie $cookie): void
     {
         $this->cookies = array_filter($this->cookies, function (Cookie $existingCookie) use ($cookie) {
-            return !(
+            return ! (
                 $existingCookie->getName() === $cookie->getName() &&
                 $existingCookie->getDomain() === $cookie->getDomain() &&
                 $existingCookie->getPath() === $cookie->getPath()
@@ -54,7 +54,7 @@ class CookieJar implements CookieJarInterface
     public function clearExpired(): void
     {
         $this->cookies = array_filter($this->cookies, function (Cookie $cookie) {
-            return !$cookie->isExpired();
+            return ! $cookie->isExpired();
         });
     }
 
@@ -85,11 +85,11 @@ class CookieJar implements CookieJarInterface
     /**
      * Creates a cookie jar from an array of Set-Cookie headers.
      *
-     * @param string[] $setCookieHeaders Array of Set-Cookie header values
+     * @param  string[]  $setCookieHeaders  Array of Set-Cookie header values
      */
     public static function fromSetCookieHeaders(array $setCookieHeaders): self
     {
-        $jar = new self(); 
+        $jar = new self;
 
         foreach ($setCookieHeaders as $header) {
             $cookie = Cookie::fromSetCookieHeader($header);

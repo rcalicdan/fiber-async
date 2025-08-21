@@ -17,9 +17,9 @@ interface CookieJarInterface
     /**
      * Get all cookies that match the given criteria.
      *
-     * @param string $domain The request domain
-     * @param string $path The request path
-     * @param bool $isSecure Whether the request is over HTTPS
+     * @param  string  $domain  The request domain
+     * @param  string  $path  The request path
+     * @param  bool  $isSecure  Whether the request is over HTTPS
      * @return Cookie[] Array of matching cookies
      */
     public function getCookies(string $domain, string $path, bool $isSecure = false): array;

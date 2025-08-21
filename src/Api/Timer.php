@@ -74,7 +74,7 @@ final class Timer
      */
     public static function sleep(float $seconds): null
     {
-        if (!Async::inFiber()) {
+        if (! Async::inFiber()) {
             throw new \RuntimeException('Timer::sleep() must be called from within an async context');
         }
 

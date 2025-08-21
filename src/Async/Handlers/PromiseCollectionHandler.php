@@ -27,7 +27,7 @@ final readonly class PromiseCollectionHandler
 
     /**
      * Run multiple Promises in parallel and return a Promise that resolves when all Promises are settled.
-     * 
+     *
      * @param  array<int|string, callable(): PromiseInterface<mixed>|PromiseInterface<mixed>>  $promises
      * @return PromiseInterface<array<int|string, mixed>>
      */
@@ -84,7 +84,7 @@ final readonly class PromiseCollectionHandler
 
     /**
      * Wait for all promises to settle (either resolve or reject).
-     * 
+     *
      * Unlike all(), this method waits for every promise to complete and returns
      * all results, including both successful values and rejection reasons.
      * This method never rejects - it always resolves with an array of settlement results.
@@ -98,6 +98,7 @@ final readonly class PromiseCollectionHandler
         return new Promise(function (callable $resolve, callable $reject) use ($promises): void {
             if ($promises === []) {
                 $resolve([]);
+
                 return;
             }
 
@@ -112,14 +113,14 @@ final readonly class PromiseCollectionHandler
                         ? $this->executionHandler->async($item)()
                         : $item;
 
-                    if (!($promise instanceof PromiseInterface)) {
+                    if (! ($promise instanceof PromiseInterface)) {
                         throw new RuntimeException('Item must return a Promise or be a callable that returns a Promise');
                     }
                 } catch (Throwable $e) {
                     // If task creation fails, treat as rejected settlement
                     $results[$key] = [
                         'status' => 'rejected',
-                        'reason' => $e
+                        'reason' => $e,
                     ];
                     $completed++;
 
@@ -131,6 +132,7 @@ final readonly class PromiseCollectionHandler
                             $resolve(array_values($results));
                         }
                     }
+
                     continue;
                 }
 
@@ -138,7 +140,7 @@ final readonly class PromiseCollectionHandler
                     ->then(function ($value) use (&$results, &$completed, $total, $key, $resolve, $hasStringKeys): void {
                         $results[$key] = [
                             'status' => 'fulfilled',
-                            'value' => $value
+                            'value' => $value,
                         ];
                         $completed++;
 
@@ -154,7 +156,7 @@ final readonly class PromiseCollectionHandler
                     ->catch(function ($reason) use (&$results, &$completed, $total, $key, $resolve, $hasStringKeys): void {
                         $results[$key] = [
                             'status' => 'rejected',
-                            'reason' => $reason
+                            'reason' => $reason,
                         ];
                         $completed++;
 
@@ -166,7 +168,8 @@ final readonly class PromiseCollectionHandler
                                 $resolve(array_values($results));
                             }
                         }
-                    });
+                    })
+                ;
             }
         });
     }
@@ -261,7 +264,7 @@ final readonly class PromiseCollectionHandler
 
         $items = is_array($operations) ? $operations : [$operations];
         $promises = array_map(
-            fn($item) => is_callable($item)
+            fn ($item) => is_callable($item)
                 ? $this->executionHandler->async($item)()
                 : $item,
             $items
@@ -269,7 +272,8 @@ final readonly class PromiseCollectionHandler
 
         $timeoutPromise = $this->timerHandler
             ->delay($seconds)
-            ->then(fn() => throw new Exception("Operation timed out after {$seconds} seconds"));
+            ->then(fn () => throw new Exception("Operation timed out after {$seconds} seconds"))
+        ;
 
         /** @var array<int|string, callable(): CancellablePromiseInterface<mixed>|CancellablePromiseInterface<mixed>> $racePromises */
         $racePromises = [...$promises, $timeoutPromise];

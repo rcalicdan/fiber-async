@@ -199,7 +199,7 @@ describe('HTTP Client Caching - Performance & Timing', function () {
             $time1 = microtime(true) - $start1;
 
             expect($response1->status())->toBe(200);
-            expect($time1)->toBeGreaterThan(1.0); 
+            expect($time1)->toBeGreaterThan(1.0);
 
             // Second call - should be fast (cached)
             $start2 = microtime(true);
@@ -207,8 +207,8 @@ describe('HTTP Client Caching - Performance & Timing', function () {
             $time2 = microtime(true) - $start2;
 
             expect($response2->status())->toBe(200);
-            expect($time2)->toBeLessThan(0.1); 
-            expect($time2)->toBeLessThan($time1 / 10); 
+            expect($time2)->toBeLessThan(0.1);
+            expect($time2)->toBeLessThan($time1 / 10);
 
             // Responses should be identical
             expect($response1->body())->toBe($response2->body());

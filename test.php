@@ -3,16 +3,17 @@
 use Rcalicdan\FiberAsync\Api\Task;
 use Rcalicdan\FiberAsync\Promise\Promise;
 
-require "vendor/autoload.php";
+require 'vendor/autoload.php';
 
 $start = microtime(true);
 
 $data = Task::run(function () {
     $users = Promise::all(array_map(
-        fn($id) => http()->cache()->withProtocolVersion("2.0")->get("https://jsonplaceholder.typicode.com/users/$id"),
+        fn ($id) => http()->cache()->withProtocolVersion('2.0')->get("https://jsonplaceholder.typicode.com/users/$id"),
         range(1, 10)
     ));
-    return array_map(fn($user) => $user->json(), await($users));
+
+    return array_map(fn ($user) => $user->json(), await($users));
 });
 
 $phpTime = round((microtime(true) - $start) * 1000, 2);
@@ -137,7 +138,7 @@ $phpTime = round((microtime(true) - $start) * 1000, 2);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($data as $user): ?>
+                        <?php foreach ($data as $user) { ?>
                             <tr>
                                 <td><?= htmlspecialchars($user['id']) ?></td>
                                 <td><?= htmlspecialchars($user['name']) ?></td>
@@ -147,7 +148,7 @@ $phpTime = round((microtime(true) - $start) * 1000, 2);
                                     </a>
                                 </td>
                             </tr>
-                        <?php endforeach; ?>
+                        <?php } ?>
                     </tbody>
                 </table>
             </div>

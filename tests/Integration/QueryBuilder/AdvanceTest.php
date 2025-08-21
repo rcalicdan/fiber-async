@@ -3,7 +3,7 @@
 use Rcalicdan\FiberAsync\Api\DB;
 use Rcalicdan\FiberAsync\Config\ConfigLoader;
 
-$dbFile = sys_get_temp_dir() . '/advanced_query_test_' . uniqid() . '.sqlite';
+$dbFile = sys_get_temp_dir().'/advanced_query_test_'.uniqid().'.sqlite';
 
 beforeAll(function () use ($dbFile) {
     run(function () use ($dbFile) {
@@ -13,19 +13,19 @@ beforeAll(function () use ($dbFile) {
             'database' => [
                 'default' => 'test_file',
                 'connections' => [
-                    'test_file' => ['driver' => 'sqlite', 'database' => $dbFile]
+                    'test_file' => ['driver' => 'sqlite', 'database' => $dbFile],
                 ],
-                'pool_size' => 5
-            ]
+                'pool_size' => 5,
+            ],
         ];
 
-        $reflection = new \ReflectionClass(ConfigLoader::class);
+        $reflection = new ReflectionClass(ConfigLoader::class);
         $configProperty = $reflection->getProperty('config');
         $configProperty->setAccessible(true);
         $instance = ConfigLoader::getInstance();
         $configProperty->setValue($instance, $fileBasedConfig);
 
-        await(DB::rawExecute("
+        await(DB::rawExecute('
             CREATE TABLE sales_data (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 product_name VARCHAR(255),
@@ -34,7 +34,7 @@ beforeAll(function () use ($dbFile) {
                 unit_price DECIMAL(10,2),
                 order_date DATETIME
             )
-        "));
+        '));
 
         $data = [
             ['product_name' => 'Laptop', 'category' => 'Electronics', 'quantity_sold' => 5, 'unit_price' => 1200.00, 'order_date' => '2023-01-15'],
@@ -61,7 +61,7 @@ describe('AsyncQueryBuilder Advanced Expressions and Aggregates', function () {
         run(function () {
             $revenueExpression = 'quantity_sold * unit_price';
             $tierExpression = "CASE WHEN {$revenueExpression} >= 6000 THEN 'Tier A' WHEN {$revenueExpression} >= 2000 THEN 'Tier B' ELSE 'Tier C' END";
-            $query = DB::table('sales_data')->select(["product_name", "$revenueExpression as total_revenue", "$tierExpression as performance_tier"])->orderBy('performance_tier')->orderBy('total_revenue', 'DESC');
+            $query = DB::table('sales_data')->select(['product_name', "$revenueExpression as total_revenue", "$tierExpression as performance_tier"])->orderBy('performance_tier')->orderBy('total_revenue', 'DESC');
             $result = await($query->get());
             expect($result)->toHaveCount(6)->and($result[0]['product_name'])->toBe('Laptop');
         });
@@ -72,8 +72,9 @@ describe('AsyncQueryBuilder Advanced Expressions and Aggregates', function () {
             $query = DB::table('sales_data')
                 ->select(['category', 'AVG(unit_price) as avg_price', 'COUNT(id) as item_count'])
                 ->groupBy('category')
-                ->havingRaw('COUNT(id) > 1 AND AVG(unit_price) > 100.0') 
-                ->orderBy('category');
+                ->havingRaw('COUNT(id) > 1 AND AVG(unit_price) > 100.0')
+                ->orderBy('category')
+            ;
 
             $result = await($query->get());
 

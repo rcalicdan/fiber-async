@@ -22,22 +22,23 @@ afterEach(function () {
 describe('CancellablePromise', function () {
 
     it('implements CancellablePromiseInterface', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         expect($promise)->toBeInstanceOf(CancellablePromiseInterface::class);
     });
 
     it('starts in pending state', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         expect($promise->isPending())->toBeTrue()
             ->and($promise->isResolved())->toBeFalse()
             ->and($promise->isRejected())->toBeFalse()
-            ->and($promise->isCancelled())->toBeFalse();
+            ->and($promise->isCancelled())->toBeFalse()
+        ;
     });
 
     it('can be resolved with a value', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $testValue = 'test result';
 
         $promise->resolve($testValue);
@@ -45,11 +46,12 @@ describe('CancellablePromise', function () {
         expect($promise->isResolved())->toBeTrue()
             ->and($promise->isPending())->toBeFalse()
             ->and($promise->isRejected())->toBeFalse()
-            ->and($promise->getValue())->toBe($testValue);
+            ->and($promise->getValue())->toBe($testValue)
+        ;
     });
 
     it('can be rejected with a reason', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $testReason = new Exception('test error');
 
         $promise->reject($testReason);
@@ -57,21 +59,23 @@ describe('CancellablePromise', function () {
         expect($promise->isRejected())->toBeTrue()
             ->and($promise->isPending())->toBeFalse()
             ->and($promise->isResolved())->toBeFalse()
-            ->and($promise->getReason())->toBe($testReason);
+            ->and($promise->getReason())->toBe($testReason)
+        ;
     });
 
     it('can be cancelled', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         $promise->cancel();
 
         expect($promise->isCancelled())->toBeTrue()
             ->and($promise->isRejected())->toBeTrue()
-            ->and($promise->isPending())->toBeFalse();
+            ->and($promise->isPending())->toBeFalse()
+        ;
     });
 
     it('becomes rejected when cancelled', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         $promise->cancel();
 
@@ -81,7 +85,7 @@ describe('CancellablePromise', function () {
     });
 
     it('executes cancel handler when cancelled', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $handlerExecuted = false;
 
         $promise->setCancelHandler(function () use (&$handlerExecuted) {
@@ -94,7 +98,7 @@ describe('CancellablePromise', function () {
     });
 
     it('sets and uses timer ID for cancellation', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $timerId = 'test-timer-123';
 
         // Test that setTimerId doesn't throw an error
@@ -107,7 +111,7 @@ describe('CancellablePromise', function () {
     });
 
     it('ignores multiple cancellation attempts', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $cancelCount = 0;
 
         $promise->setCancelHandler(function () use (&$cancelCount) {
@@ -119,34 +123,37 @@ describe('CancellablePromise', function () {
         $promise->cancel();
 
         expect($cancelCount)->toBe(1)
-            ->and($promise->isCancelled())->toBeTrue();
+            ->and($promise->isCancelled())->toBeTrue()
+        ;
     });
 
     it('cannot be resolved after cancellation', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         $promise->cancel();
         $promise->resolve('test value');
 
         expect($promise->isCancelled())->toBeTrue()
             ->and($promise->isResolved())->toBeFalse()
-            ->and($promise->isRejected())->toBeTrue();
+            ->and($promise->isRejected())->toBeTrue()
+        ;
     });
 
     it('cannot be rejected after cancellation', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         $promise->cancel();
         $promise->reject(new Exception('new error'));
 
         expect($promise->isCancelled())->toBeTrue()
-            ->and($promise->isRejected())->toBeTrue();
+            ->and($promise->isRejected())->toBeTrue()
+        ;
         // The reason should still be the cancellation exception
         expect($promise->getReason()->getMessage())->toBe('Promise cancelled');
     });
 
     it('handles cancel handler exceptions gracefully', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         $promise->setCancelHandler(function () {
             throw new Exception('Handler error');
@@ -168,7 +175,8 @@ describe('CancellablePromise', function () {
 
         expect($resolved)->toBeTrue()
             ->and($promise->isResolved())->toBeTrue()
-            ->and($promise->getValue())->toBe('executor result');
+            ->and($promise->getValue())->toBe('executor result')
+        ;
     });
 
     it('can be cancelled even after executor resolved it', function () {
@@ -177,14 +185,16 @@ describe('CancellablePromise', function () {
         });
 
         expect($promise->isResolved())->toBeTrue()
-            ->and($promise->getValue())->toBe('executor result');
+            ->and($promise->getValue())->toBe('executor result')
+        ;
 
         $promise->cancel();
 
         expect($promise->isCancelled())->toBeTrue()
             ->and($promise->isResolved())->toBeTrue()
             ->and($promise->isRejected())->toBeFalse()
-            ->and($promise->getValue())->toBe('executor result');
+            ->and($promise->getValue())->toBe('executor result')
+        ;
     });
 
     it('can be cancelled before executor resolves', function () {
@@ -205,15 +215,16 @@ describe('CancellablePromise', function () {
 
         expect($promise->isCancelled())->toBeTrue()
             ->and($promise->isRejected())->toBeTrue()
-            ->and($promise->isResolved())->toBeFalse();
+            ->and($promise->isResolved())->toBeFalse()
+        ;
     });
 
     it('supports promise chaining', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         // Chain the promise - returns a regular Promise, not CancellablePromise
         $chainedPromise = $promise->then(function ($value) {
-            return $value . ' processed';
+            return $value.' processed';
         });
 
         // Resolve the original promise
@@ -225,46 +236,49 @@ describe('CancellablePromise', function () {
     });
 
     it('handles cancellation in promise chain', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $thenCalled = false;
         $catchCalled = false;
 
         $chainedPromise = $promise->then(function ($value) use (&$thenCalled) {
             $thenCalled = true;
-            return $value . ' processed';
+
+            return $value.' processed';
         })->catch(function ($reason) use (&$catchCalled) {
             $catchCalled = true;
-            return 'caught: ' . $reason->getMessage();
+
+            return 'caught: '.$reason->getMessage();
         });
 
         $promise->cancel();
 
         // The original promise should be cancelled
         expect($promise->isCancelled())->toBeTrue()
-            ->and($promise->isRejected())->toBeTrue();
+            ->and($promise->isRejected())->toBeTrue()
+        ;
 
         // Chain returns regular Promise interface
         expect($chainedPromise)->toBeInstanceOf(PromiseInterface::class);
     });
 
     it('maintains cancellation state through chain', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         $chainedPromise = $promise->then(function ($value) {
-            return $value . ' processed';
+            return $value.' processed';
         });
 
         $promise->cancel();
 
         expect($promise->isCancelled())->toBeTrue();
-        
+
         if (method_exists($chainedPromise, 'getRootCancellable')) {
             expect($chainedPromise->getRootCancellable())->toBe($promise);
         }
     });
 
     it('can set finally callback', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $finallyCalled = false;
 
         $finalPromise = $promise->finally(function () use (&$finallyCalled) {
@@ -329,9 +343,9 @@ describe('CancellablePromise Integration', function () {
 
     it('works with concurrent operations', function () {
         $tasks = [
-            fn() => delay(0.1),
-            fn() => delay(0.2),
-            fn() => delay(0.3),
+            fn () => delay(0.1),
+            fn () => delay(0.2),
+            fn () => delay(0.3),
         ];
 
         $promise = concurrent($tasks, 2);
@@ -351,7 +365,7 @@ describe('CancellablePromise Integration', function () {
 describe('CancellablePromise Edge Cases', function () {
 
     it('handles rapid cancel and resolve attempts', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         // Try to cancel and resolve at the same time
         $promise->cancel();
@@ -361,11 +375,12 @@ describe('CancellablePromise Edge Cases', function () {
 
         expect($promise->isCancelled())->toBeTrue()
             ->and($promise->isRejected())->toBeTrue()
-            ->and($promise->isResolved())->toBeFalse();
+            ->and($promise->isResolved())->toBeFalse()
+        ;
     });
 
     it('handles multiple cancel handlers', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $callCount = 0;
 
         // Set multiple handlers (last one overwrites)
@@ -383,7 +398,7 @@ describe('CancellablePromise Edge Cases', function () {
     });
 
     it('works with different timer ID formats', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $promise->setTimerId('simple-id');
         $promise->setTimerId('complex-id-123-456');
         $promise->setTimerId('uuid-like-f47ac10b-58cc-4372-a567-0e02b2c3d479');
@@ -397,7 +412,7 @@ describe('CancellablePromise Edge Cases', function () {
         $promises = [];
 
         for ($i = 0; $i < 10; $i++) {
-            $promises[] = new CancellablePromise();
+            $promises[] = new CancellablePromise;
         }
 
         foreach ($promises as $promise) {
@@ -410,7 +425,7 @@ describe('CancellablePromise Edge Cases', function () {
     });
 
     it('can handle cancellation with empty timer ID', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         $promise->setTimerId('');
 
@@ -420,7 +435,7 @@ describe('CancellablePromise Edge Cases', function () {
     });
 
     it('can handle cancellation with null cancel handler initially', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         $promise->cancel();
 
@@ -431,7 +446,7 @@ describe('CancellablePromise Edge Cases', function () {
 describe('CancellablePromise setCancelHandler Usage', function () {
 
     it('executes cleanup operations when cancelled', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $connectionClosed = false;
         $tempFileDeleted = false;
         $resourcesFreed = false;
@@ -447,12 +462,13 @@ describe('CancellablePromise setCancelHandler Usage', function () {
 
         expect($connectionClosed)->toBeTrue()
             ->and($tempFileDeleted)->toBeTrue()
-            ->and($resourcesFreed)->toBeTrue();
+            ->and($resourcesFreed)->toBeTrue()
+        ;
     });
 
     it('handles database connection cleanup', function () {
-        $promise = new CancellablePromise();
-        $dbConnection = new stdClass();
+        $promise = new CancellablePromise;
+        $dbConnection = new stdClass;
         $dbConnection->isConnected = true;
         $dbConnection->transactionActive = true;
 
@@ -465,12 +481,13 @@ describe('CancellablePromise setCancelHandler Usage', function () {
         $promise->cancel();
 
         expect($dbConnection->transactionActive)->toBeFalse()
-            ->and($dbConnection->isConnected)->toBeFalse();
+            ->and($dbConnection->isConnected)->toBeFalse()
+        ;
     });
 
     it('handles file stream cleanup', function () {
-        $promise = new CancellablePromise();
-        $fileHandle = new stdClass();
+        $promise = new CancellablePromise;
+        $fileHandle = new stdClass;
         $fileHandle->isOpen = true;
         $tempFiles = ['temp1.txt', 'temp2.txt'];
         $cleanedFiles = [];
@@ -488,12 +505,13 @@ describe('CancellablePromise setCancelHandler Usage', function () {
         $promise->cancel();
 
         expect($fileHandle->isOpen)->toBeFalse()
-            ->and($cleanedFiles)->toBe(['temp1.txt', 'temp2.txt']);
+            ->and($cleanedFiles)->toBe(['temp1.txt', 'temp2.txt'])
+        ;
     });
 
     it('handles HTTP request cancellation', function () {
-        $promise = new CancellablePromise();
-        $httpRequest = new stdClass();
+        $promise = new CancellablePromise;
+        $httpRequest = new stdClass;
         $httpRequest->isActive = true;
         $httpRequest->aborted = false;
 
@@ -506,11 +524,12 @@ describe('CancellablePromise setCancelHandler Usage', function () {
         $promise->cancel();
 
         expect($httpRequest->isActive)->toBeFalse()
-            ->and($httpRequest->aborted)->toBeTrue();
+            ->and($httpRequest->aborted)->toBeTrue()
+        ;
     });
 
     it('handles timer cleanup with external resources', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $timers = ['timer1', 'timer2', 'timer3'];
         $cancelledTimers = [];
         $eventLoopStopped = false;
@@ -527,11 +546,12 @@ describe('CancellablePromise setCancelHandler Usage', function () {
         $promise->cancel();
 
         expect($cancelledTimers)->toBe(['timer1', 'timer2', 'timer3'])
-            ->and($eventLoopStopped)->toBeTrue();
+            ->and($eventLoopStopped)->toBeTrue()
+        ;
     });
 
     it('handles complex resource cleanup chain', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $cleanupLog = [];
 
         $promise->setCancelHandler(function () use (&$cleanupLog) {
@@ -552,12 +572,12 @@ describe('CancellablePromise setCancelHandler Usage', function () {
             '3. Closing network connections',
             '4. Releasing memory buffers',
             '5. Notifying dependent services',
-            '6. Cleanup completed'
+            '6. Cleanup completed',
         ]);
     });
 
     it('can access promise context in cancel handler', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $promiseId = 'task-123';
         $cancelContext = null;
 
@@ -569,7 +589,7 @@ describe('CancellablePromise setCancelHandler Usage', function () {
             $cancelContext = [
                 'cancelled_task' => $contextData['id'],
                 'task_type' => $contextData['type'],
-                'cancel_time' => date('Y-m-d H:i:s')
+                'cancel_time' => date('Y-m-d H:i:s'),
             ];
         });
 
@@ -577,11 +597,12 @@ describe('CancellablePromise setCancelHandler Usage', function () {
 
         expect($cancelContext['cancelled_task'])->toBe('task-123')
             ->and($cancelContext['task_type'])->toBe('file-upload')
-            ->and($cancelContext['cancel_time'])->toMatch('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/');
+            ->and($cancelContext['cancel_time'])->toMatch('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/')
+        ;
     });
 
     it('can chain multiple cleanup operations', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $operations = [];
 
         // Simulate a complex async operation that needs multiple cleanups
@@ -599,7 +620,7 @@ describe('CancellablePromise setCancelHandler Usage', function () {
                 $operations[] = 'notify-completion';
                 // Simulate notification
             } catch (Exception $e) {
-                $operations[] = 'cleanup-error: ' . $e->getMessage();
+                $operations[] = 'cleanup-error: '.$e->getMessage();
             }
         });
 
@@ -609,12 +630,12 @@ describe('CancellablePromise setCancelHandler Usage', function () {
             'abort-network-request',
             'close-file-handles',
             'release-memory',
-            'notify-completion'
+            'notify-completion',
         ]);
     });
 
     it('handles cancellation with logging and metrics', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $metrics = [];
         $logs = [];
 
@@ -636,14 +657,15 @@ describe('CancellablePromise setCancelHandler Usage', function () {
             ->and($logs)->toContain('[INFO] Cleaning up resources')
             ->and($logs)->toContain('[INFO] Cleanup completed successfully')
             ->and($metrics['cancelled_operations'])->toBe(1)
-            ->and($metrics['last_cancel_time'])->toBeInt();
+            ->and($metrics['last_cancel_time'])->toBeInt()
+        ;
     });
 
     it('can use closure variables for state tracking', function () {
         $activeConnections = 3;
         $processingTasks = 5;
 
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         $promise->setCancelHandler(function () use (&$activeConnections, &$processingTasks) {
             // Clean up active resources
@@ -654,11 +676,12 @@ describe('CancellablePromise setCancelHandler Usage', function () {
         $promise->cancel();
 
         expect($activeConnections)->toBe(0)
-            ->and($processingTasks)->toBe(0);
+            ->and($processingTasks)->toBe(0)
+        ;
     });
 
     it('overwrites previous cancel handler when called multiple times', function () {
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $handler1Called = false;
         $handler2Called = false;
         $handler3Called = false;
@@ -683,7 +706,8 @@ describe('CancellablePromise setCancelHandler Usage', function () {
         // Only the last handler should be called
         expect($handler1Called)->toBeFalse()
             ->and($handler2Called)->toBeFalse()
-            ->and($handler3Called)->toBeTrue();
+            ->and($handler3Called)->toBeTrue()
+        ;
     });
 
     it('can be used with real-world async file operations', function () {
@@ -698,7 +722,8 @@ describe('CancellablePromise setCancelHandler Usage', function () {
         $promise->cancel();
 
         expect($cleanupExecuted)->toBeTrue()
-            ->and($promise->isCancelled())->toBeTrue();
+            ->and($promise->isCancelled())->toBeTrue()
+        ;
     });
 
     it('can be used with delay operations', function () {
@@ -713,7 +738,8 @@ describe('CancellablePromise setCancelHandler Usage', function () {
         $promise->cancel();
 
         expect($timeoutCleared)->toBeTrue()
-            ->and($promise->isCancelled())->toBeTrue();
+            ->and($promise->isCancelled())->toBeTrue()
+        ;
     });
 });
 
@@ -742,7 +768,8 @@ describe('CancellablePromise Real-World Examples', function () {
 
         expect($uploadCancelled)->toBeTrue()
             ->and($tempFileDeleted)->toBeTrue()
-            ->and($uploadPromise->isCancelled())->toBeTrue();
+            ->and($uploadPromise->isCancelled())->toBeTrue()
+        ;
     });
 
     it('database transaction with rollback', function () {
@@ -761,7 +788,8 @@ describe('CancellablePromise Real-World Examples', function () {
 
         expect($transactionStarted)->toBeTrue()
             ->and($transactionRolledBack)->toBeTrue()
-            ->and($dbPromise->isCancelled())->toBeTrue();
+            ->and($dbPromise->isCancelled())->toBeTrue()
+        ;
     });
 
     it('API request with connection cleanup', function () {

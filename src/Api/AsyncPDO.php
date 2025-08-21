@@ -30,13 +30,13 @@ final class AsyncPDO
      * using any other AsyncPDO methods. Multiple calls are ignored.
      *
      * @param  array<string, mixed>  $dbConfig  Database configuration array containing:
-     *                           - driver: Database driver (e.g., 'mysql', 'pgsql')
-     *                           - host: Database host (e.g., 'localhost')
-     *                           - database: Database name
-     *                           - port: Database port
-     *                           - username: Database username
-     *                           - password: Database password
-     *                           - options: PDO options array (optional)
+     *                                          - driver: Database driver (e.g., 'mysql', 'pgsql')
+     *                                          - host: Database host (e.g., 'localhost')
+     *                                          - database: Database name
+     *                                          - port: Database port
+     *                                          - username: Database username
+     *                                          - password: Database password
+     *                                          - options: PDO options array (optional)
      * @param  int  $poolSize  Maximum number of connections in the pool
      */
     public static function init(array $dbConfig, int $poolSize = 10): void
@@ -71,6 +71,7 @@ final class AsyncPDO
      * receives a PDO instance and can perform any database operations.
      *
      * @template TResult
+     *
      * @param  callable(PDO): TResult  $callback  Function that receives PDO instance
      * @return PromiseInterface<TResult> Promise resolving to callback's return value
      *
@@ -112,6 +113,7 @@ final class AsyncPDO
 
             /** @var array<int, array<string, mixed>> */
             $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
             return $result;
         });
     }
@@ -134,6 +136,7 @@ final class AsyncPDO
 
             /** @var array<string, mixed>|false */
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
             return $result;
         });
     }
@@ -244,7 +247,7 @@ final class AsyncPDO
 
             try {
                 // @phpstan-ignore-next-line
-                $promises = array_map(fn($promise) => $promise, $transactionPromises);
+                $promises = array_map(fn ($promise) => $promise, $transactionPromises);
 
                 /** @var array{result: mixed, winner_index: int, success: bool} $winnerResult */
                 // @phpstan-ignore-next-line
@@ -308,7 +311,7 @@ final class AsyncPDO
                     }
                     self::getPool()->release($pdo);
                 } catch (Throwable $e) {
-                    error_log("Failed to cancel transaction {$index}: " . $e->getMessage());
+                    error_log("Failed to cancel transaction {$index}: ".$e->getMessage());
                     self::getPool()->release($pdo);
                 }
             }
@@ -384,7 +387,7 @@ final class AsyncPDO
                     }
                     self::getPool()->release($pdo);
                 } catch (Throwable $e) {
-                    error_log("Failed to commit winner transaction {$winnerIndex}: " . $e->getMessage());
+                    error_log("Failed to commit winner transaction {$winnerIndex}: ".$e->getMessage());
                     $pdo->rollBack();
                     self::getPool()->release($pdo);
 
@@ -420,7 +423,7 @@ final class AsyncPDO
                         }
                         self::getPool()->release($pdo);
                     } catch (Throwable $e) {
-                        error_log("Failed to rollback transaction {$index}: " . $e->getMessage());
+                        error_log("Failed to rollback transaction {$index}: ".$e->getMessage());
                         self::getPool()->release($pdo);
                     }
                 })();

@@ -102,6 +102,7 @@ class HttpRequest implements AsyncHttpRequestInterface
      * @param  string|null  $response  Response body from the server
      * @param  int|null  $httpCode  HTTP status code from the response
      * @param  array<string, mixed>  $headers  Response headers as key-value pairs
+     * @param  string|null  $httpVersion  HTTP version used in the response (e.g., '2.0', '1.1')
      *
      * @throws \Throwable Any exception thrown by the callback is propagated
      */

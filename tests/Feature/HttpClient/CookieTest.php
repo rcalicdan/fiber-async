@@ -23,7 +23,7 @@ describe('Basic Cookie Operations', function () {
         });
 
         expect($response->status())->toBe(200);
-        
+
         $data = $response->json();
         if (isset($data['cookies'])) {
             expect($data['cookies'])->toHaveKeys(['session_id', 'user_pref']);
@@ -36,7 +36,7 @@ describe('Basic Cookie Operations', function () {
         $cookies = [
             'auth_token' => 'abc123',
             'language' => 'en',
-            'theme' => 'light'
+            'theme' => 'light',
         ];
 
         $response = Task::run(function () use ($cookies) {
@@ -48,7 +48,7 @@ describe('Basic Cookie Operations', function () {
         });
 
         expect($response->status())->toBe(200);
-        
+
         $data = $response->json();
         if (isset($data['cookies'])) {
             foreach ($cookies as $name => $value) {
@@ -67,11 +67,11 @@ describe('Basic Cookie Operations', function () {
         });
 
         expect($response->status())->toBe(200);
-        
+
         $cookies = $response->getCookies();
         expect($cookies)->toHaveCount(2);
-        
-        $cookieNames = array_map(fn($cookie) => $cookie->getName(), $cookies);
+
+        $cookieNames = array_map(fn ($cookie) => $cookie->getName(), $cookies);
         expect($cookieNames)->toContain('test_cookie');
         expect($cookieNames)->toContain('another');
     });
@@ -86,7 +86,7 @@ describe('Basic Cookie Operations', function () {
         });
 
         expect($response->status())->toBe(200);
-        
+
         $data = $response->json();
         if (isset($data['cookies'])) {
             expect($data['cookies'])->toHaveKey('empty_cookie');
@@ -96,7 +96,7 @@ describe('Basic Cookie Operations', function () {
 
     it('handles special characters in cookie values', function () {
         $specialValue = 'value with spaces & symbols!@#$%^&*()';
-        
+
         $response = Task::run(function () use ($specialValue) {
             return await(
                 Http::request()
@@ -112,7 +112,7 @@ describe('Basic Cookie Operations', function () {
 describe('Cookie Object', function () {
     it('creates cookie with basic attributes', function () {
         $cookie = new Cookie(name: 'test', value: 'value');
-        
+
         expect($cookie->getName())->toBe('test');
         expect($cookie->getValue())->toBe('value');
         expect($cookie->getDomain())->toBeNull();
@@ -130,10 +130,10 @@ describe('Cookie Object', function () {
             expires: $expires,
             domain: '.example.com',
             path: '/api',
-            secure: true, 
-            httpOnly: true, 
-            maxAge: 3600, 
-            sameSite: 'Strict' 
+            secure: true,
+            httpOnly: true,
+            maxAge: 3600,
+            sameSite: 'Strict'
         );
 
         expect($cookie->getName())->toBe('complex');
@@ -161,7 +161,7 @@ describe('Cookie Object', function () {
         );
 
         $header = $cookie->toSetCookieHeader();
-        
+
         expect($header)->toContain('test=value');
         expect($header)->toContain('Domain=example.com');
         expect($header)->toContain('Path=/path');
@@ -173,15 +173,15 @@ describe('Cookie Object', function () {
 
     it('generates correct Cookie header', function () {
         $cookie = new Cookie('test', 'value');
-        
+
         expect($cookie->toCookieHeader())->toBe('test=value');
     });
 
     it('parses Set-Cookie header correctly', function () {
         $header = 'session=abc123; Domain=.example.com; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=7200';
-        
+
         $cookie = Cookie::fromSetCookieHeader($header);
-        
+
         expect($cookie)->not->toBeNull();
         expect($cookie->getName())->toBe('session');
         expect($cookie->getValue())->toBe('abc123');
@@ -195,9 +195,9 @@ describe('Cookie Object', function () {
 
     it('handles malformed Set-Cookie header gracefully', function () {
         $malformedHeader = 'invalid header format';
-        
+
         $cookie = Cookie::fromSetCookieHeader($malformedHeader);
-        
+
         expect($cookie)->toBeNull();
     });
 
@@ -205,7 +205,7 @@ describe('Cookie Object', function () {
         $expiredCookie = new Cookie('expired', 'value', time() - 1);
         $validCookie = new Cookie('valid', 'value', time() + 3600);
         $sessionCookie = new Cookie('session', 'value'); // no expiration
-        
+
         expect($expiredCookie->isExpired())->toBeTrue();
         expect($validCookie->isExpired())->toBeFalse();
         expect($sessionCookie->isExpired())->toBeFalse();
@@ -214,14 +214,14 @@ describe('Cookie Object', function () {
 
 describe('CookieJar Functionality', function () {
     beforeEach(function () {
-        $this->cookieJar = new CookieJar();
+        $this->cookieJar = new CookieJar;
     });
 
     it('stores and retrieves cookies', function () {
         $cookie = new Cookie('test', 'value');
-        
+
         $this->cookieJar->setCookie($cookie);
-        
+
         expect($this->cookieJar->getAllCookies())->toHaveCount(1);
         expect($this->cookieJar->getAllCookies()[0]->getName())->toBe('test');
     });
@@ -229,10 +229,10 @@ describe('CookieJar Functionality', function () {
     it('overwrites cookies with same name and domain', function () {
         $cookie1 = new Cookie('test', 'value1', null, 'example.com');
         $cookie2 = new Cookie('test', 'value2', null, 'example.com');
-        
+
         $this->cookieJar->setCookie($cookie1);
         $this->cookieJar->setCookie($cookie2);
-        
+
         $cookies = $this->cookieJar->getAllCookies();
         expect($cookies)->toHaveCount(1);
         expect($cookies[0]->getValue())->toBe('value2');
@@ -241,10 +241,10 @@ describe('CookieJar Functionality', function () {
     it('keeps cookies with same name but different domains', function () {
         $cookie1 = new Cookie('test', 'value1', null, 'example.com');
         $cookie2 = new Cookie('test', 'value2', null, 'test.com');
-        
+
         $this->cookieJar->setCookie($cookie1);
         $this->cookieJar->setCookie($cookie2);
-        
+
         expect($this->cookieJar->getAllCookies())->toHaveCount(2);
     });
 
@@ -252,20 +252,20 @@ describe('CookieJar Functionality', function () {
         $expiredCookie = new Cookie('expired', 'value', time() - 1);
         $validCookie = new Cookie('valid', 'value', time() + 3600);
         $sessionCookie = new Cookie('session', 'value');
-        
+
         $this->cookieJar->setCookie($expiredCookie);
         $this->cookieJar->setCookie($validCookie);
         $this->cookieJar->setCookie($sessionCookie);
-        
+
         $initialCount = count($this->cookieJar->getAllCookies());
-        expect($initialCount)->toBeGreaterThanOrEqual(2); 
-        
+        expect($initialCount)->toBeGreaterThanOrEqual(2);
+
         $this->cookieJar->clearExpired();
-        
+
         $remaining = $this->cookieJar->getAllCookies();
-        expect($remaining)->toHaveCount($initialCount - 1); 
-        
-        $names = array_map(fn($c) => $c->getName(), $remaining);
+        expect($remaining)->toHaveCount($initialCount - 1);
+
+        $names = array_map(fn ($c) => $c->getName(), $remaining);
         expect($names)->toContain('valid');
         expect($names)->toContain('session');
         expect($names)->not->toContain('expired');
@@ -274,9 +274,9 @@ describe('CookieJar Functionality', function () {
     it('matches cookies by exact domain', function () {
         $this->cookieJar->setCookie(new Cookie('exact', 'value', null, 'example.com'));
         $this->cookieJar->setCookie(new Cookie('other', 'value', null, 'other.com'));
-        
+
         $matches = $this->cookieJar->getCookies('example.com', '/');
-        
+
         expect($matches)->toHaveCount(1);
         expect($matches[0]->getName())->toBe('exact');
     });
@@ -284,10 +284,10 @@ describe('CookieJar Functionality', function () {
     it('matches cookies by subdomain with leading dot', function () {
         $this->cookieJar->setCookie(new Cookie('parent', 'value', null, '.example.com'));
         $this->cookieJar->setCookie(new Cookie('exact', 'value', null, 'example.com'));
-        
+
         $subdomainMatches = $this->cookieJar->getCookies('sub.example.com', '/');
         $exactMatches = $this->cookieJar->getCookies('example.com', '/');
-        
+
         expect($subdomainMatches)->toHaveCount(1);
         expect($subdomainMatches[0]->getName())->toBe('parent');
         expect($exactMatches)->toHaveCount(2);
@@ -297,22 +297,22 @@ describe('CookieJar Functionality', function () {
         $this->cookieJar->setCookie(new Cookie('root', 'value', null, 'example.com', '/'));
         $this->cookieJar->setCookie(new Cookie('api', 'value', null, 'example.com', '/api'));
         $this->cookieJar->setCookie(new Cookie('admin', 'value', null, 'example.com', '/admin'));
-        
+
         $rootMatches = $this->cookieJar->getCookies('example.com', '/');
         $apiMatches = $this->cookieJar->getCookies('example.com', '/api');
         $adminMatches = $this->cookieJar->getCookies('example.com', '/admin');
-        
+
         expect($rootMatches)->toHaveCount(1);
-        expect($apiMatches)->toHaveCount(2); 
-        expect($adminMatches)->toHaveCount(2); 
+        expect($apiMatches)->toHaveCount(2);
+        expect($adminMatches)->toHaveCount(2);
     });
 
     it('generates correct Cookie header', function () {
         $this->cookieJar->setCookie(new Cookie('first', 'value1'));
         $this->cookieJar->setCookie(new Cookie('second', 'value2'));
-        
+
         $header = $this->cookieJar->getCookieHeader('example.com', '/');
-        
+
         expect($header)->toContain('first=value1');
         expect($header)->toContain('second=value2');
         expect($header)->toContain(';');
@@ -321,18 +321,18 @@ describe('CookieJar Functionality', function () {
     it('clears all cookies', function () {
         $this->cookieJar->setCookie(new Cookie('test1', 'value1'));
         $this->cookieJar->setCookie(new Cookie('test2', 'value2'));
-        
+
         expect($this->cookieJar->getAllCookies())->toHaveCount(2);
-        
+
         $this->cookieJar->clear();
-        
+
         expect($this->cookieJar->getAllCookies())->toHaveCount(0);
     });
 });
 
 describe('FileCookieJar Persistence', function () {
     beforeEach(function () {
-        $this->cookieFile = sys_get_temp_dir() . '/test_cookies_' . uniqid() . '.json';
+        $this->cookieFile = sys_get_temp_dir().'/test_cookies_'.uniqid().'.json';
     });
 
     afterEach(function () {
@@ -344,11 +344,11 @@ describe('FileCookieJar Persistence', function () {
     it('saves cookies to file', function () {
         $jar = new FileCookieJar($this->cookieFile);
         $cookie = new Cookie('persistent', 'value', time() + 3600);
-        
+
         $jar->setCookie($cookie);
-        
+
         expect(file_exists($this->cookieFile))->toBeTrue();
-        
+
         $content = file_get_contents($this->cookieFile);
         expect($content)->toContain('persistent');
     });
@@ -357,9 +357,9 @@ describe('FileCookieJar Persistence', function () {
         $jar1 = new FileCookieJar($this->cookieFile);
         $cookie = new Cookie('persistent', 'value', time() + 3600);
         $jar1->setCookie($cookie);
-        
+
         $jar2 = new FileCookieJar($this->cookieFile);
-        
+
         $cookies = $jar2->getAllCookies();
         expect($cookies)->toHaveCount(1);
         expect($cookies[0]->getName())->toBe('persistent');
@@ -369,32 +369,32 @@ describe('FileCookieJar Persistence', function () {
     it('handles session cookies based on configuration', function () {
         $sessionCookie = new Cookie('session', 'temp');
         $persistentCookie = new Cookie('persistent', 'value', time() + 3600);
-        
+
         $jar1 = new FileCookieJar($this->cookieFile, false);
         $jar1->setCookie($sessionCookie);
         $jar1->setCookie($persistentCookie);
-        
+
         $jar2 = new FileCookieJar($this->cookieFile, false);
         $cookies = $jar2->getAllCookies();
-        
+
         expect($cookies)->toHaveCount(1);
         expect($cookies[0]->getName())->toBe('persistent');
-        
+
         unlink($this->cookieFile);
-        
+
         $jar3 = new FileCookieJar($this->cookieFile, true);
         $jar3->setCookie($sessionCookie);
         $jar3->setCookie($persistentCookie);
-        
+
         $jar4 = new FileCookieJar($this->cookieFile, true);
         $cookies = $jar4->getAllCookies();
-        
+
         expect($cookies)->toHaveCount(2);
     });
 
     it('handles corrupted cookie file gracefully', function () {
         file_put_contents($this->cookieFile, 'invalid json content');
-        
+
         try {
             $jar = new FileCookieJar($this->cookieFile);
             expect(true)->toBeTrue();
@@ -406,8 +406,8 @@ describe('FileCookieJar Persistence', function () {
 
 describe('HTTP Client Cookie Integration', function () {
     it('automatically handles cookies with CookieJar', function () {
-        $cookieJar = new CookieJar();
-        
+        $cookieJar = new CookieJar;
+
         $response1 = Task::run(function () use ($cookieJar) {
             return await(
                 Http::request()
@@ -415,15 +415,15 @@ describe('HTTP Client Cookie Integration', function () {
                     ->get("{$this->testUrl}/cookies/set/auto_test/12345")
             );
         });
-        
+
         expect($response1->status())->toBe(200);
-        
+
         if (count($cookieJar->getAllCookies()) === 0) {
             $response1->applyCookiesToJar($cookieJar);
         }
-        
+
         expect($cookieJar->getAllCookies())->toHaveCount(1);
-        
+
         $response2 = Task::run(function () use ($cookieJar) {
             return await(
                 Http::request()
@@ -431,7 +431,7 @@ describe('HTTP Client Cookie Integration', function () {
                     ->get("{$this->testUrl}/cookies")
             );
         });
-        
+
         $data = $response2->json();
         if (isset($data['cookies'])) {
             expect($data['cookies'])->toHaveKey('auto_test');
@@ -441,14 +441,14 @@ describe('HTTP Client Cookie Integration', function () {
 
     it('handles secure cookies correctly', function () {
         $cookie = new Cookie('secure_test', 'value', null, $this->testDomain, '/', true);
-        
+
         expect($cookie->isSecure())->toBeTrue();
         expect($cookie->toSetCookieHeader())->toContain('Secure');
     });
 
     it('handles HttpOnly cookies correctly', function () {
         $cookie = new Cookie('httponly_test', 'value', null, $this->testDomain, '/', false, true);
-        
+
         expect($cookie->isHttpOnly())->toBeTrue();
         expect($cookie->toSetCookieHeader())->toContain('HttpOnly');
     });
@@ -457,11 +457,11 @@ describe('HTTP Client Cookie Integration', function () {
         $strictCookie = new Cookie('strict', 'value', null, null, '/', false, false, null, 'Strict');
         $laxCookie = new Cookie('lax', 'value', null, null, '/', false, false, null, 'Lax');
         $noneCookie = new Cookie('none', 'value', null, null, '/', false, false, null, 'None');
-        
+
         expect($strictCookie->getSameSite())->toBe('Strict');
         expect($laxCookie->getSameSite())->toBe('Lax');
         expect($noneCookie->getSameSite())->toBe('None');
-        
+
         expect($strictCookie->toSetCookieHeader())->toContain('SameSite=Strict');
         expect($laxCookie->toSetCookieHeader())->toContain('SameSite=Lax');
         expect($noneCookie->toSetCookieHeader())->toContain('SameSite=None');
@@ -470,9 +470,9 @@ describe('HTTP Client Cookie Integration', function () {
 
 describe('Performance and Edge Cases', function () {
     it('handles large number of cookies efficiently', function () {
-        $cookieJar = new CookieJar();
+        $cookieJar = new CookieJar;
         $startTime = microtime(true);
-        
+
         for ($i = 0; $i < 1000; $i++) {
             $domain = match ($i % 3) {
                 0 => 'example.com',
@@ -481,21 +481,21 @@ describe('Performance and Edge Cases', function () {
             };
             $cookieJar->setCookie(new Cookie("cookie_{$i}", "value_{$i}", time() + 3600, $domain));
         }
-        
+
         $addTime = microtime(true) - $startTime;
-        expect($addTime)->toBeLessThan(1.0); 
-        
+        expect($addTime)->toBeLessThan(1.0);
+
         $startTime = microtime(true);
         $matches = $cookieJar->getCookies('example.com', '/');
         $matchTime = microtime(true) - $startTime;
-        
-        expect($matchTime)->toBeLessThan(0.1); 
-        expect($matches)->toHaveCount(334); 
+
+        expect($matchTime)->toBeLessThan(0.1);
+        expect($matches)->toHaveCount(334);
     });
 
     it('handles cookies with unicode values', function () {
         $unicodeValue = '测试值🍪';
-        
+
         $response = Task::run(function () use ($unicodeValue) {
             return await(
                 Http::request()
@@ -503,14 +503,13 @@ describe('Performance and Edge Cases', function () {
                     ->get("{$this->testUrl}/cookies")
             );
         });
-        
+
         expect($response->status())->toBe(200);
     });
 
-
     it('handles very long cookie values', function () {
-        $longValue = str_repeat('a', 4000); 
-        
+        $longValue = str_repeat('a', 4000);
+
         $cookie = new Cookie('long_test', $longValue);
         expect($cookie->getValue())->toBe($longValue);
         expect($cookie->getName())->toBe('long_test');
@@ -518,29 +517,29 @@ describe('Performance and Edge Cases', function () {
 
     it('handles cookies with no domain', function () {
         $cookie = new Cookie('no_domain', 'value');
-        
+
         expect($cookie->getDomain())->toBeNull();
-        
-        $cookieJar = new CookieJar();
+
+        $cookieJar = new CookieJar;
         $cookieJar->setCookie($cookie);
-        
+
         $matches = $cookieJar->getCookies('any-domain.com', '/');
         expect($matches)->toHaveCount(1);
     });
 
     it('handles path matching edge cases', function () {
-        $cookieJar = new CookieJar();
+        $cookieJar = new CookieJar;
         $cookieJar->setCookie(new Cookie('root', 'value', null, 'example.com', '/'));
         $cookieJar->setCookie(new Cookie('deep', 'value', null, 'example.com', '/api/v1/users'));
-        
+
         $rootMatches = $cookieJar->getCookies('example.com', '/');
         $apiMatches = $cookieJar->getCookies('example.com', '/api');
         $deepMatches = $cookieJar->getCookies('example.com', '/api/v1/users');
         $deeperMatches = $cookieJar->getCookies('example.com', '/api/v1/users/123');
-        
+
         expect($rootMatches)->toHaveCount(1);
-        expect($apiMatches)->toHaveCount(1); 
-        expect($deepMatches)->toHaveCount(2); 
+        expect($apiMatches)->toHaveCount(1);
+        expect($deepMatches)->toHaveCount(2);
         expect($deeperMatches)->toHaveCount(2);
     });
 });
@@ -555,7 +554,7 @@ describe('Error Handling', function () {
                         ->get('https://nonexistent-domain-for-testing.invalid/cookies')
                 );
             });
-        
+
             expect(false)->toBeTrue('Expected network error but request succeeded');
         } catch (Exception $e) {
             expect($e)->toBeInstanceOf(Exception::class);
@@ -563,12 +562,12 @@ describe('Error Handling', function () {
     });
 
     it('handles malformed cookie responses', function () {
-        expect(true)->toBeTrue(); 
+        expect(true)->toBeTrue();
     });
 
     it('validates cookie names', function () {
         $invalidNames = ['cookie name', 'cookie;name', 'cookie=name'];
-        
+
         foreach ($invalidNames as $invalidName) {
             $cookie = new Cookie($invalidName, 'value');
             expect($cookie->getName())->toBe($invalidName);

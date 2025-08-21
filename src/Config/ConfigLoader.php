@@ -16,7 +16,7 @@ final class ConfigLoader
 {
     private static ?self $instance = null;
     private ?string $rootPath = null;
-    
+
     /** @var array<string, mixed> */
     private array $config = [];
 
@@ -57,8 +57,8 @@ final class ConfigLoader
     /**
      * Retrieves a configuration array by its key (the filename).
      * e.g., get('database') loads and returns config/database.php
-     * 
-     * @param mixed $default
+     *
+     * @param  mixed  $default
      * @return mixed
      */
     public function get(string $key, $default = null)
@@ -92,7 +92,7 @@ final class ConfigLoader
     private function loadDotEnv(): void
     {
         if ($this->rootPath === null) {
-            throw new Exception("Root path not found, cannot load .env file");
+            throw new Exception('Root path not found, cannot load .env file');
         }
 
         $envFile = $this->rootPath.'/.env';
@@ -117,7 +117,7 @@ final class ConfigLoader
     private function loadConfigFiles(): void
     {
         if ($this->rootPath === null) {
-            throw new Exception("Root path not found, cannot load config files");
+            throw new Exception('Root path not found, cannot load config files');
         }
 
         $configDir = $this->rootPath.'/config';

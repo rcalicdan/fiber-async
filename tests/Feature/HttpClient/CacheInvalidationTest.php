@@ -102,7 +102,7 @@ describe('HTTP Client Cache Invalidation', function () {
             $cacheKey = HttpHandler::generateCacheKey($url);
             $trackableCache->delete($cacheKey);
             expect($trackableCache->getOperationsCount('delete'))->toBe(1);
-            
+
             // 5. Third GET: Cache miss, repopulates the cache.
             await(http()->cacheWith($cacheConfig)->get($url));
             expect($trackableCache->getOperationsCount('set'))->toBe(2);
