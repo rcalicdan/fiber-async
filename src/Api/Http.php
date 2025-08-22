@@ -134,19 +134,28 @@ class Http
     {
         self::$isTesting = true;
         self::$testingInstance = new TestingHttpHandler();
-        
-        // Apply any global settings
+
         if (!empty($settings)) {
             if (isset($settings['network_simulation']) && $settings['network_simulation']) {
                 $networkSettings = array_intersect_key($settings, array_flip([
-                    'failure_rate', 'timeout_rate', 'default_delay'
+                    'failure_rate',
+                    'timeout_rate',
+                    'default_delay'
                 ]));
                 self::$testingInstance->enableNetworkSimulation($networkSettings);
             }
-            
+
             if (isset($settings['strict_matching'])) {
-                // Apply strict matching and other global settings
-                // This would require extending TestingHttpHandler to accept global settings
+                self::$testingInstance->setStrictMatching($settings['strict_matching']);
+            }
+
+            if (isset($settings['auto_temp_files'])) {
+                self::$testingInstance->setAutoTempFileManagement($settings['auto_temp_files']);
+            }
+
+            if (isset($settings['record_requests'])) {
+                // Enable/disable request recording
+                self::$testingInstance->setRecordRequests($settings['record_requests']);
             }
         }
 
@@ -310,6 +319,6 @@ class Http
             return $handler->{$method}(...$arguments);
         }
 
-        throw new \BadMethodCallException("Method {$method} does not exist on ".static::class);
+        throw new \BadMethodCallException("Method {$method} does not exist on " . static::class);
     }
 }

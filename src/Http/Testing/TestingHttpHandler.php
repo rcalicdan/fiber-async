@@ -66,7 +66,6 @@ class TestingHttpHandler extends HttpHandler
         return $this;
     }
 
-    // File management delegation
     public static function getTempPath(?string $filename = null): string
     {
         return FileManager::getTempPath($filename);
@@ -82,7 +81,6 @@ class TestingHttpHandler extends HttpHandler
         return $this->fileManager->createTempFile($filename, $content);
     }
 
-    // Recording methods
     public function startRecording(string $filename): self
     {
         $this->recordingFile = $filename;
