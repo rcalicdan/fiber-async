@@ -71,10 +71,9 @@ final readonly class StreamingHandler
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
             $streamingOptions,
-            function (?string $error, $response, ?int $httpCode, array $headers = []) use ($promise, $responseStream, &$headerAccumulator): void {
+            function (?string $error, $response, ?int $httpCode, array $headers = [], ?string $httpVersion = null) use ($promise, $responseStream, &$headerAccumulator): void {
                 if ($promise->isCancelled()) {
                     fclose($responseStream);
-
                     return;
                 }
 
@@ -85,7 +84,6 @@ final readonly class StreamingHandler
                     rewind($responseStream);
                     $stream = new Stream($responseStream);
 
-                    /** @var array<string, string|array<string>> $formattedHeaders */
                     $formattedHeaders = [];
                     foreach ($headerAccumulator as $header) {
                         if (str_contains($header, ':')) {
@@ -104,7 +102,13 @@ final readonly class StreamingHandler
                         }
                     }
 
-                    $promise->resolve(new StreamingResponse($stream, $httpCode ?? 200, $formattedHeaders));
+                    $streamingResponse = new StreamingResponse($stream, $httpCode ?? 200, $formattedHeaders);
+
+                    if ($httpVersion !== null) {
+                        $streamingResponse->setHttpVersion($httpVersion);
+                    }
+
+                    $promise->resolve($streamingResponse);
                 }
             }
         );
@@ -166,14 +170,13 @@ final readonly class StreamingHandler
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
             $downloadOptions,
-            function (?string $error, $response, ?int $httpCode, array $headers = []) use ($promise, $file, $destination): void {
+            function (?string $error, $response, ?int $httpCode, array $headers = [], ?string $httpVersion = null) use ($promise, $file, $destination): void {
                 fclose($file);
 
                 if ($promise->isCancelled()) {
                     if (file_exists($destination)) {
                         unlink($destination);
                     }
-
                     return;
                 }
 
@@ -183,10 +186,14 @@ final readonly class StreamingHandler
                     }
                     $promise->reject(new Exception("Download failed: {$error}"));
                 } else {
+                    $fileSize = file_exists($destination) ? filesize($destination) : 0;
+
                     $promise->resolve([
                         'file' => $destination,
                         'status' => $httpCode ?? 0,
                         'headers' => $headers,
+                        'protocol_version' => $httpVersion,
+                        'size' => $fileSize,
                     ]);
                 }
             }

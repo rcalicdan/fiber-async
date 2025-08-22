@@ -53,7 +53,7 @@ class Request extends Message implements RequestInterface
         $this->uri = $uri instanceof UriInterface ? $uri : new Uri($uri);
         $this->setHeaders($headers);
         $this->protocol = $version;
-        $this->userAgent = 'FiberAsync-HTTP/1.0';
+        $this->userAgent = 'FiberAsync-HTTP-Client';
 
         if ($body !== '' && $body !== null) {
             $this->body = $body instanceof Stream ? $body : $this->createTempStream();
@@ -82,7 +82,7 @@ class Request extends Message implements RequestInterface
             $target = '/';
         }
         if ($this->uri->getQuery() !== '') {
-            $target .= '?'.$this->uri->getQuery();
+            $target .= '?' . $this->uri->getQuery();
         }
 
         return $target;
@@ -424,7 +424,7 @@ class Request extends Message implements RequestInterface
     {
         $options = $this->buildCurlOptions('GET', $url);
 
-        return $this->handler->stream($url, $options, $onChunk);
+        return $this->handler->getStreamingHandler()->streamRequest($url, $options, $onChunk);
     }
 
     /**
@@ -470,7 +470,7 @@ class Request extends Message implements RequestInterface
     public function get(string $url, array $query = []): PromiseInterface
     {
         if (count($query) > 0) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
         }
 
         return $this->send('GET', $url);
@@ -592,7 +592,7 @@ class Request extends Message implements RequestInterface
     {
         $cookieStrings = [];
         foreach ($cookies as $name => $value) {
-            $cookieStrings[] = $name.'='.urlencode($value);
+            $cookieStrings[] = $name . '=' . urlencode($value);
         }
 
         if ($cookieStrings !== []) {
@@ -612,10 +612,10 @@ class Request extends Message implements RequestInterface
     public function cookie(string $name, string $value): self
     {
         $existingCookies = $this->getHeaderLine('Cookie');
-        $newCookie = $name.'='.urlencode($value);
+        $newCookie = $name . '=' . urlencode($value);
 
         if ($existingCookies !== '') {
-            return $this->header('Cookie', $existingCookies.'; '.$newCookie);
+            return $this->header('Cookie', $existingCookies . '; ' . $newCookie);
         } else {
             return $this->header('Cookie', $newCookie);
         }
@@ -703,7 +703,7 @@ class Request extends Message implements RequestInterface
                 // Merge with existing Cookie header if present
                 $existingCookies = $this->getHeaderLine('Cookie');
                 if ($existingCookies !== '') {
-                    $this->header('Cookie', $existingCookies.'; '.$cookieHeader);
+                    $this->header('Cookie', $existingCookies . '; ' . $cookieHeader);
                 } else {
                     $this->header('Cookie', $cookieHeader);
                 }
@@ -737,7 +737,7 @@ class Request extends Message implements RequestInterface
         if (count($this->headers) > 0) {
             $headerStrings = [];
             foreach ($this->headers as $name => $value) {
-                $headerStrings[] = "{$name}: ".implode(', ', $value);
+                $headerStrings[] = "{$name}: " . implode(', ', $value);
             }
             $options[CURLOPT_HTTPHEADER] = $headerStrings;
         }
@@ -784,7 +784,7 @@ class Request extends Message implements RequestInterface
         }
 
         if (($port = $this->uri->getPort()) !== null) {
-            $host .= ':'.$port;
+            $host .= ':' . $port;
         }
 
         if (isset($this->headerNames['host'])) {
