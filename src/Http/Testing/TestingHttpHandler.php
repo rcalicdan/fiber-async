@@ -37,7 +37,7 @@ class TestingHttpHandler extends HttpHandler
     public function __construct()
     {
         parent::__construct();
-        
+
         $this->fileManager = new FileManager();
         $this->networkSimulator = new NetworkSimulator();
         $this->requestMatcher = new RequestMatcher();
@@ -63,6 +63,18 @@ class TestingHttpHandler extends HttpHandler
     public function setAutoTempFileManagement(bool $enabled): self
     {
         $this->fileManager->setAutoManagement($enabled);
+        return $this;
+    }
+
+    public function setStrictMatching(bool $strict): self
+    {
+        $this->globalSettings['strict_matching'] = $strict;
+        return $this;
+    }
+
+    public function setRecordRequests(bool $enabled): self
+    {
+        $this->globalSettings['record_requests'] = $enabled;
         return $this;
     }
 
@@ -162,7 +174,7 @@ class TestingHttpHandler extends HttpHandler
     {
         $method = $curlOptions[CURLOPT_CUSTOMREQUEST] ?? 'GET';
         $this->recordRequest($method, $url, $curlOptions);
-        
+
         $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
 
         if ($match === null) {
