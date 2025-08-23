@@ -122,12 +122,12 @@ class Http
 
     /**
      * Enable testing mode with a clean TestingHttpHandler instance.
-     * 
+     *
      * This method switches the Http client to use a TestingHttpHandler instead
      * of the regular HttpHandler, allowing you to mock requests and responses
      * for testing purposes.
      *
-     * @param array<string, mixed> $settings Optional global testing settings
+     * @param  array<string, mixed>  $settings  Optional global testing settings
      * @return TestingHttpHandler The testing handler for configuration
      */
     public static function testing(): TestingHttpHandler
@@ -135,21 +135,22 @@ class Http
         self::$isTesting = true;
 
         if (self::$testingInstance === null) {
-            self::$testingInstance = new TestingHttpHandler();
-        };
+            self::$testingInstance = new TestingHttpHandler;
+        }
 
         return self::$testingInstance;
     }
 
     /**
      * Get the current testing handler instance.
-     * 
+     *
      * @return TestingHttpHandler|null The testing handler if in testing mode, null otherwise
+     *
      * @throws \RuntimeException If not in testing mode
      */
     public static function getTestingHandler(): TestingHttpHandler
     {
-        if (!self::$isTesting || self::$testingInstance === null) {
+        if (! self::$isTesting || self::$testingInstance === null) {
             throw new \RuntimeException('Not in testing mode. Call Http::testing() first.');
         }
 
@@ -168,7 +169,7 @@ class Http
 
     /**
      * Disable testing mode and return to normal HTTP operations.
-     * 
+     *
      * This restores the Http client to use the regular HttpHandler,
      * clearing all mocked requests and testing state.
      */
@@ -206,14 +207,14 @@ class Http
 
     /**
      * Convenience method to quickly mock a request in testing mode.
-     * 
-     * @param string $method HTTP method to mock (default: '*' for any)
-     * @return \Rcalicdan\FiberAsync\Http\Testing\MockRequestBuilder
+     *
+     * @param  string  $method  HTTP method to mock (default: '*' for any)
+     *
      * @throws \RuntimeException If not in testing mode
      */
     public static function mock(string $method = '*'): \Rcalicdan\FiberAsync\Http\Testing\MockRequestBuilder
     {
-        if (!self::$isTesting || self::$testingInstance === null) {
+        if (! self::$isTesting || self::$testingInstance === null) {
             throw new \RuntimeException('Not in testing mode. Call Http::testing() first.');
         }
 
@@ -222,16 +223,17 @@ class Http
 
     /**
      * Assert that a specific request was made during testing.
-     * 
-     * @param string $method HTTP method
-     * @param string $url URL pattern
-     * @param array<string, mixed> $options Additional matching options
+     *
+     * @param  string  $method  HTTP method
+     * @param  string  $url  URL pattern
+     * @param  array<string, mixed>  $options  Additional matching options
+     *
      * @throws \RuntimeException If not in testing mode
      * @throws \Exception If assertion fails
      */
     public static function assertRequestMade(string $method, string $url, array $options = []): void
     {
-        if (!self::$isTesting || self::$testingInstance === null) {
+        if (! self::$isTesting || self::$testingInstance === null) {
             throw new \RuntimeException('Not in testing mode. Call Http::testing() first.');
         }
 
@@ -240,13 +242,13 @@ class Http
 
     /**
      * Assert that no HTTP requests were made during testing.
-     * 
+     *
      * @throws \RuntimeException If not in testing mode
      * @throws \Exception If assertion fails
      */
     public static function assertNoRequestsMade(): void
     {
-        if (!self::$isTesting || self::$testingInstance === null) {
+        if (! self::$isTesting || self::$testingInstance === null) {
             throw new \RuntimeException('Not in testing mode. Call Http::testing() first.');
         }
 
@@ -255,14 +257,15 @@ class Http
 
     /**
      * Assert a specific number of requests were made during testing.
-     * 
-     * @param int $expected Expected number of requests
+     *
+     * @param  int  $expected  Expected number of requests
+     *
      * @throws \RuntimeException If not in testing mode
      * @throws \Exception If assertion fails
      */
     public static function assertRequestCount(int $expected): void
     {
-        if (!self::$isTesting || self::$testingInstance === null) {
+        if (! self::$isTesting || self::$testingInstance === null) {
             throw new \RuntimeException('Not in testing mode. Call Http::testing() first.');
         }
 
@@ -298,6 +301,6 @@ class Http
             return $handler->{$method}(...$arguments);
         }
 
-        throw new \BadMethodCallException("Method {$method} does not exist on " . static::class);
+        throw new \BadMethodCallException("Method {$method} does not exist on ".static::class);
     }
 }

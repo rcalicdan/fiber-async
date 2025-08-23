@@ -2,8 +2,6 @@
 
 namespace Rcalicdan\FiberAsync\Http\Testing\Services;
 
-use Rcalicdan\FiberAsync\Http\Exceptions\HttpException;
-
 class NetworkSimulator
 {
     private bool $enabled = false;
@@ -29,16 +27,17 @@ class NetworkSimulator
 
     /**
      * Simulates network conditions and may throw exceptions or modify behavior
+     *
      * @return array{should_timeout: bool, should_fail: bool, error_message: string|null, delay: float}
      */
     public function simulate(): array
     {
-        if (!$this->enabled) {
+        if (! $this->enabled) {
             return [
                 'should_timeout' => false,
                 'should_fail' => false,
                 'error_message' => null,
-                'delay' => (float) $this->settings['default_delay']
+                'delay' => (float) $this->settings['default_delay'],
             ];
         }
 
@@ -46,7 +45,7 @@ class NetworkSimulator
             'should_timeout' => false,
             'should_fail' => false,
             'error_message' => null,
-            'delay' => (float) $this->settings['default_delay']
+            'delay' => (float) $this->settings['default_delay'],
         ];
 
         if (mt_rand() / mt_getrandmax() < $this->settings['timeout_rate']) {
@@ -56,6 +55,7 @@ class NetworkSimulator
                 'Connection timed out after %.1fs (simulated network timeout)',
                 $this->settings['timeout_delay']
             );
+
             return $result;
         }
 
@@ -66,21 +66,24 @@ class NetworkSimulator
                 'Could not resolve host (network simulation)',
                 'Connection timed out during handshake (network simulation)',
                 'SSL connection timeout (network simulation)',
-                'Resolving timed out (network simulation)'
+                'Resolving timed out (network simulation)',
             ];
             $result['error_message'] = $retryableErrors[array_rand($retryableErrors)];
+
             return $result;
         }
 
         if (mt_rand() / mt_getrandmax() < $this->settings['failure_rate']) {
             $result['should_fail'] = true;
             $result['error_message'] = 'Simulated network failure';
+
             return $result;
         }
 
         if (mt_rand() / mt_getrandmax() < $this->settings['connection_failure_rate']) {
             $result['should_fail'] = true;
             $result['error_message'] = 'Connection refused (network simulation)';
+
             return $result;
         }
 

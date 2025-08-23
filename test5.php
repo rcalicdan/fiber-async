@@ -22,7 +22,8 @@ Task::run(function () {
     Http::mock('GET')
         ->url($url_fail)
         ->rateLimitedUntilAttempt(10)
-        ->register();
+        ->register()
+    ;
 
     try {
         $start = microtime(true);
@@ -31,24 +32,24 @@ Task::run(function () {
                 'max_retries' => 5,
                 'base_delay' => 0.01,
                 'backoff_multiplier' => 1,
-            ]
+            ],
         ]));
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
-        echo "Success! Response: " . $response->body() . " | Elapsed: " . $elapsed . "s\n";
+        echo 'Success! Response: '.$response->body().' | Elapsed: '.$elapsed."s\n";
     } catch (Exception $e) {
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
         echo "Request failed as expected.\n";
-        echo "Error: " . $e->getMessage() . "\n";
-        echo "Elapsed: " . $elapsed . "s\n";
+        echo 'Error: '.$e->getMessage()."\n";
+        echo 'Elapsed: '.$elapsed."s\n";
     }
 
     try {
         $handler->assertRequestCount(6);
         echo "Assertion successful: Exactly 6 requests were made.\n";
     } catch (Exception $e) {
-        echo "Assertion failed: " . $e->getMessage() . "\n";
+        echo 'Assertion failed: '.$e->getMessage()."\n";
     }
 
     // =================================================================
@@ -65,7 +66,8 @@ Task::run(function () {
     Http::mock('GET')
         ->url($url_success)
         ->rateLimitedUntilAttempt(4)
-        ->register();
+        ->register()
+    ;
 
     try {
         $start = microtime(true);
@@ -74,25 +76,25 @@ Task::run(function () {
                 'max_retries' => 5,
                 'base_delay' => 0.01,
                 'backoff_multiplier' => 1,
-            ]
+            ],
         ]));
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
 
         echo "Success!\n";
-        echo "Response Body: " . $response->body() . "\n";
-        echo "Elapsed: " . $elapsed . "s\n";
+        echo 'Response Body: '.$response->body()."\n";
+        echo 'Elapsed: '.$elapsed."s\n";
     } catch (Exception $e) {
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
-        echo "Request failed unexpectedly: " . $e->getMessage() . " | Elapsed: " . $elapsed . "s\n";
+        echo 'Request failed unexpectedly: '.$e->getMessage().' | Elapsed: '.$elapsed."s\n";
     }
 
     try {
         $handler->assertRequestCount(4);
         echo "Assertion successful: Exactly 4 requests were made.\n";
     } catch (Exception $e) {
-        echo "Assertion failed: " . $e->getMessage() . "\n";
+        echo 'Assertion failed: '.$e->getMessage()."\n";
     }
 
     // =================================================================
@@ -108,8 +110,9 @@ Task::run(function () {
 
     Http::mock('GET')
         ->url($url_generic_fail)
-        ->failUntilAttempt(3, "Connection failed")
-        ->register();
+        ->failUntilAttempt(3, 'Connection failed')
+        ->register()
+    ;
 
     try {
         $start = microtime(true);
@@ -118,25 +121,25 @@ Task::run(function () {
                 'max_retries' => 3,
                 'base_delay' => 0.01,
                 'backoff_multiplier' => 1,
-            ]
+            ],
         ]));
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
 
         echo "Success!\n";
-        echo "Response Body: " . $response->body() . "\n";
-        echo "Elapsed: " . $elapsed . "s\n";
+        echo 'Response Body: '.$response->body()."\n";
+        echo 'Elapsed: '.$elapsed."s\n";
     } catch (Exception $e) {
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
-        echo "Request failed unexpectedly: " . $e->getMessage() . " | Elapsed: " . $elapsed . "s\n";
+        echo 'Request failed unexpectedly: '.$e->getMessage().' | Elapsed: '.$elapsed."s\n";
     }
 
     try {
         $handler->assertRequestCount(3);
         echo "Assertion successful: Exactly 3 requests were made.\n";
     } catch (Exception $e) {
-        echo "Assertion failed: " . $e->getMessage() . "\n";
+        echo 'Assertion failed: '.$e->getMessage()."\n";
     }
 
     // =================================================================
@@ -152,8 +155,9 @@ Task::run(function () {
 
     Http::mock('GET')
         ->url($url_retry_count)
-        ->failUntilAttempt(5, "Connection failed")
-        ->register();
+        ->failUntilAttempt(5, 'Connection failed')
+        ->register()
+    ;
 
     try {
         $start = microtime(true);
@@ -162,24 +166,24 @@ Task::run(function () {
                 'max_retries' => 3,
                 'base_delay' => 0.01,
                 'backoff_multiplier' => 1,
-            ]
+            ],
         ]));
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
-        echo "Success! Response: " . $response->body() . " | Elapsed: " . $elapsed . "s\n";
+        echo 'Success! Response: '.$response->body().' | Elapsed: '.$elapsed."s\n";
     } catch (Exception $e) {
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
         echo "Request failed as expected.\n";
-        echo "Error: " . $e->getMessage() . "\n";
-        echo "Elapsed: " . $elapsed . "s\n";
+        echo 'Error: '.$e->getMessage()."\n";
+        echo 'Elapsed: '.$elapsed."s\n";
     }
 
     try {
         $handler->assertRequestCount(4);
         echo "Assertion successful: Exactly 4 requests were made as expected.\n";
     } catch (Exception $e) {
-        echo "Assertion failed: " . $e->getMessage() . "\n";
+        echo 'Assertion failed: '.$e->getMessage()."\n";
     }
 
     // =================================================================
@@ -202,7 +206,8 @@ Task::run(function () {
     Http::mock('POST')
         ->url($url_sequence_fail)
         ->failWithSequence($failures, ['message' => 'System recovered!'])
-        ->register();
+        ->register()
+    ;
 
     try {
         $start = microtime(true);
@@ -212,27 +217,27 @@ Task::run(function () {
                 'max_retries' => 5,
                 'base_delay' => 0.01,
                 'backoff_multiplier' => 1,
-            ]
+            ],
         ]));
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
 
         echo "Success!\n";
-        echo "Response Body: " . $response->body() . "\n";
-        echo "Elapsed: " . $elapsed . "s\n";
+        echo 'Response Body: '.$response->body()."\n";
+        echo 'Elapsed: '.$elapsed."s\n";
     } catch (Exception $e) {
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
         echo "Request failed unexpectedly.\n";
-        echo "Error: " . $e->getMessage() . "\n";
-        echo "Elapsed: " . $elapsed . "s\n";
+        echo 'Error: '.$e->getMessage()."\n";
+        echo 'Elapsed: '.$elapsed."s\n";
     }
 
     try {
         $handler->assertRequestCount(4);
         echo "Assertion successful: Exactly 4 requests were made as expected.\n";
     } catch (Exception $e) {
-        echo "Assertion failed: " . $e->getMessage() . "\n";
+        echo 'Assertion failed: '.$e->getMessage()."\n";
     }
 
     // =================================================================
@@ -249,7 +254,8 @@ Task::run(function () {
     Http::mock('POST')
         ->url($url_builder_test)
         ->failUntilAttempt(3)
-        ->register();
+        ->register()
+    ;
 
     try {
         $start = microtime(true);
@@ -262,21 +268,21 @@ Task::run(function () {
         $elapsed = round($end - $start, 2);
 
         echo "Success!\n";
-        echo "Response Body: " . $response->body() . "\n";
-        echo "Elapsed: " . $elapsed . "s\n";
+        echo 'Response Body: '.$response->body()."\n";
+        echo 'Elapsed: '.$elapsed."s\n";
     } catch (Exception $e) {
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
         echo "Request failed unexpectedly.\n";
-        echo "Error: " . $e->getMessage() . "\n";
-        echo "Elapsed: " . $elapsed . "s\n";
+        echo 'Error: '.$e->getMessage()."\n";
+        echo 'Elapsed: '.$elapsed."s\n";
     }
 
     try {
         $handler->assertRequestCount(3);
         echo "Assertion successful: Exactly 3 requests were made as expected.\n";
     } catch (Exception $e) {
-        echo "Assertion failed: " . $e->getMessage() . "\n";
+        echo 'Assertion failed: '.$e->getMessage()."\n";
     }
 
     // =================================================================
@@ -302,7 +308,8 @@ Task::run(function () {
     Http::mock('POST')
         ->url($url_builder_sequence_test)
         ->failWithSequence($failures, ['status' => 'ok', 'message' => 'Builder request successful!'])
-        ->register();
+        ->register()
+    ;
 
     try {
         $start = microtime(true);
@@ -318,14 +325,14 @@ Task::run(function () {
         $elapsed = round($end - $start, 2);
 
         echo "Success!\n";
-        echo "Response Body: " . $response->body() . "\n";
-        echo "Elapsed: " . $elapsed . "s\n";
+        echo 'Response Body: '.$response->body()."\n";
+        echo 'Elapsed: '.$elapsed."s\n";
     } catch (Exception $e) {
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
         echo "Request failed unexpectedly.\n";
-        echo "Error: " . $e->getMessage() . "\n";
-        echo "Elapsed: " . $elapsed . "s\n";
+        echo 'Error: '.$e->getMessage()."\n";
+        echo 'Elapsed: '.$elapsed."s\n";
     }
 
     // Assert that exactly 3 requests were made (1 initial + 2 retries)
@@ -333,7 +340,7 @@ Task::run(function () {
         $handler->assertRequestCount(3);
         echo "Assertion successful: Exactly 3 requests were made as expected.\n";
     } catch (Exception $e) {
-        echo "Assertion failed: " . $e->getMessage() . "\n";
+        echo 'Assertion failed: '.$e->getMessage()."\n";
     }
 
     // =================================================================
@@ -361,7 +368,8 @@ Task::run(function () {
         ->respondWith(200)
         ->persistent()
         ->json(['message' => 'This should not be seen!'])
-        ->register();
+        ->register()
+    ;
 
     try {
         $start = microtime(true);
@@ -372,12 +380,12 @@ Task::run(function () {
                 'max_retries' => 3, // 1 initial + 3 retries = 4 total attempts
                 'base_delay' => 0.01,
                 'backoff_multiplier' => 1,
-            ]
+            ],
         ]));
 
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
-        echo "Request succeeded unexpectedly! | Elapsed: " . $elapsed . "s\n";
+        echo 'Request succeeded unexpectedly! | Elapsed: '.$elapsed."s\n";
     } catch (Exception $e) {
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
@@ -386,9 +394,9 @@ Task::run(function () {
         if (str_contains($e->getMessage(), '(network simulation)')) {
             echo "Error message correctly indicates a simulated failure.\n";
         } else {
-            echo "Error message was not from the simulator: " . $e->getMessage() . "\n";
+            echo 'Error message was not from the simulator: '.$e->getMessage()."\n";
         }
-        echo "Elapsed: " . $elapsed . "s\n";
+        echo 'Elapsed: '.$elapsed."s\n";
     }
 
     // Assert that exactly 4 requests were made before giving up.
@@ -396,7 +404,7 @@ Task::run(function () {
         $handler->assertRequestCount(4);
         echo "Assertion successful: Exactly 4 requests were made as expected.\n";
     } catch (Exception $e) {
-        echo "Assertion failed: " . $e->getMessage() . "\n";
+        echo 'Assertion failed: '.$e->getMessage()."\n";
     }
 
     // =================================================================
@@ -424,7 +432,8 @@ Task::run(function () {
         ->respondWith(200)
         ->persistent()
         ->json(['message' => 'This should not be seen!'])
-        ->register();
+        ->register()
+    ;
 
     try {
         $start = microtime(true);
@@ -434,7 +443,7 @@ Task::run(function () {
 
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
-        echo "Request succeeded unexpectedly! | Elapsed: " . $elapsed . "s\n";
+        echo 'Request succeeded unexpectedly! | Elapsed: '.$elapsed."s\n";
     } catch (Exception $e) {
         $end = microtime(true);
         $elapsed = round($end - $start, 2);
@@ -443,9 +452,9 @@ Task::run(function () {
         if (str_contains($e->getMessage(), '(network simulation)')) {
             echo "Error message correctly indicates a simulated failure.\n";
         } else {
-            echo "Error message was not from the simulator: " . $e->getMessage() . "\n";
+            echo 'Error message was not from the simulator: '.$e->getMessage()."\n";
         }
-        echo "Elapsed: " . $elapsed . "s\n";
+        echo 'Elapsed: '.$elapsed."s\n";
     }
 
     // Assert that exactly 4 requests were made before giving up.
@@ -453,6 +462,6 @@ Task::run(function () {
         $handler->assertRequestCount(4);
         echo "Assertion successful: Exactly 4 requests were made as expected.\n";
     } catch (Exception $e) {
-        echo "Assertion failed: " . $e->getMessage() . "\n";
+        echo 'Assertion failed: '.$e->getMessage()."\n";
     }
 });

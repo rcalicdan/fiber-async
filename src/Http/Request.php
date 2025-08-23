@@ -82,7 +82,7 @@ class Request extends Message implements RequestInterface
             $target = '/';
         }
         if ($this->uri->getQuery() !== '') {
-            $target .= '?' . $this->uri->getQuery();
+            $target .= '?'.$this->uri->getQuery();
         }
 
         return $target;
@@ -422,9 +422,14 @@ class Request extends Message implements RequestInterface
      */
     public function stream(string $url, ?callable $onChunk = null): CancellablePromiseInterface
     {
-        $options = $this->buildCurlOptions('GET', $url);
+        $options = $this->buildFetchOptions('GET');
+        $options['stream'] = true;
+        if ($onChunk) {
+            $options['on_chunk'] = $onChunk;
+        }
 
-        return $this->handler->getStreamingHandler()->streamRequest($url, $options, $onChunk);
+        // TestingHttpHandler::fetch() will now correctly handle this.
+        return $this->handler->fetch($url, $options);
     }
 
     /**
@@ -437,6 +442,8 @@ class Request extends Message implements RequestInterface
     public function download(string $url, string $destination): CancellablePromiseInterface
     {
         $options = $this->buildCurlOptions('GET', $url);
+
+        $options['retry'] = $this->retryConfig;
 
         return $this->handler->download($url, $destination, $options);
     }
@@ -470,7 +477,7 @@ class Request extends Message implements RequestInterface
     public function get(string $url, array $query = []): PromiseInterface
     {
         if (count($query) > 0) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
         }
 
         return $this->send('GET', $url);
@@ -592,7 +599,7 @@ class Request extends Message implements RequestInterface
     {
         $cookieStrings = [];
         foreach ($cookies as $name => $value) {
-            $cookieStrings[] = $name . '=' . urlencode($value);
+            $cookieStrings[] = $name.'='.urlencode($value);
         }
 
         if ($cookieStrings !== []) {
@@ -612,10 +619,10 @@ class Request extends Message implements RequestInterface
     public function cookie(string $name, string $value): self
     {
         $existingCookies = $this->getHeaderLine('Cookie');
-        $newCookie = $name . '=' . urlencode($value);
+        $newCookie = $name.'='.urlencode($value);
 
         if ($existingCookies !== '') {
-            return $this->header('Cookie', $existingCookies . '; ' . $newCookie);
+            return $this->header('Cookie', $existingCookies.'; '.$newCookie);
         } else {
             return $this->header('Cookie', $newCookie);
         }
@@ -656,6 +663,48 @@ class Request extends Message implements RequestInterface
         $this->protocol = '3.0';
 
         return $this;
+    }
+
+    /**
+     * Builds a high-level "fetch" style options array from the builder's state.
+     *
+     * @param  string  $method  The HTTP method.
+     * @return array<string, mixed> The fetch options array.
+     */
+    private function buildFetchOptions(string $method): array
+    {
+        $options = [
+            'method' => $method,
+            'headers' => [],
+            'timeout' => $this->timeout,
+            'connect_timeout' => $this->connectTimeout,
+            'follow_redirects' => $this->followRedirects,
+            'max_redirects' => $this->maxRedirects,
+            'verify_ssl' => $this->verifySSL,
+            'user_agent' => $this->userAgent,
+            'auth' => [],
+        ];
+
+        if ($this->retryConfig) {
+            $options['retry'] = $this->retryConfig;
+        }
+
+        foreach ($this->headers as $name => $values) {
+            $options['headers'][$name] = implode(', ', $values);
+        }
+
+        if ($this->auth !== null) {
+            [$type, $username, $password] = $this->auth;
+            if ($type === 'basic') {
+                $options['auth']['basic'] = ['username' => $username, 'password' => $password];
+            }
+        }
+
+        if ($this->body->getSize() > 0) {
+            $options['body'] = (string) $this->body;
+        }
+
+        return $options;
     }
 
     /**
@@ -703,7 +752,7 @@ class Request extends Message implements RequestInterface
                 // Merge with existing Cookie header if present
                 $existingCookies = $this->getHeaderLine('Cookie');
                 if ($existingCookies !== '') {
-                    $this->header('Cookie', $existingCookies . '; ' . $cookieHeader);
+                    $this->header('Cookie', $existingCookies.'; '.$cookieHeader);
                 } else {
                     $this->header('Cookie', $cookieHeader);
                 }
@@ -737,7 +786,7 @@ class Request extends Message implements RequestInterface
         if (count($this->headers) > 0) {
             $headerStrings = [];
             foreach ($this->headers as $name => $value) {
-                $headerStrings[] = "{$name}: " . implode(', ', $value);
+                $headerStrings[] = "{$name}: ".implode(', ', $value);
             }
             $options[CURLOPT_HTTPHEADER] = $headerStrings;
         }
@@ -784,7 +833,7 @@ class Request extends Message implements RequestInterface
         }
 
         if (($port = $this->uri->getPort()) !== null) {
-            $host .= ':' . $port;
+            $host .= ':'.$port;
         }
 
         if (isset($this->headerNames['host'])) {

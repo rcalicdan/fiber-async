@@ -25,7 +25,7 @@ class ResponseFactory
     public function createMockedResponse(MockedRequest $mock): PromiseInterface
     {
         /** @var CancellablePromise<Response> $promise */
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         $this->executeWithNetworkSimulation($promise, $mock, function () use ($mock) {
             if ($mock->shouldFail()) {
@@ -48,7 +48,7 @@ class ResponseFactory
     public function createRetryableMockedResponse(RetryConfig $retryConfig, callable $mockProvider): PromiseInterface
     {
         /** @var CancellablePromise<Response> $promise */
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
         $attempt = 0;
         /** @var string|null $timerId */
         $timerId = null;
@@ -60,17 +60,20 @@ class ResponseFactory
         });
 
         $executeAttempt = function () use ($retryConfig, $promise, $mockProvider, &$attempt, &$timerId, &$executeAttempt) {
-            if ($promise->isCancelled()) return;
+            if ($promise->isCancelled()) {
+                return;
+            }
 
             $attempt++;
 
             try {
                 $mock = $mockProvider($attempt);
-                if (!$mock instanceof MockedRequest) {
-                    throw new Exception("Mock provider must return a MockedRequest instance");
+                if (! $mock instanceof MockedRequest) {
+                    throw new Exception('Mock provider must return a MockedRequest instance');
                 }
             } catch (Exception $e) {
-                $promise->reject(new HttpException("Mock provider error: " . $e->getMessage()));
+                $promise->reject(new HttpException('Mock provider error: '.$e->getMessage()));
+
                 return;
             }
 
@@ -78,7 +81,9 @@ class ResponseFactory
             $delay = max($networkConditions['delay'] ?? 0, $mock->getDelay());
 
             $timerId = EventLoop::getInstance()->addTimer($delay, function () use ($retryConfig, $promise, $mock, $networkConditions, $attempt, &$executeAttempt) {
-                if ($promise->isCancelled()) return;
+                if ($promise->isCancelled()) {
+                    return;
+                }
 
                 $shouldFail = false;
                 $isRetryable = false;
@@ -95,7 +100,7 @@ class ResponseFactory
                     $isRetryable = $retryConfig->isRetryableError($errorMessage) || $mock->isRetryableFailure();
                 } elseif ($mock->getStatusCode() >= 400) { // ** THIS IS THE CRITICAL FIX **
                     $shouldFail = true;
-                    $errorMessage = "Mock responded with status " . $mock->getStatusCode();
+                    $errorMessage = 'Mock responded with status '.$mock->getStatusCode();
                     $isRetryable = in_array($mock->getStatusCode(), $retryConfig->retryableStatusCodes);
                 }
 
@@ -123,7 +128,7 @@ class ResponseFactory
     public function createMockedStream(MockedRequest $mock, ?callable $onChunk, callable $createStream): CancellablePromiseInterface
     {
         /** @var CancellablePromise<StreamingResponse> $promise */
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         $this->executeWithNetworkSimulation($promise, $mock, function () use ($mock, $onChunk, $createStream) {
             if ($mock->shouldFail()) {
@@ -140,6 +145,7 @@ class ResponseFactory
             }
 
             $stream = $createStream($mock->getBody());
+
             return new StreamingResponse($stream, $mock->getStatusCode(), $mock->getHeaders());
         });
 
@@ -149,7 +155,7 @@ class ResponseFactory
     public function createMockedDownload(MockedRequest $mock, string $destination, FileManager $fileManager): CancellablePromiseInterface
     {
         /** @var CancellablePromise<array> $promise */
-        $promise = new CancellablePromise();
+        $promise = new CancellablePromise;
 
         $this->executeWithNetworkSimulation($promise, $mock, function () use ($mock, $destination, $fileManager) {
             if ($mock->shouldFail()) {
@@ -157,8 +163,8 @@ class ResponseFactory
             }
 
             $directory = dirname($destination);
-            if (!is_dir($directory)) {
-                if (!mkdir($directory, 0755, true) && !is_dir($directory)) {
+            if (! is_dir($directory)) {
+                if (! mkdir($directory, 0755, true) && ! is_dir($directory)) {
                     throw new Exception("Cannot create directory: {$directory}");
                 }
                 $fileManager->trackDirectory($directory);
@@ -175,7 +181,7 @@ class ResponseFactory
                 'status' => $mock->getStatusCode(),
                 'headers' => $mock->getHeaders(),
                 'size' => strlen($mock->getBody()),
-                'protocol_version' => '2.0'
+                'protocol_version' => '2.0',
             ];
         });
 
@@ -190,19 +196,27 @@ class ResponseFactory
         $timerId = null;
 
         $promise->setCancelHandler(function () use (&$timerId) {
-            if ($timerId !== null) EventLoop::getInstance()->cancelTimer($timerId);
+            if ($timerId !== null) {
+                EventLoop::getInstance()->cancelTimer($timerId);
+            }
         });
 
         if ($networkConditions['should_fail']) {
             $timerId = EventLoop::getInstance()->addTimer($totalDelay, function () use ($promise, $networkConditions) {
-                if ($promise->isCancelled()) return;
+                if ($promise->isCancelled()) {
+                    return;
+                }
                 $promise->reject(new HttpException($networkConditions['error_message'] ?? 'Network failure'));
             });
+
             return;
         }
 
         $timerId = EventLoop::getInstance()->addTimer($totalDelay, function () use ($promise, $callback) {
-            if ($promise->isCancelled()) return;
+            if ($promise->isCancelled()) {
+                return;
+            }
+
             try {
                 $promise->resolve($callback());
             } catch (Exception $e) {

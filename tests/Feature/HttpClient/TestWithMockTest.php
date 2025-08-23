@@ -11,7 +11,8 @@ beforeAll(function () {
         ->respondWith(200)
         ->delay(0.4)
         ->persistent()
-        ->register();
+        ->register()
+    ;
 });
 
 afterEach(function () {
@@ -26,7 +27,8 @@ test('http_get performs a GET request', function () {
             http_get('https://api.github.com/users/octocat'),
             http_get('https://api.github.com/users/octocat'),
         ]);
-        return   await($links);
+
+        return await($links);
     });
 
     expect($response[0]->ok())->toBeTrue();

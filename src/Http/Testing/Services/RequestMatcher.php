@@ -2,7 +2,6 @@
 
 namespace Rcalicdan\FiberAsync\Http\Testing\Services;
 
-use Rcalicdan\FiberAsync\Http\Testing\MockedRequest;
 use Rcalicdan\FiberAsync\Http\Testing\RecordedRequest;
 
 class RequestMatcher
@@ -14,6 +13,7 @@ class RequestMatcher
                 return ['mock' => $mock, 'index' => $index];
             }
         }
+
         return null;
     }
 
@@ -23,7 +23,7 @@ class RequestMatcher
             return false;
         }
 
-        if (!fnmatch($url, $request->url) && $request->url !== $url) {
+        if (! fnmatch($url, $request->url) && $request->url !== $url) {
             return false;
         }
 

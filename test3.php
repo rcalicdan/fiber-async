@@ -4,7 +4,6 @@ require 'vendor/autoload.php';
 
 use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Api\Task;
-use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Promise\Promise;
 
 class StreamingBenchmark
@@ -14,12 +13,12 @@ class StreamingBenchmark
     public function runAllTests(): void
     {
         echo "🚀 HTTP/1.1 vs HTTP/2 Streaming Efficiency Test\n";
-        echo str_repeat('=', 60) . "\n\n";
+        echo str_repeat('=', 60)."\n\n";
 
         // Test 1: Single stream performance
         await($this->testSingleStreamPerformance());
 
-        // Test 2: Multiple concurrent streams  
+        // Test 2: Multiple concurrent streams
         await($this->testConcurrentStreams());
 
         // Test 3: Quick connection test
@@ -36,7 +35,7 @@ class StreamingBenchmark
     {
         return async(function () {
             echo "📊 Test 1: Single Stream Performance\n";
-            echo str_repeat('-', 40) . "\n";
+            echo str_repeat('-', 40)."\n";
 
             $testUrl = 'https://httpbin.org/stream/15'; // 15 JSON objects
 
@@ -50,7 +49,7 @@ class StreamingBenchmark
 
             $this->results['single_stream'] = [
                 'http1' => $http1Metrics,
-                'http2' => $http2Metrics
+                'http2' => $http2Metrics,
             ];
 
             $this->displayTestResults('Single Stream', $http1Metrics, $http2Metrics);
@@ -61,7 +60,7 @@ class StreamingBenchmark
     {
         return async(function () {
             echo "\n📊 Test 2: Concurrent Streams (This is where HTTP/2 shines!)\n";
-            echo str_repeat('-', 50) . "\n";
+            echo str_repeat('-', 50)."\n";
 
             // Use faster, more reliable endpoints
             $testUrls = [
@@ -87,8 +86,9 @@ class StreamingBenchmark
                     ->stream($url, function ($chunk) use ($i, &$http1ChunkCounts, &$http1TotalBytes) {
                         $http1ChunkCounts[$i]++;
                         $http1TotalBytes += strlen($chunk);
-                        echo "  HTTP/1.1 Stream $i: chunk {$http1ChunkCounts[$i]} (" . strlen($chunk) . " bytes)\n";
-                    });
+                        echo "  HTTP/1.1 Stream $i: chunk {$http1ChunkCounts[$i]} (".strlen($chunk)." bytes)\n";
+                    })
+                ;
             }
 
             try {
@@ -97,7 +97,7 @@ class StreamingBenchmark
                 $http1TotalChunks = array_sum($http1ChunkCounts);
                 $http1Success = true;
             } catch (Exception $e) {
-                echo "HTTP/1.1 concurrent streams failed: " . $e->getMessage() . "\n";
+                echo 'HTTP/1.1 concurrent streams failed: '.$e->getMessage()."\n";
                 $http1Time = microtime(true) - $start;
                 $http1TotalChunks = array_sum($http1ChunkCounts);
                 $http1Success = false;
@@ -119,8 +119,9 @@ class StreamingBenchmark
                     ->stream($url, function ($chunk) use ($i, &$http2ChunkCounts, &$http2TotalBytes) {
                         $http2ChunkCounts[$i]++;
                         $http2TotalBytes += strlen($chunk);
-                        echo "  HTTP/2   Stream $i: chunk {$http2ChunkCounts[$i]} (" . strlen($chunk) . " bytes)\n";
-                    });
+                        echo "  HTTP/2   Stream $i: chunk {$http2ChunkCounts[$i]} (".strlen($chunk)." bytes)\n";
+                    })
+                ;
             }
 
             try {
@@ -129,7 +130,7 @@ class StreamingBenchmark
                 $http2TotalChunks = array_sum($http2ChunkCounts);
                 $http2Success = true;
             } catch (Exception $e) {
-                echo "HTTP/2 concurrent streams failed: " . $e->getMessage() . "\n";
+                echo 'HTTP/2 concurrent streams failed: '.$e->getMessage()."\n";
                 $http2Time = microtime(true) - $start;
                 $http2TotalChunks = array_sum($http2ChunkCounts);
                 $http2Success = false;
@@ -142,7 +143,7 @@ class StreamingBenchmark
                 'bytes' => $http1TotalBytes,
                 'streams' => count($testUrls),
                 'success' => $http1Success,
-                'protocol' => $http1Success ? $this->getProtocolFromResponses($responses1) : 'Unknown'
+                'protocol' => $http1Success ? $this->getProtocolFromResponses($responses1) : 'Unknown',
             ];
 
             $http2Metrics = [
@@ -151,12 +152,12 @@ class StreamingBenchmark
                 'bytes' => $http2TotalBytes,
                 'streams' => count($testUrls),
                 'success' => $http2Success,
-                'protocol' => $http2Success ? $this->getProtocolFromResponses($responses2) : 'Unknown'
+                'protocol' => $http2Success ? $this->getProtocolFromResponses($responses2) : 'Unknown',
             ];
 
             $this->results['concurrent_streams'] = [
                 'http1' => $http1Metrics,
-                'http2' => $http2Metrics
+                'http2' => $http2Metrics,
             ];
 
             $this->displayTestResults('Concurrent Streams', $http1Metrics, $http2Metrics);
@@ -173,7 +174,7 @@ class StreamingBenchmark
     {
         return async(function () {
             echo "\n📊 Test 3: Quick Connection Test\n";
-            echo str_repeat('-', 30) . "\n";
+            echo str_repeat('-', 30)."\n";
 
             // Test quick connections with small streams
             $quickUrls = [
@@ -192,8 +193,9 @@ class StreamingBenchmark
                     ->httpVersion('1.1')
                     ->timeout(30)
                     ->stream($url, function ($chunk) use ($i) {
-                        echo "  Quick HTTP/1.1 Stream $i: " . strlen($chunk) . " bytes\n";
-                    });
+                        echo "  Quick HTTP/1.1 Stream $i: ".strlen($chunk)." bytes\n";
+                    })
+                ;
             }
 
             await(Promise::all($http1Streams));
@@ -208,22 +210,23 @@ class StreamingBenchmark
                     ->http2()
                     ->timeout(30)
                     ->stream($url, function ($chunk) use ($i) {
-                        echo "  Quick HTTP/2   Stream $i: " . strlen($chunk) . " bytes\n";
-                    });
+                        echo "  Quick HTTP/2   Stream $i: ".strlen($chunk)." bytes\n";
+                    })
+                ;
             }
 
             await(Promise::all($http2Streams));
             $http2QuickTime = microtime(true) - $start;
 
-            echo "HTTP/1.1 quick streams time: " . round($http1QuickTime, 3) . "s\n";
-            echo "HTTP/2   quick streams time: " . round($http2QuickTime, 3) . "s\n";
+            echo 'HTTP/1.1 quick streams time: '.round($http1QuickTime, 3)."s\n";
+            echo 'HTTP/2   quick streams time: '.round($http2QuickTime, 3)."s\n";
 
             $quickImprovement = round(($http1QuickTime - $http2QuickTime) / $http1QuickTime * 100, 1);
             echo "🚀 HTTP/2 quick connection improvement: {$quickImprovement}%\n";
 
             $this->results['quick_streams'] = [
                 'http1' => ['time' => $http1QuickTime],
-                'http2' => ['time' => $http2QuickTime]
+                'http2' => ['time' => $http2QuickTime],
             ];
         });
     }
@@ -232,7 +235,7 @@ class StreamingBenchmark
     {
         return async(function () {
             echo "\n📊 Test 4: Server-Sent Events Simulation (Using JSON Stream)\n";
-            echo str_repeat('-', 50) . "\n";
+            echo str_repeat('-', 50)."\n";
 
             // Use smaller, more reliable streams for simulation
             // Note: httpbin.org/stream/n returns JSON lines, not true SSE.
@@ -260,7 +263,8 @@ class StreamingBenchmark
                         $itemCount = substr_count($chunk, "}\n");
                         $http1Items += $itemCount;
                         echo "  HTTP/1.1 Stream $i: $itemCount items\n";
-                    });
+                    })
+                ;
             }
 
             await(Promise::all($http1Streams));
@@ -283,7 +287,8 @@ class StreamingBenchmark
                         $itemCount = substr_count($chunk, "}\n");
                         $http2Items += $itemCount;
                         echo "  HTTP/2   Stream $i: $itemCount items\n";
-                    });
+                    })
+                ;
             }
 
             await(Promise::all($http2Streams));
@@ -297,24 +302,24 @@ class StreamingBenchmark
                 'time' => $http1Time,
                 'items' => $http1Items, // Use 'items' for clarity
                 'streams' => count($streamUrls),
-                'items_per_second' => $http1ItemsPerSecond
+                'items_per_second' => $http1ItemsPerSecond,
             ];
 
             $http2Metrics = [
                 'time' => $http2Time,
                 'items' => $http2Items, // Use 'items' for clarity
                 'streams' => count($streamUrls),
-                'items_per_second' => $http2ItemsPerSecond
+                'items_per_second' => $http2ItemsPerSecond,
             ];
             // --- End Fix ---
 
             $this->results['json_streams'] = [ // Renamed key for clarity
                 'http1' => $http1Metrics,
-                'http2' => $http2Metrics
+                'http2' => $http2Metrics,
             ];
 
-            echo "HTTP/1.1 - Time: " . round($http1Time, 4) . "s, Items: {$http1Items}, Rate: {$http1ItemsPerSecond}/s\n";
-            echo "HTTP/2   - Time: " . round($http2Time, 4) . "s, Items: {$http2Items}, Rate: {$http2ItemsPerSecond}/s\n";
+            echo 'HTTP/1.1 - Time: '.round($http1Time, 4)."s, Items: {$http1Items}, Rate: {$http1ItemsPerSecond}/s\n";
+            echo 'HTTP/2   - Time: '.round($http2Time, 4)."s, Items: {$http2Items}, Rate: {$http2ItemsPerSecond}/s\n";
 
             // --- Fix: Prevent Division by Zero in Improvement Calculation ---
             if ($http1ItemsPerSecond > 0) {
@@ -351,7 +356,7 @@ class StreamingBenchmark
                     }
                     $chunks++;
                     $bytes += strlen($chunk);
-                    echo "    Chunk $chunks: " . strlen($chunk) . " bytes\n";
+                    echo "    Chunk $chunks: ".strlen($chunk)." bytes\n";
                 }));
 
             $totalTime = microtime(true) - $start;
@@ -359,7 +364,7 @@ class StreamingBenchmark
             $actualProtocol = $response->getHttpVersion() ?? $response->getProtocolVersion();
 
             if ($label) {
-                echo "$label completed in " . round($totalTime, 3) . "s\n";
+                echo "$label completed in ".round($totalTime, 3)."s\n";
             }
 
             return [
@@ -369,16 +374,19 @@ class StreamingBenchmark
                 'ttfb' => $timeToFirstByte,
                 'protocol' => $actualProtocol,
                 'throughput_mbps' => $bytes > 0 ? round(($bytes / $totalTime) / (1024 * 1024), 2) : 0,
-                'chunks_per_second' => $totalTime > 0 ? round($chunks / $totalTime, 2) : 0
+                'chunks_per_second' => $totalTime > 0 ? round($chunks / $totalTime, 2) : 0,
             ];
         });
     }
 
     private function getProtocolFromResponses(array $responses): string
     {
-        if (empty($responses)) return 'Unknown';
+        if (empty($responses)) {
+            return 'Unknown';
+        }
 
         $response = $responses[0];
+
         return $response->getHttpVersion() ?? $response->getProtocolVersion();
     }
 
@@ -386,21 +394,21 @@ class StreamingBenchmark
     {
         echo "\n📈 $testName Results:\n";
 
-        $http1Status = isset($http1Metrics['success']) && !$http1Metrics['success'] ? ' (FAILED)' : '';
-        $http2Status = isset($http2Metrics['success']) && !$http2Metrics['success'] ? ' (FAILED)' : '';
+        $http1Status = isset($http1Metrics['success']) && ! $http1Metrics['success'] ? ' (FAILED)' : '';
+        $http2Status = isset($http2Metrics['success']) && ! $http2Metrics['success'] ? ' (FAILED)' : '';
 
-        echo "HTTP/1.1: " . round($http1Metrics['time'], 3) . "s$http1Status";
+        echo 'HTTP/1.1: '.round($http1Metrics['time'], 3)."s$http1Status";
         if (isset($http1Metrics['chunks'])) {
-            echo " | {$http1Metrics['chunks']} chunks | " . round($http1Metrics['bytes'] / 1024, 2) . " KB";
+            echo " | {$http1Metrics['chunks']} chunks | ".round($http1Metrics['bytes'] / 1024, 2).' KB';
         }
         if (isset($http1Metrics['throughput_mbps'])) {
             echo " | {$http1Metrics['throughput_mbps']} MB/s";
         }
         echo " | Protocol: {$http1Metrics['protocol']}\n";
 
-        echo "HTTP/2:   " . round($http2Metrics['time'], 3) . "s$http2Status";
+        echo 'HTTP/2:   '.round($http2Metrics['time'], 3)."s$http2Status";
         if (isset($http2Metrics['chunks'])) {
-            echo " | {$http2Metrics['chunks']} chunks | " . round($http2Metrics['bytes'] / 1024, 2) . " KB";
+            echo " | {$http2Metrics['chunks']} chunks | ".round($http2Metrics['bytes'] / 1024, 2).' KB';
         }
         if (isset($http2Metrics['throughput_mbps'])) {
             echo " | {$http2Metrics['throughput_mbps']} MB/s";
@@ -416,9 +424,9 @@ class StreamingBenchmark
 
     private function displaySummary(): void
     {
-        echo "\n" . str_repeat('=', 60) . "\n";
+        echo "\n".str_repeat('=', 60)."\n";
         echo "🏆 STREAMING EFFICIENCY SUMMARY\n";
-        echo str_repeat('=', 60) . "\n";
+        echo str_repeat('=', 60)."\n";
 
         foreach ($this->results as $testName => $results) {
             $http1 = $results['http1'];
@@ -448,6 +456,6 @@ class StreamingBenchmark
 
 // Run the benchmark
 Task::run(function () {
-    $benchmark = new StreamingBenchmark();
+    $benchmark = new StreamingBenchmark;
     $benchmark->runAllTests();
 });

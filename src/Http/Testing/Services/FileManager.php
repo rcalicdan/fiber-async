@@ -28,35 +28,37 @@ class FileManager
     {
         $tempDir = sys_get_temp_dir();
         if ($filename === null) {
-            $filename = 'http_test_' . uniqid() . '.tmp';
+            $filename = 'http_test_'.uniqid().'.tmp';
         }
-        return $tempDir . DIRECTORY_SEPARATOR . $filename;
+
+        return $tempDir.DIRECTORY_SEPARATOR.$filename;
     }
 
     public function createTempDirectory(string $prefix = 'http_test_'): string
     {
-        $tempDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $prefix . uniqid();
-        if (!mkdir($tempDir, 0755, true)) {
+        $tempDir = sys_get_temp_dir().DIRECTORY_SEPARATOR.$prefix.uniqid();
+        if (! mkdir($tempDir, 0755, true)) {
             throw new Exception("Cannot create temp directory: {$tempDir}");
         }
 
         if ($this->autoManage) {
             $this->createdDirectories[] = $tempDir;
         }
+
         return $tempDir;
     }
 
     public function createTempFile(?string $filename = null, string $content = ''): string
     {
         if ($filename === null) {
-            $filename = 'http_test_' . uniqid() . '.tmp';
+            $filename = 'http_test_'.uniqid().'.tmp';
         }
 
         $filePath = self::getTempPath($filename);
         $directory = dirname($filePath);
 
-        if (!is_dir($directory)) {
-            if (!mkdir($directory, 0755, true) && !is_dir($directory)) {
+        if (! is_dir($directory)) {
+            if (! mkdir($directory, 0755, true) && ! is_dir($directory)) {
                 throw new Exception("Cannot create directory: {$directory}");
             }
             if ($this->autoManage) {
@@ -96,25 +98,27 @@ class FileManager
 
     public function trackFile(string $filePath): void
     {
-        if ($this->autoManage && !in_array($filePath, $this->createdFiles)) {
+        if ($this->autoManage && ! in_array($filePath, $this->createdFiles)) {
             $this->createdFiles[] = $filePath;
         }
     }
 
     public function trackDirectory(string $dirPath): void
     {
-        if ($this->autoManage && !in_array($dirPath, $this->createdDirectories)) {
+        if ($this->autoManage && ! in_array($dirPath, $this->createdDirectories)) {
             $this->createdDirectories[] = $dirPath;
         }
     }
 
     private function removeDirectoryContents(string $dir): void
     {
-        if (!is_dir($dir)) return;
+        if (! is_dir($dir)) {
+            return;
+        }
 
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
-            $path = $dir . DIRECTORY_SEPARATOR . $file;
+            $path = $dir.DIRECTORY_SEPARATOR.$file;
             if (is_dir($path)) {
                 $this->removeDirectoryContents($path);
                 rmdir($path);

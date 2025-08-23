@@ -12,26 +12,11 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 
 /**
  * Handles non-blocking HTTP streaming operations with cancellation support.
- *
- * Provides asynchronous HTTP request streaming and file downloads using the
- * Event loop. Supports real-time chunk processing and proper
- * resource cleanup on cancellation.
  */
 final readonly class StreamingHandler
 {
     /**
      * Creates a streaming HTTP request with optional real-time chunk processing.
-     *
-     * Sends a non-blocking HTTP request and streams the response data as it arrives.
-     * The response is buffered in a temporary stream while optionally calling a
-     * chunk processor for immediate handling of incoming data.
-     *
-     * @param  string  $url  The target URL for the HTTP request
-     * @param  array<int, mixed>  $options  cURL options (CURLOPT_WRITEFUNCTION and CURLOPT_HEADERFUNCTION will be overridden)
-     * @param  callable|null  $onChunk  Optional callback for processing each data chunk: function(string $chunk): void
-     * @return CancellablePromiseInterface<StreamingResponse> Promise resolving to StreamingResponse with buffered stream, status, and headers
-     *
-     * @throws HttpStreamException On stream creation failure (via promise rejection)
      */
     public function streamRequest(string $url, array $options, ?callable $onChunk = null): CancellablePromiseInterface
     {
@@ -48,7 +33,11 @@ final readonly class StreamingHandler
         /** @var list<string> $headerAccumulator */
         $headerAccumulator = [];
 
-        $streamingOptions = array_replace($options, [
+        // ** THE FIX **: Filter the options array to only include valid CURLOPT_* integer keys
+        // before passing it to the low-level cURL functions.
+        $curlOnlyOptions = array_filter($options, 'is_int', ARRAY_FILTER_USE_KEY);
+
+        $streamingOptions = array_replace($curlOnlyOptions, [
             CURLOPT_HEADER => false,
             CURLOPT_WRITEFUNCTION => function ($ch, string $data) use ($responseStream, $onChunk): int {
                 fwrite($responseStream, $data);
@@ -70,10 +59,11 @@ final readonly class StreamingHandler
 
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
-            $streamingOptions,
+            $streamingOptions, // Pass the sanitized options
             function (?string $error, $response, ?int $httpCode, array $headers = [], ?string $httpVersion = null) use ($promise, $responseStream, &$headerAccumulator): void {
                 if ($promise->isCancelled()) {
                     fclose($responseStream);
+
                     return;
                 }
 
@@ -125,20 +115,6 @@ final readonly class StreamingHandler
 
     /**
      * Downloads a file asynchronously to a specified destination with cancellation support.
-     *
-     * Performs a non-blocking HTTP download, writing data directly to the destination file
-     * as it arrives. Includes progress tracking and automatic cleanup on cancellation or failure.
-     * The download can be cancelled at any time, which will abort the request and remove
-     * any partially downloaded file.
-     *
-     * @param  string  $url  The source URL to download from
-     * @param  string  $destination  Local file path where the download will be saved
-     * @param  array<int, mixed>  $options  Additional cURL options (CURLOPT_WRITEFUNCTION will be overridden)
-     * @return CancellablePromiseInterface<array{file: string, status: int, headers: array<mixed>}>
-     *                                                                                              Promise resolving to array with download info: file path, HTTP status, and response headers
-     *
-     * @throws HttpStreamException On file creation failure (via promise rejection)
-     * @throws Exception On download failure (via promise rejection)
      */
     public function downloadFile(string $url, string $destination, array $options = []): CancellablePromiseInterface
     {
@@ -152,7 +128,10 @@ final readonly class StreamingHandler
             return $promise;
         }
 
-        $downloadOptions = array_replace($options, [
+        // ** THE FIX **: Also filter the options here for the download method.
+        $curlOnlyOptions = array_filter($options, 'is_int', ARRAY_FILTER_USE_KEY);
+
+        $downloadOptions = array_replace($curlOnlyOptions, [
             CURLOPT_HEADER => false,
             CURLOPT_WRITEFUNCTION => function ($ch, string $data) use ($file): int|false {
                 return fwrite($file, $data);
@@ -160,7 +139,7 @@ final readonly class StreamingHandler
             CURLOPT_NOPROGRESS => false,
             CURLOPT_PROGRESSFUNCTION => function ($ch, $downloadSize, $downloaded, $uploadSize, $uploaded) use ($promise): int {
                 if ($promise->isCancelled()) {
-                    return 1;
+                    return 1; // Abort download
                 }
 
                 return 0;
@@ -169,7 +148,7 @@ final readonly class StreamingHandler
 
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
-            $downloadOptions,
+            $downloadOptions, // Pass the sanitized options
             function (?string $error, $response, ?int $httpCode, array $headers = [], ?string $httpVersion = null) use ($promise, $file, $destination): void {
                 fclose($file);
 
@@ -177,6 +156,7 @@ final readonly class StreamingHandler
                     if (file_exists($destination)) {
                         unlink($destination);
                     }
+
                     return;
                 }
 
@@ -187,7 +167,6 @@ final readonly class StreamingHandler
                     $promise->reject(new Exception("Download failed: {$error}"));
                 } else {
                     $fileSize = file_exists($destination) ? filesize($destination) : 0;
-
                     $promise->resolve([
                         'file' => $destination,
                         'status' => $httpCode ?? 0,

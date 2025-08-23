@@ -75,14 +75,13 @@ class MockedRequest
     public function setTimeout(float $seconds): void
     {
         $this->timeoutAfter = $seconds;
-        $this->error = sprintf("Connection timed out after %.1fs", $seconds);
+        $this->error = sprintf('Connection timed out after %.1fs', $seconds);
     }
 
     public function getTimeoutDuration(): ?float
     {
         return $this->timeoutAfter;
     }
-
 
     public function setRetryable(bool $retryable): void
     {
@@ -103,11 +102,11 @@ class MockedRequest
             return false;
         }
 
-        if ($this->urlPattern !== null && !fnmatch($this->urlPattern, $url)) {
+        if ($this->urlPattern !== null && ! fnmatch($this->urlPattern, $url)) {
             return false;
         }
 
-        if (!empty($this->headerMatchers)) {
+        if (! empty($this->headerMatchers)) {
             $requestHeaders = $this->extractHeaders($options);
             foreach ($this->headerMatchers as $name => $expectedValue) {
                 $actualValue = $requestHeaders[strtolower($name)] ?? null;
@@ -119,7 +118,7 @@ class MockedRequest
 
         if ($this->bodyMatcher !== null) {
             $body = $options[CURLOPT_POSTFIELDS] ?? '';
-            if (!fnmatch($this->bodyMatcher, $body)) {
+            if (! fnmatch($this->bodyMatcher, $body)) {
                 return false;
             }
         }
@@ -139,22 +138,27 @@ class MockedRequest
     {
         return $this->statusCode;
     }
+
     public function getBody(): string
     {
         return $this->body;
     }
+
     public function getHeaders(): array
     {
         return $this->headers;
     }
+
     public function getDelay(): float
     {
         return $this->timeoutAfter ?? $this->delay;
     }
+
     public function getError(): ?string
     {
         return $this->error;
     }
+
     public function shouldFail(): bool
     {
         return $this->error !== null;
@@ -174,10 +178,12 @@ class MockedRequest
     {
         return $this->persistent;
     }
+
     public function isTimeout(): bool
     {
         return $this->timeoutAfter !== null;
     }
+
     public function isRetryableFailure(): bool
     {
         return $this->isRetryable;
@@ -194,6 +200,7 @@ class MockedRequest
                 }
             }
         }
+
         return $headers;
     }
 
@@ -231,6 +238,7 @@ class MockedRequest
         $request->persistent = $data['persistent'] ?? false;
         $request->timeoutAfter = $data['timeoutAfter'] ?? null;
         $request->isRetryable = $data['isRetryable'] ?? false;
+
         return $request;
     }
 }

@@ -345,7 +345,7 @@ class Response extends Message implements ResponseInterface
     {
         $this->negotiatedHttpVersion = $version;
         if ($version !== null) {
-            $this->protocol = $version; 
+            $this->protocol = $version;
         }
     }
 
@@ -354,6 +354,6 @@ class Response extends Message implements ResponseInterface
      */
     public function getHttpVersionString(): string
     {
-        return $this->negotiatedHttpVersion ?? 'HTTP/' . $this->protocol;
+        return $this->negotiatedHttpVersion ?? 'HTTP/'.$this->protocol;
     }
 }
