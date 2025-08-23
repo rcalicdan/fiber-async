@@ -42,7 +42,7 @@ Task::run(function () {
     try {
         $response = await(Http::fetch($url, [
             'retry' => [
-                'max_retries' => 3,
+                'max_retries' => 5,
                 'base_delay' => 0.5,
                 'backoff_multiplier' => 1.5,
             ]

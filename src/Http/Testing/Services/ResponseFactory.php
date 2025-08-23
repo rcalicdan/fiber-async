@@ -49,9 +49,9 @@ class ResponseFactory
     }
 
     /**
-     * Create a mocked response with retry logic support
+     * Create a retryable mocked response with proper mock consumption
      */
-    public function createRetryableMockedResponse(MockedRequest $mock, RetryConfig $retryConfig, ?callable $onAttempt = null): PromiseInterface
+    public function createRetryableMockedResponse(RetryConfig $retryConfig, callable $mockProvider): PromiseInterface
     {
         /** @var CancellablePromise<Response> $promise */
         $promise = new CancellablePromise();
@@ -71,14 +71,24 @@ class ResponseFactory
             }
         });
 
-        $executeAttempt = function () use ($mock, $retryConfig, $promise, &$attempt, &$totalAttempts, &$timeoutAttempts, &$failureAttempts, &$timerId, &$isCancelled, &$failureHistory, $onAttempt, &$executeAttempt) {
+        $executeAttempt = function () use ($retryConfig, $promise, $mockProvider, &$attempt, &$totalAttempts, &$timeoutAttempts, &$failureAttempts, &$timerId, &$isCancelled, &$failureHistory, &$executeAttempt) {
             if ($isCancelled || $promise->isCancelled()) {
                 return;
             }
 
             $totalAttempts++;
-            if ($onAttempt) {
-                $onAttempt();
+
+            try {
+                // Get the mock for this attempt - this consumes it from the queue
+                $mock = $mockProvider($totalAttempts);
+
+                if (!$mock instanceof MockedRequest) {
+                    throw new Exception("Mock provider must return a MockedRequest instance");
+                }
+            } catch (Exception $e) {
+                // No mock available or other error
+                $promise->reject(new HttpException("Mock provider error: " . $e->getMessage()));
+                return;
             }
 
             // Simulate network conditions
@@ -93,6 +103,7 @@ class ResponseFactory
             $errorMessage = '';
             $isRetryable = false;
 
+            // Check network simulation first
             if ($networkConditions['should_timeout']) {
                 $shouldFail = true;
                 $failureType = 'network_timeout';
@@ -108,7 +119,9 @@ class ResponseFactory
                 $failureAttempts++;
                 $errorMessage = $networkConditions['error_message'] ?? 'Network failure';
                 $isRetryable = $this->isNetworkErrorRetryable($errorMessage, $retryConfig);
-            } elseif ($mockIsTimeout) {
+            }
+            // If no network simulation failure, check mock
+            elseif ($mockIsTimeout) {
                 $shouldFail = true;
                 $failureType = 'mock_timeout';
                 $timeoutAttempts++;
@@ -143,6 +156,7 @@ class ResponseFactory
                 $mock->getDelay()
             );
 
+            // Decide whether to retry
             if ($shouldFail && $isRetryable && $attempt < $retryConfig->maxRetries) {
                 $attempt++;
                 $retryDelay = $delay + $retryConfig->getDelay($attempt);
@@ -169,6 +183,7 @@ class ResponseFactory
 
                     $promise->reject(new HttpException($detailedError));
                 } else {
+                    // Success!
                     $response = new Response(
                         $mock->getBody(),
                         $mock->getStatusCode(),

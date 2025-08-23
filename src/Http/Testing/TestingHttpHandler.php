@@ -18,7 +18,7 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
  */
 class TestingHttpHandler extends HttpHandler
 {
-    /** @var array<MockedRequest> */
+  /** @var array<MockedRequest> */
     private array $mockedRequests = [];
 
     /** @var array<RecordedRequest> */
@@ -87,8 +87,6 @@ class TestingHttpHandler extends HttpHandler
         return $this;
     }
 
-    // === CORE OVERRIDE METHODS FOR REQUEST BUILDER INTEGRATION ===
-
     /**
      * Override the main sendRequest method used by the Request builder
      * This is the primary entry point for all Request builder requests
@@ -104,13 +102,12 @@ class TestingHttpHandler extends HttpHandler
             $mock = $match['mock'];
 
             // Handle retry logic for mocked requests
-            if ($retryConfig !== null && ($mock->shouldFail() || $mock->isTimeout())) {
-                return $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $mock, $match['index']);
+            if ($retryConfig !== null) {
+                return $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $method);
             }
 
-            if (!$mock->isPersistent() && (!$mock->shouldFail() || !$mock->isRetryableFailure())) {
-                array_splice($this->mockedRequests, $match['index'], 1);
-            } elseif (!$mock->isPersistent() && $mock->isRetryableFailure()) {
+            // For non-retry requests, consume the mock immediately
+            if (!$mock->isPersistent()) {
                 array_splice($this->mockedRequests, $match['index'], 1);
             }
 
@@ -125,40 +122,32 @@ class TestingHttpHandler extends HttpHandler
     }
 
     /**
-     * Execute a mocked request with retry logic
+     * Execute a mocked request with retry logic - simplified approach
      */
-    /**
-     * Execute a mocked request with retry logic
-     */
-    private function executeWithMockRetry(string $url, array $curlOptions, RetryConfig $retryConfig, MockedRequest $mock, int $mockIndex): PromiseInterface
+    private function executeWithMockRetry(string $url, array $curlOptions, RetryConfig $retryConfig, string $method): PromiseInterface
     {
-        $attempt = 0;
-        $totalAttempts = 0;
-
         return $this->responseFactory->createRetryableMockedResponse(
-            $mock,
             $retryConfig,
-            function () use ($url, $curlOptions, &$attempt, &$totalAttempts, $mockIndex, $retryConfig) {
-                $attempt++;
-                $totalAttempts++;
-
+            function (int $attemptNumber) use ($method, $url, $curlOptions) {
                 // Record each retry attempt
-                $method = $curlOptions[CURLOPT_CUSTOMREQUEST] ?? 'GET';
-                $this->recordRequest($method . " (retry #{$attempt})", $url, $curlOptions);
+                $this->recordRequest($method . " (attempt #{$attemptNumber})", $url, $curlOptions);
 
-                // Remove non-persistent mocks after final attempt
-                if (isset($this->mockedRequests[$mockIndex]) && !$this->mockedRequests[$mockIndex]->isPersistent()) {
-                    $shouldRemove = true;
-
-                    // If it's retryable and we haven't hit max retries, keep it
-                    if ($this->mockedRequests[$mockIndex]->isRetryableFailure() && $attempt <= $retryConfig->maxRetries) {
-                        $shouldRemove = false;
-                    }
-
-                    if ($shouldRemove) {
-                        array_splice($this->mockedRequests, $mockIndex, 1);
-                    }
+                // Find and consume the next matching mock for this attempt
+                $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
+                
+                if ($match === null) {
+                    // No more mocks available - this will cause a failure
+                    throw new Exception("No mock available for attempt #{$attemptNumber}: {$method} {$url}");
                 }
+
+                $mock = $match['mock'];
+                
+                // Always consume non-persistent mocks (this is key!)
+                if (!$mock->isPersistent()) {
+                    array_splice($this->mockedRequests, $match['index'], 1);
+                }
+
+                return $mock;
             }
         );
     }
@@ -173,17 +162,19 @@ class TestingHttpHandler extends HttpHandler
 
         $this->recordRequest($method, $url, $curlOptions);
 
+        // Extract retry config from options for direct fetch calls
+        $retryConfig = $this->extractRetryConfigFromOptions($options);
+        
+        if ($retryConfig !== null) {
+            // Use retry logic which will handle mock consumption properly
+            return $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $method);
+        }
+
+        // Non-retry request - handle normally
         $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
 
         if ($match !== null) {
             $mock = $match['mock'];
-
-            // Extract retry config from options for direct fetch calls
-            $retryConfig = $this->extractRetryConfigFromOptions($options);
-
-            if ($retryConfig !== null && ($mock->shouldFail() || $mock->isTimeout())) {
-                return $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $mock, $match['index']);
-            }
 
             if (!$mock->isPersistent()) {
                 array_splice($this->mockedRequests, $match['index'], 1);
@@ -279,7 +270,6 @@ class TestingHttpHandler extends HttpHandler
 
         return null;
     }
-
     /**
      * Override stream to intercept streaming requests
      */
