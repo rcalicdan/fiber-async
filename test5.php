@@ -359,6 +359,7 @@ Task::run(function () {
     Http::mock('GET')
         ->url($url_network_sim_test)
         ->respondWith(200)
+        ->persistent()
         ->json(['message' => 'This should not be seen!'])
         ->register();
 
@@ -373,6 +374,63 @@ Task::run(function () {
                 'backoff_multiplier' => 1,
             ]
         ]));
+
+        $end = microtime(true);
+        $elapsed = round($end - $start, 2);
+        echo "Request succeeded unexpectedly! | Elapsed: " . $elapsed . "s\n";
+    } catch (Exception $e) {
+        $end = microtime(true);
+        $elapsed = round($end - $start, 2);
+        echo "Request failed as expected due to simulated network conditions.\n";
+        // We check that the error message contains the expected simulation text.
+        if (str_contains($e->getMessage(), '(network simulation)')) {
+            echo "Error message correctly indicates a simulated failure.\n";
+        } else {
+            echo "Error message was not from the simulator: " . $e->getMessage() . "\n";
+        }
+        echo "Elapsed: " . $elapsed . "s\n";
+    }
+
+    // Assert that exactly 4 requests were made before giving up.
+    try {
+        $handler->assertRequestCount(4);
+        echo "Assertion successful: Exactly 4 requests were made as expected.\n";
+    } catch (Exception $e) {
+        echo "Assertion failed: " . $e->getMessage() . "\n";
+    }
+
+    // =================================================================
+    // Test Case 9: Verifying Retries with Simulated Network Failures
+    // =================================================================
+    echo "\n\n--- Test Case 9: Verifying Retries with Simulated Network Failures with Request Builder --- \n";
+    echo "Network simulator is set to cause a 100% retryable failure rate.\n";
+    echo "HTTP client is set to retry 3 times (4 total attempts).\n";
+    echo "Expected outcome: Failure after exactly 4 attempts due to simulated network errors.\n\n";
+
+    // Reset the handler for this new test.
+    $handler->reset();
+    $url_network_sim_test = 'https://api.example.com/data-network-sim-test';
+
+    // Enable the network simulator to always inject a retryable failure.
+    $handler->enableNetworkSimulation([
+        'retryable_failure_rate' => 1.0, // 100% chance of a retryable network error
+        'default_delay' => 0.01,         // Add a tiny delay to each simulated request
+    ]);
+
+    // We still provide a success mock. If the simulation were not active, this would be returned.
+    // In this test, it will never be reached.
+    Http::mock('GET')
+        ->url($url_network_sim_test)
+        ->respondWith(200)
+        ->persistent()
+        ->json(['message' => 'This should not be seen!'])
+        ->register();
+
+    try {
+        $start = microtime(true);
+
+        // This request will be intercepted by the NetworkSimulator before it ever hits the mock.
+        $response = await(Http::request()->retry(3, 0.1, 1)->get($url_network_sim_test));
 
         $end = microtime(true);
         $elapsed = round($end - $start, 2);

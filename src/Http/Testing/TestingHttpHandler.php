@@ -221,10 +221,50 @@ class TestingHttpHandler extends HttpHandler
         return $this->fetch($url, $options);
     }
 
-    public function download(string $url, string $destination, array $options = []): CancellablePromiseInterface
+    /**
+     * Override download to intercept download requests and handle automatic temp files.
+     *
+     * @param string $url The URL of the file to download.
+     * @param string|null $destination The local file path to save to. If null, a temp file is created.
+     * @param array $options Advanced cURL or request options.
+     * @return CancellablePromiseInterface A promise that resolves with download metadata.
+     */
+    public function download(string $url, ?string $destination = null, array $options = []): CancellablePromiseInterface
     {
-        $options['download'] = $destination;
-        return $this->fetch($url, $options);
+        $curlOptions = $this->normalizeFetchOptions($url, $options);
+        $this->recordRequest('GET', $url, $curlOptions);
+
+        $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, 'GET', $url, $curlOptions);
+
+        if ($match !== null) {
+            if (!$match['mock']->isPersistent()) {
+                array_splice($this->mockedRequests, $match['index'], 1);
+            }
+
+            // ** THIS IS THE FIX **
+            // If destination is not provided, create an automatic temp file.
+            if ($destination === null) {
+                $mockHeaders = $match['mock']->getHeaders();
+                $filename = null;
+                if (isset($mockHeaders['Content-Disposition']) && preg_match('/filename="([^"]+)"/', $mockHeaders['Content-Disposition'], $matches)) {
+                    $filename = $matches[1];
+                }
+                $destination = $this->fileManager->createTempFile($filename);
+            }
+
+            return $this->responseFactory->createMockedDownload($match['mock'], $destination, $this->fileManager);
+        }
+
+        if ($this->globalSettings['strict_matching'] && !$this->globalSettings['allow_passthrough']) {
+            throw new Exception("No mock found for download: {$url}");
+        }
+
+        // Real download still requires a destination.
+        if ($destination === null) {
+            throw new \ArgumentCountError("A destination path is required for non-mocked downloads.");
+        }
+
+        return parent::download($url, $destination, $options);
     }
 
     // UTILITY AND ASSERTION METHODS
