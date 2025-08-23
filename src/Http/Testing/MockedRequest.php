@@ -19,6 +19,8 @@ class MockedRequest
     private float $delay = 0;
     private ?string $error = null;
     private bool $persistent = false;
+    private ?float $timeoutAfter = null;
+    private bool $isRetryable = false;
 
     public function __construct(string $method = '*')
     {
@@ -70,6 +72,17 @@ class MockedRequest
         $this->error = $error;
     }
 
+    public function setTimeout(float $seconds): void
+    {
+        $this->timeoutAfter = $seconds;
+        $this->error = "Connection timed out after {$seconds} seconds";
+    }
+
+    public function setRetryable(bool $retryable): void
+    {
+        $this->isRetryable = $retryable;
+    }
+
     public function setPersistent(bool $persistent): void
     {
         $this->persistent = $persistent;
@@ -116,13 +129,42 @@ class MockedRequest
         return true;
     }
 
-    public function getStatusCode(): int { return $this->statusCode; }
-    public function getBody(): string { return $this->body; }
-    public function getHeaders(): array { return $this->headers; }
-    public function getDelay(): float { return $this->delay; }
-    public function getError(): ?string { return $this->error; }
-    public function shouldFail(): bool { return $this->error !== null; }
-    public function isPersistent(): bool { return $this->persistent; }
+    public function getStatusCode(): int
+    {
+        return $this->statusCode;
+    }
+    public function getBody(): string
+    {
+        return $this->body;
+    }
+    public function getHeaders(): array
+    {
+        return $this->headers;
+    }
+    public function getDelay(): float
+    {
+        return $this->timeoutAfter ?? $this->delay;
+    }
+    public function getError(): ?string
+    {
+        return $this->error;
+    }
+    public function shouldFail(): bool
+    {
+        return $this->error !== null;
+    }
+    public function isPersistent(): bool
+    {
+        return $this->persistent;
+    }
+    public function isTimeout(): bool
+    {
+        return $this->timeoutAfter !== null;
+    }
+    public function isRetryableFailure(): bool
+    {
+        return $this->isRetryable;
+    }
 
     private function extractHeaders(array $options): array
     {
@@ -152,6 +194,8 @@ class MockedRequest
             'delay' => $this->delay,
             'error' => $this->error,
             'persistent' => $this->persistent,
+            'timeoutAfter' => $this->timeoutAfter,
+            'isRetryable' => $this->isRetryable,
         ];
     }
 
@@ -168,6 +212,8 @@ class MockedRequest
         $request->delay = $data['delay'] ?? 0;
         $request->error = $data['error'];
         $request->persistent = $data['persistent'] ?? false;
+        $request->timeoutAfter = $data['timeoutAfter'] ?? null;
+        $request->isRetryable = $data['isRetryable'] ?? false;
         return $request;
     }
 }

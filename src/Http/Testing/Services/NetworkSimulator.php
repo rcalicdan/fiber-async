@@ -10,7 +10,10 @@ class NetworkSimulator
     private array $settings = [
         'failure_rate' => 0.0,
         'timeout_rate' => 0.0,
+        'connection_failure_rate' => 0.0,
         'default_delay' => 0,
+        'timeout_delay' => 30.0, // Simulated timeout after this many seconds
+        'retryable_failure_rate' => 0.0, // Rate of failures that should be retryable
     ];
 
     public function enable(array $settings = []): void
@@ -24,23 +27,70 @@ class NetworkSimulator
         $this->enabled = false;
     }
 
-    public function simulate(): void
+    /**
+     * Simulates network conditions and may throw exceptions or modify behavior
+     * @return array{should_timeout: bool, should_fail: bool, error_message: string|null, delay: float}
+     */
+    public function simulate(): array
     {
         if (!$this->enabled) {
-            return;
+            return [
+                'should_timeout' => false,
+                'should_fail' => false,
+                'error_message' => null,
+                'delay' => (float) $this->settings['default_delay']
+            ];
+        }
+
+        $result = [
+            'should_timeout' => false,
+            'should_fail' => false,
+            'error_message' => null,
+            'delay' => (float) $this->settings['default_delay']
+        ];
+
+        if (mt_rand() / mt_getrandmax() < $this->settings['timeout_rate']) {
+            $result['should_timeout'] = true;
+            $result['delay'] = $this->settings['timeout_delay'];
+            $result['error_message'] = 'Connection timed out';
+            return $result;
+        }
+
+        if (mt_rand() / mt_getrandmax() < $this->settings['retryable_failure_rate']) {
+            $result['should_fail'] = true;
+            $retryableErrors = [
+                'Connection failed',
+                'Could not resolve host',
+                'Connection timed out',
+                'SSL connection timeout',
+                'Resolving timed out'
+            ];
+            $result['error_message'] = $retryableErrors[array_rand($retryableErrors)];
+            return $result;
         }
 
         if (mt_rand() / mt_getrandmax() < $this->settings['failure_rate']) {
-            throw new HttpException("Simulated network failure");
+            $result['should_fail'] = true;
+            $result['error_message'] = 'Simulated network failure';
+            return $result;
         }
 
-        if (mt_rand() / mt_getrandmax() < $this->settings['timeout_rate']) {
-            throw new HttpException("Simulated timeout");
+        if (mt_rand() / mt_getrandmax() < $this->settings['connection_failure_rate']) {
+            $result['should_fail'] = true;
+            $result['error_message'] = 'Connection refused';
+            return $result;
         }
+
+        return $result;
     }
 
     public function getDefaultDelay(): float
     {
-        return $this->settings['default_delay'];
+        return (float) $this->settings['default_delay'];
+    }
+
+    public function getTimeoutDelay(): float
+    {
+        return (float) $this->settings['timeout_delay'];
     }
 }

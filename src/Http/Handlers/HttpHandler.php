@@ -28,10 +28,10 @@ use Symfony\Component\Cache\Psr16Cache;
  */
 class HttpHandler
 {
-    private StreamingHandler $streamingHandler;
-    private FetchHandler $fetchHandler;
-    private static ?CacheInterface $defaultCache = null;
-    private ?CookieJarInterface $defaultCookieJar = null;
+    protected StreamingHandler $streamingHandler;
+    protected FetchHandler $fetchHandler;
+    protected static ?CacheInterface $defaultCache = null;
+    protected ?CookieJarInterface $defaultCookieJar = null;
 
     /**
      * Creates a new HttpHandler instance.
@@ -201,7 +201,7 @@ class HttpHandler
      *
      * @return CacheInterface The default cache instance.
      */
-    private static function getDefaultCache(): CacheInterface
+    protected static function getDefaultCache(): CacheInterface
     {
         if (self::$defaultCache === null) {
             $psr6Cache = new FilesystemAdapter('http', 0, 'cache');
@@ -294,7 +294,7 @@ class HttpHandler
      * @param  RetryConfig|null  $retryConfig  Optional retry configuration.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
-    private function dispatchRequest(string $url, array $curlOptions, ?RetryConfig $retryConfig): PromiseInterface
+    protected function dispatchRequest(string $url, array $curlOptions, ?RetryConfig $retryConfig): PromiseInterface
     {
         if ($retryConfig !== null) {
             return $this->fetchWithRetry($url, $curlOptions, $retryConfig);
@@ -338,7 +338,7 @@ class HttpHandler
      * @param  array<int, mixed>  $curlOptions  cURL options for the request.
      * @return PromiseInterface<Response> A promise that resolves with a Response object.
      */
-    private function executeBasicFetch(string $url, array $curlOptions): PromiseInterface
+    protected function executeBasicFetch(string $url, array $curlOptions): PromiseInterface
     {
         /** @var CancellablePromise<Response> $promise */
         $promise = new CancellablePromise;
@@ -393,7 +393,7 @@ class HttpHandler
     /**
      * Process response cookies and update the cookie jar.
      */
-    private function processCookies(Response $response, string $url, ?CookieJarInterface $cookieJar): void
+    protected function processCookies(Response $response, string $url, ?CookieJarInterface $cookieJar): void
     {
         if ($cookieJar === null) {
             $cookieJar = $this->defaultCookieJar;
@@ -412,7 +412,7 @@ class HttpHandler
      * @param  array<int|string, mixed>  $options  The options to normalize.
      * @return array<int, mixed> Normalized cURL options.
      */
-    private function normalizeFetchOptions(string $url, array $options): array
+    protected function normalizeFetchOptions(string $url, array $options): array
     {
         return $this->fetchHandler->normalizeFetchOptions($url, $options);
     }
@@ -423,7 +423,7 @@ class HttpHandler
      * @param  array<mixed>  $headers  The headers to normalize.
      * @return array<string, array<string>|string> Normalized headers.
      */
-    private function normalizeHeaders(array $headers): array
+    protected function normalizeHeaders(array $headers): array
     {
         /** @var array<string, array<string>|string> $normalized */
         $normalized = [];
@@ -451,7 +451,7 @@ class HttpHandler
      * @param  CacheConfig  $cacheConfig  The cache configuration.
      * @return int The expiry timestamp.
      */
-    private function calculateExpiry(Response $response, CacheConfig $cacheConfig): int
+    protected function calculateExpiry(Response $response, CacheConfig $cacheConfig): int
     {
         if ($cacheConfig->respectServerHeaders) {
             $header = $response->getHeaderLine('Cache-Control');

@@ -77,6 +77,19 @@ class MockRequestBuilder
         return $this;
     }
 
+    public function timeout(float $seconds = 30.0): self
+    {
+        $this->request->setTimeout($seconds);
+        return $this;
+    }
+
+    public function retryableFailure(string $error = "Connection failed"): self
+    {
+        $this->request->setError($error);
+        $this->request->setRetryable(true);
+        return $this;
+    }
+
     public function persistent(): self
     {
         $this->request->setPersistent(true);

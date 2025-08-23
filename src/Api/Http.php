@@ -130,34 +130,13 @@ class Http
      * @param array<string, mixed> $settings Optional global testing settings
      * @return TestingHttpHandler The testing handler for configuration
      */
-    public static function testing(array $settings = []): TestingHttpHandler
+    public static function testing(): TestingHttpHandler
     {
         self::$isTesting = true;
-        self::$testingInstance = new TestingHttpHandler();
 
-        if (!empty($settings)) {
-            if (isset($settings['network_simulation']) && $settings['network_simulation']) {
-                $networkSettings = array_intersect_key($settings, array_flip([
-                    'failure_rate',
-                    'timeout_rate',
-                    'default_delay'
-                ]));
-                self::$testingInstance->enableNetworkSimulation($networkSettings);
-            }
-
-            if (isset($settings['strict_matching'])) {
-                self::$testingInstance->setStrictMatching($settings['strict_matching']);
-            }
-
-            if (isset($settings['auto_temp_files'])) {
-                self::$testingInstance->setAutoTempFileManagement($settings['auto_temp_files']);
-            }
-
-            if (isset($settings['record_requests'])) {
-                // Enable/disable request recording
-                self::$testingInstance->setRecordRequests($settings['record_requests']);
-            }
-        }
+        if (self::$testingInstance === null) {
+            self::$testingInstance = new TestingHttpHandler();
+        };
 
         return self::$testingInstance;
     }

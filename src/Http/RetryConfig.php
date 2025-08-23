@@ -30,6 +30,7 @@ class RetryConfig
         public readonly bool $jitter = true,
         public readonly array $retryableStatusCodes = [408, 429, 500, 502, 503, 504],
         public readonly array $retryableExceptions = [
+            'Simulated timeout',
             'cURL error',
             'timeout',
             'connection failed',
