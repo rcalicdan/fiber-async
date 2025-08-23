@@ -7,8 +7,8 @@ namespace Rcalicdan\FiberAsync\Http\Testing;
  */
 class MockedRequest
 {
-    private string $method;
-    private ?string $urlPattern = null;
+    public string $method;
+    public ?string $urlPattern = null;
     private array $headerMatchers = [];
     private ?string $bodyMatcher = null;
     private ?array $jsonMatcher = null;
@@ -159,6 +159,17 @@ class MockedRequest
     {
         return $this->error !== null;
     }
+
+    public function getMethod(): string
+    {
+        return $this->method;
+    }
+
+    public function getUrlPattern(): ?string
+    {
+        return $this->urlPattern;
+    }
+
     public function isPersistent(): bool
     {
         return $this->persistent;
