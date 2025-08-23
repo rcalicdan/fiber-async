@@ -15,6 +15,8 @@ class MockedRequest
 
     private int $statusCode = 200;
     private string $body = '';
+    /** @var array<string> A sequence of body chunks for streaming simulation. */
+    private array $bodySequence = [];
     private array $headers = [];
     private float $delay = 0;
     private ?string $error = null;
@@ -55,6 +57,16 @@ class MockedRequest
     public function setBody(string $body): void
     {
         $this->body = $body;
+        $this->bodySequence = []; // Clear sequence if a single body is set
+    }
+
+    /**
+     * @param array<string> $chunks
+     */
+    public function setBodySequence(array $chunks): void
+    {
+        $this->bodySequence = $chunks;
+        $this->body = implode('', $chunks);
     }
 
     public function addResponseHeader(string $name, string $value): void
@@ -142,6 +154,14 @@ class MockedRequest
     public function getBody(): string
     {
         return $this->body;
+    }
+
+    /**
+     * @return array<string>
+     */
+    public function getBodySequence(): array
+    {
+        return $this->bodySequence;
     }
 
     public function getHeaders(): array

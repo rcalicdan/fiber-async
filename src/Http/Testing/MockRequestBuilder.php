@@ -58,6 +58,19 @@ class MockRequestBuilder
         return $this;
     }
 
+    /**
+     * Sets a sequence of body chunks to simulate a multi-chunk stream.
+     * This will cause the onChunk callback to be fired for each item in the array.
+     *
+     * @param array<string> $chunks
+     * @return self
+     */
+    public function bodies(array $chunks): self
+    {
+        $this->request->setBodySequence($chunks);
+        return $this;
+    }
+
     public function json(array $data): self
     {
         $this->request->setBody(json_encode($data));
@@ -176,7 +189,7 @@ class MockRequestBuilder
         // Create failure mocks for attempts 1 through (successAttempt - 1)
         for ($i = 1; $i < $successAttempt; $i++) {
             $this->handler->addMockedRequest(
-                $this->createFailureMock($failureError." (attempt {$i})", true)
+                $this->createFailureMock($failureError . " (attempt {$i})", true)
             );
         }
 
@@ -207,7 +220,7 @@ class MockRequestBuilder
             }
 
             if (is_string($failure)) {
-                $mock->setError($failure." (attempt {$attemptNumber})");
+                $mock->setError($failure . " (attempt {$attemptNumber})");
                 $mock->setRetryable(true);
             } elseif (is_array($failure)) {
                 $error = $failure['error'] ?? 'Request failed';
@@ -220,7 +233,7 @@ class MockRequestBuilder
                     $mock->setBody(json_encode(['error' => $error]));
                     $mock->addResponseHeader('Content-Type', 'application/json');
                 } else {
-                    $mock->setError($error." (attempt {$attemptNumber})");
+                    $mock->setError($error . " (attempt {$attemptNumber})");
                 }
                 $mock->setRetryable($retryable);
                 $mock->setDelay($delay);

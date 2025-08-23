@@ -127,34 +127,49 @@ class TestingHttpHandler extends HttpHandler
      * Execute a mocked request with retry logic.
      * This method is responsible for consuming one mock per attempt.
      */
-    private function executeWithMockRetry(string $url, array $curlOptions, RetryConfig $retryConfig, string $method): PromiseInterface
+    private function executeWithMockRetry(string $url, array $options, RetryConfig $retryConfig, string $method): PromiseInterface
     {
-        return $this->responseFactory->createRetryableMockedResponse(
+        $finalPromise = new CancellablePromise();
+        $curlOptions = $this->normalizeFetchOptions($url, $options);
+
+        $retryPromise = $this->responseFactory->createRetryableMockedResponse(
             $retryConfig,
             function (int $attemptNumber) use ($method, $url, $curlOptions) {
                 $this->recordRequest($method, $url, $curlOptions);
-
                 $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
-
-                if ($match === null) {
-                    throw new Exception("No mock available for attempt #{$attemptNumber}: {$method} {$url}");
-                }
-
-                $mock = $match['mock'];
-
-                if (! $mock->isPersistent()) {
-                    array_splice($this->mockedRequests, $match['index'], 1);
-                }
-
-                return $mock;
+                if ($match === null) throw new Exception("No mock for attempt #{$attemptNumber}: {$method} {$url}");
+                if (!$match['mock']->isPersistent()) array_splice($this->mockedRequests, $match['index'], 1);
+                return $match['mock'];
             }
         );
+
+        $retryPromise->then(
+            function ($successfulResponse) use ($options, $finalPromise) {
+                // On final success, check the original options to create the correct response type.
+                if (isset($options['download'])) {
+                    $destPath = $options['download'] ?? $this->fileManager->createTempFile();
+                    file_put_contents($destPath, $successfulResponse->body());
+                    $result = ['file' => $destPath, 'status' => $successfulResponse->status(), 'headers' => $successfulResponse->headers(), 'size' => strlen($successfulResponse->body())];
+                    $finalPromise->resolve($result);
+                } elseif (isset($options['stream']) && $options['stream'] === true) {
+                    $onChunk = $options['on_chunk'] ?? null;
+                    $body = $successfulResponse->body();
+                    if ($onChunk) $onChunk($body);
+                    $finalPromise->resolve(new StreamingResponse($this->createStream($body), $successfulResponse->status(), $successfulResponse->headers()));
+                } else {
+                    $finalPromise->resolve($successfulResponse);
+                }
+            },
+            fn($reason) => $finalPromise->reject($reason)
+        );
+
+        if ($retryPromise instanceof CancellablePromiseInterface) {
+            $finalPromise->setCancelHandler(fn() => $retryPromise->cancel());
+        }
+
+        return $finalPromise;
     }
 
-    /**
-     * Override fetch to intercept direct fetch calls and apply mocking/retry logic.
-     * This is the entry point for Http::fetch().
-     */
     public function fetch(string $url, array $options = []): PromiseInterface|CancellablePromiseInterface
     {
         $method = strtoupper($options['method'] ?? 'GET');
@@ -162,7 +177,8 @@ class TestingHttpHandler extends HttpHandler
         $retryConfig = $this->extractRetryConfigFromOptions($options);
 
         if ($retryConfig !== null) {
-            return $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $method);
+            // The retry logic is now robust enough to handle all cases (standard, stream, download).
+            return $this->executeWithMockRetry($url, $options, $retryConfig, $method);
         }
 
         // For non-retry requests, record the single attempt here.
@@ -173,26 +189,24 @@ class TestingHttpHandler extends HttpHandler
         if ($match !== null) {
             $mock = $match['mock'];
 
-            if (! $mock->isPersistent()) {
+            if (!$mock->isPersistent()) {
                 array_splice($this->mockedRequests, $match['index'], 1);
             }
 
-            if (isset($options['download']) || isset($options['save_to'])) {
-                $destination = $options['download'] ?? $options['save_to'];
-
+            if (isset($options['download'])) {
+                $destination = $options['download'];
                 return $this->responseFactory->createMockedDownload($mock, $destination, $this->fileManager);
             }
 
             if (isset($options['stream']) && $options['stream'] === true) {
                 $onChunk = $options['on_chunk'] ?? $options['onChunk'] ?? null;
-
                 return $this->responseFactory->createMockedStream($mock, $onChunk, [$this, 'createStream']);
             }
 
             return $this->responseFactory->createMockedResponse($mock);
         }
 
-        if ($this->globalSettings['strict_matching'] && ! $this->globalSettings['allow_passthrough']) {
+        if ($this->globalSettings['strict_matching'] && !$this->globalSettings['allow_passthrough']) {
             throw new Exception("No mock found for: {$method} {$url}");
         }
 
@@ -228,102 +242,17 @@ class TestingHttpHandler extends HttpHandler
 
     public function stream(string $url, array $options = [], ?callable $onChunk = null): CancellablePromiseInterface
     {
-        $method = 'GET';
-        $curlOptions = $this->normalizeFetchOptions($url, $options);
-        $retryConfig = $options['retry'] ?? null;
-
-        if ($retryConfig instanceof RetryConfig) {
-            $finalPromise = new CancellablePromise;
-
-            $retryPromise = $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $method);
-
-            $retryPromise->then(
-                function ($successfulResponse) use ($onChunk, $finalPromise) {
-                    $body = $successfulResponse->body();
-                    if ($onChunk !== null) {
-                        $onChunk($body);
-                    }
-                    $streamingResponse = new StreamingResponse($this->createStream($body), $successfulResponse->status(), $successfulResponse->headers());
-                    $finalPromise->resolve($streamingResponse);
-                },
-                fn ($reason) => $finalPromise->reject($reason) // If inner promise fails, reject the outer one.
-            );
-
-            if ($retryPromise instanceof CancellablePromiseInterface) {
-                $finalPromise->setCancelHandler(fn () => $retryPromise->cancel());
-            }
-
-            return $finalPromise;
+        $options['stream'] = true;
+        if ($onChunk) {
+            $options['on_chunk'] = $onChunk;
         }
-
-        $this->recordRequest($method, $url, $curlOptions);
-        $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
-        if ($match !== null) {
-            if (! $match['mock']->isPersistent()) {
-                array_splice($this->mockedRequests, $match['index'], 1);
-            }
-
-            return $this->responseFactory->createMockedStream($match['mock'], $onChunk, [$this, 'createStream']);
-        }
-
-        if ($this->globalSettings['strict_matching'] && ! $this->globalSettings['allow_passthrough']) {
-            throw new Exception("No mock found for stream: {$method} {$url}");
-        }
-
-        return parent::stream($url, $options, $onChunk);
+        return $this->fetch($url, $options);
     }
 
     public function download(string $url, ?string $destination = null, array $options = []): CancellablePromiseInterface
     {
-        $method = 'GET';
-        $curlOptions = $this->normalizeFetchOptions($url, $options);
-        $retryConfig = $options['retry'] ?? null;
-
-        if ($retryConfig instanceof RetryConfig) {
-            $finalPromise = new CancellablePromise;
-
-            $retryPromise = $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $method);
-
-            $retryPromise->then(
-                function ($successfulResponse) use ($destination, $finalPromise) {
-                    $destPath = $destination ?? $this->fileManager->createTempFile();
-                    file_put_contents($destPath, $successfulResponse->body());
-                    $result = [
-                        'file' => $destPath,
-                        'status' => $successfulResponse->status(),
-                        'headers' => $successfulResponse->headers(),
-                        'size' => strlen($successfulResponse->body()),
-                    ];
-                    $finalPromise->resolve($result);
-                },
-                fn ($reason) => $finalPromise->reject($reason)
-            );
-
-            if ($retryPromise instanceof CancellablePromiseInterface) {
-                $finalPromise->setCancelHandler(fn () => $retryPromise->cancel());
-            }
-
-            return $finalPromise;
-        }
-
-        $this->recordRequest($method, $url, $curlOptions);
-        $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
-        if ($match !== null) {
-            if (! $match['mock']->isPersistent()) {
-                array_splice($this->mockedRequests, $match['index'], 1);
-            }
-            $destPath = $destination ?? $this->fileManager->createTempFile();
-
-            return $this->responseFactory->createMockedDownload($match['mock'], $destPath, $this->fileManager);
-        }
-        if ($this->globalSettings['strict_matching'] && ! $this->globalSettings['allow_passthrough']) {
-            throw new Exception("No mock found for download: {$method} {$url}");
-        }
-        if ($destination === null) {
-            throw new \ArgumentCountError('A destination path is required for non-mocked downloads.');
-        }
-
-        return parent::download($url, $destination, $options);
+        $options['download'] = $destination;
+        return $this->fetch($url, $options);
     }
 
     public static function getTempPath(?string $filename = null): string
@@ -355,7 +284,7 @@ class TestingHttpHandler extends HttpHandler
     public function assertNoRequestsMade(): void
     {
         if (! empty($this->requestHistory)) {
-            throw new Exception('Expected no requests, but '.count($this->requestHistory).' were made');
+            throw new Exception('Expected no requests, but ' . count($this->requestHistory) . ' were made');
         }
     }
 

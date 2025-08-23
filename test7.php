@@ -8,26 +8,34 @@ require 'vendor/autoload.php';
 Task::run(function () {
     $handler = Http::testing();
 
-    echo "--- Testing Mocked Stream with onChunk Callback --- \n";
+    echo "--- Testing Mocked Stream with Multiple Chunks --- \n";
 
     $handler->reset();
-    $url = 'https://api.example.com/json-stream';
-    
-    // This is the full body the mock will provide.
-    $expected_body = '{"id":1,"event":"start"}' . "\n" . '{"id":2,"event":"update"}';
+    $url = 'https://api.example.com/multi-chunk-stream';
 
+    // 1. Define the sequence of chunks
+    $chunks = [
+        '{"id": 1, "event": "start", "data": "', // Chunk 1
+        'some streaming data',                   // Chunk 2
+        '"}' . "\n",                              // Chunk 3
+        '{"id": 2, "event": "end"}'              // Chunk 4
+    ];
+
+    $expected_full_body = implode('', $chunks);
+
+    // 2. Set up the mock using the new ->bodies() method
     Http::mock('GET')
         ->url($url)
-        ->body($expected_body)
+        ->bodies($chunks)
         ->register();
 
     $received_chunks = [];
     $onChunk = function (string $chunk) use (&$received_chunks) {
-        echo "   -> onChunk received " . strlen($chunk) . " bytes.\n";
+        echo "   -> onChunk received " . strlen($chunk) . " bytes: \"$chunk\"\n";
         $received_chunks[] = $chunk;
     };
 
-    echo "1. Calling http()->stream() with an onChunk callback...\n";
+    echo "1. Calling http()->stream() with a multi-chunk mock...\n";
     
     $response = await(Http::request()->stream($url, $onChunk));
 
@@ -35,27 +43,27 @@ Task::run(function () {
 
     // --- Assertions ---
 
-    // Assertion 1: Check that the onChunk callback was actually called.
-    if (!empty($received_chunks)) {
-        echo "   ✓ SUCCESS: The onChunk callback was triggered.\n";
+    // Assertion 1: Verify that onChunk was called the correct number of times.
+    if (count($received_chunks) === count($chunks)) {
+        echo "   ✓ SUCCESS: onChunk was called " . count($chunks) . " times as expected.\n";
     } else {
-        echo "   ✗ FAILED: The onChunk callback was NOT triggered.\n";
+        echo "   ✗ FAILED: Expected " . count($chunks) . " chunks, but received " . count($received_chunks) . ".\n";
     }
 
-    // Assertion 2: Check that the data received by the callback matches the original body.
+    // Assertion 2: Verify that the reassembled body matches the original full body.
     $reassembled_body = implode('', $received_chunks);
-    if ($reassembled_body === $expected_body) {
-        echo "   ✓ SUCCESS: Reassembled body from chunks matches the expected body.\n";
+    if ($reassembled_body === $expected_full_body) {
+        echo "   ✓ SUCCESS: Reassembled body from chunks is correct.\n";
     } else {
-        echo "   ✗ FAILED: Reassembled body does not match.\n";
+        echo "   ✗ FAILED: Reassembled body does not match expected body.\n";
     }
-
-    // Assertion 3: Check that you can STILL read the full body from the final response object.
+    
+    // Assertion 3: Verify that the final response object still contains the complete body.
     $final_body = $response->body();
-    if ($final_body === $expected_body) {
-        echo "   ✓ SUCCESS: Final response body from response->body() is correct.\n";
+    if ($final_body === $expected_full_body) {
+        echo "   ✓ SUCCESS: Final response->body() is correct.\n";
     } else {
-        echo "   ✗ FAILED: Final response body is incorrect.\n";
+        echo "   ✗ FAILED: Final response->body() is incorrect.\n";
     }
 
     $handler->assertRequestCount(1);

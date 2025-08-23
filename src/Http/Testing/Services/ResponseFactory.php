@@ -72,7 +72,7 @@ class ResponseFactory
                     throw new Exception('Mock provider must return a MockedRequest instance');
                 }
             } catch (Exception $e) {
-                $promise->reject(new HttpException('Mock provider error: '.$e->getMessage()));
+                $promise->reject(new HttpException('Mock provider error: ' . $e->getMessage()));
 
                 return;
             }
@@ -100,7 +100,7 @@ class ResponseFactory
                     $isRetryable = $retryConfig->isRetryableError($errorMessage) || $mock->isRetryableFailure();
                 } elseif ($mock->getStatusCode() >= 400) { // ** THIS IS THE CRITICAL FIX **
                     $shouldFail = true;
-                    $errorMessage = 'Mock responded with status '.$mock->getStatusCode();
+                    $errorMessage = 'Mock responded with status ' . $mock->getStatusCode();
                     $isRetryable = in_array($mock->getStatusCode(), $retryConfig->retryableStatusCodes);
                 }
 
@@ -128,25 +128,31 @@ class ResponseFactory
     public function createMockedStream(MockedRequest $mock, ?callable $onChunk, callable $createStream): CancellablePromiseInterface
     {
         /** @var CancellablePromise<StreamingResponse> $promise */
-        $promise = new CancellablePromise;
+        $promise = new CancellablePromise();
 
         $this->executeWithNetworkSimulation($promise, $mock, function () use ($mock, $onChunk, $createStream) {
             if ($mock->shouldFail()) {
                 throw new HttpException($mock->getError() ?? 'Mocked failure');
             }
 
+            $bodySequence = $mock->getBodySequence();
+
             if ($onChunk !== null) {
-                $body = $mock->getBody();
-                $chunkSize = 1024;
-                for ($i = 0; $i < strlen($body); $i += $chunkSize) {
-                    $chunk = substr($body, $i, $chunkSize);
-                    $onChunk($chunk);
+                if (!empty($bodySequence)) {
+                    foreach ($bodySequence as $chunk) {
+                        $onChunk($chunk);
+                    }
+                } else {
+                    $onChunk($mock->getBody());
                 }
             }
 
             $stream = $createStream($mock->getBody());
-
-            return new StreamingResponse($stream, $mock->getStatusCode(), $mock->getHeaders());
+            return new StreamingResponse(
+                $stream,
+                $mock->getStatusCode(),
+                $mock->getHeaders()
+            );
         });
 
         return $promise;
