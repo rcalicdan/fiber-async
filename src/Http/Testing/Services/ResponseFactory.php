@@ -29,13 +29,7 @@ class ResponseFactory
 
         $this->executeWithNetworkSimulation($promise, $mock, function () use ($mock) {
             if ($mock->shouldFail()) {
-                $error = $mock->getError();
-
-                if ($mock->isRetryableFailure()) {
-                    throw new HttpException($error);
-                }
-
-                throw new HttpException($error);
+                throw new HttpException($mock->getError() ?? 'Mocked failure');
             }
 
             return new Response(
@@ -56,215 +50,75 @@ class ResponseFactory
         /** @var CancellablePromise<Response> $promise */
         $promise = new CancellablePromise();
         $attempt = 0;
-        $totalAttempts = 0;
-        $timeoutAttempts = 0;
-        $failureAttempts = 0;
         /** @var string|null $timerId */
         $timerId = null;
-        $isCancelled = false;
-        $failureHistory = [];
 
-        $promise->setCancelHandler(function () use (&$timerId, &$isCancelled) {
-            $isCancelled = true;
+        $promise->setCancelHandler(function () use (&$timerId) {
             if ($timerId !== null) {
                 EventLoop::getInstance()->cancelTimer($timerId);
             }
         });
 
-        $executeAttempt = function () use ($retryConfig, $promise, $mockProvider, &$attempt, &$totalAttempts, &$timeoutAttempts, &$failureAttempts, &$timerId, &$isCancelled, &$failureHistory, &$executeAttempt) {
-            if ($isCancelled || $promise->isCancelled()) {
-                return;
-            }
+        $executeAttempt = function () use ($retryConfig, $promise, $mockProvider, &$attempt, &$timerId, &$executeAttempt) {
+            if ($promise->isCancelled()) return;
 
-            $totalAttempts++;
+            $attempt++;
 
             try {
-                // Get the mock for this attempt - this consumes it from the queue
-                $mock = $mockProvider($totalAttempts);
-
+                $mock = $mockProvider($attempt);
                 if (!$mock instanceof MockedRequest) {
                     throw new Exception("Mock provider must return a MockedRequest instance");
                 }
             } catch (Exception $e) {
-                // No mock available or other error
                 $promise->reject(new HttpException("Mock provider error: " . $e->getMessage()));
                 return;
             }
 
-            // Simulate network conditions
             $networkConditions = $this->networkSimulator->simulate();
-            $mockShouldFail = $mock->shouldFail();
-            $mockIsTimeout = $mock->isTimeout();
-            $mockIsRetryable = $mock->isRetryableFailure();
+            $delay = max($networkConditions['delay'] ?? 0, $mock->getDelay());
 
-            // Determine failure type and track it
-            $failureType = null;
-            $shouldFail = false;
-            $errorMessage = '';
-            $isRetryable = false;
+            $timerId = EventLoop::getInstance()->addTimer($delay, function () use ($retryConfig, $promise, $mock, $networkConditions, $attempt, &$executeAttempt) {
+                if ($promise->isCancelled()) return;
 
-            // Check network simulation first
-            if ($networkConditions['should_timeout']) {
-                $shouldFail = true;
-                $failureType = 'network_timeout';
-                $timeoutAttempts++;
-                $errorMessage = sprintf(
-                    'Connection timed out after %.1fs (network simulation)',
-                    $networkConditions['delay'] ?? $this->networkSimulator->getTimeoutDelay()
-                );
-                $isRetryable = $this->isNetworkErrorRetryable($errorMessage, $retryConfig);
-            } elseif ($networkConditions['should_fail']) {
-                $shouldFail = true;
-                $failureType = 'network_failure';
-                $failureAttempts++;
-                $errorMessage = $networkConditions['error_message'] ?? 'Network failure';
-                $isRetryable = $this->isNetworkErrorRetryable($errorMessage, $retryConfig);
-            }
-            // If no network simulation failure, check mock
-            elseif ($mockIsTimeout) {
-                $shouldFail = true;
-                $failureType = 'mock_timeout';
-                $timeoutAttempts++;
-                $timeoutSeconds = $mock->getDelay();
-                $errorMessage = sprintf(
-                    'Mock timeout after %.1fs (configured mock timeout)',
-                    $timeoutSeconds
-                );
-                $isRetryable = $mockIsRetryable || $this->isMockErrorRetryable($errorMessage, $retryConfig);
-            } elseif ($mockShouldFail) {
-                $shouldFail = true;
-                $failureType = 'mock_failure';
-                $failureAttempts++;
-                $errorMessage = $mock->getError() ?? 'Mock failure';
-                $isRetryable = $mockIsRetryable || $this->isMockErrorRetryable($errorMessage, $retryConfig);
-            }
+                $shouldFail = false;
+                $isRetryable = false;
+                $errorMessage = '';
 
-            // Track failure history
-            if ($shouldFail) {
-                $failureHistory[] = [
-                    'attempt' => $totalAttempts,
-                    'type' => $failureType,
-                    'message' => $errorMessage,
-                    'retryable' => $isRetryable,
-                    'timestamp' => microtime(true)
-                ];
-            }
-
-            // Calculate delay (use the larger of network simulation or mock delay)
-            $delay = max(
-                $networkConditions['delay'] ?? 0,
-                $mock->getDelay()
-            );
-
-            // Decide whether to retry
-            if ($shouldFail && $isRetryable && $attempt < $retryConfig->maxRetries) {
-                $attempt++;
-                $retryDelay = $delay + $retryConfig->getDelay($attempt);
-
-                $timerId = EventLoop::getInstance()->addTimer($retryDelay, $executeAttempt);
-                return;
-            }
-
-            // Final result (success or failure)
-            $timerId = EventLoop::getInstance()->addTimer($delay, function () use ($shouldFail, $errorMessage, $mock, $promise, $totalAttempts, $timeoutAttempts, $failureAttempts, $failureHistory, &$isCancelled) {
-                if ($isCancelled || $promise->isCancelled()) {
-                    return;
+                // Determine if there is a failure condition
+                if ($networkConditions['should_fail']) {
+                    $shouldFail = true;
+                    $errorMessage = $networkConditions['error_message'] ?? 'Network failure';
+                    $isRetryable = $retryConfig->isRetryableError($errorMessage);
+                } elseif ($mock->shouldFail()) {
+                    $shouldFail = true;
+                    $errorMessage = $mock->getError() ?? 'Mocked request failure';
+                    $isRetryable = $retryConfig->isRetryableError($errorMessage) || $mock->isRetryableFailure();
+                } elseif ($mock->getStatusCode() >= 400) { // ** THIS IS THE CRITICAL FIX **
+                    $shouldFail = true;
+                    $errorMessage = "Mock responded with status " . $mock->getStatusCode();
+                    $isRetryable = in_array($mock->getStatusCode(), $retryConfig->retryableStatusCodes);
                 }
 
+                // Decide what to do based on failure status
                 if ($shouldFail) {
-                    // Create detailed error message with failure breakdown
-                    $detailedError = $this->createDetailedErrorMessage(
-                        $errorMessage,
-                        $totalAttempts,
-                        $timeoutAttempts,
-                        $failureAttempts,
-                        $failureHistory
-                    );
-
-                    $promise->reject(new HttpException($detailedError));
+                    if ($isRetryable && $attempt <= $retryConfig->maxRetries) {
+                        $retryDelay = $retryConfig->getDelay($attempt);
+                        EventLoop::getInstance()->addTimer($retryDelay, $executeAttempt);
+                    } else {
+                        $promise->reject(new HttpException("HTTP Request failed after {$attempt} attempts: {$errorMessage}"));
+                    }
                 } else {
-                    // Success!
-                    $response = new Response(
-                        $mock->getBody(),
-                        $mock->getStatusCode(),
-                        $mock->getHeaders()
-                    );
+                    // Success
+                    $response = new Response($mock->getBody(), $mock->getStatusCode(), $mock->getHeaders());
                     $promise->resolve($response);
                 }
             });
         };
 
-        // Start the first attempt
         $executeAttempt();
 
         return $promise;
     }
-
-    /**
-     * Create a detailed error message with failure breakdown
-     */
-    private function createDetailedErrorMessage(string $finalError, int $totalAttempts, int $timeoutAttempts, int $failureAttempts, array $failureHistory): string
-    {
-        $message = "HTTP Request failed after {$totalAttempts} attempt" . ($totalAttempts > 1 ? 's' : '') . ": {$finalError}";
-
-        if ($totalAttempts > 1) {
-            $breakdown = [];
-
-            if ($timeoutAttempts > 0) {
-                $breakdown[] = "{$timeoutAttempts} timeout" . ($timeoutAttempts > 1 ? 's' : '');
-            }
-
-            if ($failureAttempts > 0) {
-                $breakdown[] = "{$failureAttempts} failure" . ($failureAttempts > 1 ? 's' : '');
-            }
-
-            if (!empty($breakdown)) {
-                $message .= sprintf(" (Breakdown: %s)", implode(', ', $breakdown));
-            }
-
-            // Add detailed failure history if there were multiple attempts
-            if (count($failureHistory) > 1) {
-                $message .= "\nFailure history:";
-                foreach ($failureHistory as $i => $failure) {
-                    $message .= sprintf(
-                        "\n  Attempt %d: %s (%s)",
-                        $failure['attempt'],
-                        $failure['message'],
-                        $failure['type']
-                    );
-                }
-            }
-        }
-
-        return $message;
-    }
-
-    /**
-     * Check if a network error is retryable based on RetryConfig
-     */
-    private function isNetworkErrorRetryable(string $error, RetryConfig $retryConfig): bool
-    {
-        foreach ($retryConfig->retryableExceptions as $retryablePattern) {
-            if (stripos($error, $retryablePattern) !== false) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Check if a mock error is retryable based on RetryConfig
-     */
-    private function isMockErrorRetryable(string $error, RetryConfig $retryConfig): bool
-    {
-        foreach ($retryConfig->retryableExceptions as $retryablePattern) {
-            if (stripos($error, $retryablePattern) !== false) {
-                return true;
-            }
-        }
-        return false;
-    }
-
 
     public function createMockedStream(MockedRequest $mock, ?callable $onChunk, callable $createStream): CancellablePromiseInterface
     {
@@ -273,11 +127,7 @@ class ResponseFactory
 
         $this->executeWithNetworkSimulation($promise, $mock, function () use ($mock, $onChunk, $createStream) {
             if ($mock->shouldFail()) {
-                $error = $mock->getError();
-                if ($mock->isRetryableFailure()) {
-                    throw new HttpException($error);
-                }
-                throw new HttpException($error);
+                throw new HttpException($mock->getError() ?? 'Mocked failure');
             }
 
             if ($onChunk !== null) {
@@ -290,11 +140,7 @@ class ResponseFactory
             }
 
             $stream = $createStream($mock->getBody());
-            return new StreamingResponse(
-                $stream,
-                $mock->getStatusCode(),
-                $mock->getHeaders()
-            );
+            return new StreamingResponse($stream, $mock->getStatusCode(), $mock->getHeaders());
         });
 
         return $promise;
@@ -307,11 +153,7 @@ class ResponseFactory
 
         $this->executeWithNetworkSimulation($promise, $mock, function () use ($mock, $destination, $fileManager) {
             if ($mock->shouldFail()) {
-                $error = $mock->getError();
-                if ($mock->isRetryableFailure()) {
-                    throw new HttpException($error);
-                }
-                throw new Exception($error);
+                throw new Exception($mock->getError() ?? 'Mocked failure');
             }
 
             $directory = dirname($destination);
@@ -322,8 +164,7 @@ class ResponseFactory
                 $fileManager->trackDirectory($directory);
             }
 
-            $bytesWritten = file_put_contents($destination, $mock->getBody());
-            if ($bytesWritten === false) {
+            if (file_put_contents($destination, $mock->getBody()) === false) {
                 throw new Exception("Cannot write to file: {$destination}");
             }
 
@@ -341,52 +182,29 @@ class ResponseFactory
         return $promise;
     }
 
-    /**
-     * Executes a callback with network simulation, handling timeouts and failures
-     */
     private function executeWithNetworkSimulation(CancellablePromise $promise, MockedRequest $mock, callable $callback): void
     {
         $networkConditions = $this->networkSimulator->simulate();
         $totalDelay = max($mock->getDelay(), $networkConditions['delay']);
-
+        /** @var string|null $timerId */
         $timerId = null;
-        $isCancelled = false;
 
-        $promise->setCancelHandler(function () use (&$timerId, &$isCancelled) {
-            $isCancelled = true;
-            if ($timerId !== null) {
-                EventLoop::getInstance()->cancelTimer($timerId);
-            }
+        $promise->setCancelHandler(function () use (&$timerId) {
+            if ($timerId !== null) EventLoop::getInstance()->cancelTimer($timerId);
         });
 
-        if ($networkConditions['should_timeout']) {
-            $timerId = EventLoop::getInstance()->addTimer($totalDelay, function () use ($promise, $networkConditions, &$isCancelled) {
-                if ($isCancelled || $promise->isCancelled()) {
-                    return;
-                }
-                $promise->reject(new HttpException($networkConditions['error_message'] ?? 'Request timeout'));
-            });
-            return;
-        }
-
         if ($networkConditions['should_fail']) {
-            $timerId = EventLoop::getInstance()->addTimer($totalDelay, function () use ($promise, $networkConditions, &$isCancelled) {
-                if ($isCancelled || $promise->isCancelled()) {
-                    return;
-                }
+            $timerId = EventLoop::getInstance()->addTimer($totalDelay, function () use ($promise, $networkConditions) {
+                if ($promise->isCancelled()) return;
                 $promise->reject(new HttpException($networkConditions['error_message'] ?? 'Network failure'));
             });
             return;
         }
 
-        $timerId = EventLoop::getInstance()->addTimer($totalDelay, function () use ($promise, $callback, &$isCancelled) {
-            if ($isCancelled || $promise->isCancelled()) {
-                return;
-            }
-
+        $timerId = EventLoop::getInstance()->addTimer($totalDelay, function () use ($promise, $callback) {
+            if ($promise->isCancelled()) return;
             try {
-                $result = $callback();
-                $promise->resolve($result);
+                $promise->resolve($callback());
             } catch (Exception $e) {
                 $promise->reject($e);
             }

@@ -18,7 +18,7 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
  */
 class TestingHttpHandler extends HttpHandler
 {
-  /** @var array<MockedRequest> */
+    /** @var array<MockedRequest> */
     private array $mockedRequests = [];
 
     /** @var array<RecordedRequest> */
@@ -40,7 +40,6 @@ class TestingHttpHandler extends HttpHandler
     public function __construct()
     {
         parent::__construct();
-
         $this->fileManager = new FileManager();
         $this->networkSimulator = new NetworkSimulator();
         $this->requestMatcher = new RequestMatcher();
@@ -88,30 +87,28 @@ class TestingHttpHandler extends HttpHandler
     }
 
     /**
-     * Override the main sendRequest method used by the Request builder
-     * This is the primary entry point for all Request builder requests
+     * Override the main sendRequest method used by the Request builder.
+     * This is the primary entry point for all Request builder requests.
      */
     public function sendRequest(string $url, array $curlOptions, ?CacheConfig $cacheConfig = null, ?RetryConfig $retryConfig = null): PromiseInterface
     {
         $method = $curlOptions[CURLOPT_CUSTOMREQUEST] ?? 'GET';
-        $this->recordRequest($method, $url, $curlOptions);
-
         $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
 
+        // **FIX for Counting Bug**: If retry is configured, delegate immediately.
+        // The retry handler is now responsible for recording ALL attempts.
+        if ($retryConfig !== null && $match !== null) {
+            return $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $method);
+        }
+
+        // For non-retry requests, record the single attempt here.
+        $this->recordRequest($method, $url, $curlOptions);
+
         if ($match !== null) {
-            $mock = $match['mock'];
-
-            // Handle retry logic for mocked requests
-            if ($retryConfig !== null) {
-                return $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $method);
-            }
-
-            // For non-retry requests, consume the mock immediately
-            if (!$mock->isPersistent()) {
+            if (!$match['mock']->isPersistent()) {
                 array_splice($this->mockedRequests, $match['index'], 1);
             }
-
-            return $this->responseFactory->createMockedResponse($mock);
+            return $this->responseFactory->createMockedResponse($match['mock']);
         }
 
         if ($this->globalSettings['strict_matching'] && !$this->globalSettings['allow_passthrough']) {
@@ -122,27 +119,25 @@ class TestingHttpHandler extends HttpHandler
     }
 
     /**
-     * Execute a mocked request with retry logic - simplified approach
+     * Execute a mocked request with retry logic.
+     * This method is responsible for consuming one mock per attempt.
      */
     private function executeWithMockRetry(string $url, array $curlOptions, RetryConfig $retryConfig, string $method): PromiseInterface
     {
         return $this->responseFactory->createRetryableMockedResponse(
             $retryConfig,
             function (int $attemptNumber) use ($method, $url, $curlOptions) {
-                // Record each retry attempt
-                $this->recordRequest($method . " (attempt #{$attemptNumber})", $url, $curlOptions);
+                // Record each attempt here, ensuring correct count.
+                $this->recordRequest($method, $url, $curlOptions);
 
-                // Find and consume the next matching mock for this attempt
                 $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
-                
+
                 if ($match === null) {
-                    // No more mocks available - this will cause a failure
                     throw new Exception("No mock available for attempt #{$attemptNumber}: {$method} {$url}");
                 }
 
                 $mock = $match['mock'];
-                
-                // Always consume non-persistent mocks (this is key!)
+
                 if (!$mock->isPersistent()) {
                     array_splice($this->mockedRequests, $match['index'], 1);
                 }
@@ -153,24 +148,23 @@ class TestingHttpHandler extends HttpHandler
     }
 
     /**
-     * Override fetch to intercept direct fetch calls with retry support
+     * Override fetch to intercept direct fetch calls and apply mocking/retry logic.
+     * This is the entry point for Http::fetch().
      */
     public function fetch(string $url, array $options = []): PromiseInterface|CancellablePromiseInterface
     {
         $method = strtoupper($options['method'] ?? 'GET');
         $curlOptions = $this->normalizeFetchOptions($url, $options);
-
-        $this->recordRequest($method, $url, $curlOptions);
-
-        // Extract retry config from options for direct fetch calls
         $retryConfig = $this->extractRetryConfigFromOptions($options);
-        
+
+        // **FIX for Counting Bug**: If retry is configured, delegate immediately.
         if ($retryConfig !== null) {
-            // Use retry logic which will handle mock consumption properly
             return $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $method);
         }
 
-        // Non-retry request - handle normally
+        // For non-retry requests, record the single attempt here.
+        $this->recordRequest($method, $url, $curlOptions);
+
         $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
 
         if ($match !== null) {
@@ -180,7 +174,6 @@ class TestingHttpHandler extends HttpHandler
                 array_splice($this->mockedRequests, $match['index'], 1);
             }
 
-            // Handle different response types based on options
             if (isset($options['download']) || isset($options['save_to'])) {
                 $destination = $options['download'] ?? $options['save_to'];
                 return $this->responseFactory->createMockedDownload($mock, $destination, $this->fileManager);
@@ -201,227 +194,81 @@ class TestingHttpHandler extends HttpHandler
         return parent::fetch($url, $options);
     }
 
-    /**
-     * Extract retry configuration from fetch options (same logic as FetchHandler)
-     */
     private function extractRetryConfigFromOptions(array $options): ?RetryConfig
     {
-        if (!isset($options['retry'])) {
-            return null;
-        }
-
+        if (!isset($options['retry'])) return null;
         $retry = $options['retry'];
-
-        if ($retry === true) {
-            return new RetryConfig();
-        }
-
-        if ($retry instanceof RetryConfig) {
-            return $retry;
-        }
-
-        // Handle array configuration (same as FetchHandler)
+        if ($retry === true) return new RetryConfig();
+        if ($retry instanceof RetryConfig) return $retry;
         if (is_array($retry)) {
-            $retryableStatusCodes = [408, 429, 500, 502, 503, 504];
-            if (isset($retry['retryable_status_codes']) && is_array($retry['retryable_status_codes'])) {
-                $codes = [];
-                foreach ($retry['retryable_status_codes'] as $code) {
-                    if (is_numeric($code)) {
-                        $codes[] = (int) $code;
-                    }
-                }
-                $retryableStatusCodes = $codes;
-            }
-
-            $retryableExceptions = [
-                'cURL error',
-                'timeout',
-                'connection failed',
-                'Could not resolve host',
-                'Resolving timed out',
-                'Connection timed out',
-                'SSL connection timeout',
-            ];
-            if (isset($retry['retryable_exceptions']) && is_array($retry['retryable_exceptions'])) {
-                $exceptions = [];
-                foreach ($retry['retryable_exceptions'] as $exception) {
-                    if (is_scalar($exception)) {
-                        $exceptions[] = (string) $exception;
-                    }
-                }
-                $retryableExceptions = $exceptions;
-            }
-
-            $maxRetries = $retry['max_retries'] ?? 3;
-            $baseDelay = $retry['base_delay'] ?? 1.0;
-            $maxDelay = $retry['max_delay'] ?? 60.0;
-            $backoffMultiplier = $retry['backoff_multiplier'] ?? 2.0;
-
             return new RetryConfig(
-                maxRetries: is_numeric($maxRetries) ? (int) $maxRetries : 3,
-                baseDelay: is_numeric($baseDelay) ? (float) $baseDelay : 1.0,
-                maxDelay: is_numeric($maxDelay) ? (float) $maxDelay : 60.0,
-                backoffMultiplier: is_numeric($backoffMultiplier) ? (float) $backoffMultiplier : 2.0,
-                jitter: (bool) ($retry['jitter'] ?? true),
-                retryableStatusCodes: $retryableStatusCodes,
-                retryableExceptions: $retryableExceptions
+                maxRetries: (int)($retry['max_retries'] ?? 3),
+                baseDelay: (float)($retry['base_delay'] ?? 1.0),
+                maxDelay: (float)($retry['max_delay'] ?? 60.0),
+                backoffMultiplier: (float)($retry['backoff_multiplier'] ?? 2.0),
+                jitter: (bool)($retry['jitter'] ?? true),
+                retryableStatusCodes: $retry['retryable_status_codes'] ?? [408, 429, 500, 502, 503, 504],
+                retryableExceptions: $retry['retryable_exceptions'] ?? ['cURL error', 'timeout', 'connection failed']
             );
         }
-
         return null;
     }
-    /**
-     * Override stream to intercept streaming requests
-     */
+
     public function stream(string $url, array $options = [], ?callable $onChunk = null): CancellablePromiseInterface
     {
-        $this->recordRequest('GET', $url, $options);
-        $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, 'GET', $url, $options);
-
-        if ($match !== null) {
-            if (!$match['mock']->isPersistent()) {
-                array_splice($this->mockedRequests, $match['index'], 1);
-            }
-
-            return $this->responseFactory->createMockedStream($match['mock'], $onChunk, [$this, 'createStream']);
-        }
-
-        if ($this->globalSettings['strict_matching'] && !$this->globalSettings['allow_passthrough']) {
-            throw new Exception("No mock found for stream: {$url}");
-        }
-
-        return parent::stream($url, $options, $onChunk);
+        $options['stream'] = true;
+        if ($onChunk) $options['on_chunk'] = $onChunk;
+        return $this->fetch($url, $options);
     }
 
-    /**
-     * Override download to intercept download requests
-     */
     public function download(string $url, string $destination, array $options = []): CancellablePromiseInterface
     {
-        $curlOptions = $this->normalizeFetchOptions($url, $options);
-        $this->recordRequest('GET', $url, $curlOptions);
-
-        $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, 'GET', $url, $curlOptions);
-
-        if ($match !== null) {
-            if (!$match['mock']->isPersistent()) {
-                array_splice($this->mockedRequests, $match['index'], 1);
-            }
-
-            return $this->responseFactory->createMockedDownload($match['mock'], $destination, $this->fileManager);
-        }
-
-        if ($this->globalSettings['strict_matching'] && !$this->globalSettings['allow_passthrough']) {
-            throw new Exception("No mock found for download: {$url}");
-        }
-
-        return parent::download($url, $destination, $options);
+        $options['download'] = $destination;
+        return $this->fetch($url, $options);
     }
 
-    // === UTILITY METHODS ===
-
+    // UTILITY AND ASSERTION METHODS
     public static function getTempPath(?string $filename = null): string
     {
         return FileManager::getTempPath($filename);
     }
-
     public function createTempDirectory(string $prefix = 'http_test_'): string
     {
         return $this->fileManager->createTempDirectory($prefix);
     }
-
     public function createTempFile(?string $filename = null, string $content = ''): string
     {
         return $this->fileManager->createTempFile($filename, $content);
     }
-
-    public function startRecording(string $filename): self
-    {
-        $this->recordingFile = $filename;
-        return $this;
-    }
-
-    public function loadRecording(string $filename): self
-    {
-        if (!file_exists($filename)) {
-            throw new Exception("Recording file not found: {$filename}");
-        }
-
-        $recorded = json_decode(file_get_contents($filename), true);
-        foreach ($recorded as $item) {
-            $this->addMockedRequest(MockedRequest::fromArray($item));
-        }
-
-        return $this;
-    }
-
-    // === ASSERTION METHODS ===
-
     public function assertRequestMade(string $method, string $url, array $options = []): void
     {
         foreach ($this->requestHistory as $request) {
-            if ($this->requestMatcher->matchesRequest($request, $method, $url, $options)) {
-                return;
-            }
+            if ($this->requestMatcher->matchesRequest($request, $method, $url, $options)) return;
         }
         throw new Exception("Expected request not found: {$method} {$url}");
     }
-
     public function assertNoRequestsMade(): void
     {
-        if (!empty($this->requestHistory)) {
-            throw new Exception("Expected no requests, but " . count($this->requestHistory) . " were made");
-        }
+        if (!empty($this->requestHistory)) throw new Exception("Expected no requests, but " . count($this->requestHistory) . " were made");
     }
-
     public function assertRequestCount(int $expected): void
     {
         $actual = count($this->requestHistory);
-        if ($actual !== $expected) {
-            throw new Exception("Expected {$expected} requests, but {$actual} were made");
-        }
+        if ($actual !== $expected) throw new Exception("Expected {$expected} requests, but {$actual} were made");
     }
-
     public function getRequestHistory(): array
     {
         return $this->requestHistory;
     }
-
     public function reset(): void
     {
         $this->mockedRequests = [];
         $this->requestHistory = [];
         $this->fileManager->cleanup();
     }
-
-    // === PRIVATE HELPER METHODS ===
-
     private function recordRequest(string $method, string $url, array $options): void
     {
-        if (!$this->globalSettings['record_requests']) {
-            return;
-        }
-
-        $recorded = new RecordedRequest($method, $url, $options, microtime(true));
-        $this->requestHistory[] = $recorded;
-
-        if ($this->recordingFile) {
-            $this->saveRecording();
-        }
-    }
-
-    private function saveRecording(): void
-    {
-        if (!$this->recordingFile) {
-            return;
-        }
-
-        $data = array_map(fn($mock) => $mock->toArray(), $this->mockedRequests);
-        file_put_contents($this->recordingFile, json_encode($data, JSON_PRETTY_PRINT));
-    }
-
-    protected function normalizeFetchOptions(string $url, array $options): array
-    {
-        return parent::normalizeFetchOptions($url, $options);
+        if (!$this->globalSettings['record_requests']) return;
+        $this->requestHistory[] = new RecordedRequest($method, $url, $options, microtime(true));
     }
 }
