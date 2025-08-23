@@ -2,6 +2,7 @@
 
 use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Api\Task;
+use function PHPUnit\Framework\assertDirectoryIsNotReadable;
 
 require 'vendor/autoload.php';
 
@@ -15,10 +16,10 @@ Task::run(function () {
 
     // 1. Define the sequence of chunks
     $chunks = [
-        '{"id": 1, "event": "start", "data": "', // Chunk 1
-        'some streaming data',                   // Chunk 2
-        '"}' . "\n",                              // Chunk 3
-        '{"id": 2, "event": "end"}'              // Chunk 4
+        '{"id": 1, "event": "start", "data": "',
+        'some streaming data',                  
+        '"}' . "\n",                            
+        '{"id": 2, "event": "end"}'           
     ];
 
     $expected_full_body = implode('', $chunks);

@@ -2,6 +2,7 @@
 
 use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Api\Task;
+use Rcalicdan\FiberAsync\Http\Testing\TestingHttpHandler;
 
 require 'vendor/autoload.php';
 
@@ -92,12 +93,12 @@ Task::run(function () {
 
     try {
         $start = microtime(true);
+        $testFile = TestingHttpHandler::getTempPath('download-test');
 
-        // **UPDATED**: Call download() with no destination to test automatic file management.
         $result = await(
             Http::request()
                 ->retry(maxRetries: 3, baseDelay: 0.01)
-                ->download($url_download_test)
+                ->download($url_download_test, $testFile)
         );
 
         $end = microtime(true);

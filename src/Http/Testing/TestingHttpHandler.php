@@ -251,6 +251,14 @@ class TestingHttpHandler extends HttpHandler
 
     public function download(string $url, ?string $destination = null, array $options = []): CancellablePromiseInterface
     {
+        if ($destination === null) {
+            $destination = $this->fileManager->createTempFile(
+                'download_' . uniqid() . '.tmp'
+            );
+        } else {
+            $this->fileManager->trackFile($destination);
+        }
+
         $options['download'] = $destination;
         return $this->fetch($url, $options);
     }
