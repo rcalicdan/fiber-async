@@ -2,34 +2,56 @@
 
 use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Api\Task;
+use Rcalicdan\FiberAsync\Http\Exceptions\HttpException;
 
 require 'vendor/autoload.php';
 
 Task::run(function () {
-    Http::testing()->enableNetworkSimulation([
-        'retryable_failure_rate' => 0.8, 
-        'default_delay' => 0.1,
-    ]);
-    
+    $handler = Http::testing();
+
+    $url = 'https://api.example.com/data';
+
+    // First attempt - retryable timeout
     Http::mock('GET')
-        ->url('https://api.github.com/users/octocat')
-        ->respondWith(200)
-        ->json(['login' => 'octocat', 'id' => 1])
-        ->persistent()  
+        ->url($url)
+        ->retryableFailure('Connection timed out')
+        ->delay(1.0)
         ->register();
 
+    // Second attempt - retryable network error  
+    Http::mock('GET')
+        ->url($url)
+        ->retryableFailure('Connection failed')
+        ->delay(0.5)
+        ->register();
+
+    // Third attempt - another timeout
+    Http::mock('GET')
+        ->url($url)
+        ->timeoutFailure(2.0)
+        ->register();
+
+    // Fourth attempt - SUCCESS!
+    Http::mock('GET')
+        ->url($url)
+        ->respondWith(200)
+        ->json(['status' => 'success', 'data' => 'finally worked!'])
+        ->register();
+
+    // Make request with retry config
     try {
-        echo "Testing retry with network simulation...\n";
-        $start = microtime(true);
-        
-        $response = await(Http::retry(5, 0.5)->get('https://api.github.com/users/octocat'));
-            
-        $duration = microtime(true) - $start;
-        
-        echo "✅ Success after retries! Status: " . $response->status() . "\n";
-        echo "Total time: " . round($duration, 2) . " seconds\n";
-        
+        $response = await(Http::fetch($url, [
+            'retry' => [
+                'max_retries' => 3,
+                'base_delay' => 0.5,
+                'backoff_multiplier' => 1.5,
+            ]
+        ]));
+
+        echo "Success! Response: " . $response->body();
+        // Will output: Success! Response: {"status":"success","data":"finally worked!"}
+
     } catch (Exception $e) {
-        echo "❌ Request failed: " . $e->getMessage() . "\n";
+        echo "Failed: " . $e->getMessage();
     }
 });

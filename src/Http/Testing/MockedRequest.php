@@ -75,8 +75,14 @@ class MockedRequest
     public function setTimeout(float $seconds): void
     {
         $this->timeoutAfter = $seconds;
-        $this->error = "Connection timed out after {$seconds} seconds";
+        $this->error = sprintf("Connection timed out after %.1fs", $seconds);
     }
+
+    public function getTimeoutDuration(): ?float
+    {
+        return $this->timeoutAfter;
+    }
+
 
     public function setRetryable(bool $retryable): void
     {

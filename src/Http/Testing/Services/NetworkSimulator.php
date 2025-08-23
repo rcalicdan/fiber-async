@@ -52,18 +52,21 @@ class NetworkSimulator
         if (mt_rand() / mt_getrandmax() < $this->settings['timeout_rate']) {
             $result['should_timeout'] = true;
             $result['delay'] = $this->settings['timeout_delay'];
-            $result['error_message'] = 'Connection timed out';
+            $result['error_message'] = sprintf(
+                'Connection timed out after %.1fs (simulated network timeout)',
+                $this->settings['timeout_delay']
+            );
             return $result;
         }
 
         if (mt_rand() / mt_getrandmax() < $this->settings['retryable_failure_rate']) {
             $result['should_fail'] = true;
             $retryableErrors = [
-                'Connection failed',
-                'Could not resolve host',
-                'Connection timed out',
-                'SSL connection timeout',
-                'Resolving timed out'
+                'Connection failed (network simulation)',
+                'Could not resolve host (network simulation)',
+                'Connection timed out during handshake (network simulation)',
+                'SSL connection timeout (network simulation)',
+                'Resolving timed out (network simulation)'
             ];
             $result['error_message'] = $retryableErrors[array_rand($retryableErrors)];
             return $result;
@@ -77,7 +80,7 @@ class NetworkSimulator
 
         if (mt_rand() / mt_getrandmax() < $this->settings['connection_failure_rate']) {
             $result['should_fail'] = true;
-            $result['error_message'] = 'Connection refused';
+            $result['error_message'] = 'Connection refused (network simulation)';
             return $result;
         }
 

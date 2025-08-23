@@ -103,6 +103,11 @@ class TestingHttpHandler extends HttpHandler
         if ($match !== null) {
             $mock = $match['mock'];
 
+            // Handle retry logic for mocked requests
+            if ($retryConfig !== null && ($mock->shouldFail() || $mock->isTimeout())) {
+                return $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $mock, $match['index']);
+            }
+
             if (!$mock->isPersistent() && (!$mock->shouldFail() || !$mock->isRetryableFailure())) {
                 array_splice($this->mockedRequests, $match['index'], 1);
             } elseif (!$mock->isPersistent() && $mock->isRetryableFailure()) {
@@ -120,7 +125,46 @@ class TestingHttpHandler extends HttpHandler
     }
 
     /**
-     * Override fetch to intercept direct fetch calls
+     * Execute a mocked request with retry logic
+     */
+    /**
+     * Execute a mocked request with retry logic
+     */
+    private function executeWithMockRetry(string $url, array $curlOptions, RetryConfig $retryConfig, MockedRequest $mock, int $mockIndex): PromiseInterface
+    {
+        $attempt = 0;
+        $totalAttempts = 0;
+
+        return $this->responseFactory->createRetryableMockedResponse(
+            $mock,
+            $retryConfig,
+            function () use ($url, $curlOptions, &$attempt, &$totalAttempts, $mockIndex, $retryConfig) {
+                $attempt++;
+                $totalAttempts++;
+
+                // Record each retry attempt
+                $method = $curlOptions[CURLOPT_CUSTOMREQUEST] ?? 'GET';
+                $this->recordRequest($method . " (retry #{$attempt})", $url, $curlOptions);
+
+                // Remove non-persistent mocks after final attempt
+                if (isset($this->mockedRequests[$mockIndex]) && !$this->mockedRequests[$mockIndex]->isPersistent()) {
+                    $shouldRemove = true;
+
+                    // If it's retryable and we haven't hit max retries, keep it
+                    if ($this->mockedRequests[$mockIndex]->isRetryableFailure() && $attempt <= $retryConfig->maxRetries) {
+                        $shouldRemove = false;
+                    }
+
+                    if ($shouldRemove) {
+                        array_splice($this->mockedRequests, $mockIndex, 1);
+                    }
+                }
+            }
+        );
+    }
+
+    /**
+     * Override fetch to intercept direct fetch calls with retry support
      */
     public function fetch(string $url, array $options = []): PromiseInterface|CancellablePromiseInterface
     {
@@ -132,31 +176,108 @@ class TestingHttpHandler extends HttpHandler
         $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
 
         if ($match !== null) {
-            if (!$match['mock']->isPersistent()) {
+            $mock = $match['mock'];
+
+            // Extract retry config from options for direct fetch calls
+            $retryConfig = $this->extractRetryConfigFromOptions($options);
+
+            if ($retryConfig !== null && ($mock->shouldFail() || $mock->isTimeout())) {
+                return $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $mock, $match['index']);
+            }
+
+            if (!$mock->isPersistent()) {
                 array_splice($this->mockedRequests, $match['index'], 1);
             }
 
             // Handle different response types based on options
             if (isset($options['download']) || isset($options['save_to'])) {
                 $destination = $options['download'] ?? $options['save_to'];
-                return $this->responseFactory->createMockedDownload($match['mock'], $destination, $this->fileManager);
+                return $this->responseFactory->createMockedDownload($mock, $destination, $this->fileManager);
             }
 
             if (isset($options['stream']) && $options['stream'] === true) {
                 $onChunk = $options['on_chunk'] ?? $options['onChunk'] ?? null;
-                return $this->responseFactory->createMockedStream($match['mock'], $onChunk, [$this, 'createStream']);
+                return $this->responseFactory->createMockedStream($mock, $onChunk, [$this, 'createStream']);
             }
 
-            return $this->responseFactory->createMockedResponse($match['mock']);
+            return $this->responseFactory->createMockedResponse($mock);
         }
 
-        // No mock found - handle based on settings
         if ($this->globalSettings['strict_matching'] && !$this->globalSettings['allow_passthrough']) {
             throw new Exception("No mock found for: {$method} {$url}");
         }
 
-        // Pass through to real fetch with all retry/timeout logic intact
         return parent::fetch($url, $options);
+    }
+
+    /**
+     * Extract retry configuration from fetch options (same logic as FetchHandler)
+     */
+    private function extractRetryConfigFromOptions(array $options): ?RetryConfig
+    {
+        if (!isset($options['retry'])) {
+            return null;
+        }
+
+        $retry = $options['retry'];
+
+        if ($retry === true) {
+            return new RetryConfig();
+        }
+
+        if ($retry instanceof RetryConfig) {
+            return $retry;
+        }
+
+        // Handle array configuration (same as FetchHandler)
+        if (is_array($retry)) {
+            $retryableStatusCodes = [408, 429, 500, 502, 503, 504];
+            if (isset($retry['retryable_status_codes']) && is_array($retry['retryable_status_codes'])) {
+                $codes = [];
+                foreach ($retry['retryable_status_codes'] as $code) {
+                    if (is_numeric($code)) {
+                        $codes[] = (int) $code;
+                    }
+                }
+                $retryableStatusCodes = $codes;
+            }
+
+            $retryableExceptions = [
+                'cURL error',
+                'timeout',
+                'connection failed',
+                'Could not resolve host',
+                'Resolving timed out',
+                'Connection timed out',
+                'SSL connection timeout',
+            ];
+            if (isset($retry['retryable_exceptions']) && is_array($retry['retryable_exceptions'])) {
+                $exceptions = [];
+                foreach ($retry['retryable_exceptions'] as $exception) {
+                    if (is_scalar($exception)) {
+                        $exceptions[] = (string) $exception;
+                    }
+                }
+                $retryableExceptions = $exceptions;
+            }
+
+            $maxRetries = $retry['max_retries'] ?? 3;
+            $baseDelay = $retry['base_delay'] ?? 1.0;
+            $maxDelay = $retry['max_delay'] ?? 60.0;
+            $backoffMultiplier = $retry['backoff_multiplier'] ?? 2.0;
+
+            return new RetryConfig(
+                maxRetries: is_numeric($maxRetries) ? (int) $maxRetries : 3,
+                baseDelay: is_numeric($baseDelay) ? (float) $baseDelay : 1.0,
+                maxDelay: is_numeric($maxDelay) ? (float) $maxDelay : 60.0,
+                backoffMultiplier: is_numeric($backoffMultiplier) ? (float) $backoffMultiplier : 2.0,
+                jitter: (bool) ($retry['jitter'] ?? true),
+                retryableStatusCodes: $retryableStatusCodes,
+                retryableExceptions: $retryableExceptions
+            );
+        }
+
+        return null;
     }
 
     /**

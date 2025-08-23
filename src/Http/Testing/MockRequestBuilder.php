@@ -83,12 +83,46 @@ class MockRequestBuilder
         return $this;
     }
 
+    public function timeoutFailure(float $timeoutAfter = 30.0, ?string $customMessage = null): self
+    {
+        if ($customMessage) {
+            $this->request->setError($customMessage);
+        } else {
+            $this->request->setTimeout($timeoutAfter);
+        }
+        $this->request->setRetryable(true);
+
+        return $this;
+    }
+
+    public function slowResponse(float $delaySeconds): self
+    {
+        $this->request->setDelay($delaySeconds);
+        return $this;
+    }
+
     public function retryableFailure(string $error = "Connection failed"): self
     {
         $this->request->setError($error);
         $this->request->setRetryable(true);
         return $this;
     }
+
+    public function networkError(string $errorType = 'connection'): self
+    {
+        $errors = [
+            'connection' => 'Connection failed',
+            'timeout' => 'Connection timed out',
+            'resolve' => 'Could not resolve host',
+            'ssl' => 'SSL connection timeout',
+        ];
+
+        $error = $errors[$errorType] ?? $errorType;
+        $this->request->setError($error);
+        $this->request->setRetryable(true);
+        return $this;
+    }
+
 
     public function persistent(): self
     {
