@@ -286,7 +286,7 @@ class Http
     {
         $handler = self::getInstance();
 
-        $directMethods = ['get', 'post', 'put', 'delete', 'fetch', 'stream', 'download', 'createStream', 'createStreamFromFile'];
+        $directMethods = ['get', 'post', 'put', 'delete', 'fetch', 'stream', 'download'];
 
         if (in_array($method, $directMethods)) {
             return $handler->{$method}(...$arguments);

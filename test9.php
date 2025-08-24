@@ -4,244 +4,370 @@ use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Api\Task;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
+use Rcalicdan\FiberAsync\Http\Stream;
+use Rcalicdan\FiberAsync\Promise\Promise;
 
 require 'vendor/autoload.php';
 
-echo "====== Mocked Integration Tests for Interceptors ======\n";
+echo "====== Sequential Interceptor Tests (nextTick vs no nextTick) ======\n";
 echo "NOTE: This script uses the testing framework and makes NO real network requests.\n\n";
 
 Task::run(function () {
-    // Enable testing mode. This is the only handler we need.
+    // Enable testing mode
     $handler = Http::testing();
 
     try {
         // =================================================================
-        // Test Case 1: Modifying a Request with interceptRequest
+        // Test Case 1: Sequential Request Interceptors with Timing
         // =================================================================
-        echo "--- Test Case 1: Modifying a Request with interceptRequest --- \n";
-        echo "Goal: Add a 'X-Request-ID' header and verify it was sent.\n\n";
-        
+        echo "--- Test Case 1: Sequential Request Interceptors with Timing --- \n";
+        echo "Goal: Verify execution order and measure timing differences.\n\n";
+
         $handler->reset();
-        $requestId = 'fiber-' . uniqid();
-        $url = 'https://api.internal/resource';
+        $url = 'https://api.internal/sequential';
+        $executionLog = [];
 
         Http::mock('POST')
             ->url($url)
-            ->respondWithStatus(201)
-            ->json(['status' => 'created', 'id' => 123])
+            ->respondWithStatus(200)
+            ->persistent()
+            ->json(['processed' => true])
             ->register();
 
-        $requestInterceptor = function (Request $request) use ($requestId) {
-            echo "   -> Request Interceptor Fired: Adding header 'X-Request-ID: {$requestId}'\n";
-            return $request->withHeader('X-Request-ID', $requestId);
+        // Create interceptors that log their execution order and timing
+        $requestInterceptor1 = function (Request $request) use (&$executionLog) {
+            $timestamp = microtime(true);
+            $executionLog[] = "Request Interceptor 1 - " . $timestamp;
+            echo "   -> Request Interceptor #1 executed at: {$timestamp}\n";
+            usleep(1000); // 1ms delay to simulate some work
+            return $request->withHeader('X-Interceptor-1', 'executed');
         };
 
-        await(
+        $requestInterceptor2 = function (Request $request) use (&$executionLog) {
+            $timestamp = microtime(true);
+            $executionLog[] = "Request Interceptor 2 - " . $timestamp;
+            echo "   -> Request Interceptor #2 executed at: {$timestamp}\n";
+            usleep(1000); // 1ms delay
+            $existing = $request->getHeaderLine('X-Interceptor-1');
+            return $request->withHeader('X-Interceptor-2', $existing . '+interceptor2');
+        };
+
+        $requestInterceptor3 = function (Request $request) use (&$executionLog) {
+            $timestamp = microtime(true);
+            $executionLog[] = "Request Interceptor 3 - " . $timestamp;
+            echo "   -> Request Interceptor #3 executed at: {$timestamp}\n";
+            usleep(1000); // 1ms delay
+            return $request->withHeader('X-Final-Count', '3-interceptors');
+        };
+
+        $startTime = microtime(true);
+
+        $response = await(
             Http::request()
-                ->interceptRequest($requestInterceptor)
-                ->post($url, ['name' => 'test'])
+                ->interceptRequest($requestInterceptor1)
+                ->interceptRequest($requestInterceptor2)
+                ->interceptRequest($requestInterceptor3)
+                ->post($url, ['test' => 'sequential'])
         );
 
-        echo "   Request sent. Verifying history...\n";
-        
+        $endTime = microtime(true);
+        $totalTime = ($endTime - $startTime) * 1000; // Convert to milliseconds
+
+        echo "   Total execution time: {$totalTime}ms\n";
+        echo "   Execution log:\n";
+        foreach ($executionLog as $entry) {
+            echo "     - {$entry}\n";
+        }
+
+        // Verify headers were applied in sequence
         $history = $handler->getRequestHistory();
         $sentRequest = $history[0];
         $sentHeaders = $sentRequest->options[CURLOPT_HTTPHEADER] ?? [];
 
-        $headerFound = false;
-        $expectedHeader = "X-Request-ID: {$requestId}";
+        $header1Found = false;
+        $header2Found = false;
+        $header3Found = false;
+
         foreach ($sentHeaders as $header) {
-            if ($header === $expectedHeader) {
-                $headerFound = true;
-                break;
-            }
+            if (str_contains($header, 'X-Interceptor-1: executed')) $header1Found = true;
+            if (str_contains($header, 'X-Interceptor-2: executed+interceptor2')) $header2Found = true;
+            if (str_contains($header, 'X-Final-Count: 3-interceptors')) $header3Found = true;
         }
 
-        if ($headerFound) {
-            echo "   ✓ SUCCESS: Request was sent with the header from the interceptor.\n";
+        if ($header1Found && $header2Found && $header3Found) {
+            echo "   ✓ SUCCESS: All sequential interceptors executed correctly.\n";
         } else {
-            echo "   ✗ FAILED: The interceptor's header was not found in the final request.\n";
+            echo "   ✗ FAILED: Sequential interceptor execution failed.\n";
+            echo "   Headers found: " . json_encode($sentHeaders) . "\n";
         }
-        $handler->assertRequestCount(1);
-
 
         // =================================================================
-        // Test Case 2: Modifying a Response with interceptResponse
+        // Test Case 2: Sequential Response Interceptors with Async Operations
         // =================================================================
-        echo "\n--- Test Case 2: Modifying a Response with interceptResponse --- \n";
-        echo "Goal: Add a new field to the JSON body and a new header to the response.\n\n";
+        echo "\n--- Test Case 2: Sequential Response Interceptors with Mixed Sync/Async --- \n";
+        echo "Goal: Test response interceptors that mix sync and async operations.\n\n";
 
         $handler->reset();
-        $url_json = 'https://api.internal/json';
+        $responseUrl = 'https://api.internal/response-sequential';
+        $asyncUrl = 'https://api.internal/async-helper';
+        $responseLog = [];
 
         Http::mock('GET')
-            ->url($url_json)
-            ->json(['slideshow' => ['author' => 'Original Author']])
+            ->url($responseUrl)
+            ->persistent()
+            ->json(['original' => 'data', 'step' => 0])
             ->register();
 
-        $responseInterceptor = function (Response $response) {
-            echo "   -> Response Interceptor Fired: Modifying response...\n";
-            $modifiedResponse = $response->withHeader('X-Processed-By', 'FiberAsync-Interceptor');
-            $body = $modifiedResponse->json();
-            $body['intercepted'] = true;
-            return $modifiedResponse->withBody(Http::createStream(json_encode($body)));
-        };
+        // Mock for the async helper request
+        Http::mock('GET')
+            ->url($asyncUrl)
+            ->json(['async_data' => 'processed', 'timestamp' => microtime(true)])
+            ->register();
 
-        $response = await(
-            Http::request()
-                ->interceptResponse($responseInterceptor)
-                ->get($url_json)
-        );
+        // Sync response interceptor
+        $responseInterceptor1 = function (Response $response) use (&$responseLog) {
+            $timestamp = microtime(true);
+            $responseLog[] = "Response Interceptor 1 (sync) - " . $timestamp;
+            echo "   -> Response Interceptor #1 (sync) executed at: {$timestamp}\n";
 
-        $data = $response->json();
-
-        if ($response->header('X-Processed-By') === 'FiberAsync-Interceptor' && isset($data['intercepted']) && $data['intercepted'] === true) {
-            echo "   ✓ SUCCESS: Response was successfully modified by the interceptor.\n";
-            echo "   New Body: " . json_encode($data) . "\n";
-        } else {
-            echo "   ✗ FAILED: Response was not modified as expected.\n";
-        }
-        $handler->assertRequestCount(1);
-
-
-        // =================================================================
-        // Test Case 3: Advanced - Transparent Token Refresh on 401
-        // =================================================================
-        echo "\n--- Test Case 3: Advanced - Transparent Token Refresh on 401 --- \n";
-        echo "Goal: Catch a 401, refresh a token, and retry the original request.\n\n";
-
-        $handler->reset();
-
-        $authManager = new class {
-            public string $token = 'expired-token';
-
-            public function refreshToken(): void {
-                $this->token = 'new-valid-token-' . uniqid();
-                echo "   -> Auth Manager: Token has been refreshed to '{$this->token}'.\n";
-            }
-
-            public function createAuthInterceptor(): callable {
-                return function (Response $response) {
-                    if ($response->status() !== 401) return $response;
-                    echo "   -> Response Interceptor: Caught 401 Unauthorized! Refreshing token...\n";
-                    $this->refreshToken();
-                    echo "   -> Response Interceptor: Transparently retrying the original request with the new token...\n";
-                    return Http::request()->bearerToken($this->token)->get('https://api.internal/headers');
-                };
-            }
-        };
-        
-        Http::mock('GET')->url('https://api.internal/status/401')->respondWithStatus(401)->register();
-        Http::mock('GET')->url('https://api.internal/headers')->json(['message' => 'authenticated'])->register();
-
-        $finalResponse = await(
-            Http::request()
-                ->bearerToken($authManager->token)
-                ->interceptResponse($authManager->createAuthInterceptor())
-                ->get('https://api.internal/status/401')
-        );
-
-        $data = $finalResponse->json();
-        
-        if ($finalResponse->status() === 200 && isset($data['message']) && $data['message'] === 'authenticated') {
-            echo "   ✓ SUCCESS: The application received a 200 OK response, even though the first attempt failed.\n";
-        } else {
-            echo "   ✗ FAILED: The transparent retry did not work as expected.\n";
-        }
-
-        $handler->assertRequestCount(2);
-        echo "   ✓ Assertion successful: Exactly 2 requests were made behind the scenes.\n";
-
-        // =================================================================
-        // Test Case 4: Chaining Multiple Interceptors
-        // =================================================================
-        echo "\n--- Test Case 4: Chaining Multiple Interceptors --- \n";
-        echo "Goal: Verify that multiple interceptors execute in order.\n\n";
-
-        $handler->reset();
-        $url_multi = 'https://api.internal/multi-intercept';
-
-        Http::mock('GET')->url($url_multi)->json(['original' => true])->register();
-
-        // Define Request Interceptors
-        $reqInterceptor1 = function (Request $request) {
-            echo "   -> Request Interceptor #1 Fired.\n";
-            return $request->withHeader('X-Step-1', 'Set-by-1');
-        };
-        $reqInterceptor2 = function (Request $request) {
-            echo "   -> Request Interceptor #2 Fired.\n";
-            $step1Header = $request->getHeaderLine('X-Step-1');
-            return $request
-                ->withHeader('X-Step-1', $step1Header . ';Modified-by-2')
-                ->withHeader('X-Step-2', 'Set-by-2');
-        };
-
-        // Define Response Interceptors
-        $resInterceptor1 = function (Response $response) {
-            echo "   -> Response Interceptor #1 Fired.\n";
             $body = $response->json();
-            $body['step1_complete'] = true;
-            return $response->withBody(Http::createStream(json_encode($body)));
+            $body['step'] = 1;
+            $body['sync_processed'] = true;
+
+            return $response->withBody(Stream::fromString(json_encode($body)));
         };
-        $resInterceptor2 = function (Response $response) {
-            echo "   -> Response Interceptor #2 Fired.\n";
+
+        // Async response interceptor that returns a promise
+        $responseInterceptor2 = function (Response $response) use (&$responseLog, $asyncUrl) {
+            $timestamp = microtime(true);
+            $responseLog[] = "Response Interceptor 2 (async start) - " . $timestamp;
+            echo "   -> Response Interceptor #2 (async) started at: {$timestamp}\n";
+
+            // Return a promise by making an async HTTP request
+            return Http::request()->get($asyncUrl)->then(
+                function ($asyncResponse) use ($response, &$responseLog, $timestamp) {
+                    $endTimestamp = microtime(true);
+                    $responseLog[] = "Response Interceptor 2 (async end) - " . $endTimestamp;
+                    echo "   -> Response Interceptor #2 (async) completed at: {$endTimestamp}\n";
+
+                    $body = $response->json();
+                    $asyncData = $asyncResponse->json();
+
+                    $body['step'] = 2;
+                    $body['async_processed'] = true;
+                    $body['async_duration'] = ($endTimestamp - $timestamp) * 1000;
+                    $body['async_data'] = $asyncData;
+
+                    return $response->withBody(Stream::fromString(json_encode($body)));
+                }
+            );
+        };
+
+        // Another sync response interceptor
+        $responseInterceptor3 = function (Response $response) use (&$responseLog) {
+            $timestamp = microtime(true);
+            $responseLog[] = "Response Interceptor 3 (sync final) - " . $timestamp;
+            echo "   -> Response Interceptor #3 (final sync) executed at: {$timestamp}\n";
+
             $body = $response->json();
-            $body['step2_complete'] = true;
+            $body['step'] = 3;
+            $body['final_processed'] = true;
+
             return $response
-                ->withHeader('X-Processed-By', 'Interceptor-Chain')
-                ->withBody(Http::createStream(json_encode($body)));
+                ->withHeader('X-Processing-Complete', 'true')
+                ->withBody(Stream::fromString(json_encode($body)));
         };
 
-        // Chain all interceptors onto a single request
+        $responseStartTime = microtime(true);
+
         $finalResponse = await(
             Http::request()
-                ->interceptRequest($reqInterceptor1)
-                ->interceptRequest($reqInterceptor2)
-                ->interceptResponse($resInterceptor1)
-                ->interceptResponse($resInterceptor2)
-                ->get($url_multi)
+                ->interceptResponse($responseInterceptor1)
+                ->interceptResponse($responseInterceptor2)
+                ->interceptResponse($responseInterceptor3)
+                ->get($responseUrl)
         );
 
-        echo "\n   Verifying final state...\n";
+        $responseEndTime = microtime(true);
+        $responseTotalTime = ($responseEndTime - $responseStartTime) * 1000;
 
-        // Verify the request that was sent
-        $sentRequest = $handler->getRequestHistory()[0];
-        $sentHeaders = $sentRequest->options[CURLOPT_HTTPHEADER] ?? [];
-        $finalStep1Header = '';
-        $finalStep2Header = '';
-        foreach($sentHeaders as $h) {
-            if(str_starts_with($h, 'X-Step-1:')) $finalStep1Header = $h;
-            if(str_starts_with($h, 'X-Step-2:')) $finalStep2Header = $h;
+        echo "   Response processing total time: {$responseTotalTime}ms\n";
+        echo "   Response processing log:\n";
+        foreach ($responseLog as $entry) {
+            echo "     - {$entry}\n";
         }
 
-        if ($finalStep1Header === 'X-Step-1: Set-by-1;Modified-by-2' && $finalStep2Header === 'X-Step-2: Set-by-2') {
-            echo "   ✓ SUCCESS: Request headers were correctly modified in sequence.\n";
-        } else {
-            echo "   ✗ FAILED: Request headers are incorrect.\n";
-        }
-
-        // Verify the final response that was received
         $finalData = $finalResponse->json();
-        if ($finalResponse->header('X-Processed-By') === 'Interceptor-Chain' &&
-            ($finalData['original'] ?? false) &&
-            ($finalData['step1_complete'] ?? false) &&
-            ($finalData['step2_complete'] ?? false)
-        ) {
-            echo "   ✓ SUCCESS: Response body and headers were correctly modified in sequence.\n";
+
+        $expectedConditions = [
+            $finalData['step'] === 3,
+            $finalData['sync_processed'] === true,
+            $finalData['async_processed'] === true,
+            $finalData['final_processed'] === true,
+            $finalResponse->header('X-Processing-Complete') === 'true'
+        ];
+
+        if (array_reduce($expectedConditions, fn($carry, $condition) => $carry && $condition, true)) {
+            echo "   ✓ SUCCESS: Sequential response interceptors executed correctly.\n";
+            echo "   Final body: " . json_encode($finalData) . "\n";
         } else {
-            echo "   ✗ FAILED: Final response is incorrect.\n";
+            echo "   ✗ FAILED: Sequential response interceptor execution failed.\n";
+            echo "   Final body: " . json_encode($finalData) . "\n";
         }
 
-        $handler->assertRequestCount(1);
-        echo "   ✓ Assertion successful: Exactly 1 request was made.\n";
+        // =================================================================
+        // Test Case 3: Response Interceptor with Promise.resolved() 
+        // =================================================================
+        echo "\n--- Test Case 3: Response Interceptor with Promise.resolved() --- \n";
+        echo "Goal: Test async response interceptor using Promise.resolved().\n\n";
 
+        $handler->reset();
+        $promiseUrl = 'https://api.internal/promise-test';
+
+        Http::mock('GET')
+            ->url($promiseUrl)
+            ->json(['original' => true])
+            ->persistent()
+            ->register();
+
+        $promiseInterceptor = function (Response $response) {
+            echo "   -> Promise-based interceptor executing...\n";
+
+            // Simulate async work with Promise.resolved()
+            return Promise::resolved($response)->then(function ($response) {
+                // Simulate some async processing time
+                usleep(1500); // 1.5ms
+
+                $body = $response->json();
+                $body['promise_processed'] = true;
+                $body['processed_at'] = microtime(true);
+
+                echo "   -> Promise-based interceptor completed\n";
+                return $response->withBody(Stream::fromString(json_encode($body)));
+            });
+        };
+
+        $promiseStartTime = microtime(true);
+
+        $promiseResponse = await(
+            Http::request()
+                ->interceptResponse($promiseInterceptor)
+                ->get($promiseUrl)
+        );
+
+        $promiseEndTime = microtime(true);
+        $promiseTotalTime = ($promiseEndTime - $promiseStartTime) * 1000;
+
+        echo "   Promise-based processing time: {$promiseTotalTime}ms\n";
+
+        $promiseData = $promiseResponse->json();
+        if ($promiseData['promise_processed'] === true) {
+            echo "   ✓ SUCCESS: Promise-based response interceptor worked correctly.\n";
+        } else {
+            echo "   ✗ FAILED: Promise-based response interceptor failed.\n";
+        }
+
+        // =================================================================
+        // Test Case 4: High Concurrency Sequential Test (Enhanced Debug)
+        // =================================================================
+        echo "\n--- Test Case 4: High Concurrency Sequential Test (Enhanced Debug) --- \n";
+        echo "Goal: Test multiple concurrent requests with sequential interceptors.\n\n";
+
+        $handler->reset();
+        $concurrentUrl = 'https://api.internal/concurrent';
+
+        // Register mock for concurrent requests
+        Http::mock('GET')
+            ->url($concurrentUrl)
+            ->json(['id' => 'concurrent-response'])
+            ->persistent()
+            ->register();
+
+        $concurrentStartTime = microtime(true);
+        $promises = [];
+
+        // Create 10 concurrent requests, each with 3 sequential interceptors
+        for ($i = 1; $i <= 10; $i++) {
+            $requestId = "req-{$i}";
+            echo "   Creating request {$i} with ID: {$requestId}\n";
+
+            $promise = Http::request()
+                ->interceptRequest(function (Request $request) use ($requestId) {
+                    echo "     -> Request {$requestId}: Adding header X-Request-ID\n";
+                    return $request->withHeader('X-Request-ID', $requestId);
+                })
+                ->interceptRequest(function (Request $request) use ($requestId) {
+                    $existing = $request->getHeaderLine('X-Request-ID');
+                    echo "     -> Request {$requestId}: Processing header (was: {$existing})\n";
+                    return $request->withHeader('X-Request-ID', $existing . '-processed');
+                })
+                ->interceptRequest(function (Request $request) use ($requestId) {
+                    echo "     -> Request {$requestId}: Adding sequence complete\n";
+                    return $request->withHeader('X-Sequence', 'complete');
+                })
+                ->interceptResponse(function (Response $response) use ($requestId) {
+                    echo "     -> Response {$requestId}: Processing response\n";
+
+                    $body = $response->json();
+                    $body['processed_by'] = $requestId . '-processed';
+
+                    echo "     -> Response {$requestId}: Set processed_by to " . ($requestId . '-processed') . "\n";
+
+                    return $response
+                        ->withHeader('X-Processed-By', $requestId . '-processed')
+                        ->withBody(Stream::fromString(json_encode($body)));
+                })
+                ->get($concurrentUrl);
+
+            $promises[] = $promise;
+        }
+
+        // Wait for all promises to complete
+        echo "\n   Waiting for all promises to complete...\n";
+        $results = await(Promise::all($promises));
+        echo "   All promises completed!\n";
+
+        $concurrentEndTime = microtime(true);
+        $concurrentTotalTime = ($concurrentEndTime - $concurrentStartTime) * 1000;
+
+        echo "   Concurrent execution time for 10 requests: {$concurrentTotalTime}ms\n";
+        echo "   Average time per request: " . ($concurrentTotalTime / 10) . "ms\n";
+
+        // Verify all requests were processed (with detailed debugging)
+        echo "\n   Verifying results:\n";
+        $allProcessed = true;
+        foreach ($results as $i => $response) {
+            $data = $response->json();
+            $expectedId = "req-" . ($i + 1) . "-processed";
+            $actualId = $data['processed_by'] ?? 'NOT_FOUND';
+
+            echo "   Request " . ($i + 1) . ": Expected '{$expectedId}', Got '{$actualId}'\n";
+
+            if ($actualId !== $expectedId) {
+                $allProcessed = false;
+                echo "     ❌ MISMATCH!\n";
+                echo "     Full response: " . json_encode($data) . "\n";
+            } else {
+                echo "     ✅ OK\n";
+            }
+        }
+
+        if ($allProcessed) {
+            echo "   ✓ SUCCESS: All concurrent requests with sequential interceptors processed correctly.\n";
+        } else {
+            echo "   ✗ FAILED: Some concurrent requests failed processing.\n";
+        }
+
+        $handler->assertRequestCount(10);
+        echo "   ✓ Assertion successful: Exactly 10 requests were made.\n";
     } catch (Exception $e) {
         echo "\n!!!!!! A TEST CASE FAILED UNEXPECTEDLY !!!!!!\n";
         echo "Error: " . $e->getMessage() . "\n";
         echo "File: " . $e->getFile() . ":" . $e->getLine() . "\n";
+        echo "Trace: " . $e->getTraceAsString() . "\n";
     } finally {
         Http::stopTesting();
     }
 });
 
-echo "\n====== Mocked Interceptor Testing Complete ======\n";
+echo "\n====== Sequential Interceptor Testing Complete ======\n";

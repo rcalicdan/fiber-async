@@ -3,10 +3,12 @@
 namespace Rcalicdan\FiberAsync\Http;
 
 use Rcalicdan\FiberAsync\Api\Async;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\RequestInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\UriInterface;
+use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
@@ -609,76 +611,112 @@ class Request extends Message implements RequestInterface
      */
     public function send(string $method, string $url): PromiseInterface
     {
-        return Async::async(function () use ($method, $url) {
-            $processedRequest = $this->withMethod($method)->withUri(new Uri($url));
-            foreach ($this->requestInterceptors as $interceptor) {
-                $processedRequest = $interceptor($processedRequest);
-            }
-
-            $options = $processedRequest->buildCurlOptions(
-                $processedRequest->getMethod(),
-                (string)$processedRequest->getUri()
-            );
-
-            $promise = $this->handler->sendRequest(
-                (string)$processedRequest->getUri(),
-                $options,
-                $processedRequest->cacheConfig,
-                $processedRequest->retryConfig
-            );
-
-            $response = await($promise);
-            $finalResponse = $response;
-            
-            foreach ($processedRequest->responseInterceptors as $interceptor) {
-                $result = $interceptor($finalResponse);
-                if ($result instanceof PromiseInterface) {
-                    $finalResponse = await($result);
-                } else {
-                    $finalResponse = $result;
-                }
-            }
-
-            return $finalResponse;
-        })(); 
-    }
-
-    /**
-     * Set a cookie jar for automatic cookie handling.
-     *
-     * @param  CookieJarInterface  $cookieJar  The cookie jar to use
-     * @return self For fluent method chaining.
-     */
-    public function withCookieJar(CookieJarInterface $cookieJar): self
-    {
-        $this->cookieJar = $cookieJar;
-
-        return $this;
-    }
-
-    /**
-     * Set individual cookies for this request.
-     *
-     * @param  array<string, string>  $cookies  Associative array of cookie name => value pairs
-     * @return self For fluent method chaining.
-     */
-    public function cookies(array $cookies): self
-    {
-        $cookieStrings = [];
-        foreach ($cookies as $name => $value) {
-            $cookieStrings[] = $name . '=' . urlencode($value);
+        if (empty($this->requestInterceptors) && empty($this->responseInterceptors)) {
+            $options = $this->buildCurlOptions($method, $url);
+            return $this->handler->sendRequest($url, $options, $this->cacheConfig, $this->retryConfig);
         }
 
-        if ($cookieStrings !== []) {
-            return $this->header('Cookie', implode('; ', $cookieStrings));
+        // Process request interceptors immediately (they should be synchronous)
+        $processedRequest = $this->withMethod($method)->withUri(new Uri($url));
+        foreach ($this->requestInterceptors as $interceptor) {
+            $processedRequest = $interceptor($processedRequest);
         }
 
-        return $this;
+        // Build options and send request
+        $options = $processedRequest->buildCurlOptions(
+            $processedRequest->getMethod(),
+            (string)$processedRequest->getUri()
+        );
+
+        $httpPromise = $this->handler->sendRequest(
+            (string)$processedRequest->getUri(),
+            $options,
+            $processedRequest->cacheConfig,
+            $processedRequest->retryConfig
+        );
+
+        // If no response interceptors, return the HTTP promise directly
+        if (empty($processedRequest->responseInterceptors)) {
+            return $httpPromise;
+        }
+
+        // Create a new promise to handle response interceptors sequentially
+        $finalPromise = new CancellablePromise(function (callable $resolve, callable $reject) use ($httpPromise, $processedRequest) {
+            $httpPromise->then(
+                function ($response) use ($processedRequest, $resolve, $reject) {
+                    try {
+                        // Process response interceptors sequentially
+                        $this->processResponseInterceptorsSequentially(
+                            $response,
+                            $processedRequest->responseInterceptors,
+                            $resolve,
+                            $reject
+                        );
+                    } catch (\Throwable $e) {
+                        $reject($e);
+                    }
+                },
+                $reject
+            );
+        });
+
+        // Set up cancellation handler
+        $finalPromise->setCancelHandler(function () use ($httpPromise) {
+            if ($httpPromise instanceof CancellablePromiseInterface) {
+                $httpPromise->cancel();
+            }
+        });
+
+        return $finalPromise;
     }
 
     /**
-     * Set a single cookie for this request.
-     *
+     * Process response interceptors sequentially, handling both sync and async interceptors.
+     */
+    private function processResponseInterceptorsSequentially(
+        Response $response,
+        array $interceptors,
+        callable $resolve,
+        callable $reject
+    ): void {
+        if (empty($interceptors)) {
+            $resolve($response);
+            return;
+        }
+
+        $interceptor = array_shift($interceptors);
+
+        try {
+            $result = $interceptor($response);
+
+            if ($result instanceof PromiseInterface) {
+                // Async interceptor - wait for it to complete before processing next
+                $result->then(
+                    function ($asyncResponse) use ($interceptors, $resolve, $reject) {
+                        $this->processResponseInterceptorsSequentially(
+                            $asyncResponse,
+                            $interceptors,
+                            $resolve,
+                            $reject
+                        );
+                    },
+                    $reject
+                );
+            } else {
+                // Sync interceptor - process immediately and continue
+                $this->processResponseInterceptorsSequentially(
+                    $result,
+                    $interceptors,
+                    $resolve,
+                    $reject
+                );
+            }
+        } catch (\Throwable $e) {
+            $reject($e);
+        }
+    }
+
+    /**
      * @param  string  $name  Cookie name
      * @param  string  $value  Cookie value
      * @return self For fluent method chaining.

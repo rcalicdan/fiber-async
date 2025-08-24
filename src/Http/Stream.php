@@ -82,6 +82,28 @@ class Stream implements StreamInterface
     }
 
     /**
+     * Create a new stream from string content.
+     *
+     * @param string $content The content for the stream
+     * @return static A new stream instance
+     * @throws RuntimeException If stream creation fails
+     */
+    public static function fromString(string $content): self
+    {
+        $resource = fopen('php://temp', 'r+');
+        if ($resource === false) {
+            throw new RuntimeException('Unable to create temporary stream');
+        }
+
+        if ($content !== '') {
+            fwrite($resource, $content);
+            rewind($resource);
+        }
+
+        return new self($resource);
+    }
+
+    /**
      * {@inheritdoc}
      */
     public function __toString(): string
@@ -210,7 +232,7 @@ class Stream implements StreamInterface
         }
 
         if (fseek($this->resource, $offset, $whence) === -1) {
-            throw new RuntimeException('Unable to seek to stream position '.$offset.' with whence '.var_export($whence, true));
+            throw new RuntimeException('Unable to seek to stream position ' . $offset . ' with whence ' . var_export($whence, true));
         }
     }
 
