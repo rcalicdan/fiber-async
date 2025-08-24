@@ -36,7 +36,7 @@ Task::run(function () {
         ->register();
 
     // Create a request builder instance that will use our cookie jar.
-    $client = Http::request()->cookieJarWith($cookieJar);
+    $client = Http::request()->useCookieJar($cookieJar);
 
     $response = await($client->post("https://{$domain}/login"));
 

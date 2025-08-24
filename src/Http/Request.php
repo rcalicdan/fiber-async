@@ -717,8 +717,10 @@ class Request extends Message implements RequestInterface
     }
 
     /**
-     * @param  string  $name  Cookie name
-     * @param  string  $value  Cookie value
+     * Add a single cookie to this request (sent as Cookie header).
+     * 
+     * @param string $name Cookie name
+     * @param string $value Cookie value
      * @return self For fluent method chaining.
      */
     public function cookie(string $name, string $value): self
@@ -734,12 +736,50 @@ class Request extends Message implements RequestInterface
     }
 
     /**
-     * Sets a specific cookie jar for this request builder instance, overriding the default.
+     * Add multiple cookies at once.
      *
-     * @param  CookieJarInterface  $cookieJar  The cookie jar to use.
+     * @param  array<string, string>  $cookies  An associative array of cookie names to values.
      * @return self For fluent method chaining.
      */
-    public function cookieJarWith(CookieJarInterface $cookieJar): self
+    public function cookies(array $cookies): self
+    {
+        foreach ($cookies as $name => $value) {
+            $this->cookie($name, $value);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Enable automatic cookie management with an in-memory cookie jar.
+     * Cookies from responses will be automatically stored and sent in subsequent requests.
+     *
+     * @return self For fluent method chaining.
+     */
+    public function withCookieJar(): self 
+    {
+        return $this->useCookieJar(new CookieJar());
+    }
+
+    /**
+     * Enable automatic cookie management with a file-based cookie jar.
+     * 
+     * @param string $filename The file path to store cookies.
+     * @param bool $includeSessionCookies Whether to persist session cookies (cookies without expiration).
+     * @return self For fluent method chaining.
+     */
+    public function withFileCookieJar(string $filename, bool $includeSessionCookies = false): self
+    {
+        return $this->useCookieJar(new FileCookieJar($filename, $includeSessionCookies));
+    }
+
+    /**
+     * Use a custom cookie jar for automatic cookie management.
+     * 
+     * @param CookieJarInterface $cookieJar The cookie jar to use.
+     * @return self For fluent method chaining.
+     */
+    public function useCookieJar(CookieJarInterface $cookieJar): self  
     {
         $new = clone $this;
         $new->cookieJar = $cookieJar;
@@ -747,30 +787,20 @@ class Request extends Message implements RequestInterface
     }
 
     /**
-     * Enable automatic cookie management with an in-memory cookie jar.
-     *
+     * Convenience: Enable file-based cookie storage including session cookies.
+     * Perfect for testing or when you want to persist all cookies.
+     * 
+     * @param string $filename The file path to store cookies.
      * @return self For fluent method chaining.
      */
-    public function withCookies(): self
+    public function withAllCookiesSaved(string $filename): self
     {
-        return $this->cookieJarWith(new CookieJar());
+        return $this->withFileCookieJar($filename, true);
     }
 
     /**
-     * Enable automatic cookie management with a persistent file-based cookie jar.
-     *
-     * @param  string  $filename  The file path to store cookies.
-     * @param  bool  $storeSessionCookies  Whether to persist session cookies.
-     * @return self For fluent method chaining.
-     */
-    public function withPersistentCookies(string $filename, bool $storeSessionCookies = false): self
-    {
-        return $this->cookieJarWith(new FileCookieJar($filename, $storeSessionCookies));
-    }
-
-    /**
-     * Clear all cookies from the current cookie jar.
-     *
+     * Clear all cookies from the current cookie jar (if any).
+     * 
      * @return self For fluent method chaining.
      */
     public function clearCookies(): self
@@ -789,20 +819,6 @@ class Request extends Message implements RequestInterface
     public function getCookieJar(): ?CookieJarInterface
     {
         return $this->cookieJar;
-    }
-
-    /**
-     * Add multiple cookies at once.
-     *
-     * @param  array<string, string>  $cookies  An associative array of cookie names to values.
-     * @return self For fluent method chaining.
-     */
-    public function cookies(array $cookies): self
-    {
-        foreach ($cookies as $name => $value) {
-            $this->cookie($name, $value);
-        }
-        return $this;
     }
 
     /**
