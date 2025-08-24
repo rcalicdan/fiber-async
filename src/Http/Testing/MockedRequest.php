@@ -71,7 +71,14 @@ class MockedRequest
 
     public function addResponseHeader(string $name, string $value): void
     {
-        $this->headers[$name] = $value;
+        if (isset($this->headers[$name])) {
+            if (!is_array($this->headers[$name])) {
+                $this->headers[$name] = [$this->headers[$name]];
+            }
+            $this->headers[$name][] = $value;
+        } else {
+            $this->headers[$name] = $value;
+        }
     }
 
     public function setDelay(float $seconds): void

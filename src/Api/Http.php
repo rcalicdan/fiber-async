@@ -155,13 +155,20 @@ class Http
     }
 
     /**
-     * Check if Http is currently in testing mode.
+     * Convenience method to quickly mock a request in testing mode.
+     * Follows Laravel's Http::fake() pattern.
      *
-     * @return bool True if in testing mode, false otherwise
+     * @param  string  $method  HTTP method to mock (default: '*' for any)
+     *
+     * @throws \RuntimeException If not in testing mode
      */
-    public static function isTesting(): bool
+    public static function mock(string $method = '*'): MockRequestBuilder
     {
-        return self::$isTesting;
+        if (! self::$isTesting || self::$testingInstance === null) {
+            throw new \RuntimeException('Not in testing mode. Call Http::testing() first.');
+        }
+
+        return self::$testingInstance->mock($method);
     }
 
     /**
@@ -203,73 +210,6 @@ class Http
     }
 
     /**
-     * Convenience method to quickly mock a request in testing mode.
-     *
-     * @param  string  $method  HTTP method to mock (default: '*' for any)
-     *
-     * @throws \RuntimeException If not in testing mode
-     */
-    public static function mock(string $method = '*'): MockRequestBuilder
-    {
-        if (! self::$isTesting || self::$testingInstance === null) {
-            throw new \RuntimeException('Not in testing mode. Call Http::testing() first.');
-        }
-
-        return self::$testingInstance->mock($method);
-    }
-
-    /**
-     * Assert that a specific request was made during testing.
-     *
-     * @param  string  $method  HTTP method
-     * @param  string  $url  URL pattern
-     * @param  array<string, mixed>  $options  Additional matching options
-     *
-     * @throws \RuntimeException If not in testing mode
-     * @throws \Exception If assertion fails
-     */
-    public static function assertRequestMade(string $method, string $url, array $options = []): void
-    {
-        if (! self::$isTesting || self::$testingInstance === null) {
-            throw new \RuntimeException('Not in testing mode. Call Http::testing() first.');
-        }
-
-        self::$testingInstance->assertRequestMade($method, $url, $options);
-    }
-
-    /**
-     * Assert that no HTTP requests were made during testing.
-     *
-     * @throws \RuntimeException If not in testing mode
-     * @throws \Exception If assertion fails
-     */
-    public static function assertNoRequestsMade(): void
-    {
-        if (! self::$isTesting || self::$testingInstance === null) {
-            throw new \RuntimeException('Not in testing mode. Call Http::testing() first.');
-        }
-
-        self::$testingInstance->assertNoRequestsMade();
-    }
-
-    /**
-     * Assert a specific number of requests were made during testing.
-     *
-     * @param  int  $expected  Expected number of requests
-     *
-     * @throws \RuntimeException If not in testing mode
-     * @throws \Exception If assertion fails
-     */
-    public static function assertRequestCount(int $expected): void
-    {
-        if (! self::$isTesting || self::$testingInstance === null) {
-            throw new \RuntimeException('Not in testing mode. Call Http::testing() first.');
-        }
-
-        self::$testingInstance->assertRequestCount($expected);
-    }
-
-    /**
      * Magic method to handle dynamic static calls.
      *
      * This enables both direct HTTP methods (get, post, etc.) and request builder methods
@@ -298,6 +238,6 @@ class Http
             return $handler->{$method}(...$arguments);
         }
 
-        throw new \BadMethodCallException("Method {$method} does not exist on ".static::class);
+        throw new \BadMethodCallException("Method {$method} does not exist on " . static::class);
     }
 }

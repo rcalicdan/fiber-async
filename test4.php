@@ -79,9 +79,9 @@ try {
         echo "3. Making assertions using the static API...\n";
 
         // Super easy assertions
-        Http::assertRequestMade('GET', 'https://api.github.com/users/octocat');
-        Http::assertRequestMade('POST', 'https://api.github.com/repos/octocat/Hello-World/issues');
-        Http::assertRequestCount(3); // GET user + POST issue + GET download
+        $testHandler->assertRequestMade('GET', 'https://api.github.com/users/octocat');
+        $testHandler->assertRequestMade('POST', 'https://api.github.com/repos/octocat/Hello-World/issues');
+        $testHandler->assertRequestCount(3); // GET user + POST issue + GET download
 
         echo "   ✓ All assertions passed!\n";
 
@@ -322,9 +322,9 @@ try {
         echo "   ✓ Created manual file: {$file2}\n";
 
         echo "5. Making assertions...\n";
-        Http::assertRequestMade('GET', 'https://api.example.com/config');
-        Http::assertRequestMade('GET', 'https://files.example.com/download/file.bin');
-        Http::assertRequestCount(3);
+        $testHandler->assertRequestMade('GET', 'https://api.example.com/config');
+        $testHandler->assertRequestMade('GET', 'https://files.example.com/download/file.bin');
+        $testHandler->assertRequestCount(3);
         echo "   ✓ All assertions passed!\n";
 
         echo "6. Automatic cleanup on reset...\n";
