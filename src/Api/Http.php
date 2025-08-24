@@ -2,7 +2,6 @@
 
 namespace Rcalicdan\FiberAsync\Api;
 
-use Rcalicdan\FiberAsync\Http\CacheConfig;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Interfaces\MessageInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\RequestInterface;
@@ -10,9 +9,8 @@ use Rcalicdan\FiberAsync\Http\Interfaces\StreamInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\UriInterface;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
-use Rcalicdan\FiberAsync\Http\RetryConfig;
-use Rcalicdan\FiberAsync\Http\Stream;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
+use Rcalicdan\FiberAsync\Http\Testing\MockRequestBuilder;
 use Rcalicdan\FiberAsync\Http\Testing\TestingHttpHandler;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
@@ -126,8 +124,7 @@ class Http
      * This method switches the Http client to use a TestingHttpHandler instead
      * of the regular HttpHandler, allowing you to mock requests and responses
      * for testing purposes.
-     *
-     * @param  array<string, mixed>  $settings  Optional global testing settings
+     * 
      * @return TestingHttpHandler The testing handler for configuration
      */
     public static function testing(): TestingHttpHandler
@@ -212,7 +209,7 @@ class Http
      *
      * @throws \RuntimeException If not in testing mode
      */
-    public static function mock(string $method = '*'): \Rcalicdan\FiberAsync\Http\Testing\MockRequestBuilder
+    public static function mock(string $method = '*'): MockRequestBuilder
     {
         if (! self::$isTesting || self::$testingInstance === null) {
             throw new \RuntimeException('Not in testing mode. Call Http::testing() first.');
