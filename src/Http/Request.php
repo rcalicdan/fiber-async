@@ -734,6 +734,108 @@ class Request extends Message implements RequestInterface
     }
 
     /**
+     * Sets a specific cookie jar for this request builder instance, overriding the default.
+     *
+     * @param  CookieJarInterface  $cookieJar  The cookie jar to use.
+     * @return self For fluent method chaining.
+     */
+    public function cookieJarWith(CookieJarInterface $cookieJar): self
+    {
+        $new = clone $this;
+        $new->cookieJar = $cookieJar;
+        return $new;
+    }
+
+    /**
+     * Enable automatic cookie management with an in-memory cookie jar.
+     *
+     * @return self For fluent method chaining.
+     */
+    public function withCookies(): self
+    {
+        return $this->cookieJarWith(new CookieJar());
+    }
+
+    /**
+     * Enable automatic cookie management with a persistent file-based cookie jar.
+     *
+     * @param  string  $filename  The file path to store cookies.
+     * @param  bool  $storeSessionCookies  Whether to persist session cookies.
+     * @return self For fluent method chaining.
+     */
+    public function withPersistentCookies(string $filename, bool $storeSessionCookies = false): self
+    {
+        return $this->cookieJarWith(new FileCookieJar($filename, $storeSessionCookies));
+    }
+
+    /**
+     * Clear all cookies from the current cookie jar.
+     *
+     * @return self For fluent method chaining.
+     */
+    public function clearCookies(): self
+    {
+        if ($this->cookieJar !== null) {
+            $this->cookieJar->clear();
+        }
+        return $this;
+    }
+
+    /**
+     * Get the current cookie jar instance.
+     *
+     * @return CookieJarInterface|null The current cookie jar or null if none is set.
+     */
+    public function getCookieJar(): ?CookieJarInterface
+    {
+        return $this->cookieJar;
+    }
+
+    /**
+     * Add multiple cookies at once.
+     *
+     * @param  array<string, string>  $cookies  An associative array of cookie names to values.
+     * @return self For fluent method chaining.
+     */
+    public function cookies(array $cookies): self
+    {
+        foreach ($cookies as $name => $value) {
+            $this->cookie($name, $value);
+        }
+        return $this;
+    }
+
+    /**
+     * Set a cookie with additional attributes.
+     *
+     * @param  string  $name  Cookie name
+     * @param  string  $value  Cookie value
+     * @param  array<string, mixed>  $attributes  Additional cookie attributes (domain, path, expires, etc.)
+     * @return self For fluent method chaining.
+     */
+    public function cookieWithAttributes(string $name, string $value, array $attributes = []): self
+    {
+        if ($this->cookieJar === null) {
+            $this->cookieJar = new CookieJar();
+        }
+
+        $cookie = new Cookie(
+            $name,
+            $value,
+            $attributes['expires'] ?? null,
+            $attributes['domain'] ?? null,
+            $attributes['path'] ?? null,
+            $attributes['secure'] ?? false,
+            $attributes['httpOnly'] ?? false,
+            $attributes['maxAge'] ?? null,
+            $attributes['sameSite'] ?? null
+        );
+
+        $this->cookieJar->setCookie($cookie);
+        return $this;
+    }
+
+    /**
      * Set the HTTP version for negotiation.
      *
      * @param  string  $version  The HTTP version ('1.0', '1.1', '2.0', '2', '3.0', '3')
@@ -839,22 +941,23 @@ class Request extends Message implements RequestInterface
         $options[CURLOPT_HTTP_VERSION] = match ($this->protocol) {
             '2.0', '2' => CURL_HTTP_VERSION_2TLS,
             '3.0', '3' => defined('CURL_HTTP_VERSION_3')
-                ? CURL_HTTP_VERSION_3  // Use HTTP/3 if the constant is defined
-                : CURL_HTTP_VERSION_1_1, // Otherwise, fall back to a safe default
+                ? CURL_HTTP_VERSION_3
+                : CURL_HTTP_VERSION_1_1,
             '1.0' => CURL_HTTP_VERSION_1_0,
             default => CURL_HTTP_VERSION_1_1,
         };
 
-        if ($this->cookieJar !== null) {
+        $effectiveCookieJar = $this->cookieJar ?? $this->handler->getCookieJar();
+
+        if ($effectiveCookieJar !== null) {
             $uri = new Uri($url);
-            $cookieHeader = $this->cookieJar->getCookieHeader(
+            $cookieHeader = $effectiveCookieJar->getCookieHeader(
                 $uri->getHost(),
                 $uri->getPath() !== '' ? $uri->getPath() : '/',
                 $uri->getScheme() === 'https'
             );
 
             if ($cookieHeader !== '') {
-                // Merge with existing Cookie header if present
                 $existingCookies = $this->getHeaderLine('Cookie');
                 if ($existingCookies !== '') {
                     $this->header('Cookie', $existingCookies . '; ' . $cookieHeader);
@@ -871,6 +974,10 @@ class Request extends Message implements RequestInterface
         $this->addHeaderOptions($options);
         $this->addBodyOptions($options);
         $this->addAuthenticationOptions($options);
+
+        if ($effectiveCookieJar !== null) {
+            $options['_cookie_jar'] = $effectiveCookieJar;
+        }
 
         foreach ($this->options as $key => $value) {
             if (is_int($key)) {

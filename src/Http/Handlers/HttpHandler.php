@@ -193,7 +193,7 @@ class HttpHandler
      */
     public static function generateCacheKey(string $url): string
     {
-        return 'http_'.sha1($url);
+        return 'http_' . sha1($url);
     }
 
     /**
@@ -249,12 +249,12 @@ class HttpHandler
 
                 if (isset($cachedItem['headers']['etag'])) {
                     $etag = is_array($cachedItem['headers']['etag']) ? $cachedItem['headers']['etag'][0] : $cachedItem['headers']['etag'];
-                    $httpHeaders[] = 'If-None-Match: '.$etag;
+                    $httpHeaders[] = 'If-None-Match: ' . $etag;
                 }
 
                 if (isset($cachedItem['headers']['last-modified'])) {
                     $lastModified = is_array($cachedItem['headers']['last-modified']) ? $cachedItem['headers']['last-modified'][0] : $cachedItem['headers']['last-modified'];
-                    $httpHeaders[] = 'If-Modified-Since: '.$lastModified;
+                    $httpHeaders[] = 'If-Modified-Since: ' . $lastModified;
                 }
 
                 $curlOptions[CURLOPT_HTTPHEADER] = $httpHeaders;
@@ -344,10 +344,13 @@ class HttpHandler
         /** @var CancellablePromise<Response> $promise */
         $promise = new CancellablePromise;
 
+        $cookieJar = $curlOptions['_cookie_jar'] ?? null;
+        unset($curlOptions['_cookie_jar']);
+
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
             $curlOptions,
-            function (?string $error, ?string $response, ?int $httpCode, array $headers = [], ?string $httpVersion = null) use ($promise, $url) {
+            function (?string $error, ?string $response, ?int $httpCode, array $headers = [], ?string $httpVersion = null) use ($promise, $url, $cookieJar) {
                 if ($promise->isCancelled()) {
                     return;
                 }
@@ -362,7 +365,10 @@ class HttpHandler
                         $responseObj->setHttpVersion($httpVersion);
                     }
 
-                    $this->processCookies($responseObj, $url, null);
+                    if ($cookieJar !== null) {
+                        $responseObj->applyCookiesToJar($cookieJar);
+                    }
+
                     $promise->resolve($responseObj);
                 }
             }

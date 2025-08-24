@@ -19,7 +19,7 @@ Task::run(function () {
     $handler->reset();
     $url = 'https://api.example.com/concurrent-data';
     
-    Http::mock('GET')->url($url)->json(['data' => 'live'])->delay(0.5)->persistent()->register();
+    Http::mock('GET')->url($url)->json(['data' => 'live'])->delay(1.5)->persistent()->register();
 
     echo "Starting two requests concurrently before cache is populated...\n";
     $startTime = microtime(true);
@@ -41,7 +41,7 @@ Task::run(function () {
     $handler->reset(); // Reset history and cache for a clean test.
     $url = 'https://api.example.com/sequential-data';
 
-    Http::mock('GET')->url($url)->json(['data' => 'live', 'timestamp' => time()])->delay(0.5)->register();
+    Http::mock('GET')->url($url)->json(['data' => 'live', 'timestamp' => time()])->delay(1.5)->register();
 
     echo "1. Making the first request (CACHE MISS)...\n";
     $start1 = microtime(true);
