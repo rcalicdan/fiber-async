@@ -2,6 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\Http\Testing;
 
+use Rcalicdan\FiberAsync\Http\Testing\Services\CookieManager;
+
 /**
  * Builder for creating mocked requests with fluent interface.
  */
@@ -213,7 +215,6 @@ class MockRequestBuilder
         foreach ($failures as $index => $failure) {
             $attemptNumber = $index + 1;
 
-            // ** FIX for Undefined Property Bug **
             $mock = new MockedRequest($this->request->method);
             if ($this->request->urlPattern) {
                 $mock->setUrlPattern($this->request->urlPattern);
@@ -243,7 +244,6 @@ class MockRequestBuilder
 
         $this->respondWithStatus(200);
 
-        // **FIX for TypeError**: Handle both string and array success responses correctly.
         if ($successResponse !== null) {
             if (is_array($successResponse)) {
                 $this->json($successResponse);
@@ -440,6 +440,46 @@ class MockRequestBuilder
         return $this;
     }
 
+    /**
+     * Configure this mock to set cookies via Set-Cookie headers.
+     */
+    public function setCookies(array $cookies): self
+    {
+        $cookieService = new CookieManager();
+        $cookieService->mockSetCookies($this->request, $cookies);
+        return $this;
+    }
+
+    /**
+     * Set a single cookie via Set-Cookie header.
+     */
+    public function setCookie(
+        string $name,
+        string $value,
+        ?string $path = '/',
+        ?string $domain = null,
+        ?int $expires = null,
+        bool $secure = false,
+        bool $httpOnly = false,
+        ?string $sameSite = null
+    ): self {
+        $config = compact('value', 'path', 'domain', 'expires', 'secure', 'httpOnly', 'sameSite');
+        $config = array_filter($config, fn($v) => $v !== null);
+
+        return $this->setCookies([$name => $config]);
+    }
+
+    /**
+     * Require specific cookies to be present in the request.
+     */
+    public function expectCookies(array $expectedCookies): self
+    {
+        foreach ($expectedCookies as $name => $value) {
+            $this->request->addHeaderMatcher('cookie', $name . '=' . $value);
+        }
+        return $this;
+    }
+
     private function createFailureMock(string $error, bool $retryable): MockedRequest
     {
         $mock = new MockedRequest($this->request->method ?? '*');
@@ -447,21 +487,6 @@ class MockRequestBuilder
             $mock->setUrlPattern($this->request->urlPattern);
         }
         $mock->setError($error);
-        $mock->setRetryable($retryable);
-        $mock->setDelay(0.1);
-
-        return $mock;
-    }
-
-    private function createStatusFailureMock(int $statusCode, string $error, bool $retryable): MockedRequest
-    {
-        $mock = new MockedRequest($this->request->method ?? '*');
-        if ($this->request->urlPattern) {
-            $mock->setUrlPattern($this->request->urlPattern);
-        }
-        $mock->setStatusCode($statusCode);
-        $mock->setBody(json_encode(['error' => $error, 'status' => $statusCode]));
-        $mock->addResponseHeader('Content-Type', 'application/json');
         $mock->setRetryable($retryable);
         $mock->setDelay(0.1);
 

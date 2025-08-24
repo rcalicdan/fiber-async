@@ -6,9 +6,11 @@ use Exception;
 use Psr\SimpleCache\CacheInterface;
 use Rcalicdan\FiberAsync\Http\CacheConfig;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
+use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
 use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
+use Rcalicdan\FiberAsync\Http\Testing\Services\CookieManager;
 use Rcalicdan\FiberAsync\Http\Testing\Services\FileManager;
 use Rcalicdan\FiberAsync\Http\Testing\Services\NetworkSimulator;
 use Rcalicdan\FiberAsync\Http\Testing\Services\RequestMatcher;
@@ -37,12 +39,11 @@ class TestingHttpHandler extends HttpHandler
         'allow_passthrough' => true,
     ];
 
-    private ?string $recordingFile = null;
-
     private FileManager $fileManager;
     private NetworkSimulator $networkSimulator;
     private RequestMatcher $requestMatcher;
     private ResponseFactory $responseFactory;
+    private CookieManager $cookieManager;
 
     public function __construct()
     {
@@ -51,6 +52,7 @@ class TestingHttpHandler extends HttpHandler
         $this->networkSimulator = new NetworkSimulator;
         $this->requestMatcher = new RequestMatcher;
         $this->responseFactory = new ResponseFactory($this->networkSimulator);
+        $this->cookieManager = new CookieManager;
     }
 
     public function mock(string $method = '*'): MockRequestBuilder
@@ -61,6 +63,40 @@ class TestingHttpHandler extends HttpHandler
     public function addMockedRequest(MockedRequest $request): void
     {
         $this->mockedRequests[] = $request;
+    }
+
+    /**
+     * Get the cookie testing service.
+     */
+    public function cookies(): CookieManager
+    {
+        return $this->cookieManager;
+    }
+
+    /**
+     * Enable automatic cookie management for all requests.
+     */
+    public function withGlobalCookieJar(?CookieJarInterface $jar = null): self
+    {
+        if ($jar === null) {
+            $jar = $this->cookieManager->createCookieJar();
+        }
+
+        $this->cookieManager->setDefaultCookieJar($jar);
+        return $this;
+    }
+
+    /**
+     * Create and use a file-based cookie jar for all requests.
+     */
+    public function withGlobalFileCookieJar(?string $filename = null, bool $includeSessionCookies = true): self
+    {
+        if ($filename === null) {
+            $filename = $this->cookieManager->createTempCookieFile();
+        }
+
+        $jar = $this->cookieManager->createFileCookieJar($filename, $includeSessionCookies);
+        return $this;
     }
 
     public function enableNetworkSimulation(array $settings = []): self
@@ -104,6 +140,10 @@ class TestingHttpHandler extends HttpHandler
      */
     public function sendRequest(string $url, array $curlOptions, ?CacheConfig $cacheConfig = null, ?RetryConfig $retryConfig = null): PromiseInterface
     {
+        if (!isset($curlOptions['_cookie_jar'])) {
+            $this->cookieManager->applyCookiesToCurlOptions($curlOptions, $url);
+        }
+
         if ($cacheConfig !== null && ($curlOptions[CURLOPT_CUSTOMREQUEST] ?? 'GET') === 'GET') {
             $cache = $cacheConfig->cache ?? self::getTestingDefaultCache();
             $cacheKey = self::generateCacheKey($url);
@@ -120,6 +160,15 @@ class TestingHttpHandler extends HttpHandler
         }
 
         $promise = $this->executeMockedRequest($url, $curlOptions, $retryConfig);
+
+        if ($promise instanceof PromiseInterface) {
+            $promise = $promise->then(function ($response) use ($url) {
+                if ($response instanceof Response) {
+                    $this->cookieManager->processSetCookieHeaders($response->getHeaders());
+                }
+                return $response;
+            });
+        }
 
         if ($cacheConfig !== null) {
             return $promise->then(function ($response) use ($cacheConfig, $url) {
@@ -246,6 +295,35 @@ class TestingHttpHandler extends HttpHandler
         }
     }
 
+    /**
+     * Assert that a cookie was sent in the most recent request.
+     */
+    public function assertCookieSent(string $name): void
+    {
+        if (empty($this->requestHistory)) {
+            throw new Exception('No requests have been made');
+        }
+
+        $lastRequest = end($this->requestHistory);
+        $this->cookieManager->assertCookieSent($name, $lastRequest->options);
+    }
+
+    /**
+     * Assert that a cookie exists in the default cookie jar.
+     */
+    public function assertCookieExists(string $name): void
+    {
+        $this->cookieManager->assertCookieExists($name);
+    }
+
+    /**
+     * Assert that a cookie has a specific value.
+     */
+    public function assertCookieValue(string $name, string $expectedValue): void
+    {
+        $this->cookieManager->assertCookieValue($name, $expectedValue);
+    }
+
     public function getRequestHistory(): array
     {
         return $this->requestHistory;
@@ -256,6 +334,7 @@ class TestingHttpHandler extends HttpHandler
         $this->mockedRequests = [];
         $this->requestHistory = [];
         $this->fileManager->cleanup();
+        $this->cookieManager->cleanup();
     }
 
     private function executeMockedRequest(string $url, array $curlOptions, ?RetryConfig $retryConfig): PromiseInterface
