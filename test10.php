@@ -12,15 +12,18 @@ Task::run(function () {
     $url = 'https://testing.api.fake';
 
 
-    Http::mock('GET')
+    Http::mock('*')
         ->url($url)
         ->respondWithStatus(200)
+        ->json(['message' => 'success'])
         ->delay(0.01)
         ->persistent()
         ->register();
 
     try {
-        $response = await(Http::request()->get($url));
+        $response = await(Http::request()->post($url, [
+            'json' => ['name' => 'Rcalicdan']
+        ]));
         echo $response->getBody()->getContents();
     } catch (\Exception $e) {
         echo $e->getMessage();

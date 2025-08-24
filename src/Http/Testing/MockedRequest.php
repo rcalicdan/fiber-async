@@ -114,8 +114,10 @@ class MockedRequest
             return false;
         }
 
-        if ($this->urlPattern !== null && ! fnmatch($this->urlPattern, $url)) {
-            return false;
+        if ($this->urlPattern !== null) {
+            if (!$this->urlMatches($this->urlPattern, $url)) {
+                return false;
+            }
         }
 
         if (! empty($this->headerMatchers)) {
@@ -144,6 +146,29 @@ class MockedRequest
         }
 
         return true;
+    }
+
+    /**
+     * Check if URL matches the pattern, with lenient trailing slash handling
+     */
+    private function urlMatches(string $pattern, string $url): bool
+    {
+        if (fnmatch($pattern, $url)) {
+            return true;
+        }
+
+        $normalizedPattern = rtrim($pattern, '/');
+        $normalizedUrl = rtrim($url, '/');
+
+        if (fnmatch($normalizedPattern, $normalizedUrl)) {
+            return true;
+        }
+
+        if (fnmatch($normalizedPattern . '/', $normalizedUrl . '/')) {
+            return true;
+        }
+
+        return false;
     }
 
     public function getStatusCode(): int
