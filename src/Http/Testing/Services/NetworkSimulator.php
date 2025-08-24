@@ -10,8 +10,8 @@ class NetworkSimulator
         'timeout_rate' => 0.0,
         'connection_failure_rate' => 0.0,
         'default_delay' => 0,
-        'timeout_delay' => 30.0, // Simulated timeout after this many seconds
-        'retryable_failure_rate' => 0.0, // Rate of failures that should be retryable
+        'timeout_delay' => 30.0,
+        'retryable_failure_rate' => 0.0, 
     ];
 
     public function enable(array $settings = []): void
@@ -37,7 +37,7 @@ class NetworkSimulator
                 'should_timeout' => false,
                 'should_fail' => false,
                 'error_message' => null,
-                'delay' => (float) $this->settings['default_delay'],
+                'delay' => $this->calculateDelay($this->settings['default_delay']),
             ];
         }
 
@@ -45,15 +45,15 @@ class NetworkSimulator
             'should_timeout' => false,
             'should_fail' => false,
             'error_message' => null,
-            'delay' => (float) $this->settings['default_delay'],
+            'delay' => $this->calculateDelay($this->settings['default_delay']),
         ];
 
         if (mt_rand() / mt_getrandmax() < $this->settings['timeout_rate']) {
             $result['should_timeout'] = true;
-            $result['delay'] = $this->settings['timeout_delay'];
+            $result['delay'] = $this->calculateDelay($this->settings['timeout_delay']);
             $result['error_message'] = sprintf(
                 'Connection timed out after %.1fs (simulated network timeout)',
-                $this->settings['timeout_delay']
+                $result['delay']
             );
 
             return $result;
@@ -90,13 +90,37 @@ class NetworkSimulator
         return $result;
     }
 
+    /**
+     * Calculate delay based on configuration (supports both single values and arrays)
+     *
+     * @param mixed $delayConfig
+     * @return float
+     */
+    private function calculateDelay($delayConfig): float
+    {
+        if (is_array($delayConfig)) {
+            if (count($delayConfig) === 2 && is_numeric($delayConfig[0]) && is_numeric($delayConfig[1])) {
+                $min = (float) $delayConfig[0];
+                $max = (float) $delayConfig[1];
+                return $min + (mt_rand() / mt_getrandmax()) * ($max - $min);
+            } elseif (count($delayConfig) > 0) {
+                $randomKey = array_rand($delayConfig);
+                return (float) $delayConfig[$randomKey];
+            }
+            
+            return 0.0;
+        }
+
+        return (float) $delayConfig;
+    }
+
     public function getDefaultDelay(): float
     {
-        return (float) $this->settings['default_delay'];
+        return $this->calculateDelay($this->settings['default_delay']);
     }
 
     public function getTimeoutDelay(): float
     {
-        return (float) $this->settings['timeout_delay'];
+        return $this->calculateDelay($this->settings['timeout_delay']);
     }
 }

@@ -365,7 +365,7 @@ Task::run(function () {
     // In this test, it will never be reached.
     Http::mock('GET')
         ->url($url_network_sim_test)
-        ->respondWith(200)
+        ->respondWithStatus(200)
         ->persistent()
         ->json(['message' => 'This should not be seen!'])
         ->register()
@@ -429,7 +429,7 @@ Task::run(function () {
     // In this test, it will never be reached.
     Http::mock('GET')
         ->url($url_network_sim_test)
-        ->respondWith(200)
+        ->respondWithStatus(200)
         ->persistent()
         ->json(['message' => 'This should not be seen!'])
         ->register()

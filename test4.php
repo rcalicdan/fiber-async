@@ -18,7 +18,7 @@ try {
         // Mock requests directly through Http::mock()
         Http::mock('GET')
             ->url('https://api.github.com/users/octocat')
-            ->respondWith(200)
+            ->respondWithStatus(200)
             ->json([
                 'login' => 'octocat',
                 'id' => 1,
@@ -33,7 +33,7 @@ try {
             ->url('https://api.github.com/repos/*/issues')
             ->withHeader('Authorization', 'Bearer github-token')
             ->withJson(['title' => 'Bug report', 'body' => 'Something is broken'])
-            ->respondWith(201)
+            ->respondWithStatus(201)
             ->json(['id' => 123, 'number' => 1, 'state' => 'open'])
             ->register()
         ;
@@ -41,7 +41,7 @@ try {
         // Mock a download with larger content for better testing
         Http::mock('GET')
             ->url('https://github.com/*/archive/main.zip')
-            ->respondWith(200)
+            ->respondWithStatus(200)
             ->body(str_repeat('ZIP_FILE_CONTENT_', 100)) // 1.8KB of content
             ->header('Content-Type', 'application/zip')
             ->header('Content-Length', '1800')
@@ -97,7 +97,7 @@ try {
         // Mock a persistent endpoint
         Http::mock('GET')
             ->url('https://httpbin.org/status/200')
-            ->respondWith(200)
+            ->respondWithStatus(200)
             ->body('OK')
             ->persistent()
             ->register()
@@ -252,14 +252,14 @@ try {
         // Mock API requests
         Http::mock('GET')
             ->url('https://api.example.com/config')
-            ->respondWith(200)
+            ->respondWithStatus(200)
             ->json(['version' => '1.0', 'features' => ['auth', 'cache']])
             ->register()
         ;
 
         Http::mock('GET')
             ->url('https://files.example.com/download/*')
-            ->respondWith(200)
+            ->respondWithStatus(200)
             ->body('LARGE_FILE_CONTENT_'.str_repeat('DATA', 250)) // 1KB content
             ->header('Content-Type', 'application/octet-stream')
             ->header('Content-Length', '1000')
@@ -285,7 +285,7 @@ try {
         $customDownloadPath = $tempDir.DIRECTORY_SEPARATOR.'custom_file.txt';
         Http::mock('GET')
             ->url('https://files.example.com/text/*')
-            ->respondWith(200)
+            ->respondWithStatus(200)
             ->body('This is a text file for testing purposes.')
             ->header('Content-Type', 'text/plain')
             ->register()

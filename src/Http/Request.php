@@ -2,6 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Http;
 
+use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\RequestInterface;
@@ -35,6 +36,11 @@ class Request extends Message implements RequestInterface
     private ?array $auth = null;
     private ?RetryConfig $retryConfig = null;
     private ?CacheConfig $cacheConfig = null;
+    /** @var callable[] Callbacks to intercept the request before it is sent. */
+    private array $requestInterceptors = [];
+
+    /** @var callable[] Callbacks to intercept the response after it is received. */
+    private array $responseInterceptors = [];
 
     /**
      * Initializes a new Request builder instance.
@@ -69,6 +75,38 @@ class Request extends Message implements RequestInterface
     }
 
     /**
+     * Adds a request interceptor.
+     *
+     * The callback will receive the Request object before it is sent. It MUST
+     * return a Request object, allowing for immutable modifications.
+     *
+     * @param callable(Request): Request $callback
+     * @return self
+     */
+    public function interceptRequest(callable $callback): self
+    {
+        $new = clone $this;
+        $new->requestInterceptors[] = $callback;
+        return $new;
+    }
+
+    /**
+     * Adds a response interceptor.
+     *
+     * The callback will receive the final Response object. It MUST return a
+     * Response object, allowing for inspection or modification.
+     *
+     * @param callable(Response): Response $callback
+     * @return self
+     */
+    public function interceptResponse(callable $callback): self
+    {
+        $new = clone $this;
+        $new->responseInterceptors[] = $callback;
+        return $new;
+    }
+
+    /**
      * {@inheritdoc}
      */
     public function getRequestTarget(): string
@@ -82,7 +120,7 @@ class Request extends Message implements RequestInterface
             $target = '/';
         }
         if ($this->uri->getQuery() !== '') {
-            $target .= '?'.$this->uri->getQuery();
+            $target .= '?' . $this->uri->getQuery();
         }
 
         return $target;
@@ -477,7 +515,7 @@ class Request extends Message implements RequestInterface
     public function get(string $url, array $query = []): PromiseInterface
     {
         if (count($query) > 0) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
         }
 
         return $this->send('GET', $url);
@@ -571,9 +609,38 @@ class Request extends Message implements RequestInterface
      */
     public function send(string $method, string $url): PromiseInterface
     {
-        $options = $this->buildCurlOptions($method, $url);
+        return Async::async(function () use ($method, $url) {
+            $processedRequest = $this->withMethod($method)->withUri(new Uri($url));
+            foreach ($this->requestInterceptors as $interceptor) {
+                $processedRequest = $interceptor($processedRequest);
+            }
 
-        return $this->handler->sendRequest($url, $options, $this->cacheConfig, $this->retryConfig);
+            $options = $processedRequest->buildCurlOptions(
+                $processedRequest->getMethod(),
+                (string)$processedRequest->getUri()
+            );
+
+            $promise = $this->handler->sendRequest(
+                (string)$processedRequest->getUri(),
+                $options,
+                $processedRequest->cacheConfig,
+                $processedRequest->retryConfig
+            );
+
+            $response = await($promise);
+            $finalResponse = $response;
+            
+            foreach ($processedRequest->responseInterceptors as $interceptor) {
+                $result = $interceptor($finalResponse);
+                if ($result instanceof PromiseInterface) {
+                    $finalResponse = await($result);
+                } else {
+                    $finalResponse = $result;
+                }
+            }
+
+            return $finalResponse;
+        })(); 
     }
 
     /**
@@ -599,7 +666,7 @@ class Request extends Message implements RequestInterface
     {
         $cookieStrings = [];
         foreach ($cookies as $name => $value) {
-            $cookieStrings[] = $name.'='.urlencode($value);
+            $cookieStrings[] = $name . '=' . urlencode($value);
         }
 
         if ($cookieStrings !== []) {
@@ -619,10 +686,10 @@ class Request extends Message implements RequestInterface
     public function cookie(string $name, string $value): self
     {
         $existingCookies = $this->getHeaderLine('Cookie');
-        $newCookie = $name.'='.urlencode($value);
+        $newCookie = $name . '=' . urlencode($value);
 
         if ($existingCookies !== '') {
-            return $this->header('Cookie', $existingCookies.'; '.$newCookie);
+            return $this->header('Cookie', $existingCookies . '; ' . $newCookie);
         } else {
             return $this->header('Cookie', $newCookie);
         }
@@ -752,7 +819,7 @@ class Request extends Message implements RequestInterface
                 // Merge with existing Cookie header if present
                 $existingCookies = $this->getHeaderLine('Cookie');
                 if ($existingCookies !== '') {
-                    $this->header('Cookie', $existingCookies.'; '.$cookieHeader);
+                    $this->header('Cookie', $existingCookies . '; ' . $cookieHeader);
                 } else {
                     $this->header('Cookie', $cookieHeader);
                 }
@@ -786,7 +853,7 @@ class Request extends Message implements RequestInterface
         if (count($this->headers) > 0) {
             $headerStrings = [];
             foreach ($this->headers as $name => $value) {
-                $headerStrings[] = "{$name}: ".implode(', ', $value);
+                $headerStrings[] = "{$name}: " . implode(', ', $value);
             }
             $options[CURLOPT_HTTPHEADER] = $headerStrings;
         }
@@ -833,7 +900,7 @@ class Request extends Message implements RequestInterface
         }
 
         if (($port = $this->uri->getPort()) !== null) {
-            $host .= ':'.$port;
+            $host .= ':' . $port;
         }
 
         if (isset($this->headerNames['host'])) {

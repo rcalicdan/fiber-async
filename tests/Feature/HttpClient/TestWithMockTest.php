@@ -8,7 +8,7 @@ beforeAll(function () {
     Http::testing();
     Http::mock('GET')
         ->url('https://api.github.com/users/octocat')
-        ->respondWith(200)
+        ->respondWithStatus(200)
         ->delay(0.4)
         ->persistent()
         ->register()

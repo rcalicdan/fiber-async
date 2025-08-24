@@ -44,7 +44,7 @@ class MockRequestBuilder
         return $this;
     }
 
-    public function respondWith(int $status = 200): self
+    public function respondWithStatus(int $status = 200): self
     {
         $this->request->setStatusCode($status);
 
@@ -194,7 +194,7 @@ class MockRequestBuilder
         }
 
         // Set up this builder instance as the success response
-        $this->respondWith(200);
+        $this->respondWithStatus(200);
         if (empty($this->request->getBody())) {
             $this->json(['success' => true, 'attempt' => $successAttempt]);
         }
@@ -241,7 +241,7 @@ class MockRequestBuilder
             $this->handler->addMockedRequest($mock);
         }
 
-        $this->respondWith(200);
+        $this->respondWithStatus(200);
 
         // **FIX for TypeError**: Handle both string and array success responses correctly.
         if ($successResponse !== null) {
@@ -270,7 +270,7 @@ class MockRequestBuilder
             $this->handler->addMockedRequest($mock);
         }
 
-        $this->respondWith(200);
+        $this->respondWithStatus(200);
         if (empty($this->request->getBody())) {
             $this->json(['success' => true, 'attempt' => $successAttempt, 'message' => 'Success after timeouts']);
         }
@@ -298,7 +298,7 @@ class MockRequestBuilder
             $this->handler->addMockedRequest($mock);
         }
 
-        $this->respondWith(200);
+        $this->respondWithStatus(200);
         if (empty($this->request->getBody())) {
             $this->json(['success' => true, 'attempt' => $successAttempt]);
         }
@@ -344,7 +344,7 @@ class MockRequestBuilder
             $this->handler->addMockedRequest($mock);
         }
 
-        $this->respondWith(200);
+        $this->respondWithStatus(200);
         if (empty($this->request->getBody())) {
             $this->json([
                 'success' => true,
@@ -380,7 +380,7 @@ class MockRequestBuilder
             $this->handler->addMockedRequest($mock);
         }
 
-        $this->respondWith(200);
+        $this->respondWithStatus(200);
         $this->json(['success' => true, 'attempt' => $successAttempt, 'message' => 'Network recovered']);
 
         return $this;
@@ -407,7 +407,7 @@ class MockRequestBuilder
             $this->handler->addMockedRequest($mock);
         }
 
-        $this->respondWith(200);
+        $this->respondWithStatus(200);
         if (empty($this->request->getBody())) {
             $this->json(['success' => true, 'attempt' => $successAttempt, 'message' => 'Rate limit cleared']);
         }
