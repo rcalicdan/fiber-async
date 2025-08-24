@@ -11,7 +11,8 @@
             "src/Helpers/async_helper.php",
             "src/Helpers/loop_helper.php",
             "src/Helpers/file_helper.php",
-            "src/Helpers/http_helper.php"
+            "src/Helpers/http_helper.php",
+            "src/Helpers/utils_helper.php"
         ]
     },
     "authors": [

@@ -27,7 +27,7 @@ class HttpTestingAssistant
     /**
      * Get the singleton instance of the testing assistant.
      */
-    public static function instance(): self
+    public static function getInstance(): self
     {
         if (self::$instance === null) {
             self::$instance = new self();
