@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\Http\Testing\Services;
+namespace Rcalicdan\FiberAsync\Http\Testing\Utilities;
 
 use Exception;
 

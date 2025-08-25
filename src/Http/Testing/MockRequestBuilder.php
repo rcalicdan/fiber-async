@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\Http\Testing;
 
-use Rcalicdan\FiberAsync\Http\Testing\Services\CookieManager;
+use Rcalicdan\FiberAsync\Http\Testing\Utilities\CookieManager;
 
 /**
  * Builder for creating mocked requests with fluent interface.

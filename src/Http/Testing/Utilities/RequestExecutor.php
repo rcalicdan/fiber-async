@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\Http\Testing\Services;
+namespace Rcalicdan\FiberAsync\Http\Testing\Utilities;
 
 use Rcalicdan\FiberAsync\Http\CacheConfig;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
@@ -50,18 +50,14 @@ class RequestExecutor
         ?RetryConfig $retryConfig = null,
         ?callable $parentSendRequest = null
     ): PromiseInterface {
-        if (! isset($curlOptions['_cookie_jar'])) {
-            $this->cookieManager->applyCookiesToCurlOptions($curlOptions, $url);
-        }
+        $this->cookieManager->applyCookiesForRequestOptions($curlOptions, $url);
 
         $method = $curlOptions[CURLOPT_CUSTOMREQUEST] ?? 'GET';
 
-        // Handle caching for GET requests
         if ($cacheConfig !== null && $method === 'GET') {
             $cachedResponse = $this->cacheManager->getCachedResponse($url, $cacheConfig);
             if ($cachedResponse !== null) {
                 $this->requestRecorder->recordRequest('GET (FROM CACHE)', $url, $curlOptions);
-
                 return Promise::resolved($cachedResponse);
             }
         }
@@ -75,30 +71,29 @@ class RequestExecutor
             $parentSendRequest
         );
 
-        // Process cookies from response
-        if ($promise instanceof PromiseInterface) {
-            $promise = $promise->then(function ($response) {
-                if ($response instanceof Response) {
-                    $this->cookieManager->processSetCookieHeaders($response->getHeaders());
-                }
-
-                return $response;
-            });
+        if (!($promise instanceof PromiseInterface)) {
+            $promise = Promise::resolved($promise);
         }
 
-        // Cache successful responses
-        if ($cacheConfig !== null) {
-            return $promise->then(function ($response) use ($cacheConfig, $url) {
-                if ($response instanceof Response && $response->ok()) {
-                    $this->cacheManager->cacheResponse($url, $response, $cacheConfig);
-                }
+        $promise = $promise->then(function ($response) use ($curlOptions, $url) {
+            if ($response instanceof Response) {
+                $this->cookieManager->processResponseCookiesForOptions($response->getHeaders(), $curlOptions, $url);
+            }
+            return $response;
+        });
 
-                return $response;
-            });
+        if ($cacheConfig === null) {
+            return $promise;
         }
 
-        return $promise;
+        return $promise->then(function ($response) use ($cacheConfig, $url) {
+            if ($response instanceof Response && $response->ok()) {
+                $this->cacheManager->cacheResponse($url, $response, $cacheConfig);
+            }
+            return $response;
+        });
     }
+
 
     public function executeFetch(
         string $url,
@@ -266,11 +261,11 @@ class RequestExecutor
                     $finalPromise->resolve($successfulResponse);
                 }
             },
-            fn ($reason) => $finalPromise->reject($reason)
+            fn($reason) => $finalPromise->reject($reason)
         );
 
         if ($retryPromise instanceof CancellablePromiseInterface) {
-            $finalPromise->setCancelHandler(fn () => $retryPromise->cancel());
+            $finalPromise->setCancelHandler(fn() => $retryPromise->cancel());
         }
 
         return $finalPromise;

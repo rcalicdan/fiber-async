@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\Http\Testing\Services;
+namespace Rcalicdan\FiberAsync\Http\Testing\Utilities;
 
 use Rcalicdan\FiberAsync\Http\Cookie;
 use Rcalicdan\FiberAsync\Http\CookieJar;
@@ -162,16 +162,16 @@ class CookieManager
             if (is_string($config)) {
                 $mock->addResponseHeader('Set-Cookie', "{$name}={$config}; Path=/");
             } elseif (is_array($config)) {
-                $setCookieValue = $name.'='.($config['value'] ?? '');
+                $setCookieValue = $name . '=' . ($config['value'] ?? '');
 
                 if (isset($config['path'])) {
-                    $setCookieValue .= '; Path='.$config['path'];
+                    $setCookieValue .= '; Path=' . $config['path'];
                 }
                 if (isset($config['domain'])) {
-                    $setCookieValue .= '; Domain='.$config['domain'];
+                    $setCookieValue .= '; Domain=' . $config['domain'];
                 }
                 if (isset($config['expires'])) {
-                    $setCookieValue .= '; Expires='.gmdate('D, d M Y H:i:s T', $config['expires']);
+                    $setCookieValue .= '; Expires=' . gmdate('D, d M Y H:i:s T', $config['expires']);
                 }
                 if ($config['secure'] ?? false) {
                     $setCookieValue .= '; Secure';
@@ -180,7 +180,7 @@ class CookieManager
                     $setCookieValue .= '; HttpOnly';
                 }
                 if (isset($config['sameSite'])) {
-                    $setCookieValue .= '; SameSite='.$config['sameSite'];
+                    $setCookieValue .= '; SameSite=' . $config['sameSite'];
                 }
 
                 $mock->addResponseHeader('Set-Cookie', $setCookieValue);
@@ -260,7 +260,7 @@ class CookieManager
         }
 
         if (! isset($cookies[$name])) {
-            throw new MockAssertionException("Cookie '{$name}' was not sent in request. Sent cookies: ".implode(', ', array_keys($cookies)));
+            throw new MockAssertionException("Cookie '{$name}' was not sent in request. Sent cookies: " . implode(', ', array_keys($cookies)));
         }
     }
 
@@ -311,7 +311,7 @@ class CookieManager
             $cookieHeaderExists = false;
             foreach ($curlOptions[CURLOPT_HTTPHEADER] as &$header) {
                 if (str_starts_with(strtolower($header), 'cookie:')) {
-                    $header .= '; '.$cookieHeader;
+                    $header .= '; ' . $cookieHeader;
                     $cookieHeaderExists = true;
 
                     break;
@@ -319,7 +319,7 @@ class CookieManager
             }
 
             if (! $cookieHeaderExists) {
-                $curlOptions[CURLOPT_HTTPHEADER][] = 'Cookie: '.$cookieHeader;
+                $curlOptions[CURLOPT_HTTPHEADER][] = 'Cookie: ' . $cookieHeader;
             }
         }
     }
@@ -358,7 +358,7 @@ class CookieManager
      */
     public function createTempCookieFile(string $prefix = 'test_cookies_'): string
     {
-        $filename = sys_get_temp_dir().DIRECTORY_SEPARATOR.$prefix.uniqid().'.json';
+        $filename = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $prefix . uniqid() . '.json';
 
         if ($this->autoManage) {
             $this->createdCookieFiles[] = $filename;
@@ -414,5 +414,141 @@ class CookieManager
         }
 
         return $info;
+    }
+
+    /**
+     * Apply cookies to curl options, honoring a custom jar in $curlOptions['_cookie_jar'] or falling back to the default jar.
+     */
+    public function applyCookiesForRequestOptions(array &$curlOptions, string $url): void
+    {
+        $jarOption = $curlOptions['_cookie_jar'] ?? null;
+
+        if ($jarOption instanceof CookieJarInterface) {
+            $uri = new Uri($url);
+            $cookieHeader = $jarOption->getCookieHeader(
+                $uri->getHost(),
+                $uri->getPath() !== '' ? $uri->getPath() : '/',
+                $uri->getScheme() === 'https'
+            );
+
+            if ($cookieHeader === '') {
+                return;
+            }
+
+            $curlOptions[CURLOPT_HTTPHEADER] = $curlOptions[CURLOPT_HTTPHEADER] ?? [];
+
+            foreach ($curlOptions[CURLOPT_HTTPHEADER] as &$header) {
+                if (str_starts_with(strtolower($header), 'cookie:')) {
+                    $header .= '; ' . $cookieHeader;
+                    return;
+                }
+            }
+
+            $curlOptions[CURLOPT_HTTPHEADER][] = 'Cookie: ' . $cookieHeader;
+            return;
+        }
+
+        // If jar name provided, use stored jar if available
+        if (is_string($jarOption)) {
+            $jar = $this->getCookieJar($jarOption);
+            if ($jar === null) {
+                return;
+            }
+
+            $uri = new Uri($url);
+            $cookieHeader = $jar->getCookieHeader(
+                $uri->getHost(),
+                $uri->getPath() !== '' ? $uri->getPath() : '/',
+                $uri->getScheme() === 'https'
+            );
+
+            if ($cookieHeader === '') {
+                return;
+            }
+
+            $curlOptions[CURLOPT_HTTPHEADER] = $curlOptions[CURLOPT_HTTPHEADER] ?? [];
+
+            foreach ($curlOptions[CURLOPT_HTTPHEADER] as &$header) {
+                if (str_starts_with(strtolower($header), 'cookie:')) {
+                    $header .= '; ' . $cookieHeader;
+                    return;
+                }
+            }
+
+            $curlOptions[CURLOPT_HTTPHEADER][] = 'Cookie: ' . $cookieHeader;
+            return;
+        }
+
+        $this->applyCookiesToCurlOptions($curlOptions, $url);
+    }
+
+    /**
+     * Process Set-Cookie headers and apply them to both the shared manager (default jar)
+     * and to a custom jar passed in $curlOptions['_cookie_jar'] (instance or jar name).
+     *
+     * Keeps the same domain-inference behavior as before: if the parsed cookie lacks a domain,
+     * it will be set to the request host (if available).
+     */
+    public function processResponseCookiesForOptions(array $headers, array $curlOptions, string $url): void
+    {
+        $this->processSetCookieHeaders($headers, 'default');
+
+        $jarOption = $curlOptions['_cookie_jar'] ?? null;
+        if ($jarOption === null) {
+            return;
+        }
+
+        $customJar = null;
+        if ($jarOption instanceof CookieJarInterface) {
+            $customJar = $jarOption;
+        } elseif (is_string($jarOption)) {
+            $customJar = $this->getCookieJar($jarOption);
+        }
+
+        if ($customJar === null) {
+            return;
+        }
+
+        $setCookieHeaders = [];
+        foreach ($headers as $name => $value) {
+            if (strtolower($name) !== 'set-cookie') {
+                continue;
+            }
+            if (is_array($value)) {
+                $setCookieHeaders = array_merge($setCookieHeaders, $value);
+                continue;
+            }
+            $setCookieHeaders[] = $value;
+        }
+
+        if (empty($setCookieHeaders)) {
+            return;
+        }
+
+        $uri = new Uri($url);
+        $requestDomain = $uri->getHost() ?? '';
+
+        foreach ($setCookieHeaders as $setCookieHeader) {
+            $cookie = Cookie::fromSetCookieHeader($setCookieHeader);
+            if ($cookie === null) {
+                continue;
+            }
+
+            if (empty($cookie->getDomain()) && $requestDomain !== '') {
+                $cookie = new Cookie(
+                    $cookie->getName(),
+                    $cookie->getValue(),
+                    $cookie->getExpires(),
+                    $requestDomain,
+                    $cookie->getPath(),
+                    $cookie->isSecure(),
+                    $cookie->isHttpOnly(),
+                    $cookie->getMaxAge(),
+                    $cookie->getSameSite()
+                );
+            }
+
+            $customJar->setCookie($cookie);
+        }
     }
 }

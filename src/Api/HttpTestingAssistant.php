@@ -4,7 +4,7 @@ namespace Rcalicdan\FiberAsync\Api;
 
 use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
 use Rcalicdan\FiberAsync\Http\Testing\MockRequestBuilder;
-use Rcalicdan\FiberAsync\Http\Testing\Services\CookieManager;
+use Rcalicdan\FiberAsync\Http\Testing\Utilities\CookieManager;
 use Rcalicdan\FiberAsync\Http\Testing\TestingHttpHandler;
 
 /**
