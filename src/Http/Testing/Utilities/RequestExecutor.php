@@ -54,12 +54,8 @@ class RequestExecutor
 
         $method = $curlOptions[CURLOPT_CUSTOMREQUEST] ?? 'GET';
 
-        if ($cacheConfig !== null && $method === 'GET') {
-            $cachedResponse = $this->cacheManager->getCachedResponse($url, $cacheConfig);
-            if ($cachedResponse !== null) {
-                $this->requestRecorder->recordRequest('GET (FROM CACHE)', $url, $curlOptions);
-                return Promise::resolved($cachedResponse);
-            }
+        if ($this->tryServeFromCache($url, $method, $cacheConfig)) {
+            return Promise::resolved($this->cacheManager->getCachedResponse($url, $cacheConfig));
         }
 
         $promise = $this->executeMockedRequest(
@@ -75,25 +71,19 @@ class RequestExecutor
             $promise = Promise::resolved($promise);
         }
 
-        $promise = $promise->then(function ($response) use ($curlOptions, $url) {
+        $promise = $promise->then(function ($response) use ($curlOptions, $url, $cacheConfig, $method) {
             if ($response instanceof Response) {
                 $this->cookieManager->processResponseCookiesForOptions($response->getHeaders(), $curlOptions, $url);
+
+                if ($cacheConfig !== null && $method === 'GET' && $response->ok()) {
+                    $this->cacheManager->cacheResponse($url, $response, $cacheConfig);
+                }
             }
             return $response;
         });
 
-        if ($cacheConfig === null) {
-            return $promise;
-        }
-
-        return $promise->then(function ($response) use ($cacheConfig, $url) {
-            if ($response instanceof Response && $response->ok()) {
-                $this->cacheManager->cacheResponse($url, $response, $cacheConfig);
-            }
-            return $response;
-        });
+        return $promise;
     }
-
 
     public function executeFetch(
         string $url,
@@ -108,72 +98,82 @@ class RequestExecutor
         $retryConfig = $this->extractRetryConfig($options);
         $cacheConfig = $this->extractCacheConfig($options);
 
-        // Handle caching for GET requests
-        if ($cacheConfig !== null && $method === 'GET') {
-            $cachedResponse = $this->cacheManager->getCachedResponse($url, $cacheConfig);
-            if ($cachedResponse !== null) {
-                $this->requestRecorder->recordRequest('GET (FROM CACHE)', $url, $curlOptions);
-
-                return Promise::resolved($cachedResponse);
-            }
+        if ($this->tryServeFromCache($url, $method, $cacheConfig)) {
+            return Promise::resolved($this->cacheManager->getCachedResponse($url, $cacheConfig));
         }
 
-        // Handle retry logic
         if ($retryConfig !== null) {
-            return $this->executeWithMockRetry($url, $options, $retryConfig, $method, $mockedRequests);
+            return $this->executeWithMockRetry($url, $options, $retryConfig, $method, $mockedRequests, $createStream);
         }
 
         $this->requestRecorder->recordRequest($method, $url, $curlOptions);
 
-        // Find matching mock
         $match = $this->requestMatcher->findMatchingMock($mockedRequests, $method, $url, $curlOptions);
 
         if ($match !== null) {
-            $mock = $match['mock'];
-
-            // Remove non-persistent mocks
-            if (! $mock->isPersistent()) {
-                array_splice($mockedRequests, $match['index'], 1);
-            }
-
-            // Handle download requests
-            if (isset($options['download'])) {
-                return $this->responseFactory->createMockedDownload(
-                    $mock,
-                    $options['download'],
-                    $this->fileManager
-                );
-            }
-
-            // Handle streaming requests
-            if (isset($options['stream']) && $options['stream'] === true) {
-                $onChunk = $options['on_chunk'] ?? $options['onChunk'] ?? null;
-
-                return $this->responseFactory->createMockedStream($mock, $onChunk, $createStream);
-            }
-
-            $responsePromise = $this->responseFactory->createMockedResponse($mock);
-
-            // Cache successful GET responses
-            if ($cacheConfig !== null && $method === 'GET') {
-                return $responsePromise->then(function ($response) use ($cacheConfig, $url) {
-                    if ($response instanceof Response && $response->ok()) {
-                        $this->cacheManager->cacheResponse($url, $response, $cacheConfig);
-                    }
-
-                    return $response;
-                });
-            }
-
-            return $responsePromise;
+            return $this->handleMockedResponse($match, $options, $mockedRequests, $cacheConfig, $url, $method, $createStream);
         }
 
-        // Handle no match found
         if ($globalSettings['strict_matching'] && ! $globalSettings['allow_passthrough']) {
             throw new MockAssertionException("No mock found for: {$method} {$url}");
         }
 
         return $parentFetch ? $parentFetch($url, $options) : Promise::rejected(new \RuntimeException('No parent fetch available'));
+    }
+
+    private function tryServeFromCache(string $url, string $method, ?CacheConfig $cacheConfig): bool
+    {
+        if ($cacheConfig === null || $method !== 'GET') {
+            return false;
+        }
+
+        $cachedResponse = $this->cacheManager->getCachedResponse($url, $cacheConfig);
+
+        if ($cachedResponse !== null) {
+            $this->requestRecorder->recordRequest('GET (FROM CACHE)', $url, []);
+            return true;
+        }
+
+        return false;
+    }
+
+    private function handleMockedResponse(
+        array $match,
+        array $options,
+        array &$mockedRequests,
+        ?CacheConfig $cacheConfig,
+        string $url,
+        string $method,
+        ?callable $createStream = null
+    ): PromiseInterface|CancellablePromiseInterface {
+        $mock = $match['mock'];
+
+        if (! $mock->isPersistent()) {
+            array_splice($mockedRequests, $match['index'], 1);
+        }
+
+        if (isset($options['download'])) {
+            return $this->responseFactory->createMockedDownload($mock, $options['download'], $this->fileManager);
+        }
+
+        if (isset($options['stream']) && $options['stream'] === true) {
+            $onChunk = $options['on_chunk'] ?? $options['onChunk'] ?? null;
+            $createStream ??= fn($body) => (new HttpHandler)->createStream($body);
+            return $this->responseFactory->createMockedStream($mock, $onChunk, $createStream);
+        }
+
+        $responsePromise = $this->responseFactory->createMockedResponse($mock);
+
+        if ($cacheConfig !== null && $method === 'GET') {
+            return $responsePromise->then(function ($response) use ($cacheConfig, $url) {
+                if ($response instanceof Response && $response->ok()) {
+                    $this->cacheManager->cacheResponse($url, $response, $cacheConfig);
+                }
+                return $response;
+            });
+        }
+
+        return $responsePromise;
     }
 
     private function executeMockedRequest(
@@ -188,24 +188,30 @@ class RequestExecutor
         $match = $this->requestMatcher->findMatchingMock($mockedRequests, $method, $url, $curlOptions);
 
         if ($retryConfig !== null && $match !== null) {
-            return $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $method, $mockedRequests);
+            return $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $method, $mockedRequests, null);
         }
 
         $this->requestRecorder->recordRequest($method, $url, $curlOptions);
 
         if ($match !== null) {
-            if (! $match['mock']->isPersistent()) {
-                array_splice($mockedRequests, $match['index'], 1);
-            }
-
-            return $this->responseFactory->createMockedResponse($match['mock']);
+            return $this->handleMockedResponse(
+                $match,
+                [],
+                $mockedRequests,
+                null,
+                $url,
+                $method,
+                null
+            );
         }
 
         if ($globalSettings['strict_matching'] && ! $globalSettings['allow_passthrough']) {
             throw new MockAssertionException("No mock found for: {$method} {$url}");
         }
 
-        return $parentSendRequest ? $parentSendRequest($url, $curlOptions, null, $retryConfig) : Promise::rejected(new \RuntimeException('No parent send request available'));
+        return $parentSendRequest
+            ? $parentSendRequest($url, $curlOptions, null, $retryConfig)
+            : Promise::rejected(new \RuntimeException('No parent send request available'));
     }
 
     private function executeWithMockRetry(
@@ -213,7 +219,8 @@ class RequestExecutor
         array $options,
         RetryConfig $retryConfig,
         string $method,
-        array &$mockedRequests
+        array &$mockedRequests,
+        ?callable $createStream = null
     ): PromiseInterface {
         $finalPromise = new CancellablePromise;
         $curlOptions = $this->normalizeFetchOptions($url, $options);
@@ -235,7 +242,7 @@ class RequestExecutor
         );
 
         $retryPromise->then(
-            function ($successfulResponse) use ($options, $finalPromise) {
+            function ($successfulResponse) use ($options, $finalPromise, $createStream) {
                 if (isset($options['download'])) {
                     $destPath = $options['download'] ?? $this->fileManager->createTempFile();
                     file_put_contents($destPath, $successfulResponse->body());
@@ -252,8 +259,9 @@ class RequestExecutor
                     if ($onChunk) {
                         $onChunk($body);
                     }
+                    $createStream ??= fn($body) => (new HttpHandler)->createStream($body);
                     $finalPromise->resolve(new StreamingResponse(
-                        (new HttpHandler)->createStream($body),
+                        $createStream($body),
                         $successfulResponse->status(),
                         $successfulResponse->headers()
                     ));

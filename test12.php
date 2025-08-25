@@ -9,7 +9,7 @@ require 'vendor/autoload.php';
 echo "====== Advanced Mocked Caching Tests ======\n";
 
 Task::run(function () {
-    $handler = Http::enableTesting();
+    $handler = Http::startTesting();
 
     // =================================================================
     // Test Case 1: Concurrent Requests (Cache Stampede Simulation)
