@@ -95,6 +95,65 @@ class MockRequestBuilder
         return $this;
     }
 
+    /**
+     * Set a random delay range for more realistic network simulation.
+     * Uses aggressive randomization for realistic variation.
+     *
+     * @param float $minSeconds Minimum delay in seconds
+     * @param float $maxSeconds Maximum delay in seconds
+     * @return self
+     */
+    public function randomDelay(float $minSeconds, float $maxSeconds): self
+    {
+        if ($minSeconds > $maxSeconds) {
+            throw new \InvalidArgumentException('Minimum delay cannot be greater than maximum delay');
+        }
+
+        $randomDelay = $this->generateAggressiveRandomFloat($minSeconds, $maxSeconds);
+        $this->request->setDelay($randomDelay);
+
+        return $this;
+    }
+
+    /**
+     * Generate aggressive random float with high precision for realistic network simulation.
+     *
+     * @param float $min Minimum value
+     * @param float $max Maximum value
+     * @return float Random float with microsecond precision
+     */
+    private function generateAggressiveRandomFloat(float $min, float $max): float
+    {
+        $precision = 1000000;
+        $randomInt = random_int(
+            (int)($min * $precision),
+            (int)($max * $precision)
+        );
+
+        return $randomInt / $precision;
+    }
+
+    /**
+     * Create a persistent mock with random delays for each request.
+     * Each request will have a different random delay within the specified range.
+     *
+     * @param float $minSeconds Minimum delay in seconds
+     * @param float $maxSeconds Maximum delay in seconds
+     * @return self
+     */
+    public function randomPersistentDelay(float $minSeconds, float $maxSeconds): self
+    {
+        if ($minSeconds > $maxSeconds) {
+            throw new \InvalidArgumentException('Minimum delay cannot be greater than maximum delay');
+        }
+
+        // Store the delay range in the request for later use
+        $this->request->setRandomDelayRange($minSeconds, $maxSeconds);
+        $this->persistent();
+
+        return $this;
+    }
+
     public function fail(string $error = 'Mocked request failure'): self
     {
         $this->request->setError($error);

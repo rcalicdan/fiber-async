@@ -9,6 +9,7 @@ use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Http\Testing\MockedRequest;
+use Rcalicdan\FiberAsync\Http\Testing\TestingHttpHandler;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
@@ -16,10 +17,12 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 class ResponseFactory
 {
     private NetworkSimulator $networkSimulator;
+    private ?TestingHttpHandler $handler = null;
 
-    public function __construct(NetworkSimulator $networkSimulator)
+    public function __construct(NetworkSimulator $networkSimulator, ?TestingHttpHandler $handler = null)
     {
         $this->networkSimulator = $networkSimulator;
+        $this->handler = $handler;
     }
 
     public function createMockedResponse(MockedRequest $mock): PromiseInterface
@@ -197,7 +200,17 @@ class ResponseFactory
     private function executeWithNetworkSimulation(CancellablePromise $promise, MockedRequest $mock, callable $callback): void
     {
         $networkConditions = $this->networkSimulator->simulate();
-        $totalDelay = max($mock->getDelay(), $networkConditions['delay']);
+
+        // Get mock delay (which might be random for persistent mocks)
+        $mockDelay = $mock->getDelay();
+
+        // Add global random delay if the handler has it enabled
+        $globalDelay = 0.0;
+        if ($this->handler !== null) {
+            $globalDelay = $this->handler->generateGlobalRandomDelay();
+        }
+
+        $totalDelay = max($mockDelay + $globalDelay, $networkConditions['delay']);
         /** @var string|null $timerId */
         $timerId = null;
 

@@ -32,6 +32,8 @@ class TestingHttpHandler extends HttpHandler
 
     /** @var array<RecordedRequest> */
     private array $requestHistory = [];
+    private ?float $globalRandomDelayMin = null;
+    private ?float $globalRandomDelayMax = null;
 
     private array $globalSettings = [
         'record_requests' => true,
@@ -96,6 +98,39 @@ class TestingHttpHandler extends HttpHandler
         }
 
         $jar = $this->cookieManager->createFileCookieJar($filename, $includeSessionCookies);
+        return $this;
+    }
+
+    /**
+     * Enable global random delay for all requests.
+     * This adds realistic network variance to all mocked requests.
+     *
+     * @param float $minSeconds Minimum delay in seconds
+     * @param float $maxSeconds Maximum delay in seconds
+     * @return self
+     */
+    public function withGlobalRandomDelay(float $minSeconds, float $maxSeconds): self
+    {
+        if ($minSeconds > $maxSeconds) {
+            throw new \InvalidArgumentException('Minimum delay cannot be greater than maximum delay');
+        }
+
+        $this->globalRandomDelayMin = $minSeconds;
+        $this->globalRandomDelayMax = $maxSeconds;
+
+        return $this;
+    }
+
+    /**
+     * Disable global random delay.
+     *
+     * @return self
+     */
+    public function withoutGlobalRandomDelay(): self
+    {
+        $this->globalRandomDelayMin = null;
+        $this->globalRandomDelayMax = null;
+
         return $this;
     }
 
@@ -329,10 +364,33 @@ class TestingHttpHandler extends HttpHandler
         return $this->requestHistory;
     }
 
+
+    /**
+     * Generate global random delay if enabled.
+     *
+     * @return float
+     */
+    public function generateGlobalRandomDelay(): float
+    {
+        if ($this->globalRandomDelayMin === null || $this->globalRandomDelayMax === null) {
+            return 0.0;
+        }
+
+        $precision = 1000000;
+        $randomInt = random_int(
+            (int)($this->globalRandomDelayMin * $precision),
+            (int)($this->globalRandomDelayMax * $precision)
+        );
+
+        return $randomInt / $precision;
+    }
+
     public function reset(): void
     {
         $this->mockedRequests = [];
         $this->requestHistory = [];
+        $this->globalRandomDelayMin = null;
+        $this->globalRandomDelayMax = null;
         $this->fileManager->cleanup();
         $this->cookieManager->cleanup();
     }

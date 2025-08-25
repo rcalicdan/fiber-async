@@ -12,6 +12,8 @@ class MockedRequest
     private array $headerMatchers = [];
     private ?string $bodyMatcher = null;
     private ?array $jsonMatcher = null;
+    private ?float $randomDelayMin = null;
+    private ?float $randomDelayMax = null;
 
     private int $statusCode = 200;
     private string $body = '';
@@ -201,8 +203,54 @@ class MockedRequest
         return $this->headers;
     }
 
+    /**
+     * Set random delay range for persistent mocks.
+     */
+    public function setRandomDelayRange(float $min, float $max): void
+    {
+        $this->randomDelayMin = $min;
+        $this->randomDelayMax = $max;
+    }
+
+    /**
+     * Get random delay range.
+     */
+    public function getRandomDelayRange(): ?array
+    {
+        if ($this->randomDelayMin === null || $this->randomDelayMax === null) {
+            return null;
+        }
+
+        return [$this->randomDelayMin, $this->randomDelayMax];
+    }
+
+    /**
+     * Generate a new random delay for this request.
+     */
+    public function generateRandomDelay(): float
+    {
+        if ($this->randomDelayMin === null || $this->randomDelayMax === null) {
+            return $this->delay;
+        }
+
+        $precision = 1000000;
+        $randomInt = random_int(
+            (int)($this->randomDelayMin * $precision),
+            (int)($this->randomDelayMax * $precision)
+        );
+
+        return $randomInt / $precision;
+    }
+
+    /**
+     * Get delay, generating random delay if range is set.
+     */
     public function getDelay(): float
     {
+        if ($this->randomDelayMin !== null && $this->randomDelayMax !== null) {
+            return $this->generateRandomDelay();
+        }
+
         return $this->timeoutAfter ?? $this->delay;
     }
 
@@ -268,6 +316,8 @@ class MockedRequest
             'body' => $this->body,
             'headers' => $this->headers,
             'delay' => $this->delay,
+            'randomDelayMin' => $this->randomDelayMin,
+            'randomDelayMax' => $this->randomDelayMax,
             'error' => $this->error,
             'persistent' => $this->persistent,
             'timeoutAfter' => $this->timeoutAfter,
@@ -286,6 +336,8 @@ class MockedRequest
         $request->body = $data['body'];
         $request->headers = $data['headers'] ?? [];
         $request->delay = $data['delay'] ?? 0;
+        $request->randomDelayMin = $data['randomDelayMin'] ?? null;
+        $request->randomDelayMax = $data['randomDelayMax'] ?? null;
         $request->error = $data['error'];
         $request->persistent = $data['persistent'] ?? false;
         $request->timeoutAfter = $data['timeoutAfter'] ?? null;
