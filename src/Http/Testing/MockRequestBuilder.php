@@ -75,7 +75,7 @@ class MockRequestBuilder
 
     public function json(array $data): self
     {
-        $this->request->setBody(json_encode($data, JSON_PRETTY_PRINT));
+        $this->request->setBody(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
         $this->request->addResponseHeader('Content-Type', 'application/json');
 
         return $this;

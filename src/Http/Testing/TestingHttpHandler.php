@@ -2,7 +2,6 @@
 
 namespace Rcalicdan\FiberAsync\Http\Testing;
 
-use Exception;
 use Psr\SimpleCache\CacheInterface;
 use Rcalicdan\FiberAsync\Http\CacheConfig;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
@@ -10,6 +9,7 @@ use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
 use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
+use Rcalicdan\FiberAsync\Http\Testing\Exceptions\MockAssertionException;
 use Rcalicdan\FiberAsync\Http\Testing\Services\CookieManager;
 use Rcalicdan\FiberAsync\Http\Testing\Services\FileManager;
 use Rcalicdan\FiberAsync\Http\Testing\Services\NetworkSimulator;
@@ -225,7 +225,7 @@ class TestingHttpHandler extends HttpHandler
         }
 
         if ($this->globalSettings['strict_matching'] && !$this->globalSettings['allow_passthrough']) {
-            throw new Exception("No mock found for: {$method} {$url}");
+            throw new MockAssertionException("No mock found for: {$method} {$url}");
         }
 
         return parent::fetch($url, $options);
@@ -277,13 +277,13 @@ class TestingHttpHandler extends HttpHandler
             }
         }
 
-        throw new Exception("Expected request not found: {$method} {$url}");
+        throw new MockAssertionException("Expected request not found: {$method} {$url}");
     }
 
     public function assertNoRequestsMade(): void
     {
         if (! empty($this->requestHistory)) {
-            throw new Exception('Expected no requests, but ' . count($this->requestHistory) . ' were made');
+            throw new MockAssertionException('Expected no requests, but ' . count($this->requestHistory) . ' were made');
         }
     }
 
@@ -291,7 +291,7 @@ class TestingHttpHandler extends HttpHandler
     {
         $actual = count($this->requestHistory);
         if ($actual !== $expected) {
-            throw new Exception("Expected {$expected} requests, but {$actual} were made");
+            throw new MockAssertionException("Expected {$expected} requests, but {$actual} were made");
         }
     }
 
@@ -301,7 +301,7 @@ class TestingHttpHandler extends HttpHandler
     public function assertCookieSent(string $name): void
     {
         if (empty($this->requestHistory)) {
-            throw new Exception('No requests have been made');
+            throw new MockAssertionException('No requests have been made');
         }
 
         $lastRequest = end($this->requestHistory);
@@ -356,7 +356,7 @@ class TestingHttpHandler extends HttpHandler
         }
 
         if ($this->globalSettings['strict_matching'] && !$this->globalSettings['allow_passthrough']) {
-            throw new Exception("No mock found for: {$method} {$url}");
+            throw new MockAssertionException("No mock found for: {$method} {$url}");
         }
 
         return parent::sendRequest($url, $curlOptions, null, $retryConfig); // Pass null for cache config to avoid loop
@@ -385,7 +385,7 @@ class TestingHttpHandler extends HttpHandler
             function (int $attemptNumber) use ($method, $url, $curlOptions) {
                 $this->recordRequest($method, $url, $curlOptions);
                 $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
-                if ($match === null) throw new Exception("No mock for attempt #{$attemptNumber}: {$method} {$url}");
+                if ($match === null) throw new MockAssertionException("No mock for attempt #{$attemptNumber}: {$method} {$url}");
                 if (!$match['mock']->isPersistent()) array_splice($this->mockedRequests, $match['index'], 1);
                 return $match['mock'];
             }

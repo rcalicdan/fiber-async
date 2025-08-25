@@ -1,49 +1,114 @@
 <?php
 
-use Rcalicdan\FiberAsync\Api\HttpTestingAssistant;
+use Rcalicdan\FiberAsync\Api\Http;
+use Rcalicdan\FiberAsync\Api\Task;
+use Rcalicdan\FiberAsync\Http\CookieJar;
 
-require 'vendor/autoload.php';
+require __DIR__ . '/vendor/autoload.php';
 
-const URL = 'https://api.github.com/users/octocat';
+echo "====== Mocked Integration Test for Sending Cookies ======\n";
 
-$mockClient = HttpTestingAssistant::fresh()->activate();
+Task::run(function () {
+    $handler = Http::testing();
 
-$mockClient->mock('GET')
-    ->url(URL)
-    ->respondWithStatus(200)
-    ->header('Content-Type', 'application/json')
-    ->header('Content-Length', '1800')
-    ->json([
-        "success" => true,
-        "data" => [
-            "login" => "octocat",
-            "id" => 1,
-            "node_id" => "MDQ6VXNlcjE=",
-            "avatar_url" => "https://avatars.githubusercontent.com/u/583231?v=4",
-            "gravatar_id" => "",
-            "url" => "https://api.github.com/users/octocat",
-            "html_url" => "https://github.com/octocat",
-            "followers_url" => "https://api.github.com/users/octocat/followers",
-            "following_url" => "https://api.github.com/users/octocat/following{/other_user}",
-            "gists_url" => "https://api.github.com/users/octocat/gists{/gist_id}",
-            "starred_url" => "https://api.github.com/users/octocat/starred{/owner}{/repo}",
-            "subscriptions_url" => "https://api.github.com/users/octocat/subscriptions",
-            "organizations_url" => "https://api.github.com/users/octocat/orgs",
-            "repos_url" => "https://api.github.com/users/octocat/repos",
-            "events_url" => "https://api.github.com/users/octocat/events{/privacy}",
-            "received_events_url" => "https://api.github.com/users/octocat/received_events",
-            "type" => "User",
-            "site_admin" => false,
-        ],
-    ])
-    ->delay(random_float(0.1, 0.5))
-    ->register();
+    // =================================================================
+    // Test Case 1: Manually Attaching Cookies to a Request
+    // =================================================================
+    echo "\n--- Test Case 1: Manually Attaching Cookies --- \n";
+    echo "Goal: Use the ->cookie() and ->cookies() helpers to send cookies.\n\n";
 
+    $handler->reset();
+    $url = 'https://api.example.com/analytics';
+    $expectedCookieHeader = 'user_preference=dark; tracking_id=xyz-987';
 
-$start = microtime(true);
-run(function () use ($mockClient) {
-    $response = await(fetch(URL));
-    echo json_encode($response->getHeaders(), JSON_PRETTY_PRINT);
+    // Mock the endpoint to expect the exact Cookie header.
+    Http::mock('POST')
+        ->url($url)
+        ->withHeader('Cookie', $expectedCookieHeader)
+        ->respondWithStatus(200)
+        ->json(['status' => 'ok'])->persistent()
+        ->register();
+
+    echo "   -> Sending request with manually attached cookies...\n";
+
+    $response = await(
+        Http::request()
+            ->cookie('user_preference', 'dark') // Attach one cookie
+            ->cookies(['tracking_id' => 'xyz-987']) // Attach another
+            ->post($url)
+    );
+
+    if ($response->status() === 200) {
+        echo "   ✓ SUCCESS: Received 200 OK. The mock received the correct Cookie header.\n";
+    } else {
+        echo "   ✗ FAILED: The mock did not match. Status received: " . $response->status() . "\n";
+    }
+    
+    // Assert against the history for good measure.
+    $handler->assertRequestMade('POST', $url);
+    $lastRequest = $handler->getRequestHistory()[0];
+    $sentCookieHeader = '';
+    foreach ($lastRequest->options[CURLOPT_HTTPHEADER] as $header) {
+        if (str_starts_with($header, 'Cookie:')) {
+            $sentCookieHeader = substr($header, 8);
+            break;
+        }
+    }
+    
+    if ($sentCookieHeader === $expectedCookieHeader) {
+         echo "   ✓ SUCCESS: Verified from history that the correct Cookie header was sent.\n";
+    } else {
+         echo "   ✗ FAILED: History shows incorrect Cookie header: '{$sentCookieHeader}'.\n";
+    }
+
+    // =================================================================
+    // Test Case 2: Automatically Attaching Cookies from a CookieJar
+    // =================================================================
+    echo "\n--- Test Case 2: Attaching Cookies from a CookieJar --- \n";
+    echo "Goal: Pre-populate a CookieJar and verify the request sends its cookies.\n\n";
+
+    $handler->reset();
+    $url = 'https://api.example.com/session-check';
+    $domain = 'api.example.com';
+    $sessionId = 'pre-existing-session-abc';
+
+    // 1. Arrange: Create and pre-populate a cookie jar.
+    $cookieJar = new CookieJar();
+    $cookieJar->setCookie(new \Rcalicdan\FiberAsync\Http\Cookie(
+        'session_id',
+        $sessionId,
+        time() + 3600,
+        $domain,
+        '/'
+    ));
+    
+    echo "   -> CookieJar pre-populated with 'session_id: {$sessionId}'.\n";
+
+    // 2. Mock the endpoint to expect the cookie from the jar.
+    Http::mock('GET')
+        ->url($url)
+        ->withHeader('Cookie', "session_id={$sessionId}")
+        ->respondWithStatus(200)
+        ->json(['status' => 'session_valid'])
+        ->persistent()
+        ->register();
+
+    echo "   -> Sending request with the pre-populated cookie jar...\n";
+
+    // 3. Act: Attach the jar and make the request.
+    $response = await(
+        Http::request()
+            ->useCookieJar($cookieJar)
+            ->get($url)
+    );
+
+    if ($response->status() === 200) {
+        echo "   ✓ SUCCESS: Received 200 OK. The cookie from the jar was sent automatically.\n";
+    } else {
+        echo "   ✗ FAILED: The mock did not match. Status received: " . $response->status() . "\n";
+    }
+
+    $handler->assertRequestCount(1);
 });
-$end = microtime(true);
-echo "\nTime taken: " . ($end - $start) . " seconds\n";
+
+echo "\n====== Cookie Sending Test Complete ======\n";

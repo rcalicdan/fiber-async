@@ -6,6 +6,7 @@ use Rcalicdan\FiberAsync\Http\Cookie;
 use Rcalicdan\FiberAsync\Http\CookieJar;
 use Rcalicdan\FiberAsync\Http\FileCookieJar;
 use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
+use Rcalicdan\FiberAsync\Http\Testing\Exceptions\MockAssertionException;
 use Rcalicdan\FiberAsync\Http\Testing\MockedRequest;
 use Rcalicdan\FiberAsync\Http\Uri;
 
@@ -194,7 +195,7 @@ class CookieManager
     {
         $jar = $this->getCookieJar($jarName);
         if ($jar === null) {
-            throw new \Exception("Cookie jar '{$jarName}' not found");
+            throw new MockAssertionException("Cookie jar '{$jarName}' not found");
         }
         
         foreach ($jar->getAllCookies() as $cookie) {
@@ -203,7 +204,7 @@ class CookieManager
             }
         }
         
-        throw new \Exception("Cookie '{$name}' not found in jar '{$jarName}'");
+        throw new MockAssertionException("Cookie '{$name}' not found in jar '{$jarName}'");
     }
     
     /**
@@ -213,7 +214,7 @@ class CookieManager
     {
         $jar = $this->getCookieJar($jarName);
         if ($jar === null) {
-            throw new \Exception("Cookie jar '{$jarName}' not found");
+            throw new MockAssertionException("Cookie jar '{$jarName}' not found");
         }
         
         foreach ($jar->getAllCookies() as $cookie) {
@@ -221,11 +222,11 @@ class CookieManager
                 if ($cookie->getValue() === $expectedValue) {
                     return;
                 }
-                throw new \Exception("Cookie '{$name}' has value '{$cookie->getValue()}', expected '{$expectedValue}'");
+                throw new MockAssertionException("Cookie '{$name}' has value '{$cookie->getValue()}', expected '{$expectedValue}'");
             }
         }
         
-        throw new \Exception("Cookie '{$name}' not found in jar '{$jarName}'");
+        throw new MockAssertionException("Cookie '{$name}' not found in jar '{$jarName}'");
     }
     
     /**
@@ -245,7 +246,7 @@ class CookieManager
         }
         
         if (empty($cookieHeader)) {
-            throw new \Exception("No Cookie header found in request");
+            throw new MockAssertionException("No Cookie header found in request");
         }
         
         $cookies = [];
@@ -257,7 +258,7 @@ class CookieManager
         }
         
         if (!isset($cookies[$name])) {
-            throw new \Exception("Cookie '{$name}' was not sent in request. Sent cookies: " . implode(', ', array_keys($cookies)));
+            throw new MockAssertionException("Cookie '{$name}' was not sent in request. Sent cookies: " . implode(', ', array_keys($cookies)));
         }
     }
     
