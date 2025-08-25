@@ -7,7 +7,7 @@ use Rcalicdan\FiberAsync\Promise\Promise;
 
 require 'vendor/autoload.php';
 
-function delay(float $seconds, string $message): PromiseInterface
+function testDelay(float $seconds, string $message): PromiseInterface
 {
     return new Promise(
         fn ($resolve, $reject) => EventLoop::getInstance()
@@ -34,7 +34,7 @@ $eventLoop->nextTick(function () {
 
 // Schedule some work
 echo "3. About to schedule timer work\n";
-$promise = delay(1, 'hello from timer');
+$promise = testDelay(1, 'hello from timer');
 
 // Schedule defer (runs after current work phase)
 $eventLoop->defer(function () {
@@ -71,7 +71,7 @@ $eventLoop->defer(function () use ($tempData) {
 });
 
 // Schedule main work
-$promise = delay(0.5, 'work completed');
+$promise = testDelay(0.5, 'work completed');
 
 echo "Starting manual event loop for cleanup test...\n";
 $eventLoop->run();

@@ -29,7 +29,7 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
  * @method static PromiseInterface<Response> put(string $url, array<string, mixed> $data = []) Performs a PUT request.
  * @method static PromiseInterface<Response> delete(string $url) Performs a DELETE request.
  * @method static PromiseInterface<Response> fetch(string $url, array<int|string, mixed> $options = []) A flexible, fetch-like request method.
- * @method static CancellablePromiseInterface<StreamingResponse> stream(string $url, array<int|string, mixed> $options = [], ?callable $onChunk = null) Streams a response body.
+ * @method static CancellablePromiseInterface<StreamingResponse> stream(string $url, mixed> $options = [], ?callable $onChunk = null) Streams a response body.
  * @method static CancellablePromiseInterface<array{file: string, status: int, headers: array<mixed>}> download(string $url, string $destination, array<int|string, mixed> $options = []) Downloads a file.
  *
  * Request builder methods:
