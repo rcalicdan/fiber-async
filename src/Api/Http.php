@@ -29,7 +29,7 @@ use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
  * @method static PromiseInterface<Response> put(string $url, array<string, mixed> $data = []) Performs a PUT request.
  * @method static PromiseInterface<Response> delete(string $url) Performs a DELETE request.
  * @method static PromiseInterface<Response> fetch(string $url, array<int|string, mixed> $options = []) A flexible, fetch-like request method.
- * @method static CancellablePromiseInterface<StreamingResponse> stream(string $url, mixed> $options = [], ?callable $onChunk = null) Streams a response body.
+ * @method static CancellablePromiseInterface<StreamingResponse> stream(string $url, ?callable $onChunk = null) Streams a response body.
  * @method static CancellablePromiseInterface<array{file: string, status: int, headers: array<mixed>}> download(string $url, string $destination, array<int|string, mixed> $options = []) Downloads a file.
  *
  * Request builder methods:
@@ -212,8 +212,8 @@ class Http
     /**
      * Magic method to handle dynamic static calls.
      *
-     * This enables both direct HTTP methods (get, post, etc.) and request builder methods
-     * (cache, timeout, headers, etc.) to be called directly on Http.
+     * All calls are delegated to a fresh Request instance, providing a clean
+     * fluent interface that starts from the Http facade.
      *
      * @param  string  $method  The method name.
      * @param  array<mixed>  $arguments  The arguments to pass to the method.
@@ -221,23 +221,12 @@ class Http
      */
     public static function __callStatic(string $method, array $arguments)
     {
-        $handler = self::getInstance();
+        $request = self::request();
 
-        $directMethods = ['get', 'post', 'put', 'delete', 'fetch', 'stream', 'download'];
-
-        if (in_array($method, $directMethods)) {
-            return $handler->{$method}(...$arguments);
-        }
-
-        $request = $handler->request();
         if (method_exists($request, $method)) {
             return $request->{$method}(...$arguments);
         }
 
-        if (method_exists($handler, $method)) {
-            return $handler->{$method}(...$arguments);
-        }
-
-        throw new \BadMethodCallException("Method {$method} does not exist on ".static::class);
+        throw new \BadMethodCallException("Method {$method} does not exist on " . static::class);
     }
 }
