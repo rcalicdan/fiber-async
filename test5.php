@@ -6,7 +6,7 @@ use Rcalicdan\FiberAsync\Api\Task;
 require 'vendor/autoload.php';
 
 Task::run(function () {
-    $handler = Http::testing();
+    $handler = Http::startTesting();
 
     // =================================================================
     // Test Case 1: Verifying Predicted Failure

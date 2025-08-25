@@ -11,7 +11,7 @@ echo "====== Integration Tests for Interceptors ======\n";
 echo "NOTE: This script makes REAL network requests to httpbin.org.\n\n";
 
 Task::run(function () {
-    $handler = Http::testing(); // Use handler only for assertions, not mocking.
+    $handler = Http::startTesting(); // Use handler only for assertions, not mocking.
     $handler->setAllowPassthrough(true); // Ensure real network calls can be made.
 
     try {

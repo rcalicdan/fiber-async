@@ -10,7 +10,7 @@ require 'vendor/autoload.php';
 echo "====== Mocked Integration Test for Cookie Handling ======\n";
 
 Task::run(function () {
-    $handler = Http::testing();
+    $handler = Http::startTesting();
     $handler->reset();
 
     // For this test, we can use an in-memory CookieJar.

@@ -9,7 +9,7 @@ echo "====== Integration Test for Cookies AND Caching (FIXED) ======\n";
 
 Task::run(function () {
     // 1. Arrange: Get testing handler and reset FIRST
-    $handler = Http::testing();
+    $handler = Http::startTesting();
     $handler->reset(); // Reset first
     
     // THEN enable cookie jar (after reset)

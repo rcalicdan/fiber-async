@@ -9,7 +9,7 @@ require 'vendor/autoload.php';
 echo "====== Advanced Caching Failure Mode Tests (with Delay) ======\n";
 
 Task::run(function () {
-    $handler = Http::testing();
+    $handler = Http::startTesting();
 
     // =================================================================
     // Test Case 1: Verify that Error Responses Are NOT Cached

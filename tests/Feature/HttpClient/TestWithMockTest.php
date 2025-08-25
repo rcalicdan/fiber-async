@@ -5,7 +5,7 @@ use Rcalicdan\FiberAsync\Promise\Promise;
 
 beforeAll(function () {
     resetEventLoop();
-    Http::testing();
+    Http::startTesting();
     Http::mock('GET')
         ->url('https://api.github.com/users/octocat')
         ->respondWithStatus(200)

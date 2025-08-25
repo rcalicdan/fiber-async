@@ -11,7 +11,8 @@ class NetworkSimulator
         'connection_failure_rate' => 0.0,
         'default_delay' => 0,
         'timeout_delay' => 30.0,
-        'retryable_failure_rate' => 0.0, 
+        'retryable_failure_rate' => 0.0,
+        'random_delay' => null, 
     ];
 
     public function enable(array $settings = []): void
@@ -45,7 +46,7 @@ class NetworkSimulator
             'should_timeout' => false,
             'should_fail' => false,
             'error_message' => null,
-            'delay' => $this->calculateDelay($this->settings['default_delay']),
+            'delay' => $this->getNetworkDelay(),
         ];
 
         if (mt_rand() / mt_getrandmax() < $this->settings['timeout_rate']) {
@@ -91,6 +92,18 @@ class NetworkSimulator
     }
 
     /**
+     * Get network delay, prioritizing random_delay setting over default_delay
+     */
+    private function getNetworkDelay(): float
+    {
+        if ($this->settings['random_delay'] !== null) {
+            return $this->calculateDelay($this->settings['random_delay']);
+        }
+
+        return $this->calculateDelay($this->settings['default_delay']);
+    }
+
+    /**
      * Calculate delay based on configuration (supports both single values and arrays)
      *
      * @param mixed $delayConfig
@@ -102,25 +115,47 @@ class NetworkSimulator
             if (count($delayConfig) === 2 && is_numeric($delayConfig[0]) && is_numeric($delayConfig[1])) {
                 $min = (float) $delayConfig[0];
                 $max = (float) $delayConfig[1];
-                return $min + (mt_rand() / mt_getrandmax()) * ($max - $min);
+                return $this->generateAggressiveRandomFloat($min, $max);
             } elseif (count($delayConfig) > 0) {
                 $randomKey = array_rand($delayConfig);
                 return (float) $delayConfig[$randomKey];
             }
-            
+
             return 0.0;
         }
 
         return (float) $delayConfig;
     }
 
+    /**
+     * Generate aggressive random float with high precision for realistic network simulation.
+     */
+    private function generateAggressiveRandomFloat(float $min, float $max): float
+    {
+        $precision = 1000000;
+        $randomInt = random_int(
+            (int)($min * $precision),
+            (int)($max * $precision)
+        );
+
+        return $randomInt / $precision;
+    }
+
     public function getDefaultDelay(): float
     {
-        return $this->calculateDelay($this->settings['default_delay']);
+        return $this->getNetworkDelay();
     }
 
     public function getTimeoutDelay(): float
     {
         return $this->calculateDelay($this->settings['timeout_delay']);
+    }
+
+    /**
+     * Set random delay range for network simulation
+     */
+    public function setRandomDelay(array $delayRange): void
+    {
+        $this->settings['random_delay'] = $delayRange;
     }
 }

@@ -127,7 +127,7 @@ class Http
      * 
      * @return TestingHttpHandler The testing handler for configuration
      */
-    public static function testing(): TestingHttpHandler
+    public static function startTesting(): TestingHttpHandler
     {
         self::$isTesting = true;
 
@@ -148,7 +148,7 @@ class Http
     public static function getTestingHandler(): TestingHttpHandler
     {
         if (! self::$isTesting || self::$testingInstance === null) {
-            throw new \RuntimeException('Not in testing mode. Call Http::testing() first.');
+            throw new \RuntimeException('Not in testing mode. Call Http::startTesting() first.');
         }
 
         return self::$testingInstance;
@@ -165,7 +165,7 @@ class Http
     public static function mock(string $method = '*'): MockRequestBuilder
     {
         if (! self::$isTesting || self::$testingInstance === null) {
-            throw new \RuntimeException('Not in testing mode. Call Http::testing() first.');
+            throw new \RuntimeException('Not in testing mode. Call Http::startTesting() first.');
         }
 
         return self::$testingInstance->mock($method);

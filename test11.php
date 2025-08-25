@@ -9,7 +9,7 @@ require 'vendor/autoload.php';
 
 echo "------Test With Http Acynchonous Race-------- \n\n";
 Task::run(function () {
-    Http::testing();
+    Http::startTesting();
 
     $url1 = 'https://testing.api.fake1';
     $url2 = 'https://testing.api.fake2';

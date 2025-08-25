@@ -11,7 +11,7 @@ echo "====== Easy HTTP Testing Example ======\n\n";
 try {
     Task::run(function () {
         // Enable testing mode - this is all you need!
-        $testHandler = Http::testing();
+        $testHandler = Http::startTesting();
 
         echo "1. Setting up mocks using the static API...\n";
 
@@ -150,7 +150,7 @@ echo "====== Fully Automatic HTTP Testing ======\n\n";
 try {
     Task::run(function () {
         // Enable testing - that's it!
-        Http::testing();
+        Http::startTesting();
 
         echo "1. Setting up automatic downloads...\n";
 
@@ -237,7 +237,7 @@ echo "====== Enhanced HTTP Testing with Temp File Management ======\n\n";
 try {
     Task::run(function () {
         // Enable testing mode
-        $testHandler = Http::testing();
+        $testHandler = Http::startTesting();
 
         echo "1. Setting up mocks and temp files...\n";
 

@@ -210,7 +210,9 @@ class ResponseFactory
             $globalDelay = $this->handler->generateGlobalRandomDelay();
         }
 
-        $totalDelay = max($mockDelay + $globalDelay, $networkConditions['delay']);
+        // Use the maximum of all delays, not sum
+        $totalDelay = max($mockDelay, $globalDelay, $networkConditions['delay'] ?? 0);
+
         /** @var string|null $timerId */
         $timerId = null;
 

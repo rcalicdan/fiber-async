@@ -2,25 +2,39 @@
 
 use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Api\Task;
+use Rcalicdan\FiberAsync\Api\Timer;
+use Rcalicdan\FiberAsync\Promise\Promise;
 
 require 'vendor/autoload.php';
-echo "====== Global Random Delay Simulation Test ======\n";
-Task::run(function () {
-    $handler = Http::testing()
-        ->withGlobalRandomDelay(1, 1);
 
-    $handler->mock("GET")->url('https://testings.com')
+echo "====== Global Random Delay Simulation Test ======\n";
+
+Task::run(function () {
+    $url = 'https://testings.com';
+
+    $handler = Http::startTesting()
+        ->withGlobalRandomDelay(1.0, 1.5);
+
+    $handler->mock("GET")->url($url)
         ->respondWithStatus(200)
-        ->Json([
+        ->json([
             "status_code" => 200,
-            "sucess" => true
+            "success" => true
         ])
+        ->persistent()
         ->register();
-    
+
+    $response = Http::fetch($url);
+
     $startTime = microtime(true);
-    $response = await(Http::get('https://testings.com'));
-    $endTime = microtime(true);
-    $executionTime = $endTime - $startTime;
-    echo "Execution Time: " . $executionTime . " seconds\n";
-    echo $response->getBody();
+
+    await($response);
+
+    print round(microtime(true) - $startTime, 2) . " seconds response 1 time\n";
+
+    $startTime2 = microtime(true);
+
+    await($response);
+
+    print round(microtime(true) - $startTime2, 2) . " seconds response 2 time\n";
 });

@@ -7,7 +7,7 @@ use function PHPUnit\Framework\assertDirectoryIsNotReadable;
 require 'vendor/autoload.php';
 
 Task::run(function () {
-    $handler = Http::testing();
+    $handler = Http::startTesting();
 
     echo "--- Testing Mocked Stream with Multiple Chunks --- \n";
 

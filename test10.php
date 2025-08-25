@@ -9,7 +9,7 @@ require 'vendor/autoload.php';
 
 echo "------Test With Http Request Builder-------- \n\n";
 Task::run(function () {
-    Http::testing();
+    Http::startTesting();
 
     $url = 'https://testing.api.fake';
 
@@ -34,7 +34,7 @@ echo "\n\n-----End Test---------\n\n";
 
 echo "------Test With Http fetch-------- \n\n";
 Task::run(function () {
-    Http::testing();
+    Http::startTesting();
 
     $url = 'https://testing.api.fake';
 

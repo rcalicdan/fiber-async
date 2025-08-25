@@ -15,6 +15,7 @@ use Rcalicdan\FiberAsync\Http\Testing\Services\FileManager;
 use Rcalicdan\FiberAsync\Http\Testing\Services\NetworkSimulator;
 use Rcalicdan\FiberAsync\Http\Testing\Services\RequestMatcher;
 use Rcalicdan\FiberAsync\Http\Testing\Services\ResponseFactory;
+use Rcalicdan\FiberAsync\Http\Traits\FetchOptionTrait;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
@@ -27,6 +28,8 @@ use Symfony\Component\Cache\Psr16Cache;
  */
 class TestingHttpHandler extends HttpHandler
 {
+    use FetchOptionTrait;
+
     /** @var array<MockedRequest> */
     private array $mockedRequests = [];
 
@@ -53,7 +56,7 @@ class TestingHttpHandler extends HttpHandler
         $this->fileManager = new FileManager;
         $this->networkSimulator = new NetworkSimulator;
         $this->requestMatcher = new RequestMatcher;
-        $this->responseFactory = new ResponseFactory($this->networkSimulator);
+        $this->responseFactory = new ResponseFactory($this->networkSimulator, $this);
         $this->cookieManager = new CookieManager;
     }
 
@@ -134,11 +137,83 @@ class TestingHttpHandler extends HttpHandler
         return $this;
     }
 
+    /**
+     * Enable network simulation with array-based random delays
+     */
+    public function withNetworkRandomDelay(array $delayRange, array $additionalSettings = []): self
+    {
+        $settings = array_merge($additionalSettings, ['random_delay' => $delayRange]);
+        $this->networkSimulator->enable($settings);
+        return $this;
+    }
+
     public function enableNetworkSimulation(array $settings = []): self
     {
         $this->networkSimulator->enable($settings);
 
         return $this;
+    }
+
+    public function disableNetworkSimulation(): self
+    {
+        $this->networkSimulator->disable();
+        return $this;
+    }
+
+    /**
+     * Simulate poor network conditions
+     */
+    public function withPoorNetwork(): self
+    {
+        return $this->enableNetworkSimulation([
+            'random_delay' => [1.0, 5.0],
+            'failure_rate' => 0.15,
+            'timeout_rate' => 0.1,
+            'connection_failure_rate' => 0.08,
+            'retryable_failure_rate' => 0.12
+        ]);
+    }
+
+    /**
+     * Simulate fast, reliable network
+     */
+    public function withFastNetwork(): self
+    {
+        return $this->enableNetworkSimulation([
+            'random_delay' => [0.01, 0.1],
+            'failure_rate' => 0.001,
+            'timeout_rate' => 0.0,
+            'connection_failure_rate' => 0.0,
+            'retryable_failure_rate' => 0.001
+        ]);
+    }
+
+    /**
+     * Simulate mobile network conditions
+     */
+    public function withMobileNetwork(): self
+    {
+        return $this->enableNetworkSimulation([
+            'random_delay' => [0.5, 3.0],
+            'failure_rate' => 0.08,
+            'timeout_rate' => 0.05,
+            'connection_failure_rate' => 0.03,
+            'retryable_failure_rate' => 0.1
+        ]);
+    }
+
+    /**
+     * Simulate unstable network with intermittent issues
+     */
+    public function withUnstableNetwork(): self
+    {
+        return $this->enableNetworkSimulation([
+            'random_delay' => [0.2, 4.0],
+            'failure_rate' => 0.2,
+            'timeout_rate' => 0.15,
+            'connection_failure_rate' => 0.1,
+            'retryable_failure_rate' => 0.25
+        ]);
     }
 
     public function setAutoTempFileManagement(bool $enabled): self
@@ -229,7 +304,24 @@ class TestingHttpHandler extends HttpHandler
     {
         $method = strtoupper($options['method'] ?? 'GET');
         $curlOptions = $this->normalizeFetchOptions($url, $options);
-        $retryConfig = $this->extractRetryConfigFromOptions($options);
+        $retryConfig = $this->extractRetryConfig($options);
+
+        $cacheConfig = $this->extractCacheConfig($options);
+
+        if ($cacheConfig !== null && $method === 'GET') {
+            $cache = $cacheConfig->cache ?? self::getTestingDefaultCache();
+            $cacheKey = self::generateCacheKey($url);
+            $cachedItem = $cache->get($cacheKey);
+
+            if ($cachedItem !== null && is_array($cachedItem) && time() < ($cachedItem['expires_at'] ?? 0)) {
+                $this->recordRequest('GET (FROM CACHE)', $url, $curlOptions);
+                return Promise::resolved(new Response(
+                    $cachedItem['body'],
+                    $cachedItem['status'],
+                    $cachedItem['headers']
+                ));
+            }
+        }
 
         if ($retryConfig !== null) {
             return $this->executeWithMockRetry($url, $options, $retryConfig, $method);
@@ -256,7 +348,26 @@ class TestingHttpHandler extends HttpHandler
                 return $this->responseFactory->createMockedStream($mock, $onChunk, [$this, 'createStream']);
             }
 
-            return $this->responseFactory->createMockedResponse($mock);
+            $responsePromise = $this->responseFactory->createMockedResponse($mock);
+
+            if ($cacheConfig !== null && $method === 'GET') {
+                return $responsePromise->then(function ($response) use ($cacheConfig, $url) {
+                    if ($response instanceof Response && $response->ok()) {
+                        $cache = $cacheConfig->cache ?? self::getTestingDefaultCache();
+                        $cacheKey = self::generateCacheKey($url);
+                        $expiry = time() + $cacheConfig->ttlSeconds;
+                        $cache->set($cacheKey, [
+                            'body' => $response->body(),
+                            'status' => $response->status(),
+                            'headers' => $response->headers(),
+                            'expires_at' => $expiry,
+                        ], $cacheConfig->ttlSeconds);
+                    }
+                    return $response;
+                });
+            }
+
+            return $responsePromise;
         }
 
         if ($this->globalSettings['strict_matching'] && !$this->globalSettings['allow_passthrough']) {
@@ -272,6 +383,7 @@ class TestingHttpHandler extends HttpHandler
         if ($onChunk) {
             $options['on_chunk'] = $onChunk;
         }
+
         return $this->fetch($url, $options);
     }
 
@@ -286,6 +398,7 @@ class TestingHttpHandler extends HttpHandler
         }
 
         $options['download'] = $destination;
+
         return $this->fetch($url, $options);
     }
 
@@ -473,33 +586,6 @@ class TestingHttpHandler extends HttpHandler
         }
 
         return $finalPromise;
-    }
-
-    private function extractRetryConfigFromOptions(array $options): ?RetryConfig
-    {
-        if (! isset($options['retry'])) {
-            return null;
-        }
-        $retry = $options['retry'];
-        if ($retry === true) {
-            return new RetryConfig;
-        }
-        if ($retry instanceof RetryConfig) {
-            return $retry;
-        }
-        if (is_array($retry)) {
-            return new RetryConfig(
-                maxRetries: (int) ($retry['max_retries'] ?? 3),
-                baseDelay: (float) ($retry['base_delay'] ?? 1.0),
-                maxDelay: (float) ($retry['max_delay'] ?? 60.0),
-                backoffMultiplier: (float) ($retry['backoff_multiplier'] ?? 2.0),
-                jitter: (bool) ($retry['jitter'] ?? true),
-                retryableStatusCodes: $retry['retryable_status_codes'] ?? [408, 429, 500, 502, 503, 504],
-                retryableExceptions: $retry['retryable_exceptions'] ?? ['cURL error', 'timeout', 'connection failed']
-            );
-        }
-
-        return null;
     }
 
     private function recordRequest(string $method, string $url, array $options): void

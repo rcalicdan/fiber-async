@@ -9,7 +9,7 @@ require __DIR__ . '/vendor/autoload.php';
 echo "====== Mocked Integration Test for Sending Cookies ======\n";
 
 Task::run(function () {
-    $handler = Http::testing();
+    $handler = Http::startTesting();
 
     // =================================================================
     // Test Case 1: Manually Attaching Cookies to a Request

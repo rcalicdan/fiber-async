@@ -7,7 +7,7 @@ use Rcalicdan\FiberAsync\Http\Testing\TestingHttpHandler;
 require 'vendor/autoload.php';
 
 Task::run(function () {
-    $handler = Http::testing();
+    $handler = Http::startTesting();
 
     // =================================================================
     // Test Case 1: Verifying Retry Logic on a Streaming Request

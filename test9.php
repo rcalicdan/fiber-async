@@ -14,7 +14,7 @@ echo "NOTE: This script uses the testing framework and makes NO real network req
 
 Task::run(function () {
     // Enable testing mode
-    $handler = Http::testing();
+    $handler = Http::startTesting();
 
     try {
         // =================================================================
