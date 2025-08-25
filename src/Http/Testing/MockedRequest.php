@@ -63,7 +63,7 @@ class MockedRequest
     }
 
     /**
-     * @param array<string> $chunks
+     * @param  array<string>  $chunks
      */
     public function setBodySequence(array $chunks): void
     {
@@ -74,7 +74,7 @@ class MockedRequest
     public function addResponseHeader(string $name, string $value): void
     {
         if (isset($this->headers[$name])) {
-            if (!is_array($this->headers[$name])) {
+            if (! is_array($this->headers[$name])) {
                 $this->headers[$name] = [$this->headers[$name]];
             }
             $this->headers[$name][] = $value;
@@ -124,7 +124,7 @@ class MockedRequest
         }
 
         if ($this->urlPattern !== null) {
-            if (!$this->urlMatches($this->urlPattern, $url)) {
+            if (! $this->urlMatches($this->urlPattern, $url)) {
                 return false;
             }
         }
@@ -173,7 +173,7 @@ class MockedRequest
             return true;
         }
 
-        if (fnmatch($normalizedPattern . '/', $normalizedUrl . '/')) {
+        if (fnmatch($normalizedPattern.'/', $normalizedUrl.'/')) {
             return true;
         }
 
@@ -235,8 +235,8 @@ class MockedRequest
 
         $precision = 1000000;
         $randomInt = random_int(
-            (int)($this->randomDelayMin * $precision),
-            (int)($this->randomDelayMax * $precision)
+            (int) ($this->randomDelayMin * $precision),
+            (int) ($this->randomDelayMax * $precision)
         );
 
         return $randomInt / $precision;

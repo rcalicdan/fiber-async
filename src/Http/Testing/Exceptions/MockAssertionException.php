@@ -1,5 +1,4 @@
-<?php 
-
+<?php
 
 namespace Rcalicdan\FiberAsync\Http\Testing\Exceptions;
 

@@ -2,8 +2,6 @@
 
 use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Api\Task;
-use Rcalicdan\FiberAsync\Api\Timer;
-use Rcalicdan\FiberAsync\Promise\Promise;
 
 require 'vendor/autoload.php';
 
@@ -15,14 +13,14 @@ Task::run(function () {
     $url2 = 'https://testing.api.fake2';
     $url3 = 'https://testing.api.fake3';
 
-
     Http::mock('GET')
         ->url($url1)
         ->respondWithStatus(200)
         ->json(['message' => 'success from fake 1'])
         ->delay(0.1)
         ->persistent()
-        ->register();
+        ->register()
+    ;
 
     Http::mock('GET')
         ->url($url2)
@@ -31,7 +29,8 @@ Task::run(function () {
 
         ->delay(0.2)
         ->persistent()
-        ->register();
+        ->register()
+    ;
 
     Http::mock('GET')
         ->url($url3)
@@ -39,7 +38,8 @@ Task::run(function () {
         ->json(['message' => 'success from fake 3'])
         ->delay(0.3)
         ->persistent()
-        ->register();
+        ->register()
+    ;
 
     $result = await(race([
         Http::get($url1)->then(function ($response) {
@@ -47,11 +47,11 @@ Task::run(function () {
         }),
         Http::get($url2)->then(function ($response) {
             echo $response->getBody()->getContents();
-            echo "this should not print";
+            echo 'this should not print';
         }),
         Http::get($url3)->then(function ($response) {
             echo $response->getBody()->getContents();
-            echo "this should not print either";
+            echo 'this should not print either';
         }),
     ]));
 
@@ -68,12 +68,11 @@ Task::run(function () {
         }),
         Http::get('https://httpbin.org/delay/3')->then(function ($response) {
             echo $response->getBody()->getContents();
-            echo "this should not print";
+            echo 'this should not print';
         }),
         Http::get('https://httpbin.org/delay/5')->then(function ($response) {
             echo $response->getBody()->getContents();
-            echo "this should not print either";
+            echo 'this should not print either';
         }),
     ]));
 });
-

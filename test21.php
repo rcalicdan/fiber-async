@@ -3,18 +3,18 @@
 use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Api\Task;
 
-require __DIR__ . '/vendor/autoload.php';
+require __DIR__.'/vendor/autoload.php';
 
 echo "====== Integration Test for Cookies AND Caching (FIXED) ======\n";
 
 Task::run(function () {
     // 1. Arrange: Get testing handler and reset FIRST
-    $handler = Http::startTesting();
+    $handler = Http::enableTesting();
     $handler->reset(); // Reset first
-    
+
     // THEN enable cookie jar (after reset)
     $handler->withGlobalCookieJar();
-    
+
     // Set as global instance
     Http::setInstance($handler);
 
@@ -29,17 +29,19 @@ Task::run(function () {
     $handler->mock('POST')->url($loginUrl)
         ->setCookie('session_id', $sessionId)
         ->json(['status' => 'logged_in'])
-        ->register();
+        ->register()
+    ;
 
     $handler->mock('GET')->url($profileUrl)
         ->withHeader('Cookie', "session_id={$sessionId}")
         ->delay(0.5)
         ->json(['user' => 'John Doe', 'timestamp' => microtime(true)])
-        ->register();
+        ->register()
+    ;
 
     echo "\n--- Step 1: Logging in to establish a session ---\n";
     $loginResponse = await(Http::post($loginUrl));
-    
+
     // Now we can safely assert cookie exists
     $handler->assertCookieExists('session_id');
     echo "   ✓ SUCCESS: Logged in and session cookie was stored.\n";
@@ -55,7 +57,7 @@ Task::run(function () {
     );
     $elapsed1 = microtime(true) - $start1;
     $data1 = $response1->json();
-    echo "   -> Request finished in " . round($elapsed1, 4) . "s.\n";
+    echo '   -> Request finished in '.round($elapsed1, 4)."s.\n";
 
     // -----------------------------------------------------------------
 
@@ -68,12 +70,12 @@ Task::run(function () {
     );
     $elapsed2 = microtime(true) - $start2;
     $data2 = $response2->json();
-    echo "   -> Request finished in " . round($elapsed2, 4) . "s.\n";
+    echo '   -> Request finished in '.round($elapsed2, 4)."s.\n";
 
     // -----------------------------------------------------------------
 
     echo "\n--- Step 4: Verifying Results ---\n";
-    
+
     // Assertion 1: Verify the second call was a cache hit
     if ($elapsed2 < 0.01 && $data1['timestamp'] === $data2['timestamp']) {
         echo "   ✓ SUCCESS: Second request was an instant cache hit with the correct data.\n";
@@ -86,16 +88,20 @@ Task::run(function () {
         $handler->assertRequestCount(3);
         echo "   ✓ SUCCESS: Correct number of requests recorded.\n";
     } catch (Exception $e) {
-        echo "   ✗ FAILED: " . $e->getMessage() . "\n";
+        echo '   ✗ FAILED: '.$e->getMessage()."\n";
     }
-    
+
     // Final check: Request history
     $history = $handler->getRequestHistory();
     $profile_miss_found = false;
     $profile_hit_found = false;
-    foreach($history as $req) {
-        if ($req->url === $profileUrl && $req->method === 'GET') $profile_miss_found = true;
-        if ($req->url === $profileUrl && $req->method === 'GET (FROM CACHE)') $profile_hit_found = true;
+    foreach ($history as $req) {
+        if ($req->url === $profileUrl && $req->method === 'GET') {
+            $profile_miss_found = true;
+        }
+        if ($req->url === $profileUrl && $req->method === 'GET (FROM CACHE)') {
+            $profile_hit_found = true;
+        }
     }
 
     if ($profile_miss_found && $profile_hit_found) {
@@ -103,7 +109,7 @@ Task::run(function () {
     } else {
         echo "   ✗ FAILED: Request history is incorrect.\n";
         echo "   DEBUG: History:\n";
-        foreach($history as $req) {
+        foreach ($history as $req) {
             echo "     - {$req->method} {$req->url}\n";
         }
     }

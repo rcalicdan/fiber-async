@@ -10,15 +10,15 @@ require 'vendor/autoload.php';
 echo "====== Mocked Integration Test for Cookie Handling ======\n";
 
 Task::run(function () {
-    $handler = Http::startTesting();
+    $handler = Http::testing();
     $handler->reset();
 
     // For this test, we can use an in-memory CookieJar.
     // A FileCookieJar would also work perfectly.
-    $cookieJar = new CookieJar();
-    
+    $cookieJar = new CookieJar;
+
     // The session ID our mock server will create.
-    $sessionId = 'session-id-' . uniqid();
+    $sessionId = 'session-id-'.uniqid();
     $domain = 'api.example.com';
 
     // =================================================================
@@ -33,14 +33,15 @@ Task::run(function () {
         ->header('Set-Cookie', "session_id={$sessionId}; Path=/; HttpOnly")
         ->json(['status' => 'logged_in'])
         ->persistent()
-        ->register();
+        ->register()
+    ;
 
     // Create a request builder instance that will use our cookie jar.
     $client = Http::request()->useCookieJar($cookieJar);
 
     $response = await($client->post("https://{$domain}/login"));
 
-    echo "   -> Login request complete. Status: " . $response->status() . "\n";
+    echo '   -> Login request complete. Status: '.$response->status()."\n";
 
     // Assert that the cookie jar now contains our session cookie.
     $cookies = $cookieJar->getCookies($domain, '/');
@@ -61,25 +62,27 @@ Task::run(function () {
         ->withHeader('Cookie', "session_id={$sessionId}") // This matcher is the key
         ->respondWithStatus(200)
         ->persistent()
-        ->json(['user_id' => 123, 'name' => 'John Doe']);
-    
+        ->json(['user_id' => 123, 'name' => 'John Doe'])
+    ;
+
     // Add a fallback mock in case the cookie is NOT sent.
     Http::mock('GET')
         ->url("https://{$domain}/api/profile")
         ->respondWithStatus(401)
         ->persistent()
-        ->json(['error' => 'Unauthorized']);
+        ->json(['error' => 'Unauthorized'])
+    ;
 
     echo "   -> Making request to /api/profile. The cookie should be sent automatically...\n";
 
     // Use the same client instance, which holds the cookie jar.
     $profileResponse = await($client->get("https://{$domain}/api/profile"));
-    
+
     if ($profileResponse->status() === 200) {
         echo "   ✓ SUCCESS: Received 200 OK. The cookie was sent and accepted.\n";
-        echo "   User Data: " . $profileResponse->body() . "\n";
+        echo '   User Data: '.$profileResponse->body()."\n";
     } else {
-        echo "   ✗ FAILED: Did not get a 200 OK. Status: " . $profileResponse->status() . "\n";
+        echo '   ✗ FAILED: Did not get a 200 OK. Status: '.$profileResponse->status()."\n";
     }
 
     // =================================================================
@@ -95,12 +98,13 @@ Task::run(function () {
         ->header('Set-Cookie', $expiredCookieHeader)
         ->json(['status' => 'logged_out'])
         ->persistent()
-        ->register();
+        ->register()
+    ;
 
     $logoutResponse = await($client->post("https://{$domain}/logout"));
 
-    echo "   -> Logout request complete. Status: " . $logoutResponse->status() . "\n";
-    
+    echo '   -> Logout request complete. Status: '.$logoutResponse->status()."\n";
+
     // The cookie jar should now be empty after processing the expired cookie.
     $cookiesAfterLogout = $cookieJar->getCookies($domain, '/');
     if (count($cookiesAfterLogout) === 0) {

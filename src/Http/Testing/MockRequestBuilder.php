@@ -64,12 +64,12 @@ class MockRequestBuilder
      * Sets a sequence of body chunks to simulate a multi-chunk stream.
      * This will cause the onChunk callback to be fired for each item in the array.
      *
-     * @param array<string> $chunks
-     * @return self
+     * @param  array<string>  $chunks
      */
     public function bodies(array $chunks): self
     {
         $this->request->setBodySequence($chunks);
+
         return $this;
     }
 
@@ -99,9 +99,8 @@ class MockRequestBuilder
      * Set a random delay range for more realistic network simulation.
      * Uses aggressive randomization for realistic variation.
      *
-     * @param float $minSeconds Minimum delay in seconds
-     * @param float $maxSeconds Maximum delay in seconds
-     * @return self
+     * @param  float  $minSeconds  Minimum delay in seconds
+     * @param  float  $maxSeconds  Maximum delay in seconds
      */
     public function randomDelay(float $minSeconds, float $maxSeconds): self
     {
@@ -118,16 +117,16 @@ class MockRequestBuilder
     /**
      * Generate aggressive random float with high precision for realistic network simulation.
      *
-     * @param float $min Minimum value
-     * @param float $max Maximum value
+     * @param  float  $min  Minimum value
+     * @param  float  $max  Maximum value
      * @return float Random float with microsecond precision
      */
     private function generateAggressiveRandomFloat(float $min, float $max): float
     {
         $precision = 1000000;
         $randomInt = random_int(
-            (int)($min * $precision),
-            (int)($max * $precision)
+            (int) ($min * $precision),
+            (int) ($max * $precision)
         );
 
         return $randomInt / $precision;
@@ -137,9 +136,8 @@ class MockRequestBuilder
      * Create a persistent mock with random delays for each request.
      * Each request will have a different random delay within the specified range.
      *
-     * @param float $minSeconds Minimum delay in seconds
-     * @param float $maxSeconds Maximum delay in seconds
-     * @return self
+     * @param  float  $minSeconds  Minimum delay in seconds
+     * @param  float  $maxSeconds  Maximum delay in seconds
      */
     public function randomPersistentDelay(float $minSeconds, float $maxSeconds): self
     {
@@ -250,7 +248,7 @@ class MockRequestBuilder
         // Create failure mocks for attempts 1 through (successAttempt - 1)
         for ($i = 1; $i < $successAttempt; $i++) {
             $this->handler->addMockedRequest(
-                $this->createFailureMock($failureError . " (attempt {$i})", true)
+                $this->createFailureMock($failureError." (attempt {$i})", true)
             );
         }
 
@@ -280,7 +278,7 @@ class MockRequestBuilder
             }
 
             if (is_string($failure)) {
-                $mock->setError($failure . " (attempt {$attemptNumber})");
+                $mock->setError($failure." (attempt {$attemptNumber})");
                 $mock->setRetryable(true);
             } elseif (is_array($failure)) {
                 $error = $failure['error'] ?? 'Request failed';
@@ -293,7 +291,7 @@ class MockRequestBuilder
                     $mock->setBody(json_encode(['error' => $error]));
                     $mock->addResponseHeader('Content-Type', 'application/json');
                 } else {
-                    $mock->setError($error . " (attempt {$attemptNumber})");
+                    $mock->setError($error." (attempt {$attemptNumber})");
                 }
                 $mock->setRetryable($retryable);
                 $mock->setDelay($delay);
@@ -504,8 +502,9 @@ class MockRequestBuilder
      */
     public function setCookies(array $cookies): self
     {
-        $cookieService = new CookieManager();
+        $cookieService = new CookieManager;
         $cookieService->mockSetCookies($this->request, $cookies);
+
         return $this;
     }
 
@@ -523,7 +522,7 @@ class MockRequestBuilder
         ?string $sameSite = null
     ): self {
         $config = compact('value', 'path', 'domain', 'expires', 'secure', 'httpOnly', 'sameSite');
-        $config = array_filter($config, fn($v) => $v !== null);
+        $config = array_filter($config, fn ($v) => $v !== null);
 
         return $this->setCookies([$name => $config]);
     }
@@ -534,8 +533,9 @@ class MockRequestBuilder
     public function expectCookies(array $expectedCookies): self
     {
         foreach ($expectedCookies as $name => $value) {
-            $this->request->addHeaderMatcher('cookie', $name . '=' . $value);
+            $this->request->addHeaderMatcher('cookie', $name.'='.$value);
         }
+
         return $this;
     }
 

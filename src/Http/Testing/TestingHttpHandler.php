@@ -2,26 +2,22 @@
 
 namespace Rcalicdan\FiberAsync\Http\Testing;
 
-use Psr\SimpleCache\CacheInterface;
 use Rcalicdan\FiberAsync\Http\CacheConfig;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
-use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
-use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Http\Testing\Exceptions\MockAssertionException;
+use Rcalicdan\FiberAsync\Http\Testing\Services\CacheManager;
 use Rcalicdan\FiberAsync\Http\Testing\Services\CookieManager;
 use Rcalicdan\FiberAsync\Http\Testing\Services\FileManager;
 use Rcalicdan\FiberAsync\Http\Testing\Services\NetworkSimulator;
+use Rcalicdan\FiberAsync\Http\Testing\Services\RequestExecutor;
 use Rcalicdan\FiberAsync\Http\Testing\Services\RequestMatcher;
+use Rcalicdan\FiberAsync\Http\Testing\Services\RequestRecorder;
 use Rcalicdan\FiberAsync\Http\Testing\Services\ResponseFactory;
 use Rcalicdan\FiberAsync\Http\Traits\FetchOptionTrait;
-use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
-use Rcalicdan\FiberAsync\Promise\Promise;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
-use Symfony\Component\Cache\Psr16Cache;
 
 /**
  * Robust HTTP testing handler with comprehensive mocking capabilities.
@@ -33,8 +29,6 @@ class TestingHttpHandler extends HttpHandler
     /** @var array<MockedRequest> */
     private array $mockedRequests = [];
 
-    /** @var array<RecordedRequest> */
-    private array $requestHistory = [];
     private ?float $globalRandomDelayMin = null;
     private ?float $globalRandomDelayMax = null;
 
@@ -49,6 +43,9 @@ class TestingHttpHandler extends HttpHandler
     private RequestMatcher $requestMatcher;
     private ResponseFactory $responseFactory;
     private CookieManager $cookieManager;
+    private RequestExecutor $requestExecutor;
+    private RequestRecorder $requestRecorder;
+    private CacheManager $cacheManager;
 
     public function __construct()
     {
@@ -56,8 +53,19 @@ class TestingHttpHandler extends HttpHandler
         $this->fileManager = new FileManager;
         $this->networkSimulator = new NetworkSimulator;
         $this->requestMatcher = new RequestMatcher;
-        $this->responseFactory = new ResponseFactory($this->networkSimulator, $this);
         $this->cookieManager = new CookieManager;
+        $this->requestRecorder = new RequestRecorder;
+        $this->cacheManager = new CacheManager;
+        $this->responseFactory = new ResponseFactory($this->networkSimulator, $this);
+
+        $this->requestExecutor = new RequestExecutor(
+            $this->requestMatcher,
+            $this->responseFactory,
+            $this->fileManager,
+            $this->cookieManager,
+            $this->requestRecorder,
+            $this->cacheManager
+        );
     }
 
     public function mock(string $method = '*'): MockRequestBuilder
@@ -88,6 +96,7 @@ class TestingHttpHandler extends HttpHandler
         }
 
         $this->cookieManager->setDefaultCookieJar($jar);
+
         return $this;
     }
 
@@ -101,6 +110,7 @@ class TestingHttpHandler extends HttpHandler
         }
 
         $jar = $this->cookieManager->createFileCookieJar($filename, $includeSessionCookies);
+
         return $this;
     }
 
@@ -108,9 +118,8 @@ class TestingHttpHandler extends HttpHandler
      * Enable global random delay for all requests.
      * This adds realistic network variance to all mocked requests.
      *
-     * @param float $minSeconds Minimum delay in seconds
-     * @param float $maxSeconds Maximum delay in seconds
-     * @return self
+     * @param  float  $minSeconds  Minimum delay in seconds
+     * @param  float  $maxSeconds  Maximum delay in seconds
      */
     public function withGlobalRandomDelay(float $minSeconds, float $maxSeconds): self
     {
@@ -126,8 +135,6 @@ class TestingHttpHandler extends HttpHandler
 
     /**
      * Disable global random delay.
-     *
-     * @return self
      */
     public function withoutGlobalRandomDelay(): self
     {
@@ -144,6 +151,7 @@ class TestingHttpHandler extends HttpHandler
     {
         $settings = array_merge($additionalSettings, ['random_delay' => $delayRange]);
         $this->networkSimulator->enable($settings);
+
         return $this;
     }
 
@@ -157,6 +165,7 @@ class TestingHttpHandler extends HttpHandler
     public function disableNetworkSimulation(): self
     {
         $this->networkSimulator->disable();
+
         return $this;
     }
 
@@ -170,7 +179,7 @@ class TestingHttpHandler extends HttpHandler
             'failure_rate' => 0.15,
             'timeout_rate' => 0.1,
             'connection_failure_rate' => 0.08,
-            'retryable_failure_rate' => 0.12
+            'retryable_failure_rate' => 0.12,
         ]);
     }
 
@@ -184,7 +193,7 @@ class TestingHttpHandler extends HttpHandler
             'failure_rate' => 0.001,
             'timeout_rate' => 0.0,
             'connection_failure_rate' => 0.0,
-            'retryable_failure_rate' => 0.001
+            'retryable_failure_rate' => 0.001,
         ]);
     }
 
@@ -198,7 +207,7 @@ class TestingHttpHandler extends HttpHandler
             'failure_rate' => 0.08,
             'timeout_rate' => 0.05,
             'connection_failure_rate' => 0.03,
-            'retryable_failure_rate' => 0.1
+            'retryable_failure_rate' => 0.1,
         ]);
     }
 
@@ -212,7 +221,7 @@ class TestingHttpHandler extends HttpHandler
             'failure_rate' => 0.2,
             'timeout_rate' => 0.15,
             'connection_failure_rate' => 0.1,
-            'retryable_failure_rate' => 0.25
+            'retryable_failure_rate' => 0.25,
         ]);
     }
 
@@ -233,6 +242,7 @@ class TestingHttpHandler extends HttpHandler
     public function setRecordRequests(bool $enabled): self
     {
         $this->globalSettings['record_requests'] = $enabled;
+        $this->requestRecorder->setRecordRequests($enabled);
 
         return $this;
     }
@@ -250,131 +260,27 @@ class TestingHttpHandler extends HttpHandler
      */
     public function sendRequest(string $url, array $curlOptions, ?CacheConfig $cacheConfig = null, ?RetryConfig $retryConfig = null): PromiseInterface
     {
-        if (!isset($curlOptions['_cookie_jar'])) {
-            $this->cookieManager->applyCookiesToCurlOptions($curlOptions, $url);
-        }
-
-        if ($cacheConfig !== null && ($curlOptions[CURLOPT_CUSTOMREQUEST] ?? 'GET') === 'GET') {
-            $cache = $cacheConfig->cache ?? self::getTestingDefaultCache();
-            $cacheKey = self::generateCacheKey($url);
-            $cachedItem = $cache->get($cacheKey);
-
-            if ($cachedItem !== null && is_array($cachedItem) && time() < ($cachedItem['expires_at'] ?? 0)) {
-                $this->recordRequest('GET (FROM CACHE)', $url, $curlOptions);
-                return Promise::resolved(new Response(
-                    $cachedItem['body'],
-                    $cachedItem['status'],
-                    $cachedItem['headers']
-                ));
-            }
-        }
-
-        $promise = $this->executeMockedRequest($url, $curlOptions, $retryConfig);
-
-        if ($promise instanceof PromiseInterface) {
-            $promise = $promise->then(function ($response) use ($url) {
-                if ($response instanceof Response) {
-                    $this->cookieManager->processSetCookieHeaders($response->getHeaders());
-                }
-                return $response;
-            });
-        }
-
-        if ($cacheConfig !== null) {
-            return $promise->then(function ($response) use ($cacheConfig, $url) {
-                if ($response instanceof Response && $response->ok()) {
-                    $cache = $cacheConfig->cache ?? self::getTestingDefaultCache();
-                    $cacheKey = self::generateCacheKey($url);
-                    $expiry = time() + $cacheConfig->ttlSeconds;
-                    $cache->set($cacheKey, [
-                        'body' => $response->body(),
-                        'status' => $response->status(),
-                        'headers' => $response->headers(),
-                        'expires_at' => $expiry,
-                    ], $cacheConfig->ttlSeconds);
-                }
-                return $response;
-            });
-        }
-
-        return $promise;
+        return $this->requestExecutor->executeSendRequest(
+            $url,
+            $curlOptions,
+            $this->mockedRequests,
+            $this->globalSettings,
+            $cacheConfig,
+            $retryConfig,
+            fn ($url, $curlOptions, $cacheConfig, $retryConfig) => parent::sendRequest($url, $curlOptions, $cacheConfig, $retryConfig)
+        );
     }
 
     public function fetch(string $url, array $options = []): PromiseInterface|CancellablePromiseInterface
     {
-        $method = strtoupper($options['method'] ?? 'GET');
-        $curlOptions = $this->normalizeFetchOptions($url, $options);
-        $retryConfig = $this->extractRetryConfig($options);
-
-        $cacheConfig = $this->extractCacheConfig($options);
-
-        if ($cacheConfig !== null && $method === 'GET') {
-            $cache = $cacheConfig->cache ?? self::getTestingDefaultCache();
-            $cacheKey = self::generateCacheKey($url);
-            $cachedItem = $cache->get($cacheKey);
-
-            if ($cachedItem !== null && is_array($cachedItem) && time() < ($cachedItem['expires_at'] ?? 0)) {
-                $this->recordRequest('GET (FROM CACHE)', $url, $curlOptions);
-                return Promise::resolved(new Response(
-                    $cachedItem['body'],
-                    $cachedItem['status'],
-                    $cachedItem['headers']
-                ));
-            }
-        }
-
-        if ($retryConfig !== null) {
-            return $this->executeWithMockRetry($url, $options, $retryConfig, $method);
-        }
-
-        $this->recordRequest($method, $url, $curlOptions);
-
-        $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
-
-        if ($match !== null) {
-            $mock = $match['mock'];
-
-            if (!$mock->isPersistent()) {
-                array_splice($this->mockedRequests, $match['index'], 1);
-            }
-
-            if (isset($options['download'])) {
-                $destination = $options['download'];
-                return $this->responseFactory->createMockedDownload($mock, $destination, $this->fileManager);
-            }
-
-            if (isset($options['stream']) && $options['stream'] === true) {
-                $onChunk = $options['on_chunk'] ?? $options['onChunk'] ?? null;
-                return $this->responseFactory->createMockedStream($mock, $onChunk, [$this, 'createStream']);
-            }
-
-            $responsePromise = $this->responseFactory->createMockedResponse($mock);
-
-            if ($cacheConfig !== null && $method === 'GET') {
-                return $responsePromise->then(function ($response) use ($cacheConfig, $url) {
-                    if ($response instanceof Response && $response->ok()) {
-                        $cache = $cacheConfig->cache ?? self::getTestingDefaultCache();
-                        $cacheKey = self::generateCacheKey($url);
-                        $expiry = time() + $cacheConfig->ttlSeconds;
-                        $cache->set($cacheKey, [
-                            'body' => $response->body(),
-                            'status' => $response->status(),
-                            'headers' => $response->headers(),
-                            'expires_at' => $expiry,
-                        ], $cacheConfig->ttlSeconds);
-                    }
-                    return $response;
-                });
-            }
-
-            return $responsePromise;
-        }
-
-        if ($this->globalSettings['strict_matching'] && !$this->globalSettings['allow_passthrough']) {
-            throw new MockAssertionException("No mock found for: {$method} {$url}");
-        }
-
-        return parent::fetch($url, $options);
+        return $this->requestExecutor->executeFetch(
+            $url,
+            $options,
+            $this->mockedRequests,
+            $this->globalSettings,
+            fn ($url, $options) => parent::fetch($url, $options),
+            [$this, 'createStream']
+        );
     }
 
     public function stream(string $url, array $options = [], ?callable $onChunk = null): CancellablePromiseInterface
@@ -391,7 +297,7 @@ class TestingHttpHandler extends HttpHandler
     {
         if ($destination === null) {
             $destination = $this->fileManager->createTempFile(
-                'download_' . uniqid() . '.tmp'
+                'download_'.uniqid().'.tmp'
             );
         } else {
             $this->fileManager->trackFile($destination);
@@ -419,7 +325,7 @@ class TestingHttpHandler extends HttpHandler
 
     public function assertRequestMade(string $method, string $url, array $options = []): void
     {
-        foreach ($this->requestHistory as $request) {
+        foreach ($this->requestRecorder->getRequestHistory() as $request) {
             if ($this->requestMatcher->matchesRequest($request, $method, $url, $options)) {
                 return;
             }
@@ -430,14 +336,15 @@ class TestingHttpHandler extends HttpHandler
 
     public function assertNoRequestsMade(): void
     {
-        if (! empty($this->requestHistory)) {
-            throw new MockAssertionException('Expected no requests, but ' . count($this->requestHistory) . ' were made');
+        $history = $this->requestRecorder->getRequestHistory();
+        if (! empty($history)) {
+            throw new MockAssertionException('Expected no requests, but '.count($history).' were made');
         }
     }
 
     public function assertRequestCount(int $expected): void
     {
-        $actual = count($this->requestHistory);
+        $actual = count($this->requestRecorder->getRequestHistory());
         if ($actual !== $expected) {
             throw new MockAssertionException("Expected {$expected} requests, but {$actual} were made");
         }
@@ -448,11 +355,12 @@ class TestingHttpHandler extends HttpHandler
      */
     public function assertCookieSent(string $name): void
     {
-        if (empty($this->requestHistory)) {
+        $history = $this->requestRecorder->getRequestHistory();
+        if (empty($history)) {
             throw new MockAssertionException('No requests have been made');
         }
 
-        $lastRequest = end($this->requestHistory);
+        $lastRequest = end($history);
         $this->cookieManager->assertCookieSent($name, $lastRequest->options);
     }
 
@@ -474,14 +382,11 @@ class TestingHttpHandler extends HttpHandler
 
     public function getRequestHistory(): array
     {
-        return $this->requestHistory;
+        return $this->requestRecorder->getRequestHistory();
     }
-
 
     /**
      * Generate global random delay if enabled.
-     *
-     * @return float
      */
     public function generateGlobalRandomDelay(): float
     {
@@ -491,8 +396,8 @@ class TestingHttpHandler extends HttpHandler
 
         $precision = 1000000;
         $randomInt = random_int(
-            (int)($this->globalRandomDelayMin * $precision),
-            (int)($this->globalRandomDelayMax * $precision)
+            (int) ($this->globalRandomDelayMin * $precision),
+            (int) ($this->globalRandomDelayMax * $precision)
         );
 
         return $randomInt / $precision;
@@ -501,98 +406,10 @@ class TestingHttpHandler extends HttpHandler
     public function reset(): void
     {
         $this->mockedRequests = [];
-        $this->requestHistory = [];
         $this->globalRandomDelayMin = null;
         $this->globalRandomDelayMax = null;
         $this->fileManager->cleanup();
         $this->cookieManager->cleanup();
-    }
-
-    private function executeMockedRequest(string $url, array $curlOptions, ?RetryConfig $retryConfig): PromiseInterface
-    {
-        $method = $curlOptions[CURLOPT_CUSTOMREQUEST] ?? 'GET';
-        $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
-
-        if ($retryConfig !== null && $match !== null) {
-            return $this->executeWithMockRetry($url, $curlOptions, $retryConfig, $method);
-        }
-
-        $this->recordRequest($method, $url, $curlOptions);
-
-        if ($match !== null) {
-            if (!$match['mock']->isPersistent()) {
-                array_splice($this->mockedRequests, $match['index'], 1);
-            }
-            return $this->responseFactory->createMockedResponse($match['mock']);
-        }
-
-        if ($this->globalSettings['strict_matching'] && !$this->globalSettings['allow_passthrough']) {
-            throw new MockAssertionException("No mock found for: {$method} {$url}");
-        }
-
-        return parent::sendRequest($url, $curlOptions, null, $retryConfig); // Pass null for cache config to avoid loop
-    }
-
-    private static function getTestingDefaultCache(): CacheInterface
-    {
-        static $cache = null;
-        if ($cache === null) {
-            $cache = new Psr16Cache(new ArrayAdapter());
-        }
-        return $cache;
-    }
-
-    /**
-     * Execute a mocked request with retry logic.
-     * This method is responsible for consuming one mock per attempt.
-     */
-    private function executeWithMockRetry(string $url, array $options, RetryConfig $retryConfig, string $method): PromiseInterface
-    {
-        $finalPromise = new CancellablePromise();
-        $curlOptions = $this->normalizeFetchOptions($url, $options);
-
-        $retryPromise = $this->responseFactory->createRetryableMockedResponse(
-            $retryConfig,
-            function (int $attemptNumber) use ($method, $url, $curlOptions) {
-                $this->recordRequest($method, $url, $curlOptions);
-                $match = $this->requestMatcher->findMatchingMock($this->mockedRequests, $method, $url, $curlOptions);
-                if ($match === null) throw new MockAssertionException("No mock for attempt #{$attemptNumber}: {$method} {$url}");
-                if (!$match['mock']->isPersistent()) array_splice($this->mockedRequests, $match['index'], 1);
-                return $match['mock'];
-            }
-        );
-
-        $retryPromise->then(
-            function ($successfulResponse) use ($options, $finalPromise) {
-                if (isset($options['download'])) {
-                    $destPath = $options['download'] ?? $this->fileManager->createTempFile();
-                    file_put_contents($destPath, $successfulResponse->body());
-                    $result = ['file' => $destPath, 'status' => $successfulResponse->status(), 'headers' => $successfulResponse->headers(), 'size' => strlen($successfulResponse->body())];
-                    $finalPromise->resolve($result);
-                } elseif (isset($options['stream']) && $options['stream'] === true) {
-                    $onChunk = $options['on_chunk'] ?? null;
-                    $body = $successfulResponse->body();
-                    if ($onChunk) $onChunk($body);
-                    $finalPromise->resolve(new StreamingResponse($this->createStream($body), $successfulResponse->status(), $successfulResponse->headers()));
-                } else {
-                    $finalPromise->resolve($successfulResponse);
-                }
-            },
-            fn($reason) => $finalPromise->reject($reason)
-        );
-
-        if ($retryPromise instanceof CancellablePromiseInterface) {
-            $finalPromise->setCancelHandler(fn() => $retryPromise->cancel());
-        }
-
-        return $finalPromise;
-    }
-
-    private function recordRequest(string $method, string $url, array $options): void
-    {
-        if (! $this->globalSettings['record_requests']) {
-            return;
-        }
-        $this->requestHistory[] = new RecordedRequest($method, $url, $options, microtime(true));
+        $this->requestRecorder->reset();
     }
 }

@@ -3,7 +3,6 @@
 namespace Rcalicdan\FiberAsync\Http;
 
 use Rcalicdan\FiberAsync\Api\Async;
-use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\RequestInterface;
@@ -82,13 +81,13 @@ class Request extends Message implements RequestInterface
      * The callback will receive the Request object before it is sent. It MUST
      * return a Request object, allowing for immutable modifications.
      *
-     * @param callable(Request): Request $callback
-     * @return self
+     * @param  callable(Request): Request  $callback
      */
     public function interceptRequest(callable $callback): self
     {
         $new = clone $this;
         $new->requestInterceptors[] = $callback;
+
         return $new;
     }
 
@@ -98,13 +97,13 @@ class Request extends Message implements RequestInterface
      * The callback will receive the final Response object. It MUST return a
      * Response object, allowing for inspection or modification.
      *
-     * @param callable(Response): Response $callback
-     * @return self
+     * @param  callable(Response): Response  $callback
      */
     public function interceptResponse(callable $callback): self
     {
         $new = clone $this;
         $new->responseInterceptors[] = $callback;
+
         return $new;
     }
 
@@ -122,7 +121,7 @@ class Request extends Message implements RequestInterface
             $target = '/';
         }
         if ($this->uri->getQuery() !== '') {
-            $target .= '?' . $this->uri->getQuery();
+            $target .= '?'.$this->uri->getQuery();
         }
 
         return $target;
@@ -517,7 +516,7 @@ class Request extends Message implements RequestInterface
     public function get(string $url, array $query = []): PromiseInterface
     {
         if (count($query) > 0) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
         }
 
         return $this->send('GET', $url);
@@ -613,6 +612,7 @@ class Request extends Message implements RequestInterface
     {
         if (empty($this->requestInterceptors) && empty($this->responseInterceptors)) {
             $options = $this->buildCurlOptions($method, $url);
+
             return $this->handler->sendRequest($url, $options, $this->cacheConfig, $this->retryConfig);
         }
 
@@ -625,11 +625,11 @@ class Request extends Message implements RequestInterface
         // Build options and send request
         $options = $processedRequest->buildCurlOptions(
             $processedRequest->getMethod(),
-            (string)$processedRequest->getUri()
+            (string) $processedRequest->getUri()
         );
 
         $httpPromise = $this->handler->sendRequest(
-            (string)$processedRequest->getUri(),
+            (string) $processedRequest->getUri(),
             $options,
             $processedRequest->cacheConfig,
             $processedRequest->retryConfig
@@ -681,6 +681,7 @@ class Request extends Message implements RequestInterface
     ): void {
         if (empty($interceptors)) {
             $resolve($response);
+
             return;
         }
 
@@ -718,18 +719,18 @@ class Request extends Message implements RequestInterface
 
     /**
      * Add a single cookie to this request (sent as Cookie header).
-     * 
-     * @param string $name Cookie name
-     * @param string $value Cookie value
+     *
+     * @param  string  $name  Cookie name
+     * @param  string  $value  Cookie value
      * @return self For fluent method chaining.
      */
     public function cookie(string $name, string $value): self
     {
         $existingCookies = $this->getHeaderLine('Cookie');
-        $newCookie = $name . '=' . urlencode($value);
+        $newCookie = $name.'='.urlencode($value);
 
         if ($existingCookies !== '') {
-            return $this->header('Cookie', $existingCookies . '; ' . $newCookie);
+            return $this->header('Cookie', $existingCookies.'; '.$newCookie);
         } else {
             return $this->header('Cookie', $newCookie);
         }
@@ -756,16 +757,16 @@ class Request extends Message implements RequestInterface
      *
      * @return self For fluent method chaining.
      */
-    public function withCookieJar(): self 
+    public function withCookieJar(): self
     {
-        return $this->useCookieJar(new CookieJar());
+        return $this->useCookieJar(new CookieJar);
     }
 
     /**
      * Enable automatic cookie management with a file-based cookie jar.
-     * 
-     * @param string $filename The file path to store cookies.
-     * @param bool $includeSessionCookies Whether to persist session cookies (cookies without expiration).
+     *
+     * @param  string  $filename  The file path to store cookies.
+     * @param  bool  $includeSessionCookies  Whether to persist session cookies (cookies without expiration).
      * @return self For fluent method chaining.
      */
     public function withFileCookieJar(string $filename, bool $includeSessionCookies = false): self
@@ -775,22 +776,23 @@ class Request extends Message implements RequestInterface
 
     /**
      * Use a custom cookie jar for automatic cookie management.
-     * 
-     * @param CookieJarInterface $cookieJar The cookie jar to use.
+     *
+     * @param  CookieJarInterface  $cookieJar  The cookie jar to use.
      * @return self For fluent method chaining.
      */
-    public function useCookieJar(CookieJarInterface $cookieJar): self  
+    public function useCookieJar(CookieJarInterface $cookieJar): self
     {
         $new = clone $this;
         $new->cookieJar = $cookieJar;
+
         return $new;
     }
 
     /**
      * Convenience: Enable file-based cookie storage including session cookies.
      * Perfect for testing or when you want to persist all cookies.
-     * 
-     * @param string $filename The file path to store cookies.
+     *
+     * @param  string  $filename  The file path to store cookies.
      * @return self For fluent method chaining.
      */
     public function withAllCookiesSaved(string $filename): self
@@ -800,7 +802,7 @@ class Request extends Message implements RequestInterface
 
     /**
      * Clear all cookies from the current cookie jar (if any).
-     * 
+     *
      * @return self For fluent method chaining.
      */
     public function clearCookies(): self
@@ -808,6 +810,7 @@ class Request extends Message implements RequestInterface
         if ($this->cookieJar !== null) {
             $this->cookieJar->clear();
         }
+
         return $this;
     }
 
@@ -832,7 +835,7 @@ class Request extends Message implements RequestInterface
     public function cookieWithAttributes(string $name, string $value, array $attributes = []): self
     {
         if ($this->cookieJar === null) {
-            $this->cookieJar = new CookieJar();
+            $this->cookieJar = new CookieJar;
         }
 
         $cookie = new Cookie(
@@ -848,6 +851,7 @@ class Request extends Message implements RequestInterface
         );
 
         $this->cookieJar->setCookie($cookie);
+
         return $this;
     }
 
@@ -976,7 +980,7 @@ class Request extends Message implements RequestInterface
             if ($cookieHeader !== '') {
                 $existingCookies = $this->getHeaderLine('Cookie');
                 if ($existingCookies !== '') {
-                    $this->header('Cookie', $existingCookies . '; ' . $cookieHeader);
+                    $this->header('Cookie', $existingCookies.'; '.$cookieHeader);
                 } else {
                     $this->header('Cookie', $cookieHeader);
                 }
@@ -1014,7 +1018,7 @@ class Request extends Message implements RequestInterface
         if (count($this->headers) > 0) {
             $headerStrings = [];
             foreach ($this->headers as $name => $value) {
-                $headerStrings[] = "{$name}: " . implode(', ', $value);
+                $headerStrings[] = "{$name}: ".implode(', ', $value);
             }
             $options[CURLOPT_HTTPHEADER] = $headerStrings;
         }
@@ -1061,7 +1065,7 @@ class Request extends Message implements RequestInterface
         }
 
         if (($port = $this->uri->getPort()) !== null) {
-            $host .= ':' . $port;
+            $host .= ':'.$port;
         }
 
         if (isset($this->headerNames['host'])) {

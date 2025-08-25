@@ -12,7 +12,7 @@ class NetworkSimulator
         'default_delay' => 0,
         'timeout_delay' => 30.0,
         'retryable_failure_rate' => 0.0,
-        'random_delay' => null, 
+        'random_delay' => null,
     ];
 
     public function enable(array $settings = []): void
@@ -106,8 +106,7 @@ class NetworkSimulator
     /**
      * Calculate delay based on configuration (supports both single values and arrays)
      *
-     * @param mixed $delayConfig
-     * @return float
+     * @param  mixed  $delayConfig
      */
     private function calculateDelay($delayConfig): float
     {
@@ -115,9 +114,11 @@ class NetworkSimulator
             if (count($delayConfig) === 2 && is_numeric($delayConfig[0]) && is_numeric($delayConfig[1])) {
                 $min = (float) $delayConfig[0];
                 $max = (float) $delayConfig[1];
+
                 return $this->generateAggressiveRandomFloat($min, $max);
             } elseif (count($delayConfig) > 0) {
                 $randomKey = array_rand($delayConfig);
+
                 return (float) $delayConfig[$randomKey];
             }
 
@@ -134,8 +135,8 @@ class NetworkSimulator
     {
         $precision = 1000000;
         $randomInt = random_int(
-            (int)($min * $precision),
-            (int)($max * $precision)
+            (int) ($min * $precision),
+            (int) ($max * $precision)
         );
 
         return $randomInt / $precision;

@@ -1,16 +1,15 @@
 <?php
 
 use Rcalicdan\FiberAsync\Api\Http;
-use Rcalicdan\FiberAsync\Api\Task;
 use Rcalicdan\FiberAsync\Api\Promise;
-use Rcalicdan\FiberAsync\Api\Timer;
+use Rcalicdan\FiberAsync\Api\Task;
 
 require 'vendor/autoload.php';
 
 echo "====== Advanced Mocked Caching Tests ======\n";
 
 Task::run(function () {
-    $handler = Http::startTesting();
+    $handler = Http::enableTesting();
 
     // =================================================================
     // Test Case 1: Concurrent Requests (Cache Stampede Simulation)
@@ -18,7 +17,7 @@ Task::run(function () {
     echo "\n--- Test Case 1: Concurrent Requests (Cache Stampede) --- \n";
     $handler->reset();
     $url = 'https://api.example.com/concurrent-data';
-    
+
     Http::mock('GET')->url($url)->json(['data' => 'live'])->delay(1.5)->persistent()->register();
 
     echo "Starting two requests concurrently before cache is populated...\n";
@@ -26,11 +25,11 @@ Task::run(function () {
 
     $promiseA = Http::request()->cache(60)->get($url);
     $promiseB = Http::request()->cache(60)->get($url);
-    
+
     await(Promise::all([$promiseA, $promiseB]));
     $totalTime = microtime(true) - $startTime;
 
-    echo "-> Both requests completed in ~" . round($totalTime, 2) . "s (Correct, both were cache misses)\n";
+    echo '-> Both requests completed in ~'.round($totalTime, 2)."s (Correct, both were cache misses)\n";
     $handler->assertRequestCount(2); // Both requests hit the mock.
     echo "-> Verified that 2 requests hit the mock as expected.\n";
 
@@ -47,14 +46,14 @@ Task::run(function () {
     $start1 = microtime(true);
     $response1 = await(Http::request()->cache(60)->get($url));
     $elapsed1 = microtime(true) - $start1;
-    echo "   -> Finished in " . round($elapsed1, 4) . "s.\n";
+    echo '   -> Finished in '.round($elapsed1, 4)."s.\n";
 
     echo "\n2. Making the second request after the first has completed (CACHE HIT)...\n";
     $start2 = microtime(true);
     $response2 = await(Http::request()->cache(60)->get($url));
     $elapsed2 = microtime(true) - $start2;
-    echo "   -> Finished in " . round($elapsed2, 4) . "s.\n";
-    
+    echo '   -> Finished in '.round($elapsed2, 4)."s.\n";
+
     echo "\n3. Verifying results...\n";
     if ($elapsed2 < 0.01 && $elapsed2 < $elapsed1) {
         echo "   ✓ SUCCESS: Second request was virtually instant, proving it came from cache.\n";
@@ -63,9 +62,9 @@ Task::run(function () {
     }
 
     if ($response1->body() === $response2->body()) {
-         echo "   ✓ SUCCESS: Both responses returned the same cached content.\n";
+        echo "   ✓ SUCCESS: Both responses returned the same cached content.\n";
     } else {
-         echo "   ✗ FAILED: Response bodies do not match.\n";
+        echo "   ✗ FAILED: Response bodies do not match.\n";
     }
 
     // Assert that the mock was only hit ONCE.

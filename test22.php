@@ -2,8 +2,6 @@
 
 use Rcalicdan\FiberAsync\Api\Http;
 use Rcalicdan\FiberAsync\Api\Task;
-use Rcalicdan\FiberAsync\Api\Timer;
-use Rcalicdan\FiberAsync\Promise\Promise;
 
 require 'vendor/autoload.php';
 
@@ -13,28 +11,32 @@ Task::run(function () {
     $url = 'https://testings.com';
 
     $handler = Http::startTesting()
-        ->withGlobalRandomDelay(1.0, 1.5);
+        ->withGlobalRandomDelay(1.0, 1.5)
+    ;
 
-    $handler->mock("GET")->url($url)
+    $handler->mock('GET')->url($url)
         ->respondWithStatus(200)
         ->json([
-            "status_code" => 200,
-            "success" => true
+            'status_code' => 200,
+            'success' => true,
         ])
         ->persistent()
-        ->register();
+        ->register()
+    ;
 
-    $response = Http::fetch($url);
+    $startTime = microtime(true);
+
+    $response = Http::fetch($url, [
+        'cache' => true,
+    ]);
+
+    await($response);
+
+    echo microtime(true) - $startTime." seconds response 1 time\n";
 
     $startTime = microtime(true);
 
     await($response);
 
-    print round(microtime(true) - $startTime, 2) . " seconds response 1 time\n";
-
-    $startTime2 = microtime(true);
-
-    await($response);
-
-    print round(microtime(true) - $startTime2, 2) . " seconds response 2 time\n";
+    echo microtime(true) - $startTime." seconds response 2 time\n";
 });

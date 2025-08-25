@@ -32,31 +32,35 @@ Task::run(function () {
             ->respondWithStatus(200)
             ->persistent()
             ->json(['processed' => true])
-            ->register();
+            ->register()
+        ;
 
         // Create interceptors that log their execution order and timing
         $requestInterceptor1 = function (Request $request) use (&$executionLog) {
             $timestamp = microtime(true);
-            $executionLog[] = "Request Interceptor 1 - " . $timestamp;
+            $executionLog[] = 'Request Interceptor 1 - '.$timestamp;
             echo "   -> Request Interceptor #1 executed at: {$timestamp}\n";
             usleep(1000); // 1ms delay to simulate some work
+
             return $request->withHeader('X-Interceptor-1', 'executed');
         };
 
         $requestInterceptor2 = function (Request $request) use (&$executionLog) {
             $timestamp = microtime(true);
-            $executionLog[] = "Request Interceptor 2 - " . $timestamp;
+            $executionLog[] = 'Request Interceptor 2 - '.$timestamp;
             echo "   -> Request Interceptor #2 executed at: {$timestamp}\n";
             usleep(1000); // 1ms delay
             $existing = $request->getHeaderLine('X-Interceptor-1');
-            return $request->withHeader('X-Interceptor-2', $existing . '+interceptor2');
+
+            return $request->withHeader('X-Interceptor-2', $existing.'+interceptor2');
         };
 
         $requestInterceptor3 = function (Request $request) use (&$executionLog) {
             $timestamp = microtime(true);
-            $executionLog[] = "Request Interceptor 3 - " . $timestamp;
+            $executionLog[] = 'Request Interceptor 3 - '.$timestamp;
             echo "   -> Request Interceptor #3 executed at: {$timestamp}\n";
             usleep(1000); // 1ms delay
+
             return $request->withHeader('X-Final-Count', '3-interceptors');
         };
 
@@ -89,16 +93,22 @@ Task::run(function () {
         $header3Found = false;
 
         foreach ($sentHeaders as $header) {
-            if (str_contains($header, 'X-Interceptor-1: executed')) $header1Found = true;
-            if (str_contains($header, 'X-Interceptor-2: executed+interceptor2')) $header2Found = true;
-            if (str_contains($header, 'X-Final-Count: 3-interceptors')) $header3Found = true;
+            if (str_contains($header, 'X-Interceptor-1: executed')) {
+                $header1Found = true;
+            }
+            if (str_contains($header, 'X-Interceptor-2: executed+interceptor2')) {
+                $header2Found = true;
+            }
+            if (str_contains($header, 'X-Final-Count: 3-interceptors')) {
+                $header3Found = true;
+            }
         }
 
         if ($header1Found && $header2Found && $header3Found) {
             echo "   ✓ SUCCESS: All sequential interceptors executed correctly.\n";
         } else {
             echo "   ✗ FAILED: Sequential interceptor execution failed.\n";
-            echo "   Headers found: " . json_encode($sentHeaders) . "\n";
+            echo '   Headers found: '.json_encode($sentHeaders)."\n";
         }
 
         // =================================================================
@@ -116,18 +126,20 @@ Task::run(function () {
             ->url($responseUrl)
             ->persistent()
             ->json(['original' => 'data', 'step' => 0])
-            ->register();
+            ->register()
+        ;
 
         // Mock for the async helper request
         Http::mock('GET')
             ->url($asyncUrl)
             ->json(['async_data' => 'processed', 'timestamp' => microtime(true)])
-            ->register();
+            ->register()
+        ;
 
         // Sync response interceptor
         $responseInterceptor1 = function (Response $response) use (&$responseLog) {
             $timestamp = microtime(true);
-            $responseLog[] = "Response Interceptor 1 (sync) - " . $timestamp;
+            $responseLog[] = 'Response Interceptor 1 (sync) - '.$timestamp;
             echo "   -> Response Interceptor #1 (sync) executed at: {$timestamp}\n";
 
             $body = $response->json();
@@ -140,14 +152,14 @@ Task::run(function () {
         // Async response interceptor that returns a promise
         $responseInterceptor2 = function (Response $response) use (&$responseLog, $asyncUrl) {
             $timestamp = microtime(true);
-            $responseLog[] = "Response Interceptor 2 (async start) - " . $timestamp;
+            $responseLog[] = 'Response Interceptor 2 (async start) - '.$timestamp;
             echo "   -> Response Interceptor #2 (async) started at: {$timestamp}\n";
 
             // Return a promise by making an async HTTP request
             return Http::request()->get($asyncUrl)->then(
                 function ($asyncResponse) use ($response, &$responseLog, $timestamp) {
                     $endTimestamp = microtime(true);
-                    $responseLog[] = "Response Interceptor 2 (async end) - " . $endTimestamp;
+                    $responseLog[] = 'Response Interceptor 2 (async end) - '.$endTimestamp;
                     echo "   -> Response Interceptor #2 (async) completed at: {$endTimestamp}\n";
 
                     $body = $response->json();
@@ -166,7 +178,7 @@ Task::run(function () {
         // Another sync response interceptor
         $responseInterceptor3 = function (Response $response) use (&$responseLog) {
             $timestamp = microtime(true);
-            $responseLog[] = "Response Interceptor 3 (sync final) - " . $timestamp;
+            $responseLog[] = 'Response Interceptor 3 (sync final) - '.$timestamp;
             echo "   -> Response Interceptor #3 (final sync) executed at: {$timestamp}\n";
 
             $body = $response->json();
@@ -175,7 +187,8 @@ Task::run(function () {
 
             return $response
                 ->withHeader('X-Processing-Complete', 'true')
-                ->withBody(Stream::fromString(json_encode($body)));
+                ->withBody(Stream::fromString(json_encode($body)))
+            ;
         };
 
         $responseStartTime = microtime(true);
@@ -204,19 +217,19 @@ Task::run(function () {
             $finalData['sync_processed'] === true,
             $finalData['async_processed'] === true,
             $finalData['final_processed'] === true,
-            $finalResponse->header('X-Processing-Complete') === 'true'
+            $finalResponse->header('X-Processing-Complete') === 'true',
         ];
 
-        if (array_reduce($expectedConditions, fn($carry, $condition) => $carry && $condition, true)) {
+        if (array_reduce($expectedConditions, fn ($carry, $condition) => $carry && $condition, true)) {
             echo "   ✓ SUCCESS: Sequential response interceptors executed correctly.\n";
-            echo "   Final body: " . json_encode($finalData) . "\n";
+            echo '   Final body: '.json_encode($finalData)."\n";
         } else {
             echo "   ✗ FAILED: Sequential response interceptor execution failed.\n";
-            echo "   Final body: " . json_encode($finalData) . "\n";
+            echo '   Final body: '.json_encode($finalData)."\n";
         }
 
         // =================================================================
-        // Test Case 3: Response Interceptor with Promise.resolved() 
+        // Test Case 3: Response Interceptor with Promise.resolved()
         // =================================================================
         echo "\n--- Test Case 3: Response Interceptor with Promise.resolved() --- \n";
         echo "Goal: Test async response interceptor using Promise.resolved().\n\n";
@@ -228,7 +241,8 @@ Task::run(function () {
             ->url($promiseUrl)
             ->json(['original' => true])
             ->persistent()
-            ->register();
+            ->register()
+        ;
 
         $promiseInterceptor = function (Response $response) {
             echo "   -> Promise-based interceptor executing...\n";
@@ -243,6 +257,7 @@ Task::run(function () {
                 $body['processed_at'] = microtime(true);
 
                 echo "   -> Promise-based interceptor completed\n";
+
                 return $response->withBody(Stream::fromString(json_encode($body)));
             });
         };
@@ -281,7 +296,8 @@ Task::run(function () {
             ->url($concurrentUrl)
             ->json(['id' => 'concurrent-response'])
             ->persistent()
-            ->register();
+            ->register()
+        ;
 
         $concurrentStartTime = microtime(true);
         $promises = [];
@@ -294,30 +310,35 @@ Task::run(function () {
             $promise = Http::request()
                 ->interceptRequest(function (Request $request) use ($requestId) {
                     echo "     -> Request {$requestId}: Adding header X-Request-ID\n";
+
                     return $request->withHeader('X-Request-ID', $requestId);
                 })
                 ->interceptRequest(function (Request $request) use ($requestId) {
                     $existing = $request->getHeaderLine('X-Request-ID');
                     echo "     -> Request {$requestId}: Processing header (was: {$existing})\n";
-                    return $request->withHeader('X-Request-ID', $existing . '-processed');
+
+                    return $request->withHeader('X-Request-ID', $existing.'-processed');
                 })
                 ->interceptRequest(function (Request $request) use ($requestId) {
                     echo "     -> Request {$requestId}: Adding sequence complete\n";
+
                     return $request->withHeader('X-Sequence', 'complete');
                 })
                 ->interceptResponse(function (Response $response) use ($requestId) {
                     echo "     -> Response {$requestId}: Processing response\n";
 
                     $body = $response->json();
-                    $body['processed_by'] = $requestId . '-processed';
+                    $body['processed_by'] = $requestId.'-processed';
 
-                    echo "     -> Response {$requestId}: Set processed_by to " . ($requestId . '-processed') . "\n";
+                    echo "     -> Response {$requestId}: Set processed_by to ".($requestId.'-processed')."\n";
 
                     return $response
-                        ->withHeader('X-Processed-By', $requestId . '-processed')
-                        ->withBody(Stream::fromString(json_encode($body)));
+                        ->withHeader('X-Processed-By', $requestId.'-processed')
+                        ->withBody(Stream::fromString(json_encode($body)))
+                    ;
                 })
-                ->get($concurrentUrl);
+                ->get($concurrentUrl)
+            ;
 
             $promises[] = $promise;
         }
@@ -331,22 +352,22 @@ Task::run(function () {
         $concurrentTotalTime = ($concurrentEndTime - $concurrentStartTime) * 1000;
 
         echo "   Concurrent execution time for 10 requests: {$concurrentTotalTime}ms\n";
-        echo "   Average time per request: " . ($concurrentTotalTime / 10) . "ms\n";
+        echo '   Average time per request: '.($concurrentTotalTime / 10)."ms\n";
 
         // Verify all requests were processed (with detailed debugging)
         echo "\n   Verifying results:\n";
         $allProcessed = true;
         foreach ($results as $i => $response) {
             $data = $response->json();
-            $expectedId = "req-" . ($i + 1) . "-processed";
+            $expectedId = 'req-'.($i + 1).'-processed';
             $actualId = $data['processed_by'] ?? 'NOT_FOUND';
 
-            echo "   Request " . ($i + 1) . ": Expected '{$expectedId}', Got '{$actualId}'\n";
+            echo '   Request '.($i + 1).": Expected '{$expectedId}', Got '{$actualId}'\n";
 
             if ($actualId !== $expectedId) {
                 $allProcessed = false;
                 echo "     ❌ MISMATCH!\n";
-                echo "     Full response: " . json_encode($data) . "\n";
+                echo '     Full response: '.json_encode($data)."\n";
             } else {
                 echo "     ✅ OK\n";
             }
@@ -362,9 +383,9 @@ Task::run(function () {
         echo "   ✓ Assertion successful: Exactly 10 requests were made.\n";
     } catch (Exception $e) {
         echo "\n!!!!!! A TEST CASE FAILED UNEXPECTEDLY !!!!!!\n";
-        echo "Error: " . $e->getMessage() . "\n";
-        echo "File: " . $e->getFile() . ":" . $e->getLine() . "\n";
-        echo "Trace: " . $e->getTraceAsString() . "\n";
+        echo 'Error: '.$e->getMessage()."\n";
+        echo 'File: '.$e->getFile().':'.$e->getLine()."\n";
+        echo 'Trace: '.$e->getTraceAsString()."\n";
     } finally {
         Http::stopTesting();
     }

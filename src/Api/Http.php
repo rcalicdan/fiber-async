@@ -124,7 +124,7 @@ class Http
      * This method switches the Http client to use a TestingHttpHandler instead
      * of the regular HttpHandler, allowing you to mock requests and responses
      * for testing purposes.
-     * 
+     *
      * @return TestingHttpHandler The testing handler for configuration
      */
     public static function startTesting(): TestingHttpHandler
@@ -238,6 +238,6 @@ class Http
             return $handler->{$method}(...$arguments);
         }
 
-        throw new \BadMethodCallException("Method {$method} does not exist on " . static::class);
+        throw new \BadMethodCallException("Method {$method} does not exist on ".static::class);
     }
 }

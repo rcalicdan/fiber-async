@@ -84,8 +84,9 @@ class Stream implements StreamInterface
     /**
      * Create a new stream from string content.
      *
-     * @param string $content The content for the stream
+     * @param  string  $content  The content for the stream
      * @return static A new stream instance
+     *
      * @throws RuntimeException If stream creation fails
      */
     public static function fromString(string $content): self
@@ -232,7 +233,7 @@ class Stream implements StreamInterface
         }
 
         if (fseek($this->resource, $offset, $whence) === -1) {
-            throw new RuntimeException('Unable to seek to stream position ' . $offset . ' with whence ' . var_export($whence, true));
+            throw new RuntimeException('Unable to seek to stream position '.$offset.' with whence '.var_export($whence, true));
         }
     }
 

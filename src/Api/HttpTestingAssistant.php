@@ -21,7 +21,7 @@ class HttpTestingAssistant
 
     public function __construct()
     {
-        $this->testingHandler = new TestingHttpHandler();
+        $this->testingHandler = new TestingHttpHandler;
     }
 
     /**
@@ -30,7 +30,7 @@ class HttpTestingAssistant
     public static function getInstance(): self
     {
         if (self::$instance === null) {
-            self::$instance = new self();
+            self::$instance = new self;
         }
 
         return self::$instance;
@@ -41,7 +41,7 @@ class HttpTestingAssistant
      */
     public static function fresh(): self
     {
-        return new self();
+        return new self;
     }
 
     /**
@@ -52,7 +52,8 @@ class HttpTestingAssistant
         if (self::$instance !== null) {
             self::$instance->cleanup();
         }
-        self::$instance = new self();
+        self::$instance = new self;
+
         return self::$instance;
     }
 
@@ -70,6 +71,7 @@ class HttpTestingAssistant
     public function activate(): self
     {
         Http::setInstance($this->testingHandler);
+
         return $this;
     }
 
@@ -79,6 +81,7 @@ class HttpTestingAssistant
     public function deactivate(): self
     {
         Http::reset();
+
         return $this;
     }
 
@@ -152,6 +155,7 @@ class HttpTestingAssistant
     public function withCookies(?CookieJarInterface $jar = null): self
     {
         $this->testingHandler->withGlobalCookieJar($jar);
+
         return $this;
     }
 
@@ -161,6 +165,7 @@ class HttpTestingAssistant
     public function withCookieFile(?string $filename = null, bool $includeSessionCookies = true): self
     {
         $this->testingHandler->withGlobalFileCookieJar($filename, $includeSessionCookies);
+
         return $this;
     }
 
@@ -178,8 +183,16 @@ class HttpTestingAssistant
         ?string $sameSite = null
     ): self {
         $this->testingHandler->cookies()->addCookie(
-            $name, $value, $domain, $path, $expires, $secure, $httpOnly, $sameSite
+            $name,
+            $value,
+            $domain,
+            $path,
+            $expires,
+            $secure,
+            $httpOnly,
+            $sameSite
         );
+
         return $this;
     }
 
@@ -189,6 +202,7 @@ class HttpTestingAssistant
     public function addCookies(array $cookies): self
     {
         $this->testingHandler->cookies()->addCookies($cookies);
+
         return $this;
     }
 
@@ -198,6 +212,7 @@ class HttpTestingAssistant
     public function clearCookies(): self
     {
         $this->testingHandler->cookies()->clearCookies();
+
         return $this;
     }
 
@@ -227,6 +242,7 @@ class HttpTestingAssistant
     public function assertCookieExists(string $name): self
     {
         $this->testingHandler->assertCookieExists($name);
+
         return $this;
     }
 
@@ -236,6 +252,7 @@ class HttpTestingAssistant
     public function assertCookieValue(string $name, string $expectedValue): self
     {
         $this->testingHandler->assertCookieValue($name, $expectedValue);
+
         return $this;
     }
 
@@ -245,6 +262,7 @@ class HttpTestingAssistant
     public function assertCookieSent(string $name): self
     {
         $this->testingHandler->assertCookieSent($name);
+
         return $this;
     }
 
@@ -258,6 +276,7 @@ class HttpTestingAssistant
     public function assertRequestMade(string $method, string $url, array $options = []): self
     {
         $this->testingHandler->assertRequestMade($method, $url, $options);
+
         return $this;
     }
 
@@ -267,6 +286,7 @@ class HttpTestingAssistant
     public function assertNoRequestsMade(): self
     {
         $this->testingHandler->assertNoRequestsMade();
+
         return $this;
     }
 
@@ -276,6 +296,7 @@ class HttpTestingAssistant
     public function assertRequestCount(int $expected): self
     {
         $this->testingHandler->assertRequestCount($expected);
+
         return $this;
     }
 
@@ -305,6 +326,7 @@ class HttpTestingAssistant
     public function enableNetworkSimulation(array $settings = []): self
     {
         $this->testingHandler->enableNetworkSimulation($settings);
+
         return $this;
     }
 
@@ -342,6 +364,7 @@ class HttpTestingAssistant
     public function strictMatching(bool $strict = true): self
     {
         $this->testingHandler->setStrictMatching($strict);
+
         return $this;
     }
 
@@ -351,6 +374,7 @@ class HttpTestingAssistant
     public function allowPassthrough(bool $allow = true): self
     {
         $this->testingHandler->setAllowPassthrough($allow);
+
         return $this;
     }
 
@@ -360,6 +384,7 @@ class HttpTestingAssistant
     public function recordRequests(bool $record = true): self
     {
         $this->testingHandler->setRecordRequests($record);
+
         return $this;
     }
 
@@ -369,6 +394,7 @@ class HttpTestingAssistant
     public function autoManageFiles(bool $enabled = true): self
     {
         $this->testingHandler->setAutoTempFileManagement($enabled);
+
         return $this;
     }
 
@@ -418,6 +444,7 @@ class HttpTestingAssistant
     public function getLastRequest(): ?\Rcalicdan\FiberAsync\Http\Testing\RecordedRequest
     {
         $history = $this->getRequestHistory();
+
         return empty($history) ? null : end($history);
     }
 
@@ -441,18 +468,19 @@ class HttpTestingAssistant
     {
         $info = $this->getTestingInfo();
         echo "=== HTTP Testing Assistant Debug Info ===\n";
-        echo "Requests made: " . $info['request_count'] . "\n";
-        echo "Cookies stored: " . $info['cookie_count'] . "\n";
-        
+        echo 'Requests made: '.$info['request_count']."\n";
+        echo 'Cookies stored: '.$info['cookie_count']."\n";
+
         if ($info['last_request']) {
-            echo "Last request: " . $info['last_request']->method . " " . $info['last_request']->url . "\n";
+            echo 'Last request: '.$info['last_request']->method.' '.$info['last_request']->url."\n";
         }
-        
-        if (!empty($info['cookie_debug'])) {
-            echo "Cookie details: " . json_encode($info['cookie_debug'], JSON_PRETTY_PRINT) . "\n";
+
+        if (! empty($info['cookie_debug'])) {
+            echo 'Cookie details: '.json_encode($info['cookie_debug'], JSON_PRETTY_PRINT)."\n";
         }
-        
+
         echo "==========================================\n";
+
         return $this;
     }
 
@@ -474,6 +502,7 @@ class HttpTestingAssistant
     public function clearMocks(): self
     {
         $this->testingHandler->reset();
+
         return $this;
     }
 }

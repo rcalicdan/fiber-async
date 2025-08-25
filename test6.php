@@ -26,7 +26,8 @@ Task::run(function () {
         ->url($url_stream_test)
         ->failUntilAttempt(3, 'Connection refused')
         ->body($expected_stream_body)
-        ->register();
+        ->register()
+    ;
 
     $reassembled_body = '';
     $onChunk = function (string $chunk) use (&$reassembled_body) {
@@ -47,8 +48,8 @@ Task::run(function () {
         $elapsed = round($end - $start, 2);
 
         echo "Streaming request successful!\n";
-        echo 'Final reassembled body: ' . $reassembled_body . "\n";
-        echo 'Elapsed: ' . $elapsed . "s\n";
+        echo 'Final reassembled body: '.$reassembled_body."\n";
+        echo 'Elapsed: '.$elapsed."s\n";
 
         if ($reassembled_body === $expected_stream_body) {
             echo "Body content verification: SUCCESSFUL.\n";
@@ -57,7 +58,7 @@ Task::run(function () {
         }
 
     } catch (Exception $e) {
-        echo 'Streaming request failed unexpectedly: ' . $e->getMessage() . "\n";
+        echo 'Streaming request failed unexpectedly: '.$e->getMessage()."\n";
     }
 
     // Assert that exactly 3 requests were made (1 initial + 2 retries).
@@ -65,7 +66,7 @@ Task::run(function () {
         $handler->assertRequestCount(3);
         echo "Assertion: Exactly 3 requests were made as expected.\n";
     } catch (Exception $e) {
-        echo 'Assertion failed: ' . $e->getMessage() . "\n";
+        echo 'Assertion failed: '.$e->getMessage()."\n";
     }
 
     // =================================================================
@@ -89,7 +90,8 @@ Task::run(function () {
             [['status' => 503, 'error' => 'Service Unavailable']],
             $expected_file_content
         )
-        ->register();
+        ->register()
+    ;
 
     try {
         $start = microtime(true);
@@ -106,8 +108,8 @@ Task::run(function () {
         $downloaded_path = $result['file'];
 
         echo "Download request successful!\n";
-        echo 'File auto-created at: ' . $downloaded_path . "\n";
-        echo 'Elapsed: ' . $elapsed . "s\n";
+        echo 'File auto-created at: '.$downloaded_path."\n";
+        echo 'Elapsed: '.$elapsed."s\n";
 
         if (file_exists($downloaded_path) && file_get_contents($downloaded_path) === $expected_file_content) {
             echo "File content verification: SUCCESSFUL.\n";
@@ -116,7 +118,7 @@ Task::run(function () {
         }
 
     } catch (Exception $e) {
-        echo 'Download request failed unexpectedly: ' . $e->getMessage() . "\n";
+        echo 'Download request failed unexpectedly: '.$e->getMessage()."\n";
     }
 
     // Assert that exactly 2 requests were made (1 initial + 1 retry).
@@ -124,7 +126,7 @@ Task::run(function () {
         $handler->assertRequestCount(2);
         echo "Assertion: Exactly 2 requests were made as expected.\n";
     } catch (Exception $e) {
-        echo 'Assertion failed: ' . $e->getMessage() . "\n";
+        echo 'Assertion failed: '.$e->getMessage()."\n";
     }
 
     // **NEW**: Verify automatic cleanup.
@@ -132,6 +134,6 @@ Task::run(function () {
         echo "\nVerifying automatic cleanup...\n";
         echo "   File exists before reset: YES\n";
         $handler->reset(); // This should trigger the file manager's cleanup.
-        echo "   File exists after reset: " . (file_exists($downloaded_path) ? 'YES (FAIL)' : 'NO (SUCCESS)') . "\n";
+        echo '   File exists after reset: '.(file_exists($downloaded_path) ? 'YES (FAIL)' : 'NO (SUCCESS)')."\n";
     }
 });

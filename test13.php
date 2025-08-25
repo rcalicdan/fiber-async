@@ -21,19 +21,20 @@ Task::run(function () {
     // Add a 0.5s delay to the failing mock.
     Http::mock('GET')->url($url_http_error)
         ->respondWithStatus(503)
-        ->delay(0.5) 
+        ->delay(0.5)
         ->persistent()
-        ->register();
+        ->register()
+    ;
 
     $test1_success = true;
-    
+
     echo "1. Making first request (expecting a ~0.5s delay and a 503 response)...\n";
     $start1 = microtime(true);
     $response1 = await(Http::request()->cache(60)->get($url_http_error));
     $elapsed1 = microtime(true) - $start1;
-    
+
     if ($response1->status() === 503) {
-        echo "   ✓ SUCCESS: Received 503 as expected. (Took " . round($elapsed1, 4) . "s)\n";
+        echo '   ✓ SUCCESS: Received 503 as expected. (Took '.round($elapsed1, 4)."s)\n";
     } else {
         echo "   ✗ FAILED: Did not receive a 503 response.\n";
         $test1_success = false;
@@ -45,21 +46,22 @@ Task::run(function () {
     $elapsed2 = microtime(true) - $start2;
 
     if ($response2->status() === 503) {
-        echo "   ✓ SUCCESS: Received 503 again, proving the error response was not cached. (Took " . round($elapsed2, 4) . "s)\n";
+        echo '   ✓ SUCCESS: Received 503 again, proving the error response was not cached. (Took '.round($elapsed2, 4)."s)\n";
     } else {
         echo "   ✗ FAILED: Did not receive a 503 on the second attempt.\n";
         $test1_success = false;
     }
 
     echo "\n3. Verifying mock interactions for Test Case 1...\n";
+
     try {
         $handler->assertRequestCount(2);
         echo "   ✓ SUCCESS: Mock was hit 2 times. This is correct.\n";
     } catch (Exception $e) {
-        echo "   ✗ FAILED: " . $e->getMessage() . "\n";
+        echo '   ✗ FAILED: '.$e->getMessage()."\n";
         $test1_success = false;
     }
-    
+
     if ($test1_success) {
         echo "   --> TEST CASE 1 FINAL VERDICT: PASSED.\n";
     }
@@ -76,19 +78,21 @@ Task::run(function () {
         ->fail('Connection refused')
         ->delay(0.5) // <-- Added delay
         ->persistent()
-        ->register();
-    
+        ->register()
+    ;
+
     $test2_success = true;
 
     echo "1. Making first request (expecting a ~0.5s delay and an exception)...\n";
     $start3 = microtime(true);
+
     try {
         await(Http::request()->cache(60)->get($url_exception));
         $test2_success = false;
     } catch (HttpException $e) {
         $elapsed3 = microtime(true) - $start3;
         if (str_contains($e->getMessage(), 'Connection refused')) {
-            echo "   ✓ SUCCESS: Caught expected HttpException. (Took " . round($elapsed3, 4) . "s)\n";
+            echo '   ✓ SUCCESS: Caught expected HttpException. (Took '.round($elapsed3, 4)."s)\n";
         } else {
             $test2_success = false;
         }
@@ -96,19 +100,21 @@ Task::run(function () {
 
     echo "\n2. Making second request (should also delay ~0.5s and throw an exception)...\n";
     $start4 = microtime(true);
+
     try {
         await(Http::request()->cache(60)->get($url_exception));
         $test2_success = false;
     } catch (HttpException $e) {
         $elapsed4 = microtime(true) - $start4;
         if (str_contains($e->getMessage(), 'Connection refused')) {
-            echo "   ✓ SUCCESS: Caught exception again, proving failure was not cached. (Took " . round($elapsed4, 4) . "s)\n";
+            echo '   ✓ SUCCESS: Caught exception again, proving failure was not cached. (Took '.round($elapsed4, 4)."s)\n";
         } else {
             $test2_success = false;
         }
     }
 
     echo "\n3. Verifying mock interactions for Test Case 2...\n";
+
     try {
         $handler->assertRequestCount(2);
         echo "   ✓ SUCCESS: Mock was hit 2 times. This is correct.\n";
@@ -130,7 +136,8 @@ Task::run(function () {
     Http::mock('GET')->url($url_retry)
         ->statusFailuresUntilAttempt(2, 503)
         ->json(['data' => 'success', 'timestamp' => time()])
-        ->register();
+        ->register()
+    ;
 
     echo "1. Making first request with retry (will fail, then succeed)...\n";
     $response1 = await(Http::request()->retry(3, 0.01)->cache(60)->get($url_retry));
@@ -142,7 +149,7 @@ Task::run(function () {
     $response2 = await(Http::request()->cache(60)->get($url_retry));
     $elapsed_hit = microtime(true) - $start_hit;
     $data2 = $response2->json();
-    echo "   -> Finished in " . round($elapsed_hit, 4) . "s. Timestamp: {$data2['timestamp']}\n";
+    echo '   -> Finished in '.round($elapsed_hit, 4)."s. Timestamp: {$data2['timestamp']}\n";
 
     echo "\n3. Verifying results for Test Case 3...\n";
     if ($data1['timestamp'] === $data2['timestamp'] && $elapsed_hit < 0.01) {
@@ -156,4 +163,4 @@ Task::run(function () {
     echo "   --> TEST CASE 3 FINAL VERDICT: PASSED.\n";
 });
 
-echo PHP_EOL."====== Testing Complete ======".PHP_EOL;
+echo PHP_EOL.'====== Testing Complete ======'.PHP_EOL;

@@ -21,10 +21,11 @@ Task::run(function () {
         echo "--- Test Case 1: Modifying a Request with interceptRequest --- \n";
         echo "Goal: Add a 'X-Test-Header' header before sending.\n\n";
 
-        $requestId = 'Hello-from-FiberAsync-' . rand(1000, 9999);;
+        $requestId = 'Hello-from-FiberAsync-'.rand(1000, 9999);
 
         $requestInterceptor = function (Request $request) use ($requestId) {
             echo "   -> Request Interceptor Fired: Adding header 'X-Test-Header: {$requestId}'\n";
+
             return $request->withHeader('X-Test-Header', $requestId);
         };
 
@@ -74,7 +75,7 @@ Task::run(function () {
 
         if ($response->header('X-Processed-By') === 'FiberAsync-Interceptor' && isset($data['intercepted']) && $data['intercepted'] === true) {
             echo "   ✓ SUCCESS: Response was successfully modified by the interceptor.\n";
-            echo "   New Body: " . json_encode($data) . "\n";
+            echo '   New Body: '.json_encode($data)."\n";
         } else {
             echo "   ✗ FAILED: Response was not modified as expected.\n";
         }
@@ -85,13 +86,14 @@ Task::run(function () {
         echo "\n--- Test Case 3: Advanced - Transparent Token Refresh on 401 --- \n";
         echo "Goal: Catch a 401, refresh a token, and retry the original request.\n\n";
 
-        $authManager = new class {
+        $authManager = new class
+        {
             public string $token = 'expired-token';
 
             public function refreshToken(): void
             {
                 // In a real app, this would be another async HTTP call.
-                $this->token = 'new-valid-token-' . uniqid();
+                $this->token = 'new-valid-token-'.uniqid();
                 echo "   -> Auth Manager: Token has been refreshed to '{$this->token}'.\n";
             }
 
@@ -109,7 +111,8 @@ Task::run(function () {
 
                     return Http::request()
                         ->bearerToken($this->token)
-                        ->get('https://httpbin.org/headers'); 
+                        ->get('https://httpbin.org/headers')
+                    ;
                 };
             }
         };
@@ -127,7 +130,7 @@ Task::run(function () {
 
         $data = $finalResponse->json();
 
-        if ($finalResponse->status() === 200 && $data['headers']['Authorization'] === 'Bearer ' . $authManager->token) {
+        if ($finalResponse->status() === 200 && $data['headers']['Authorization'] === 'Bearer '.$authManager->token) {
             echo "   ✓ SUCCESS: The application received a 200 OK response, even though the first attempt failed.\n";
             echo "   ✓ The final request correctly used the new token.\n";
         } else {
@@ -139,8 +142,8 @@ Task::run(function () {
         echo "   ✓ Assertion successful: Exactly 2 requests were made behind the scenes.\n";
     } catch (Exception $e) {
         echo "\n!!!!!! A TEST CASE FAILED UNEXPECTEDLY !!!!!!\n";
-        echo "Error: " . $e->getMessage() . "\n";
-        echo "File: " . $e->getFile() . ":" . $e->getLine() . "\n";
+        echo 'Error: '.$e->getMessage()."\n";
+        echo 'File: '.$e->getFile().':'.$e->getLine()."\n";
     } finally {
         Http::stopTesting();
     }

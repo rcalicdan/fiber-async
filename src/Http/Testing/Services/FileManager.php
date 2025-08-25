@@ -28,15 +28,15 @@ class FileManager
     {
         $tempDir = sys_get_temp_dir();
         if ($filename === null) {
-            $filename = 'http_test_' . uniqid() . '.tmp';
+            $filename = 'http_test_'.uniqid().'.tmp';
         }
 
-        return $tempDir . DIRECTORY_SEPARATOR . $filename;
+        return $tempDir.DIRECTORY_SEPARATOR.$filename;
     }
 
     public function createTempDirectory(string $prefix = 'http_test_'): string
     {
-        $tempDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $prefix . uniqid();
+        $tempDir = sys_get_temp_dir().DIRECTORY_SEPARATOR.$prefix.uniqid();
         if (! mkdir($tempDir, 0755, true)) {
             throw new Exception("Cannot create temp directory: {$tempDir}");
         }
@@ -51,7 +51,7 @@ class FileManager
     public function createTempFile(?string $filename = null, string $content = ''): string
     {
         if ($filename === null) {
-            $filename = 'http_test_' . uniqid() . '.tmp';
+            $filename = 'http_test_'.uniqid().'.tmp';
         }
 
         $filePath = self::getTempPath($filename);
@@ -94,15 +94,15 @@ class FileManager
 
         $tempDir = sys_get_temp_dir();
         $patterns = [
-            $tempDir . DIRECTORY_SEPARATOR . 'download_*.tmp',
-            $tempDir . DIRECTORY_SEPARATOR . 'http_test_*',
-            $tempDir . DIRECTORY_SEPARATOR . '*test_*.tmp'
+            $tempDir.DIRECTORY_SEPARATOR.'download_*.tmp',
+            $tempDir.DIRECTORY_SEPARATOR.'http_test_*',
+            $tempDir.DIRECTORY_SEPARATOR.'*test_*.tmp',
         ];
 
         foreach ($patterns as $pattern) {
             $files = glob($pattern);
             foreach ($files as $file) {
-                if (is_file($file) && !in_array($file, $this->createdFiles)) {
+                if (is_file($file) && ! in_array($file, $this->createdFiles)) {
                     unlink($file);
                 }
             }
@@ -134,7 +134,7 @@ class FileManager
 
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
-            $path = $dir . DIRECTORY_SEPARATOR . $file;
+            $path = $dir.DIRECTORY_SEPARATOR.$file;
             if (is_dir($path)) {
                 $this->removeDirectoryContents($path);
                 rmdir($path);
