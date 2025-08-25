@@ -2,7 +2,6 @@
 
 namespace Rcalicdan\FiberAsync\Http;
 
-use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\RequestInterface;
