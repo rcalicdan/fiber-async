@@ -8,6 +8,7 @@ use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Http\Testing\Exceptions\MockAssertionException;
+use Rcalicdan\FiberAsync\Http\Testing\Exceptions\MockException;
 use Rcalicdan\FiberAsync\Http\Traits\FetchOptionTrait;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
@@ -114,8 +115,12 @@ class RequestExecutor
             return $this->handleMockedResponse($match, $options, $mockedRequests, $cacheConfig, $url, $method, $createStream);
         }
 
-        if ($globalSettings['strict_matching'] && ! $globalSettings['allow_passthrough']) {
-            throw new MockAssertionException("No mock found for: {$method} {$url}");
+        if ($globalSettings['strict_matching']) {
+            throw new MockException("No mock found for: {$method} {$url}");
+        }
+
+        if (!$globalSettings['allow_passthrough']) {
+            throw new MockException("Passthrough disabled and no mock found for: {$method} {$url}");
         }
 
         return $parentFetch ? $parentFetch($url, $options) : Promise::rejected(new \RuntimeException('No parent fetch available'));
@@ -205,8 +210,12 @@ class RequestExecutor
             );
         }
 
-        if ($globalSettings['strict_matching'] && ! $globalSettings['allow_passthrough']) {
-            throw new MockAssertionException("No mock found for: {$method} {$url}");
+        if ($globalSettings['strict_matching']) {
+            throw new MockException("No mock found for: {$method} {$url}");
+        }
+
+        if (!$globalSettings['allow_passthrough']) {
+            throw new MockException("Passthrough disabled and no mock found for: {$method} {$url}");
         }
 
         return $parentSendRequest
