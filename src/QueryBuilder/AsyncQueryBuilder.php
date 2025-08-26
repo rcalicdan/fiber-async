@@ -5,20 +5,22 @@ namespace Rcalicdan\FiberAsync\QueryBuilder;
 use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Api\AsyncPDO;
 use Rcalicdan\FiberAsync\Api\Promise;
+use Rcalicdan\FiberAsync\Config\ConfigLoader;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
  * Async Query Builder for easy way to write asynchronous SQL queries.
- *
- * Usage:
- * - DB::table('users')->select('id, name')->where('active', 1)->get()
- * - DB::table('users')->find(1)
- * - DB::table('users')->create(['name' => 'John', 'email' => 'john@example.com'])
- * - DB::table('users')->where('id', 1)->update(['name' => 'Jane'])
- * - DB::table('users')->where('id', 1)->delete()
+ * 
+ * Now supports immutability by default with configurable mutability.
+ * When immutable, each method returns a new instance instead of modifying the current one.
  */
 class AsyncQueryBuilder
 {
+    /**
+     * @var bool Static cache for immutability setting to avoid repeated config lookups
+     */
+    private static ?bool $isImmutableGlobally = null;
+
     /**
      * @var string The table name for the query.
      */
@@ -136,32 +138,105 @@ class AsyncQueryBuilder
     }
 
     /**
+     * Check if query builder is configured to be immutable globally.
+     */
+    protected static function isImmutableGlobally(): bool
+    {
+        if (self::$isImmutableGlobally === null) {
+            try {
+                $configLoader = ConfigLoader::getInstance();
+                $dbConfig = $configLoader->get('database', []);
+                self::$isImmutableGlobally = $dbConfig['immutable_query_builder'] ?? true;
+            } catch (\Exception $e) {
+                // Default to immutable if config can't be loaded
+                self::$isImmutableGlobally = true;
+            }
+        }
+
+        return self::$isImmutableGlobally;
+    }
+
+    /**
+     * Reset the immutability cache (useful for testing).
+     */
+    public static function resetImmutabilityCache(): void
+    {
+        self::$isImmutableGlobally = null;
+    }
+
+    /**
+     * Create a clone of the current query builder.
+     * 
+     * @throws \RuntimeException When called in globally immutable mode
+     */
+    public function clone(): static
+    {
+        if (self::isImmutableGlobally()) {
+            throw new \RuntimeException(
+                'clone() method cannot be used when global immutability is enabled. ' .
+                    'The query builder already returns new instances automatically. ' .
+                    'Set DB_IMMUTABLE_QUERY_BUILDER=false in your .env to use explicit cloning.'
+            );
+        }
+
+        return clone $this;
+    }
+
+    /**
+     * Enable mutation mode for this instance and return self.
+     * This allows chaining mutable operations when global mutability is disabled.
+     * 
+     * @throws \RuntimeException When called in globally immutable mode
+     */
+    public function mutate(): static
+    {
+        if (self::isImmutableGlobally()) {
+            throw new \RuntimeException(
+                'mutate() method cannot be used when global immutability is enabled. ' .
+                    'The query builder is designed to be immutable by default. ' .
+                    'Set DB_IMMUTABLE_QUERY_BUILDER=false in your .env to enable mutable operations.'
+            );
+        }
+
+        // In mutable mode, this just returns self to allow method chaining
+        return $this;
+    }
+
+    /**
+     * Returns either a clone (immutable mode) or self (mutable mode).
+     */
+    protected function getInstance(): static
+    {
+        return self::isImmutableGlobally() ? clone $this : $this;
+    }
+
+    /**
      * Set the table for the query.
      *
      * @param  string  $table  The table name.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function table(string $table): self
+    public function table(string $table): static
     {
-        $this->table = $table;
-
-        return $this;
+        $instance = $this->getInstance();
+        $instance->table = $table;
+        return $instance;
     }
 
     /**
      * Set the columns to select.
      *
      * @param  string|array<string>  $columns  The columns to select.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function select(string|array $columns = '*'): self
+    public function select(string|array $columns = '*'): static
     {
+        $instance = $this->getInstance();
         if (is_string($columns)) {
             $columns = array_map('trim', explode(',', $columns));
         }
-        $this->select = $columns;
-
-        return $this;
+        $instance->select = $columns;
+        return $instance;
     }
 
     /**
@@ -170,17 +245,17 @@ class AsyncQueryBuilder
      * @param  string  $table  The table to join.
      * @param  string  $condition  The join condition.
      * @param  string  $type  The type of join (INNER, LEFT, RIGHT).
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function join(string $table, string $condition, string $type = 'INNER'): self
+    public function join(string $table, string $condition, string $type = 'INNER'): static
     {
-        $this->joins[] = [
+        $instance = $this->getInstance();
+        $instance->joins[] = [
             'type' => strtoupper($type),
             'table' => $table,
             'condition' => $condition,
         ];
-
-        return $this;
+        return $instance;
     }
 
     /**
@@ -188,9 +263,9 @@ class AsyncQueryBuilder
      *
      * @param  string  $table  The table to join.
      * @param  string  $condition  The join condition.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function leftJoin(string $table, string $condition): self
+    public function leftJoin(string $table, string $condition): static
     {
         return $this->join($table, $condition, 'LEFT');
     }
@@ -200,9 +275,9 @@ class AsyncQueryBuilder
      *
      * @param  string  $table  The table to join.
      * @param  string  $condition  The join condition.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function rightJoin(string $table, string $condition): self
+    public function rightJoin(string $table, string $condition): static
     {
         return $this->join($table, $condition, 'RIGHT');
     }
@@ -213,9 +288,9 @@ class AsyncQueryBuilder
      * @param  string  $column  The column name.
      * @param  mixed  $operator  The comparison operator or value if only 2 arguments.
      * @param  mixed  $value  The value to compare against.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function where(string $column, mixed $operator = null, mixed $value = null): self
+    public function where(string $column, mixed $operator = null, mixed $value = null): static
     {
         if (func_num_args() === 2) {
             $value = $operator;
@@ -226,11 +301,12 @@ class AsyncQueryBuilder
             $operator = '=';
         }
 
-        $placeholder = $this->getPlaceholder();
-        $this->where[] = "{$column} {$operator} {$placeholder}";
-        $this->bindings['where'][] = $value;
+        $instance = $this->getInstance();
+        $placeholder = $instance->getPlaceholder();
+        $instance->where[] = "{$column} {$operator} {$placeholder}";
+        $instance->bindings['where'][] = $value;
 
-        return $this;
+        return $instance;
     }
 
     /**
@@ -239,9 +315,9 @@ class AsyncQueryBuilder
      * @param  string  $column  The column name.
      * @param  mixed  $operator  The comparison operator or value if only 2 arguments.
      * @param  mixed  $value  The value to compare against.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function orWhere(string $column, mixed $operator = null, mixed $value = null): self
+    public function orWhere(string $column, mixed $operator = null, mixed $value = null): static
     {
         if (func_num_args() === 2) {
             $value = $operator;
@@ -252,11 +328,12 @@ class AsyncQueryBuilder
             $operator = '=';
         }
 
-        $placeholder = $this->getPlaceholder();
-        $this->orWhere[] = "{$column} {$operator} {$placeholder}";
-        $this->bindings['orWhere'][] = $value;
+        $instance = $this->getInstance();
+        $placeholder = $instance->getPlaceholder();
+        $instance->orWhere[] = "{$column} {$operator} {$placeholder}";
+        $instance->bindings['orWhere'][] = $value;
 
-        return $this;
+        return $instance;
     }
 
     /**
@@ -264,20 +341,20 @@ class AsyncQueryBuilder
      *
      * @param  string  $column  The column name.
      * @param  array<mixed>  $values  The values to check against.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function whereIn(string $column, array $values): self
+    public function whereIn(string $column, array $values): static
     {
         if ($values === []) {
-            $this->whereRaw('0=1');
-
-            return $this;
+            return $this->whereRaw('0=1');
         }
-        $placeholders = implode(', ', array_fill(0, count($values), $this->getPlaceholder()));
-        $this->whereIn[] = "{$column} IN ({$placeholders})";
-        $this->bindings['whereIn'] = array_merge($this->bindings['whereIn'], $values);
 
-        return $this;
+        $instance = $this->getInstance();
+        $placeholders = implode(', ', array_fill(0, count($values), $instance->getPlaceholder()));
+        $instance->whereIn[] = "{$column} IN ({$placeholders})";
+        $instance->bindings['whereIn'] = array_merge($instance->bindings['whereIn'], $values);
+
+        return $instance;
     }
 
     /**
@@ -285,18 +362,20 @@ class AsyncQueryBuilder
      *
      * @param  string  $column  The column name.
      * @param  array<mixed>  $values  The values to check against.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function whereNotIn(string $column, array $values): self
+    public function whereNotIn(string $column, array $values): static
     {
         if ($values === []) {
             return $this;
         }
-        $placeholders = implode(', ', array_fill(0, count($values), $this->getPlaceholder()));
-        $this->whereNotIn[] = "{$column} NOT IN ({$placeholders})";
-        $this->bindings['whereNotIn'] = array_merge($this->bindings['whereNotIn'], $values);
 
-        return $this;
+        $instance = $this->getInstance();
+        $placeholders = implode(', ', array_fill(0, count($values), $instance->getPlaceholder()));
+        $instance->whereNotIn[] = "{$column} NOT IN ({$placeholders})";
+        $instance->bindings['whereNotIn'] = array_merge($instance->bindings['whereNotIn'], $values);
+
+        return $instance;
     }
 
     /**
@@ -304,48 +383,50 @@ class AsyncQueryBuilder
      *
      * @param  array<mixed>  $values  An array with exactly 2 values for the range.
      * @param  string  $column  The column name.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      *
      * @throws \InvalidArgumentException When values array doesn't contain exactly 2 elements.
      */
-    public function whereBetween(string $column, array $values): self
+    public function whereBetween(string $column, array $values): static
     {
         if (count($values) !== 2) {
             throw new \InvalidArgumentException('whereBetween requires exactly 2 values');
         }
-        $placeholder1 = $this->getPlaceholder();
-        $placeholder2 = $this->getPlaceholder();
-        $this->whereBetween[] = "{$column} BETWEEN {$placeholder1} AND {$placeholder2}";
-        $this->bindings['whereBetween'][] = $values[0];
-        $this->bindings['whereBetween'][] = $values[1];
 
-        return $this;
+        $instance = $this->getInstance();
+        $placeholder1 = $instance->getPlaceholder();
+        $placeholder2 = $instance->getPlaceholder();
+        $instance->whereBetween[] = "{$column} BETWEEN {$placeholder1} AND {$placeholder2}";
+        $instance->bindings['whereBetween'][] = $values[0];
+        $instance->bindings['whereBetween'][] = $values[1];
+
+        return $instance;
     }
 
     /**
      * Add a WHERE NULL clause to the query.
      *
      * @param  string  $column  The column name.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function whereNull(string $column): self
+    public function whereNull(string $column): static
     {
-        $this->whereNull[] = "{$column} IS NULL";
-
-        return $this;
+        $instance = $this->getInstance();
+        $instance->whereNull[] = "{$column} IS NULL";
+        return $instance;
     }
 
     /**
      * Add a WHERE NOT NULL clause to the query.
      *
      * @param  string  $column  The column name.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function whereNotNull(string $column): self
+    public function whereNotNull(string $column): static
     {
-        $this->whereNotNull[] = "{$column} IS NOT NULL";
-
-        return $this;
+        $instance = $this->getInstance();
+        $instance->whereNotNull[] = "{$column} IS NOT NULL";
+        return $instance;
     }
 
     /**
@@ -354,12 +435,13 @@ class AsyncQueryBuilder
      * @param  string  $column  The column name.
      * @param  string  $value  The value to search for.
      * @param  string  $side  The side to add wildcards ('before', 'after', 'both').
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function like(string $column, string $value, string $side = 'both'): self
+    public function like(string $column, string $value, string $side = 'both'): static
     {
-        $placeholder = $this->getPlaceholder();
-        $this->where[] = "{$column} LIKE {$placeholder}";
+        $instance = $this->getInstance();
+        $placeholder = $instance->getPlaceholder();
+        $instance->where[] = "{$column} LIKE {$placeholder}";
 
         $likeValue = match ($side) {
             'before' => "%{$value}",
@@ -368,25 +450,24 @@ class AsyncQueryBuilder
             default => $value
         };
 
-        $this->bindings['where'][] = $likeValue;
-
-        return $this;
+        $instance->bindings['where'][] = $likeValue;
+        return $instance;
     }
 
     /**
      * Add a GROUP BY clause to the query.
      *
      * @param  string|array<string>  $columns  The columns to group by.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function groupBy(string|array $columns): self
+    public function groupBy(string|array $columns): static
     {
+        $instance = $this->getInstance();
         if (is_string($columns)) {
             $columns = array_map('trim', explode(',', $columns));
         }
-        $this->groupBy = array_merge($this->groupBy, $columns);
-
-        return $this;
+        $instance->groupBy = array_merge($instance->groupBy, $columns);
+        return $instance;
     }
 
     /**
@@ -395,9 +476,9 @@ class AsyncQueryBuilder
      * @param  string  $column  The column name.
      * @param  mixed  $operator  The comparison operator or value if only 2 arguments.
      * @param  mixed  $value  The value to compare against.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function having(string $column, mixed $operator = null, mixed $value = null): self
+    public function having(string $column, mixed $operator = null, mixed $value = null): static
     {
         if (func_num_args() === 2) {
             $value = $operator;
@@ -408,11 +489,12 @@ class AsyncQueryBuilder
             $operator = '=';
         }
 
-        $placeholder = $this->getPlaceholder();
-        $this->having[] = "{$column} {$operator} {$placeholder}";
-        $this->bindings['having'][] = $value;
+        $instance = $this->getInstance();
+        $placeholder = $instance->getPlaceholder();
+        $instance->having[] = "{$column} {$operator} {$placeholder}";
+        $instance->bindings['having'][] = $value;
 
-        return $this;
+        return $instance;
     }
 
     /**
@@ -420,14 +502,14 @@ class AsyncQueryBuilder
      *
      * @param  string  $condition  The raw SQL condition.
      * @param  array<mixed>  $bindings  Parameter bindings for the condition.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function havingRaw(string $condition, array $bindings = []): self
+    public function havingRaw(string $condition, array $bindings = []): static
     {
-        $this->having[] = $condition;
-        $this->bindings['having'] = array_merge($this->bindings['having'], $bindings);
-
-        return $this;
+        $instance = $this->getInstance();
+        $instance->having[] = $condition;
+        $instance->bindings['having'] = array_merge($instance->bindings['having'], $bindings);
+        return $instance;
     }
 
     /**
@@ -435,13 +517,13 @@ class AsyncQueryBuilder
      *
      * @param  string  $column  The column name.
      * @param  string  $direction  The sort direction (ASC or DESC).
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function orderBy(string $column, string $direction = 'ASC'): self
+    public function orderBy(string $column, string $direction = 'ASC'): static
     {
-        $this->orderBy[] = "{$column} ".strtoupper($direction);
-
-        return $this;
+        $instance = $this->getInstance();
+        $instance->orderBy[] = "{$column} " . strtoupper($direction);
+        return $instance;
     }
 
     /**
@@ -449,30 +531,183 @@ class AsyncQueryBuilder
      *
      * @param  int  $limit  The maximum number of records to return.
      * @param  int|null  $offset  The number of records to skip.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function limit(int $limit, ?int $offset = null): self
+    public function limit(int $limit, ?int $offset = null): static
     {
-        $this->limit = $limit;
+        $instance = $this->getInstance();
+        $instance->limit = $limit;
         if ($offset !== null) {
-            $this->offset = $offset;
+            $instance->offset = $offset;
         }
-
-        return $this;
+        return $instance;
     }
 
     /**
      * Set the OFFSET for the query.
      *
      * @param  int  $offset  The number of records to skip.
-     * @return self Returns the query builder instance for method chaining.
+     * @return static Returns a query builder instance for method chaining.
      */
-    public function offset(int $offset): self
+    public function offset(int $offset): static
     {
-        $this->offset = $offset;
-
-        return $this;
+        $instance = $this->getInstance();
+        $instance->offset = $offset;
+        return $instance;
     }
+
+    // Continue with all the remaining methods, applying the same pattern...
+    // I'll include a few more key ones to show the pattern:
+
+    /**
+     * Add a raw WHERE condition.
+     *
+     * @param  string  $condition  The raw SQL condition.
+     * @param  array<mixed>  $bindings  Parameter bindings for the condition.
+     * @param  string  $operator  Logical operator ('AND' or 'OR').
+     * @return static Returns a query builder instance for method chaining.
+     */
+    public function whereRaw(string $condition, array $bindings = [], string $operator = 'AND'): static
+    {
+        $instance = $this->getInstance();
+
+        if (strtoupper($operator) === 'OR') {
+            $instance->orWhereRaw[] = $condition;
+            $instance->bindings['orWhereRaw'] = array_merge($instance->bindings['orWhereRaw'], $bindings);
+        } else {
+            $instance->whereRaw[] = $condition;
+            $instance->bindings['whereRaw'] = array_merge($instance->bindings['whereRaw'], $bindings);
+        }
+
+        return $instance;
+    }
+
+    /**
+     * Add a raw OR WHERE condition.
+     *
+     * @param  string  $condition  The raw SQL condition.
+     * @param  array<mixed>  $bindings  Parameter bindings for the condition.
+     * @return static Returns a query builder instance for method chaining.
+     */
+    public function orWhereRaw(string $condition, array $bindings = []): static
+    {
+        return $this->whereRaw($condition, $bindings, 'OR');
+    }
+
+    /**
+     * Add a custom condition group with specific logic.
+     *
+     * @param  callable(static): void  $callback  Callback function that receives a new query builder instance.
+     * @param  string  $logicalOperator  How this group connects to others ('AND' or 'OR').
+     * @return static Returns a query builder instance for method chaining.
+     */
+    public function whereGroup(callable $callback, string $logicalOperator = 'AND'): static
+    {
+        $subBuilder = new static($this->table);
+        $callback($subBuilder);
+
+        $subSql = $subBuilder->buildWhereClause();
+
+        if ($subSql === '') {
+            return $this;
+        }
+
+        return $this->whereRaw("({$subSql})", $subBuilder->getCompiledBindings(), $logicalOperator);
+    }
+
+    /**
+     * Add nested WHERE conditions with custom logic.
+     *
+     * @param  callable(static): void  $callback  Callback function for nested conditions.
+     * @param  string  $operator  How to connect with existing conditions.
+     * @return static Returns a query builder instance for method chaining.
+     */
+    public function whereNested(callable $callback, string $operator = 'AND'): static
+    {
+        return $this->whereGroup($callback, $operator);
+    }
+
+    /**
+     * Add conditions with EXISTS clause.
+     *
+     * @param  callable(static): void  $callback  Callback function for the EXISTS subquery.
+     * @param  string  $operator  Logical operator ('AND' or 'OR').
+     * @return static Returns a query builder instance for method chaining.
+     */
+    public function whereExists(callable $callback, string $operator = 'AND'): static
+    {
+        $subBuilder = new static;
+        $callback($subBuilder);
+
+        $subSql = $subBuilder->buildSelectQuery();
+        $condition = "EXISTS ({$subSql})";
+
+        return $this->whereRaw($condition, $subBuilder->getCompiledBindings(), $operator);
+    }
+
+    /**
+     * Add conditions with NOT EXISTS clause.
+     *
+     * @param  callable(static): void  $callback  Callback function for the NOT EXISTS subquery.
+     * @param  string  $operator  Logical operator ('AND' or 'OR').
+     * @return static Returns a query builder instance for method chaining.
+     */
+    public function whereNotExists(callable $callback, string $operator = 'AND'): static
+    {
+        $subBuilder = new static;
+        $callback($subBuilder);
+
+        $subSql = $subBuilder->buildSelectQuery();
+        $condition = "NOT EXISTS ({$subSql})";
+
+        return $this->whereRaw($condition, $subBuilder->getCompiledBindings(), $operator);
+    }
+
+    /**
+     * Add a nested OR WHERE condition with custom logic.
+     *
+     * @param  callable(static): void  $callback  Callback function for nested conditions.
+     * @return static Returns a query builder instance for method chaining.
+     */
+    public function orWhereNested(callable $callback): static
+    {
+        return $this->whereGroup($callback, 'OR');
+    }
+
+    /**
+     * Reset all WHERE conditions and bindings.
+     *
+     * @return static Returns a query builder instance for method chaining.
+     */
+    public function resetWhere(): static
+    {
+        $instance = $this->getInstance();
+        $instance->where = [];
+        $instance->orWhere = [];
+        $instance->whereIn = [];
+        $instance->whereNotIn = [];
+        $instance->whereBetween = [];
+        $instance->whereNull = [];
+        $instance->whereNotNull = [];
+        $instance->whereRaw = [];
+        $instance->orWhereRaw = [];
+        $instance->bindings = [
+            'where' => [],
+            'whereIn' => [],
+            'whereNotIn' => [],
+            'whereBetween' => [],
+            'whereRaw' => [],
+            'orWhere' => [],
+            'orWhereRaw' => [],
+            'having' => [],
+        ];
+        $instance->bindingIndex = 0;
+
+        return $instance;
+    }
+
+    // All the execution methods (get, first, find, etc.) remain unchanged
+    // since they don't modify the instance
 
     /**
      * Execute the query and return all results.
@@ -482,7 +717,6 @@ class AsyncQueryBuilder
     public function get(): PromiseInterface
     {
         $sql = $this->buildSelectQuery();
-
         return AsyncPDO::query($sql, $this->getCompiledBindings());
     }
 
@@ -493,12 +727,11 @@ class AsyncQueryBuilder
      */
     public function first(): PromiseInterface
     {
-        $originalLimit = $this->limit;
-        $this->limit = 1;
-        $sql = $this->buildSelectQuery();
-        $this->limit = $originalLimit;
+        $instance = $this->getInstance();
+        $instance->limit = 1;
+        $sql = $instance->buildSelectQuery();
 
-        return AsyncPDO::fetchOne($sql, $this->getCompiledBindings());
+        return AsyncPDO::fetchOne($sql, $instance->getCompiledBindings());
     }
 
     /**
@@ -529,10 +762,8 @@ class AsyncQueryBuilder
             $result = await($this->find($id, $column));
             if ($result === null || $result === false) {
                 $idString = is_scalar($id) ? (string) $id : 'complex_type';
-
                 throw new \RuntimeException("Record not found with {$column} = {$idString}");
             }
-
             return $result;
         })();
     }
@@ -548,7 +779,6 @@ class AsyncQueryBuilder
         // @phpstan-ignore-next-line
         return Async::async(function () use ($column): mixed {
             $result = await($this->select($column)->first());
-
             return ($result !== false && isset($result[$column])) ? $result[$column] : null;
         })();
     }
@@ -564,7 +794,6 @@ class AsyncQueryBuilder
         $sql = $this->buildCountQuery($column);
         /** @var PromiseInterface<int> */
         $promise = AsyncPDO::fetchValue($sql, $this->getCompiledBindings());
-
         return $promise;
     }
 
@@ -578,7 +807,6 @@ class AsyncQueryBuilder
         // @phpstan-ignore-next-line
         return Async::async(function (): bool {
             $count = await($this->count());
-
             return $count > 0;
         })();
     }
@@ -595,7 +823,6 @@ class AsyncQueryBuilder
             return Promise::resolve(0);
         }
         $sql = $this->buildInsertQuery($data);
-
         return AsyncPDO::execute($sql, array_values($data));
     }
 
@@ -659,7 +886,6 @@ class AsyncQueryBuilder
     public function delete(): PromiseInterface
     {
         $sql = $this->buildDeleteQuery();
-
         return AsyncPDO::execute($sql, $this->getCompiledBindings());
     }
 
@@ -700,14 +926,34 @@ class AsyncQueryBuilder
     }
 
     /**
+     * Get the built SQL query for debugging purposes.
+     *
+     * @return string The complete SQL query.
+     */
+    public function toSql(): string
+    {
+        return $this->buildSelectQuery();
+    }
+
+    /**
+     * Get the parameter bindings for debugging purposes.
+     *
+     * @return array<mixed> The parameter bindings.
+     */
+    public function getBindings(): array
+    {
+        return $this->getCompiledBindings();
+    }
+
+    /**
      * Build the SELECT SQL query string.
      *
      * @return string The complete SELECT SQL query.
      */
     protected function buildSelectQuery(): string
     {
-        $sql = 'SELECT '.implode(', ', $this->select);
-        $sql .= ' FROM '.$this->table;
+        $sql = 'SELECT ' . implode(', ', $this->select);
+        $sql .= ' FROM ' . $this->table;
 
         foreach ($this->joins as $join) {
             $sql .= " {$join['type']} JOIN {$join['table']} ON {$join['condition']}";
@@ -715,25 +961,25 @@ class AsyncQueryBuilder
 
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
-            $sql .= ' WHERE '.$whereSql;
+            $sql .= ' WHERE ' . $whereSql;
         }
 
         if ($this->groupBy !== []) {
-            $sql .= ' GROUP BY '.implode(', ', $this->groupBy);
+            $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
         }
 
         if ($this->having !== []) {
-            $sql .= ' HAVING '.implode(' AND ', $this->having);
+            $sql .= ' HAVING ' . implode(' AND ', $this->having);
         }
 
         if ($this->orderBy !== []) {
-            $sql .= ' ORDER BY '.implode(', ', $this->orderBy);
+            $sql .= ' ORDER BY ' . implode(', ', $this->orderBy);
         }
 
         if ($this->limit !== null) {
-            $sql .= ' LIMIT '.$this->limit;
+            $sql .= ' LIMIT ' . $this->limit;
             if ($this->offset !== null) {
-                $sql .= ' OFFSET '.$this->offset;
+                $sql .= ' OFFSET ' . $this->offset;
             }
         }
 
@@ -748,7 +994,7 @@ class AsyncQueryBuilder
      */
     protected function buildCountQuery(string $column = '*'): string
     {
-        $sql = "SELECT COUNT({$column}) FROM ".$this->table;
+        $sql = "SELECT COUNT({$column}) FROM " . $this->table;
 
         foreach ($this->joins as $join) {
             $sql .= " {$join['type']} JOIN {$join['table']} ON {$join['condition']}";
@@ -756,15 +1002,15 @@ class AsyncQueryBuilder
 
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
-            $sql .= ' WHERE '.$whereSql;
+            $sql .= ' WHERE ' . $whereSql;
         }
 
         if ($this->groupBy !== []) {
-            $sql .= ' GROUP BY '.implode(', ', $this->groupBy);
+            $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
         }
 
         if ($this->having !== []) {
-            $sql .= ' HAVING '.implode(' AND ', $this->having);
+            $sql .= ' HAVING ' . implode(' AND ', $this->having);
         }
 
         return $sql;
@@ -800,7 +1046,7 @@ class AsyncQueryBuilder
         }
 
         $columns = implode(', ', array_keys($firstRow));
-        $placeholders = '('.implode(', ', array_fill(0, count($firstRow), '?')).')';
+        $placeholders = '(' . implode(', ', array_fill(0, count($firstRow), '?')) . ')';
         $allPlaceholders = implode(', ', array_fill(0, count($data), $placeholders));
 
         return "INSERT INTO {$this->table} ({$columns}) VALUES {$allPlaceholders}";
@@ -818,10 +1064,10 @@ class AsyncQueryBuilder
         foreach (array_keys($data) as $column) {
             $setClauses[] = "{$column} = ?";
         }
-        $sql = "UPDATE {$this->table} SET ".implode(', ', $setClauses);
+        $sql = "UPDATE {$this->table} SET " . implode(', ', $setClauses);
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
-            $sql .= ' WHERE '.$whereSql;
+            $sql .= ' WHERE ' . $whereSql;
         }
 
         return $sql;
@@ -837,7 +1083,7 @@ class AsyncQueryBuilder
         $sql = "DELETE FROM {$this->table}";
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
-            $sql .= ' WHERE '.$whereSql;
+            $sql .= ' WHERE ' . $whereSql;
         }
 
         return $sql;
@@ -878,13 +1124,13 @@ class AsyncQueryBuilder
             $this->whereRaw
         );
 
-        $filteredAnd = array_filter($andConditions, fn ($condition) => trim($condition) !== '');
+        $filteredAnd = array_filter($andConditions, fn($condition) => trim($condition) !== '');
         if ($filteredAnd !== []) {
             $parts[] = ['conditions' => $filteredAnd, 'operator' => 'AND', 'priority' => 1];
         }
 
         $orConditions = array_merge($this->orWhere, $this->orWhereRaw);
-        $filteredOr = array_filter($orConditions, fn ($condition) => trim($condition) !== '');
+        $filteredOr = array_filter($orConditions, fn($condition) => trim($condition) !== '');
         if ($filteredOr !== []) {
             $parts[] = ['conditions' => $filteredOr, 'operator' => 'OR', 'priority' => 2];
         }
@@ -901,7 +1147,7 @@ class AsyncQueryBuilder
      */
     protected function buildConditionGroup(array $conditions, string $operator): string
     {
-        $filteredConditions = array_filter($conditions, fn ($condition) => trim($condition) !== '');
+        $filteredConditions = array_filter($conditions, fn($condition) => trim($condition) !== '');
 
         if ($filteredConditions === []) {
             return '';
@@ -911,7 +1157,7 @@ class AsyncQueryBuilder
             return reset($filteredConditions);
         }
 
-        return '('.implode(' '.strtoupper($operator).' ', $filteredConditions).')';
+        return '(' . implode(' ' . strtoupper($operator) . ' ', $filteredConditions) . ')';
     }
 
     /**
@@ -926,7 +1172,7 @@ class AsyncQueryBuilder
             return '';
         }
 
-        usort($parts, fn ($a, $b) => $a['priority'] <=> $b['priority']);
+        usort($parts, fn($a, $b) => $a['priority'] <=> $b['priority']);
 
         $andParts = [];
         $orParts = [];
@@ -967,7 +1213,7 @@ class AsyncQueryBuilder
             if (count($andParts) === 1) {
                 $finalParts[] = $andParts[0];
             } else {
-                $finalParts[] = '('.implode(' AND ', $andParts).')';
+                $finalParts[] = '(' . implode(' AND ', $andParts) . ')';
             }
         }
 
@@ -997,172 +1243,6 @@ class AsyncQueryBuilder
             ),
             'OR' => array_merge($this->orWhere, $this->orWhereRaw),
         ];
-    }
-
-    /**
-     * Add a custom condition group with specific logic.
-     *
-     * @param  callable(static): void  $callback  Callback function that receives a new query builder instance.
-     * @param  string  $logicalOperator  How this group connects to others ('AND' or 'OR').
-     * @return self Returns the query builder instance for method chaining.
-     */
-    public function whereGroup(callable $callback, string $logicalOperator = 'AND'): self
-    {
-        $subBuilder = new static($this->table);
-        $callback($subBuilder);
-
-        $subSql = $subBuilder->buildWhereClause();
-
-        if ($subSql === '') {
-            return $this;
-        }
-
-        $this->whereRaw("({$subSql})", $subBuilder->getCompiledBindings(), $logicalOperator);
-
-        return $this;
-    }
-
-    /**
-     * Add nested WHERE conditions with custom logic.
-     *
-     * @param  callable(static): void  $callback  Callback function for nested conditions.
-     * @param  string  $operator  How to connect with existing conditions.
-     * @return self Returns the query builder instance for method chaining.
-     */
-    public function whereNested(callable $callback, string $operator = 'AND'): self
-    {
-        return $this->whereGroup($callback, $operator);
-    }
-
-    /**
-     * Add a raw WHERE condition.
-     *
-     * @param  string  $condition  The raw SQL condition.
-     * @param  array<mixed>  $bindings  Parameter bindings for the condition.
-     * @param  string  $operator  Logical operator ('AND' or 'OR').
-     * @return self Returns the query builder instance for method chaining.
-     */
-    public function whereRaw(string $condition, array $bindings = [], string $operator = 'AND'): self
-    {
-        if (strtoupper($operator) === 'OR') {
-            $this->orWhereRaw[] = $condition;
-            $this->bindings['orWhereRaw'] = array_merge($this->bindings['orWhereRaw'], $bindings);
-        } else {
-            $this->whereRaw[] = $condition;
-            $this->bindings['whereRaw'] = array_merge($this->bindings['whereRaw'], $bindings);
-        }
-
-        return $this;
-    }
-
-    /**
-     * Add a raw OR WHERE condition.
-     *
-     * @param  string  $condition  The raw SQL condition.
-     * @param  array<mixed>  $bindings  Parameter bindings for the condition.
-     * @return self Returns the query builder instance for method chaining.
-     */
-    public function orWhereRaw(string $condition, array $bindings = []): self
-    {
-        return $this->whereRaw($condition, $bindings, 'OR');
-    }
-
-    /**
-     * Add conditions with EXISTS clause.
-     *
-     * @param  callable(static): void  $callback  Callback function for the EXISTS subquery.
-     * @param  string  $operator  Logical operator ('AND' or 'OR').
-     * @return self Returns the query builder instance for method chaining.
-     */
-    public function whereExists(callable $callback, string $operator = 'AND'): self
-    {
-        $subBuilder = new static;
-        $callback($subBuilder);
-
-        $subSql = $subBuilder->buildSelectQuery();
-        $condition = "EXISTS ({$subSql})";
-
-        return $this->whereRaw($condition, $subBuilder->getCompiledBindings(), $operator);
-    }
-
-    /**
-     * Add conditions with NOT EXISTS clause.
-     *
-     * @param  callable(static): void  $callback  Callback function for the NOT EXISTS subquery.
-     * @param  string  $operator  Logical operator ('AND' or 'OR').
-     * @return self Returns the query builder instance for method chaining.
-     */
-    public function whereNotExists(callable $callback, string $operator = 'AND'): self
-    {
-        $subBuilder = new static;
-        $callback($subBuilder);
-
-        $subSql = $subBuilder->buildSelectQuery();
-        $condition = "NOT EXISTS ({$subSql})";
-
-        return $this->whereRaw($condition, $subBuilder->getCompiledBindings(), $operator);
-    }
-
-    /**
-     * Add a nested OR WHERE condition with custom logic.
-     *
-     * @param  callable(static): void  $callback  Callback function for nested conditions.
-     * @return self Returns the query builder instance for method chaining.
-     */
-    public function orWhereNested(callable $callback): self
-    {
-        return $this->whereGroup($callback, 'OR');
-    }
-
-    /**
-     * Get the built SQL query for debugging purposes.
-     *
-     * @return string The complete SQL query.
-     */
-    public function toSql(): string
-    {
-        return $this->buildSelectQuery();
-    }
-
-    /**
-     * Get the parameter bindings for debugging purposes.
-     *
-     * @return array<mixed> The parameter bindings.
-     */
-    public function getBindings(): array
-    {
-        return $this->getCompiledBindings();
-    }
-
-    /**
-     * Reset all WHERE conditions and bindings.
-     *
-     * @return self Returns the query builder instance for method chaining.
-     */
-    public function resetWhere(): self
-    {
-        $this->where = [];
-        $this->orWhere = [];
-        $this->whereIn = [];
-        $this->whereNotIn = [];
-        $this->whereBetween = [];
-        $this->whereNull = [];
-        $this->whereNotNull = [];
-        $this->whereRaw = [];
-        $this->orWhereRaw = [];
-        $this->bindings = [
-            'where' => [],
-            'whereIn' => [],
-            'whereNotIn' => [],
-            'whereBetween' => [],
-            'whereRaw' => [],
-            'orWhere' => [],
-            'orWhereRaw' => [],
-            'having' => [],
-        ];
-        $this->bindingIndex = 0;
-
-        return $this;
     }
 
     /**
