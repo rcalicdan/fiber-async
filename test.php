@@ -1,12 +1,20 @@
 <?php
 
 use Rcalicdan\FiberAsync\Api\Http;
+use Rcalicdan\FiberAsync\Api\Task;
+use Rcalicdan\FiberAsync\Http\Response;
 
-require "vendor/autoload.php";
+require __DIR__ . '/vendor/autoload.php';
 
-run(function () {
-   $reponse = await(Http::stream("https://jsonplaceholder.typicode.com/todos/1"));
-   echo $reponse->body() . PHP_EOL;
-   $reponse2 = await(Http::get("https://jsonplaceholder.typicode.com/todos/2"));
-   echo $reponse2->body() . PHP_EOL;
+
+Task::run(function () {
+    $mockClient = Http::startTesting()->withGlobalRandomDelay(0.3, 0.7)->setAllowPassthrough(false);
+
+
+    $mockClient->mock()->json(["sucess" => true])->register();
+
+    $response = await(fetch('https://not-existing-domain.com'));
+    $response2 = await(fetch('https://httpbin.org/get'));
+    echo $response->body();
+    echo $response2->body();
 });

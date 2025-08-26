@@ -83,10 +83,10 @@ if (! function_exists('http_stream')) {
      *     echo "Received: " . $chunk;
      * }));
      */
-    function http_stream(string $url, array $options = [], ?callable $onChunk = null): CancellablePromiseInterface
+    function http_stream(string $url, ?callable $onChunk = null): CancellablePromiseInterface
     {
         /** @var CancellablePromiseInterface<StreamingResponse> */
-        return Http::stream($url, $options, $onChunk);
+        return Http::stream($url,  $onChunk);
     }
 }
 

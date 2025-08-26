@@ -223,6 +223,12 @@ class Http
     {
         $request = self::request();
 
+        $directMethods = ['fetch'];
+
+        if (in_array($method, $directMethods)) {
+            return self::getInstance()->{$method}(...$arguments);
+        }
+
         if (method_exists($request, $method)) {
             return $request->{$method}(...$arguments);
         }
