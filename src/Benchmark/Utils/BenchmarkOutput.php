@@ -174,15 +174,27 @@ class BenchmarkOutput
     {
         echo "\n🧠 MEMORY ANALYSIS:\n";
         echo sprintf("Initialization cost: %s\n", $this->formatter->formatBytes($memory['initialization_cost']));
-        echo sprintf("Average memory delta: %s\n", $this->formatter->formatBytes($memory['avg_memory_delta']));
-        echo sprintf("Average net change: %s\n", $this->formatter->formatBytes($memory['avg_memory_net']));
-        echo sprintf("Growth after init: %s\n", $this->formatter->formatBytes($memory['avg_growth_after_init']));
+
+        if ($memory['operational_runs_count'] > 0) {
+            echo "\n📊 Operational Memory (per run after init):\n";
+            echo sprintf("  Average net change: %s\n", $this->formatter->formatBytes($memory['avg_operational_net']));
+            echo sprintf("  Average temp usage: %s\n", $this->formatter->formatBytes($memory['avg_operational_temp']));
+            echo sprintf("  Max temp usage: %s\n", $this->formatter->formatBytes($memory['max_operational_temp']));
+            echo sprintf("  Memory efficiency: %s\n", $memory['operational_efficiency']);
+            echo sprintf("  Memory stability: %s\n", $memory['memory_stability']);
+        }
+
+        echo sprintf("\nTotal net change: %s\n", $this->formatter->formatBytes($memory['avg_memory_net']));
         echo sprintf("Peak memory: %s\n", $this->formatter->formatBytes($memory['peak_memory']));
 
         if ($memory['has_leak']) {
-            echo sprintf("⚠️  MEMORY LEAK: %s\n", $memory['leak_severity']);
+            echo sprintf(
+                "\n⚠️  MEMORY LEAK: %s (%.2f KB/run)\n",
+                $memory['leak_severity'],
+                $memory['leak_rate_per_run'] / 1024
+            );
         } else {
-            echo "✅ No memory leak detected\n";
+            echo sprintf("\n✅ No memory leak detected (%s)\n", $memory['leak_severity']);
         }
     }
 
@@ -200,7 +212,6 @@ class BenchmarkOutput
         echo sprintf("Range: %s\n", $this->formatter->formatSummaryTime($stats['max'] - $stats['min']));
     }
 
-    // NEW: Display comparison statistics
     private function displayComparisonStatistics(array $results): void
     {
         echo "\n📊 DETAILED STATISTICS:\n";
@@ -233,7 +244,6 @@ class BenchmarkOutput
                 $this->formatter->formatSummaryTime($stats['p99'])
             );
 
-            // Show consistency rating
             $consistency = $this->getConsistencyRating($stats['coefficient_of_variation']);
             echo sprintf("  Consistency: %s\n", $consistency);
             echo "\n";

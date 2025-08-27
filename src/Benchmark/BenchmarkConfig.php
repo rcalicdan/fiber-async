@@ -48,7 +48,7 @@ class BenchmarkConfig
         return $this;
     }
 
-    public function warmup(int $warmup): self
+    public function warmup(int $warmup = 0): self
     {
         $this->options['warmup'] = max(0, $warmup);
 
@@ -184,7 +184,7 @@ class BenchmarkConfig
     {
         return $this->options['outlier_threshold'];
     }
-    
+
     public function getMinRunsAfterFilter(): int
     {
         return $this->options['min_runs_after_filter'];
