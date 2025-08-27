@@ -35,69 +35,69 @@ class BenchmarkAnalyzer
         ];
     }
 
-     private function filterOutliers(array $runs): array
+    private function filterOutliers(array $runs): array
     {
         $times = array_column($runs, 'duration_ms');
-        
+
         if (count($times) < 50) {
             return $runs;
         }
-        
+
         $mean = array_sum($times) / count($times);
         $variance = array_sum(array_map(fn($x) => pow($x - $mean, 2), $times)) / count($times);
         $stdDev = sqrt($variance);
-        
+
         $threshold = $this->config->getOutlierThreshold();
         $filteredRuns = [];
         $outliersRemoved = 0;
-        
+
         foreach ($runs as $run) {
             $zScore = abs(($run['duration_ms'] - $mean) / $stdDev);
-            
+
             if ($zScore <= $threshold) {
                 $filteredRuns[] = $run;
             } else {
                 $outliersRemoved++;
             }
         }
-        
+
         if (count($filteredRuns) < $this->config->getMinRunsAfterFilter()) {
             return $this->filterOutliersWithThreshold($runs, $threshold * 1.5);
         }
-        
+
         if (!empty($filteredRuns)) {
             $filteredRuns[0]['outliers_removed'] = $outliersRemoved;
             $filteredRuns[0]['original_run_count'] = count($runs);
         }
-        
+
         return $filteredRuns;
     }
-    
+
     private function filterOutliersWithThreshold(array $runs, float $threshold): array
     {
         $times = array_column($runs, 'duration_ms');
         $mean = array_sum($times) / count($times);
         $variance = array_sum(array_map(fn($x) => pow($x - $mean, 2), $times)) / count($times);
         $stdDev = sqrt($variance);
-        
+
         $filteredRuns = [];
         $outliersRemoved = 0;
-        
+
         foreach ($runs as $run) {
             $zScore = abs(($run['duration_ms'] - $mean) / $stdDev);
-            
+
             if ($zScore <= $threshold) {
                 $filteredRuns[] = $run;
             } else {
                 $outliersRemoved++;
             }
         }
-        
+
         if (!empty($filteredRuns)) {
             $filteredRuns[0]['outliers_removed'] = $outliersRemoved;
             $filteredRuns[0]['original_run_count'] = count($runs);
         }
-        
+
         return $filteredRuns;
     }
 
@@ -120,23 +120,27 @@ class BenchmarkAnalyzer
 
     private function analyzeMemoryUsage(array $runs): array
     {
-        $memoryNets = array_column($runs, 'memory_net');
+        $memoryNets = array_column($runs, 'memory_net'); 
+        $memoryDeltas = array_column($runs, 'memory_delta');
+        $memoryRetained = array_column($runs, 'memory_retained');
+
         $initializationCost = $runs[0]['memory_net'] ?? 0;
 
-        // Calculate growth after initialization (skip first run)
         $subsequentRuns = array_slice($memoryNets, 1);
         $avgGrowthAfterInit = empty($subsequentRuns) ? 0 : array_sum($subsequentRuns) / count($subsequentRuns);
 
-        $hasLeak = $avgGrowthAfterInit > 10240; // More than 10KB average growth
+        $hasLeak = $avgGrowthAfterInit > 10240; 
 
         return [
             'initialization_cost' => $initializationCost,
-            'avg_memory_delta' => array_sum(array_column($runs, 'memory_delta')) / count($runs),
-            'avg_memory_net' => array_sum($memoryNets) / count($memoryNets),
+            'avg_memory_delta' => array_sum($memoryDeltas) / count($memoryDeltas), 
+            'avg_memory_net' => array_sum($memoryNets) / count($memoryNets), 
+            'avg_memory_retained' => array_sum($memoryRetained) / count($memoryRetained), 
             'avg_growth_after_init' => $avgGrowthAfterInit,
             'has_leak' => $hasLeak,
             'leak_severity' => $this->getLeakSeverity($avgGrowthAfterInit),
-            'peak_memory' => max(array_column($runs, 'memory_after'))
+            'peak_memory' => max(array_column($runs, 'memory_after')), 
+            'peak_memory_after_gc' => max(array_column($runs, 'memory_after_gc')) 
         ];
     }
 

@@ -22,7 +22,7 @@ class BenchmarkExecutor
 
         if ($this->config->isOutputEnabled()) {
             echo "🚀 Running benchmark: {$name}\n";
-            echo str_repeat('-', 50)."\n";
+            echo str_repeat('-', 50) . "\n";
         }
 
         $runs = [];
@@ -76,16 +76,13 @@ class BenchmarkExecutor
 
     private function executeRun(callable $callback, bool $isWarmup = false, int $runNumber = 0, int $baselineMemory = 0): array
     {
-        // Pre-run measurements
         $memoryBefore = $this->config->isMemoryTrackingEnabled() ? memory_get_usage(true) : 0;
         $peakBefore = $this->config->isMemoryTrackingEnabled() ? memory_get_peak_usage(true) : 0;
 
-        // Timing
         $startTime = $this->config->isHighPrecisionEnabled() && function_exists('hrtime')
             ? hrtime(true)
             : microtime(true);
 
-        // Execute callback
         $result = null;
         $exception = null;
 
@@ -95,17 +92,20 @@ class BenchmarkExecutor
             $exception = $e;
         }
 
-        // Post-run measurements
         $duration = $this->calculateDuration($startTime);
         $memoryAfter = $this->config->isMemoryTrackingEnabled() ? memory_get_usage(true) : 0;
         $peakAfter = $this->config->isMemoryTrackingEnabled() ? memory_get_peak_usage(true) : 0;
 
-        // Force garbage collection if enabled
+        $actualMemoryDelta = $memoryAfter - $memoryBefore;
+        $actualNetUsage = $memoryAfter - $baselineMemory;
+
+        $memoryAfterGc = $memoryAfter;
         if ($this->config->isGarbageCollectionEnabled() && $this->config->isMemoryTrackingEnabled()) {
             $this->environment->forceGarbageCollection();
+            $memoryAfterGc = memory_get_usage(true);
         }
 
-        $memoryAfterGc = $this->config->isMemoryTrackingEnabled() ? memory_get_usage(true) : 0;
+        $retainedMemory = $memoryAfterGc - $baselineMemory;
 
         return [
             'run_number' => $runNumber,
@@ -115,8 +115,9 @@ class BenchmarkExecutor
             'memory_before' => $memoryBefore,
             'memory_after' => $memoryAfter,
             'memory_after_gc' => $memoryAfterGc,
-            'memory_delta' => $memoryAfter - $memoryBefore,
-            'memory_net' => $memoryAfterGc - $baselineMemory,
+            'memory_delta' => $actualMemoryDelta,
+            'memory_net' => $actualNetUsage,
+            'memory_retained' => $retainedMemory,
             'peak_memory_delta' => $peakAfter - $peakBefore,
             'result' => $result,
             'exception' => $exception,
@@ -129,11 +130,11 @@ class BenchmarkExecutor
         if ($this->config->isHighPrecisionEnabled() && function_exists('hrtime')) {
             $endTime = hrtime(true);
 
-            return ($endTime - $startTime) / 1e6; 
+            return ($endTime - $startTime) / 1e6;
         } else {
             $endTime = microtime(true);
 
-            return ($endTime - $startTime) * 1000; 
+            return ($endTime - $startTime) * 1000;
         }
     }
 
@@ -151,9 +152,9 @@ class BenchmarkExecutor
         }
 
         if ($run['exception']) {
-            $output .= ' ❌ ERROR: '.$run['exception']->getMessage();
+            $output .= ' ❌ ERROR: ' . $run['exception']->getMessage();
         }
 
-        echo $output."\n";
+        echo $output . "\n";
     }
 }
