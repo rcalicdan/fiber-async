@@ -104,6 +104,13 @@ class BenchmarkConfig
         return $this;
     }
 
+    public function disableWarmup(): self
+    {
+        $this->options['warmup'] = 0;
+
+        return $this;
+    }
+
     // New ultra precision methods
     public function ultraPrecision(bool $enable = true): self
     {

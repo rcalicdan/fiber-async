@@ -28,15 +28,24 @@ class BenchmarkExecutor
         $runs = [];
         $baselineMemory = 0;
 
-        // Warmup phase
-        if ($this->config->getWarmup() > 0) {
-            $this->executeWarmup($callback);
-        }
-
-        // Reset memory tracking after warmup
+        // Initialize baseline memory BEFORE any operations
         if ($this->config->isMemoryTrackingEnabled()) {
             $this->environment->resetMemoryTracking();
             $baselineMemory = memory_get_usage(true);
+        }
+
+        // Warmup phase
+        if ($this->config->getWarmup() > 0) {
+            $this->executeWarmup($callback);
+
+            // Re-establish baseline AFTER warmup (this is the key!)
+            if ($this->config->isMemoryTrackingEnabled()) {
+                $this->environment->resetMemoryTracking();
+                if ($this->config->isGarbageCollectionEnabled()) {
+                    $this->environment->forceGarbageCollection();
+                }
+                $baselineMemory = memory_get_usage(true);
+            }
         }
 
         // Actual benchmark runs
