@@ -2,6 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\MySQL;
 
+use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Promise as AsyncPromise;
@@ -39,7 +40,7 @@ class MySQLPool
         if ($this->activeConnections < $this->maxSize) {
             $this->activeConnections++;
 
-            return async(function () {
+            return Async::async(function () {
                 try {
                     $client = new MySQLClient($this->connectionParams);
                     await($client->connect());

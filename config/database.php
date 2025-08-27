@@ -8,7 +8,7 @@ return [
             'driver' => 'sqlite',
             'database' => match ($path = $_ENV['DB_SQLITE_PATH'] ?? null) {
                 ':memory:' => 'file::memory:?cache=shared',
-                null => __DIR__ . '/../database/database.sqlite',
+                null => __DIR__.'/../database/database.sqlite',
                 default => $path,
             },
             'options' => [

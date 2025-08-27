@@ -1,7 +1,5 @@
-<?php 
+<?php
 
 namespace Rcalicdan\FiberAsync\Http\Testing\Exceptions;
 
-class MockException extends \Exception
-{
-}
+class MockException extends \Exception {}

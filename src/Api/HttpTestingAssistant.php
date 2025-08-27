@@ -4,8 +4,8 @@ namespace Rcalicdan\FiberAsync\Api;
 
 use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
 use Rcalicdan\FiberAsync\Http\Testing\MockRequestBuilder;
-use Rcalicdan\FiberAsync\Http\Testing\Utilities\CookieManager;
 use Rcalicdan\FiberAsync\Http\Testing\TestingHttpHandler;
+use Rcalicdan\FiberAsync\Http\Testing\Utilities\CookieManager;
 
 /**
  * A comprehensive HTTP testing assistant for mocking requests and managing test scenarios.

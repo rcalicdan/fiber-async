@@ -162,16 +162,16 @@ class CookieManager
             if (is_string($config)) {
                 $mock->addResponseHeader('Set-Cookie', "{$name}={$config}; Path=/");
             } elseif (is_array($config)) {
-                $setCookieValue = $name . '=' . ($config['value'] ?? '');
+                $setCookieValue = $name.'='.($config['value'] ?? '');
 
                 if (isset($config['path'])) {
-                    $setCookieValue .= '; Path=' . $config['path'];
+                    $setCookieValue .= '; Path='.$config['path'];
                 }
                 if (isset($config['domain'])) {
-                    $setCookieValue .= '; Domain=' . $config['domain'];
+                    $setCookieValue .= '; Domain='.$config['domain'];
                 }
                 if (isset($config['expires'])) {
-                    $setCookieValue .= '; Expires=' . gmdate('D, d M Y H:i:s T', $config['expires']);
+                    $setCookieValue .= '; Expires='.gmdate('D, d M Y H:i:s T', $config['expires']);
                 }
                 if ($config['secure'] ?? false) {
                     $setCookieValue .= '; Secure';
@@ -180,7 +180,7 @@ class CookieManager
                     $setCookieValue .= '; HttpOnly';
                 }
                 if (isset($config['sameSite'])) {
-                    $setCookieValue .= '; SameSite=' . $config['sameSite'];
+                    $setCookieValue .= '; SameSite='.$config['sameSite'];
                 }
 
                 $mock->addResponseHeader('Set-Cookie', $setCookieValue);
@@ -260,7 +260,7 @@ class CookieManager
         }
 
         if (! isset($cookies[$name])) {
-            throw new MockAssertionException("Cookie '{$name}' was not sent in request. Sent cookies: " . implode(', ', array_keys($cookies)));
+            throw new MockAssertionException("Cookie '{$name}' was not sent in request. Sent cookies: ".implode(', ', array_keys($cookies)));
         }
     }
 
@@ -311,7 +311,7 @@ class CookieManager
             $cookieHeaderExists = false;
             foreach ($curlOptions[CURLOPT_HTTPHEADER] as &$header) {
                 if (str_starts_with(strtolower($header), 'cookie:')) {
-                    $header .= '; ' . $cookieHeader;
+                    $header .= '; '.$cookieHeader;
                     $cookieHeaderExists = true;
 
                     break;
@@ -319,7 +319,7 @@ class CookieManager
             }
 
             if (! $cookieHeaderExists) {
-                $curlOptions[CURLOPT_HTTPHEADER][] = 'Cookie: ' . $cookieHeader;
+                $curlOptions[CURLOPT_HTTPHEADER][] = 'Cookie: '.$cookieHeader;
             }
         }
     }
@@ -358,7 +358,7 @@ class CookieManager
      */
     public function createTempCookieFile(string $prefix = 'test_cookies_'): string
     {
-        $filename = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $prefix . uniqid() . '.json';
+        $filename = sys_get_temp_dir().DIRECTORY_SEPARATOR.$prefix.uniqid().'.json';
 
         if ($this->autoManage) {
             $this->createdCookieFiles[] = $filename;
@@ -439,12 +439,14 @@ class CookieManager
 
             foreach ($curlOptions[CURLOPT_HTTPHEADER] as &$header) {
                 if (str_starts_with(strtolower($header), 'cookie:')) {
-                    $header .= '; ' . $cookieHeader;
+                    $header .= '; '.$cookieHeader;
+
                     return;
                 }
             }
 
-            $curlOptions[CURLOPT_HTTPHEADER][] = 'Cookie: ' . $cookieHeader;
+            $curlOptions[CURLOPT_HTTPHEADER][] = 'Cookie: '.$cookieHeader;
+
             return;
         }
 
@@ -470,12 +472,14 @@ class CookieManager
 
             foreach ($curlOptions[CURLOPT_HTTPHEADER] as &$header) {
                 if (str_starts_with(strtolower($header), 'cookie:')) {
-                    $header .= '; ' . $cookieHeader;
+                    $header .= '; '.$cookieHeader;
+
                     return;
                 }
             }
 
-            $curlOptions[CURLOPT_HTTPHEADER][] = 'Cookie: ' . $cookieHeader;
+            $curlOptions[CURLOPT_HTTPHEADER][] = 'Cookie: '.$cookieHeader;
+
             return;
         }
 
@@ -516,6 +520,7 @@ class CookieManager
             }
             if (is_array($value)) {
                 $setCookieHeaders = array_merge($setCookieHeaders, $value);
+
                 continue;
             }
             $setCookieHeaders[] = $value;

@@ -462,7 +462,7 @@ class Request extends Message implements RequestInterface
     {
         $options = $this->buildFetchOptions('GET');
         $options['stream'] = true;
-        
+
         if ($onChunk) {
             $options['on_chunk'] = $onChunk;
         }

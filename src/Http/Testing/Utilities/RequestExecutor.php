@@ -68,7 +68,7 @@ class RequestExecutor
             $parentSendRequest
         );
 
-        if (!($promise instanceof PromiseInterface)) {
+        if (! ($promise instanceof PromiseInterface)) {
             $promise = Promise::resolved($promise);
         }
 
@@ -80,6 +80,7 @@ class RequestExecutor
                     $this->cacheManager->cacheResponse($url, $response, $cacheConfig);
                 }
             }
+
             return $response;
         });
 
@@ -119,7 +120,7 @@ class RequestExecutor
             throw new MockException("No mock found for: {$method} {$url}");
         }
 
-        if (!$globalSettings['allow_passthrough']) {
+        if (! $globalSettings['allow_passthrough']) {
             throw new MockException("Passthrough disabled and no mock found for: {$method} {$url}");
         }
 
@@ -136,6 +137,7 @@ class RequestExecutor
 
         if ($cachedResponse !== null) {
             $this->requestRecorder->recordRequest('GET (FROM CACHE)', $url, []);
+
             return true;
         }
 
@@ -163,7 +165,8 @@ class RequestExecutor
 
         if (isset($options['stream']) && $options['stream'] === true) {
             $onChunk = $options['on_chunk'] ?? $options['onChunk'] ?? null;
-            $createStream ??= fn($body) => (new HttpHandler)->createStream($body);
+            $createStream ??= fn ($body) => (new HttpHandler)->createStream($body);
+
             return $this->responseFactory->createMockedStream($mock, $onChunk, $createStream);
         }
 
@@ -174,6 +177,7 @@ class RequestExecutor
                 if ($response instanceof Response && $response->ok()) {
                     $this->cacheManager->cacheResponse($url, $response, $cacheConfig);
                 }
+
                 return $response;
             });
         }
@@ -214,7 +218,7 @@ class RequestExecutor
             throw new MockException("No mock found for: {$method} {$url}");
         }
 
-        if (!$globalSettings['allow_passthrough']) {
+        if (! $globalSettings['allow_passthrough']) {
             throw new MockException("Passthrough disabled and no mock found for: {$method} {$url}");
         }
 
@@ -268,7 +272,7 @@ class RequestExecutor
                     if ($onChunk) {
                         $onChunk($body);
                     }
-                    $createStream ??= fn($body) => (new HttpHandler)->createStream($body);
+                    $createStream ??= fn ($body) => (new HttpHandler)->createStream($body);
                     $finalPromise->resolve(new StreamingResponse(
                         $createStream($body),
                         $successfulResponse->status(),
@@ -278,11 +282,11 @@ class RequestExecutor
                     $finalPromise->resolve($successfulResponse);
                 }
             },
-            fn($reason) => $finalPromise->reject($reason)
+            fn ($reason) => $finalPromise->reject($reason)
         );
 
         if ($retryPromise instanceof CancellablePromiseInterface) {
-            $finalPromise->setCancelHandler(fn() => $retryPromise->cancel());
+            $finalPromise->setCancelHandler(fn () => $retryPromise->cancel());
         }
 
         return $finalPromise;
