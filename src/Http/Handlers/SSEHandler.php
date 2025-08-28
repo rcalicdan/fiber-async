@@ -1,4 +1,5 @@
 <?php
+// File: src/Http/Handlers/SSEHandler.php (FINAL, CORRECTED VERSION)
 
 namespace Rcalicdan\FiberAsync\Http\Handlers;
 
@@ -42,7 +43,7 @@ class SSEHandler
         ?callable $onError = null,
         ?SSEReconnectConfig $reconnectConfig = null
     ): CancellablePromiseInterface {
-        if ($reconnectConfig !== null) {
+        if ($reconnectConfig !== null && $reconnectConfig->enabled) {
             return $this->connectWithReconnection($url, $options, $onEvent, $onError, $reconnectConfig);
         }
 
@@ -61,16 +62,15 @@ class SSEHandler
     ): CancellablePromiseInterface {
         /** @var CancellablePromise<SSEResponse> $mainPromise */
         $mainPromise = new CancellablePromise;
-        
         $connectionState = new SSEConnectionState($url, $options, $reconnectConfig);
         
-        // Wrap callbacks to handle reconnection
         $wrappedOnEvent = $this->wrapEventCallback($onEvent, $connectionState);
-        $wrappedOnError = $this->wrapErrorCallback($onError, $connectionState, $mainPromise);
+        $wrappedOnError = $this->wrapErrorCallback($onError, $connectionState);
         
-        // Start initial connection
+        // Start the first connection attempt
         $this->attemptConnection($connectionState, $wrappedOnEvent, $wrappedOnError, $mainPromise);
         
+        // The main promise's cancellation now controls the entire state machine.
         $mainPromise->setCancelHandler(function () use ($connectionState) {
             $connectionState->cancel();
         });
@@ -87,57 +87,62 @@ class SSEHandler
         ?callable $onError,
         CancellablePromise $mainPromise
     ): void {
+        // Guard against starting a new attempt if the session has been cancelled.
         if ($connectionState->isCancelled()) {
+            if (!$mainPromise->isSettled()) {
+                 $mainPromise->reject(new Exception('SSE connection cancelled before attempt.'));
+            }
             return;
         }
 
         $connectionState->incrementAttempt();
         
-        // Add Last-Event-ID header if we have one
         $options = $connectionState->getOptions();
         if ($connectionState->getLastEventId() !== null) {
             $headers = $options[CURLOPT_HTTPHEADER] ?? [];
+            // Remove previous Last-Event-ID header if it exists to avoid duplicates
+            $headers = array_filter($headers, fn($h) => !str_starts_with(strtolower($h), 'last-event-id:'));
             $headers[] = 'Last-Event-ID: ' . $connectionState->getLastEventId();
             $options[CURLOPT_HTTPHEADER] = $headers;
         }
 
-        $connectionPromise = $this->createSSEConnection(
-            $connectionState->getUrl(),
-            $options,
-            $onEvent,
-            $onError
-        );
-
+        $connectionPromise = $this->createSSEConnection($connectionState->getUrl(), $options, $onEvent, $onError);
         $connectionState->setCurrentConnection($connectionPromise);
 
         $connectionPromise->then(
             function (SSEResponse $response) use ($mainPromise, $connectionState) {
-                if (!$mainPromise->isResolved()) {
+                if ($connectionState->isCancelled()) return;
+                
+                if (!$mainPromise->isSettled()) {
                     $mainPromise->resolve($response);
                 }
                 $connectionState->onConnected();
             },
             function (Exception $error) use ($mainPromise, $connectionState, $onEvent, $onError) {
+                // When a connection fails, check the master cancellation flag first.
                 if ($connectionState->isCancelled()) {
+                    if (!$mainPromise->isSettled()) {
+                        $mainPromise->reject(new Exception('SSE connection cancelled during failure handling.'));
+                    }
                     return;
                 }
 
-                $shouldReconnect = $connectionState->shouldReconnect($error);
-                
-                if (!$shouldReconnect) {
-                    if (!$mainPromise->isResolved()) {
+                if (!$connectionState->shouldReconnect($error)) {
+                    if (!$mainPromise->isSettled()) {
                         $mainPromise->reject($error);
                     }
                     return;
                 }
 
-                // Schedule reconnection
                 $delay = $connectionState->getReconnectDelay();
                 $connectionState->getConfig()->onReconnect?->call($this, $connectionState->getAttemptCount(), $delay, $error);
 
-                EventLoop::getInstance()->addTimer($delay, function () use ($connectionState, $onEvent, $onError, $mainPromise) {
+                // When we schedule the timer, we get its ID and store it in the state object.
+                $timerId = EventLoop::getInstance()->addTimer($delay, function () use ($connectionState, $onEvent, $onError, $mainPromise) {
+                    $connectionState->setReconnectTimerId(null); // Timer is firing, so clear the ID.
                     $this->attemptConnection($connectionState, $onEvent, $onError, $mainPromise);
                 });
+                $connectionState->setReconnectTimerId($timerId);
             }
         );
     }
@@ -153,35 +158,17 @@ class SSEHandler
     ): CancellablePromiseInterface {
         /** @var CancellablePromise<SSEResponse> $promise */
         $promise = new CancellablePromise;
-
-        $responseStream = fopen('php://temp', 'w+b');
-        if ($responseStream === false) {
-            $promise->reject(new HttpStreamException('Failed to create SSE response stream'));
-            return $promise;
-        }
-
-        /** @var list<string> $headerAccumulator */
-        $headerAccumulator = [];
         $sseResponse = null;
+        $headersProcessed = false;
 
-        // Filter to only include valid CURLOPT_* integer keys
         $curlOnlyOptions = array_filter($options, 'is_int', ARRAY_FILTER_USE_KEY);
-
-        // Set up SSE-specific headers and options
         $sseOptions = array_replace($curlOnlyOptions, [
             CURLOPT_HEADER => false,
             CURLOPT_HTTPHEADER => array_merge(
-                $this->extractHttpHeaders($curlOnlyOptions),
-                [
-                    'Accept: text/event-stream',
-                    'Cache-Control: no-cache',
-                    'Connection: keep-alive',
-                ]
+                $curlOnlyOptions[CURLOPT_HTTPHEADER] ?? [],
+                ['Accept: text/event-stream', 'Cache-Control: no-cache', 'Connection: keep-alive']
             ),
-            CURLOPT_WRITEFUNCTION => function ($ch, string $data) use ($responseStream, &$sseResponse, $onEvent): int {
-                fwrite($responseStream, $data);
-                
-                // If we have an SSE response and event callback, parse events in real-time
+            CURLOPT_WRITEFUNCTION => function ($ch, string $data) use ($onEvent, &$sseResponse) {
                 if ($sseResponse !== null && $onEvent !== null) {
                     try {
                         $events = $sseResponse->parseEvents($data);
@@ -189,17 +176,23 @@ class SSEHandler
                             $onEvent($event);
                         }
                     } catch (Exception $e) {
-                        // Continue processing even if event parsing fails
                         error_log("SSE event parsing error: " . $e->getMessage());
                     }
                 }
-                
                 return strlen($data);
             },
-            CURLOPT_HEADERFUNCTION => function ($ch, string $header) use (&$headerAccumulator): int {
-                $trimmedHeader = trim($header);
-                if ($trimmedHeader !== '') {
-                    $headerAccumulator[] = $trimmedHeader;
+            CURLOPT_HEADERFUNCTION => function ($ch, string $header) use ($promise, &$sseResponse, &$headersProcessed) {
+                if ($promise->isSettled()) return strlen($header);
+
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                if (!$headersProcessed && $httpCode > 0) {
+                    if ($httpCode >= 200 && $httpCode < 300) {
+                        $sseResponse = new SSEResponse(new Stream(fopen('php://temp', 'r+')), $httpCode, []);
+                        $promise->resolve($sseResponse);
+                    } else {
+                        $promise->reject(new HttpStreamException("SSE connection failed with status: {$httpCode}"));
+                    }
+                    $headersProcessed = true;
                 }
                 return strlen($header);
             },
@@ -208,43 +201,18 @@ class SSEHandler
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
             $sseOptions,
-            function (?string $error, $response, ?int $httpCode, array $headers = [], ?string $httpVersion = null) use ($promise, $responseStream, &$headerAccumulator, &$sseResponse, $onError): void {
-                if ($promise->isCancelled()) {
-                    fclose($responseStream);
-                    return;
-                }
-
-                if ($error !== null) {
-                    fclose($responseStream);
-                    if ($onError !== null) {
+            function (?string $error) use ($promise, $onError) {
+                if ($promise->isSettled()) {
+                    if ($onError !== null && $error !== null) {
                         $onError($error);
                     }
-                    $promise->reject(new HttpStreamException("SSE connection failed: {$error}"));
-                } else {
-                    rewind($responseStream);
-                    $stream = new Stream($responseStream);
-
-                    $formattedHeaders = $this->formatHeaders($headerAccumulator);
-                    $sseResponse = new SSEResponse($stream, $httpCode ?? 200, $formattedHeaders);
-
-                    if ($httpVersion !== null) {
-                        $sseResponse->setHttpVersion($httpVersion);
-                    }
-
-                    $promise->resolve($sseResponse);
+                    return;
                 }
+                $promise->reject(new HttpStreamException("SSE connection failed: {$error}"));
             }
         );
-
-        // Initialize SSE response early for real-time event parsing
-        $sseResponse = new SSEResponse(new Stream($responseStream), 200, []);
-
-        $promise->setCancelHandler(function () use ($requestId, $responseStream): void {
-            EventLoop::getInstance()->cancelHttpRequest($requestId);
-            if (is_resource($responseStream)) {
-                fclose($responseStream);
-            }
-        });
+        
+        $promise->setCancelHandler(fn() => EventLoop::getInstance()->cancelHttpRequest($requestId));
 
         return $promise;
     }
@@ -254,22 +222,10 @@ class SSEHandler
      */
     private function wrapEventCallback(?callable $onEvent, SSEConnectionState $state): ?callable
     {
-        if ($onEvent === null) {
-            return null;
-        }
-
+        if ($onEvent === null) return null;
         return function (SSEEvent $event) use ($onEvent, $state) {
-            // Track last event ID for reconnection
-            if ($event->id !== null) {
-                $state->setLastEventId($event->id);
-            }
-
-            // Handle retry directive
-            if ($event->retry !== null) {
-                $state->setRetryInterval($event->retry);
-            }
-
-            // Call the original callback
+            if ($event->id !== null) $state->setLastEventId($event->id);
+            if ($event->retry !== null) $state->setRetryInterval($event->retry);
             $onEvent($event);
         };
     }
@@ -277,52 +233,11 @@ class SSEHandler
     /**
      * Wraps the error callback to handle reconnection logic.
      */
-    private function wrapErrorCallback(
-        ?callable $onError, 
-        SSEConnectionState $state, 
-        CancellablePromise $mainPromise
-    ): ?callable {
-        return function (string $error) use ($onError, $state, $mainPromise) {
-            // Call the original error callback
-            if ($onError !== null) {
-                $onError($error);
-            }
-
-            // Mark connection as failed for reconnection logic
+    private function wrapErrorCallback(?callable $onError, SSEConnectionState $state): ?callable
+    {
+        return function (string $error) use ($onError, $state) {
+            if ($onError !== null) $onError($error);
             $state->onConnectionFailed(new Exception($error));
         };
-    }
-
-    /**
-     * Extracts HTTP headers from cURL options.
-     */
-    private function extractHttpHeaders(array $curlOptions): array
-    {
-        return $curlOptions[CURLOPT_HTTPHEADER] ?? [];
-    }
-
-    /**
-     * Formats raw headers into structured array.
-     */
-    private function formatHeaders(array $headerAccumulator): array
-    {
-        $formattedHeaders = [];
-        foreach ($headerAccumulator as $header) {
-            if (str_contains($header, ':')) {
-                [$key, $value] = explode(':', $header, 2);
-                $key = trim($key);
-                $value = trim($value);
-                if (isset($formattedHeaders[$key])) {
-                    if (is_array($formattedHeaders[$key])) {
-                        $formattedHeaders[$key][] = $value;
-                    } else {
-                        $formattedHeaders[$key] = [$formattedHeaders[$key], $value];
-                    }
-                } else {
-                    $formattedHeaders[$key] = $value;
-                }
-            }
-        }
-        return $formattedHeaders;
     }
 }

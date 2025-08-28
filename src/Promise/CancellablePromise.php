@@ -42,9 +42,9 @@ class CancellablePromise extends Promise implements CancellablePromiseInterface
 
             if ($this->cancelHandler !== null) {
                 try {
-                    ($this->cancelHandler)();
+                    EventLoop::getInstance()->nextTick($this->cancelHandler);
                 } catch (\Throwable $e) {
-                    error_log('Cancel handler error: '.$e->getMessage());
+                    error_log('Error scheduling cancel handler: ' . $e->getMessage());
                 }
             }
 

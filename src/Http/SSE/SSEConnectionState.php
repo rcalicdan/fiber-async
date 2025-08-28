@@ -1,8 +1,10 @@
 <?php
+// File: src/Http/SSE/SSEConnectionState.php (Corrected)
 
 namespace Rcalicdan\FiberAsync\Http\SSE;
 
 use Exception;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 
 /**
@@ -13,9 +15,10 @@ class SSEConnectionState
     private int $attemptCount = 0;
     private ?string $lastEventId = null;
     private ?int $retryInterval = null;
-    private bool $cancelled = false;
     private ?CancellablePromiseInterface $currentConnection = null;
     private ?Exception $lastError = null;
+    private bool $cancelled = false;
+    private ?string $reconnectTimerId = null; // <-- NEW: To track the zombie timer
 
     public function __construct(
         private readonly string $url,
@@ -68,11 +71,25 @@ class SSEConnectionState
         return $this->retryInterval;
     }
 
+    public function setReconnectTimerId(?string $timerId): void
+    {
+        $this->reconnectTimerId = $timerId;
+    }
+
     public function cancel(): void
     {
+        if ($this->cancelled) return;
         $this->cancelled = true;
-        if ($this->currentConnection !== null) {
+
+        if ($this->currentConnection !== null && $this->currentConnection->isPending()) {
             $this->currentConnection->cancel();
+        }
+
+        // *** THIS IS THE CRITICAL FIX ***
+        // If there is a pending reconnection timer, we must kill it.
+        if ($this->reconnectTimerId !== null) {
+            EventLoop::getInstance()->cancelTimer($this->reconnectTimerId);
+            $this->reconnectTimerId = null;
         }
     }
 
@@ -99,11 +116,12 @@ class SSEConnectionState
 
     public function shouldReconnect(?Exception $error = null): bool
     {
-        if (!$this->config->enabled) {
+        // This is now the primary guard against creating "zombie" connections.
+        if ($this->cancelled) {
             return false;
         }
 
-        if ($this->cancelled) {
+        if (!$this->config->enabled) {
             return false;
         }
 
@@ -121,9 +139,8 @@ class SSEConnectionState
 
     public function getReconnectDelay(): float
     {
-        // Use server-suggested retry interval if available
         if ($this->retryInterval !== null) {
-            return $this->retryInterval / 1000.0; // Convert from milliseconds
+            return $this->retryInterval / 1000.0;
         }
 
         return $this->config->calculateDelay($this->attemptCount);

@@ -116,4 +116,11 @@ interface PromiseCollectionInterface
      * instance, forcing a new one to be created on the next static method call.
      */
     public static function reset(): void;
+
+    /**
+     * Checks if the promise is settled (either resolved or rejected).
+     *
+     * @return bool True if settled, false if still pending.
+     */
+    public function isSettled(): bool;
 }
