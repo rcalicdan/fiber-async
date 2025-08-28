@@ -130,13 +130,16 @@ class BenchmarkOutput
                 $memory = $benchmark->getResults()['memory'] ?? [];
                 if (!empty($memory)) {
                     echo sprintf("%-25s:\n", $name);
-                    echo sprintf("  Net usage: %s\n", $this->formatter->formatBytes($memory['avg_memory_net']));
-                    echo sprintf("  Peak memory: %s\n", $this->formatter->formatBytes($memory['peak_memory']));
-                    echo sprintf("  Initialization: %s\n", $this->formatter->formatBytes($memory['initialization_cost']));
-                    echo sprintf("  Growth after init: %s\n", $this->formatter->formatBytes($memory['avg_growth_after_init']));
+                    echo sprintf("  Net usage: %s\n", $this->formatter->formatBytes($memory['avg_memory_net'] ?? 0));
+                    echo sprintf("  Peak memory: %s\n", $this->formatter->formatBytes($memory['peak_memory'] ?? 0));
+                    echo sprintf("  Initialization: %s\n", $this->formatter->formatBytes($memory['initialization_cost'] ?? 0));
 
-                    if ($memory['has_leak']) {
-                        echo sprintf("  🚨 Memory leak: %s\n", $memory['leak_severity']);
+                    if (isset($memory['avg_growth_after_init'])) {
+                        echo sprintf("  Growth after init: %s\n", $this->formatter->formatBytes($memory['avg_growth_after_init']));
+                    }
+
+                    if ($memory['has_leak'] ?? false) {
+                        echo sprintf("  🚨 Memory leak: %s\n", $memory['leak_severity'] ?? 'Unknown');
                     } else {
                         echo "  ✅ No memory leak\n";
                     }

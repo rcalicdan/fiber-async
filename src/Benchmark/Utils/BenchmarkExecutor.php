@@ -155,7 +155,7 @@ class BenchmarkExecutor
             $formatter = new BenchmarkFormatter;
             $output .= sprintf(' (mem: %s', $formatter->formatBytes($run['memory_net']));
             if ($run['memory_net'] != $run['memory_delta']) {
-                $output .= sprintf(', temp: %s', $formatter->formatBytes($run['memory_delta'] - $run['memory_net']));
+                $output .= sprintf(', temp: +%s', $formatter->formatBytes(abs($run['memory_delta'] - $run['memory_net'])));
             }
             $output .= ')';
         }

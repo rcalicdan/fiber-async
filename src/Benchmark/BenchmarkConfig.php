@@ -115,7 +115,7 @@ class BenchmarkConfig
     public function ultraPrecision(bool $enable = true): self
     {
         $this->options['ultra_precision'] = $enable;
-        $this->options['high_precision'] = $enable; // Enable high precision too
+        $this->options['high_precision'] = $enable; 
         $this->options['force_hrtime'] = $enable;
 
         return $this;
