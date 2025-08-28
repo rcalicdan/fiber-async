@@ -11,6 +11,9 @@ use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
 use Rcalicdan\FiberAsync\Http\Request;
 use Rcalicdan\FiberAsync\Http\Response;
 use Rcalicdan\FiberAsync\Http\RetryConfig;
+use Rcalicdan\FiberAsync\Http\SSE\SSEEvent;
+use Rcalicdan\FiberAsync\Http\SSE\SSEReconnectConfig;
+use Rcalicdan\FiberAsync\Http\SSE\SSEResponse;
 use Rcalicdan\FiberAsync\Http\Stream;
 use Rcalicdan\FiberAsync\Http\StreamingResponse;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
@@ -32,14 +35,16 @@ class HttpHandler
     protected FetchHandler $fetchHandler;
     protected static ?CacheInterface $defaultCache = null;
     protected ?CookieJarInterface $defaultCookieJar = null;
+    protected SSEHandler $sseHandler;
 
     /**
      * Creates a new HttpHandler instance.
      */
-    public function __construct(?StreamingHandler $streamingHandler = null, ?FetchHandler $fetchHandler = null)
+    public function __construct(?StreamingHandler $streamingHandler = null, ?FetchHandler $fetchHandler = null, ?SSEHandler $sseHandler = null)
     {
         $this->streamingHandler = $streamingHandler ?? new StreamingHandler;
         $this->fetchHandler = $fetchHandler ?? new FetchHandler($this->streamingHandler);
+        $this->sseHandler = $sseHandler ?? new SSEHandler($this->streamingHandler);
     }
 
     /**
@@ -60,6 +65,28 @@ class HttpHandler
     public function request(): Request
     {
         return new Request($this);
+    }
+
+    /**
+     * Creates an SSE (Server-Sent Events) connection with optional reconnection.
+     *
+     * @param string $url The SSE endpoint URL
+     * @param array<int|string, mixed> $options Request options
+     * @param callable(SSEEvent): void|null $onEvent Optional callback for each SSE event
+     * @param callable(string): void|null $onError Optional callback for connection errors
+     * @param SSEReconnectConfig|null $reconnectConfig Optional reconnection configuration
+     * @return CancellablePromiseInterface<SSEResponse>
+     */
+    public function sse(
+        string $url,
+        array $options = [],
+        ?callable $onEvent = null,
+        ?callable $onError = null,
+        ?SSEReconnectConfig $reconnectConfig = null
+    ): CancellablePromiseInterface {
+        $curlOptions = $this->normalizeFetchOptions($url, $options);
+
+        return $this->sseHandler->connect($url, $curlOptions, $onEvent, $onError, $reconnectConfig);
     }
 
     /**
@@ -193,7 +220,7 @@ class HttpHandler
      */
     public static function generateCacheKey(string $url): string
     {
-        return 'http_'.sha1($url);
+        return 'http_' . sha1($url);
     }
 
     /**
@@ -249,12 +276,12 @@ class HttpHandler
 
                 if (isset($cachedItem['headers']['etag'])) {
                     $etag = is_array($cachedItem['headers']['etag']) ? $cachedItem['headers']['etag'][0] : $cachedItem['headers']['etag'];
-                    $httpHeaders[] = 'If-None-Match: '.$etag;
+                    $httpHeaders[] = 'If-None-Match: ' . $etag;
                 }
 
                 if (isset($cachedItem['headers']['last-modified'])) {
                     $lastModified = is_array($cachedItem['headers']['last-modified']) ? $cachedItem['headers']['last-modified'][0] : $cachedItem['headers']['last-modified'];
-                    $httpHeaders[] = 'If-Modified-Since: '.$lastModified;
+                    $httpHeaders[] = 'If-Modified-Since: ' . $lastModified;
                 }
 
                 $curlOptions[CURLOPT_HTTPHEADER] = $httpHeaders;
