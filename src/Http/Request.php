@@ -41,6 +41,7 @@ class Request extends Message implements RequestInterface
 
     /** @var callable[] Callbacks to intercept the response after it is received. */
     private array $responseInterceptors = [];
+    private ?ProxyConfig $proxyConfig = null;
 
     /**
      * Initializes a new Request builder instance.
@@ -120,7 +121,7 @@ class Request extends Message implements RequestInterface
             $target = '/';
         }
         if ($this->uri->getQuery() !== '') {
-            $target .= '?'.$this->uri->getQuery();
+            $target .= '?' . $this->uri->getQuery();
         }
 
         return $target;
@@ -515,7 +516,7 @@ class Request extends Message implements RequestInterface
     public function get(string $url, array $query = []): PromiseInterface
     {
         if (count($query) > 0) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
         }
 
         return $this->send('GET', $url);
@@ -726,10 +727,10 @@ class Request extends Message implements RequestInterface
     public function cookie(string $name, string $value): self
     {
         $existingCookies = $this->getHeaderLine('Cookie');
-        $newCookie = $name.'='.urlencode($value);
+        $newCookie = $name . '=' . urlencode($value);
 
         if ($existingCookies !== '') {
-            return $this->header('Cookie', $existingCookies.'; '.$newCookie);
+            return $this->header('Cookie', $existingCookies . '; ' . $newCookie);
         } else {
             return $this->header('Cookie', $newCookie);
         }
@@ -851,6 +852,73 @@ class Request extends Message implements RequestInterface
 
         $this->cookieJar->setCookie($cookie);
 
+        return $this;
+    }
+
+    /**
+     * Configure HTTP proxy for this request.
+     *
+     * @param string $host The proxy host
+     * @param int $port The proxy port
+     * @param string|null $username Optional proxy username
+     * @param string|null $password Optional proxy password
+     * @return self For fluent method chaining.
+     */
+    public function proxy(string $host, int $port, ?string $username = null, ?string $password = null): self
+    {
+        $this->proxyConfig = ProxyConfig::http($host, $port, $username, $password);
+        return $this;
+    }
+
+    /**
+     * Configure SOCKS4 proxy for this request.
+     *
+     * @param string $host The proxy host
+     * @param int $port The proxy port
+     * @param string|null $username Optional proxy username
+     * @return self For fluent method chaining.
+     */
+    public function socks4Proxy(string $host, int $port, ?string $username = null): self
+    {
+        $this->proxyConfig = ProxyConfig::socks4($host, $port, $username);
+        return $this;
+    }
+
+    /**
+     * Configure SOCKS5 proxy for this request.
+     *
+     * @param string $host The proxy host
+     * @param int $port The proxy port
+     * @param string|null $username Optional proxy username
+     * @param string|null $password Optional proxy password
+     * @return self For fluent method chaining.
+     */
+    public function socks5Proxy(string $host, int $port, ?string $username = null, ?string $password = null): self
+    {
+        $this->proxyConfig = ProxyConfig::socks5($host, $port, $username, $password);
+        return $this;
+    }
+
+    /**
+     * Configure proxy using a ProxyConfig object.
+     *
+     * @param ProxyConfig $config The proxy configuration
+     * @return self For fluent method chaining.
+     */
+    public function proxyWith(ProxyConfig $config): self
+    {
+        $this->proxyConfig = $config;
+        return $this;
+    }
+
+    /**
+     * Disable proxy for this request.
+     *
+     * @return self For fluent method chaining.
+     */
+    public function noProxy(): self
+    {
+        $this->proxyConfig = null;
         return $this;
     }
 
@@ -979,12 +1047,14 @@ class Request extends Message implements RequestInterface
             if ($cookieHeader !== '') {
                 $existingCookies = $this->getHeaderLine('Cookie');
                 if ($existingCookies !== '') {
-                    $this->header('Cookie', $existingCookies.'; '.$cookieHeader);
+                    $this->header('Cookie', $existingCookies . '; ' . $cookieHeader);
                 } else {
                     $this->header('Cookie', $cookieHeader);
                 }
             }
         }
+
+        $this->addProxyOptions($options);
 
         if (strtoupper($method) === 'HEAD') {
             $options[CURLOPT_NOBODY] = true;
@@ -1008,6 +1078,35 @@ class Request extends Message implements RequestInterface
     }
 
     /**
+     * Adds configured proxy settings to the cURL options.
+     *
+     * @param array<int, mixed> &$options The cURL options array passed by reference.
+     */
+    private function addProxyOptions(array &$options): void
+    {
+        if ($this->proxyConfig === null) {
+            return;
+        }
+
+        $options[CURLOPT_PROXY] = $this->proxyConfig->host . ':' . $this->proxyConfig->port;
+        $options[CURLOPT_PROXYTYPE] = $this->proxyConfig->getCurlProxyType();
+
+        if ($this->proxyConfig->username !== null) {
+            $proxyAuth = $this->proxyConfig->username;
+            if ($this->proxyConfig->password !== null) {
+                $proxyAuth .= ':' . $this->proxyConfig->password;
+            }
+            $options[CURLOPT_PROXYUSERPWD] = $proxyAuth;
+        }
+
+        if (in_array($this->proxyConfig->type, ['socks4', 'socks5'])) {
+            $options[CURLOPT_HTTPPROXYTUNNEL] = false;
+        } else {
+            $options[CURLOPT_HTTPPROXYTUNNEL] = true;
+        }
+    }
+
+    /**
      * Adds configured headers to the cURL options.
      *
      * @param  array<int, mixed>  &$options  The cURL options array passed by reference.
@@ -1017,7 +1116,7 @@ class Request extends Message implements RequestInterface
         if (count($this->headers) > 0) {
             $headerStrings = [];
             foreach ($this->headers as $name => $value) {
-                $headerStrings[] = "{$name}: ".implode(', ', $value);
+                $headerStrings[] = "{$name}: " . implode(', ', $value);
             }
             $options[CURLOPT_HTTPHEADER] = $headerStrings;
         }
@@ -1064,7 +1163,7 @@ class Request extends Message implements RequestInterface
         }
 
         if (($port = $this->uri->getPort()) !== null) {
-            $host .= ':'.$port;
+            $host .= ':' . $port;
         }
 
         if (isset($this->headerNames['host'])) {
