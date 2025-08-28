@@ -29,32 +29,35 @@ class BenchmarkComparison
         return $this;
     }
 
-     public function stable(): self
+    public function stable(): self
     {
         return $this->ultraPrecision()
-                   ->runs(50000)        
-                   ->warmup(5000)      
-                   ->isolateRuns()   
-                   ->sleepBetweenRuns(0.001) 
-                   ->enableStatistics()
-                   ->precisionDecimals(0);
+            ->runs(50000)
+            ->warmup(5000)
+            ->isolateRuns()
+            ->sleepBetweenRuns(0.001)
+            ->enableStatistics()
+            ->precisionDecimals(0)
+        ;
     }
-    
+
     public function microStable(): self
     {
         return $this->ultraPrecision()
-                   ->showMicroseconds()
-                   ->runs(25000)
-                   ->warmup(2500)
-                   ->isolateRuns()
-                   ->sleepBetweenRuns(0.0005)
-                   ->enableStatistics()
-                   ->precisionDecimals(3);
+            ->showMicroseconds()
+            ->runs(25000)
+            ->warmup(2500)
+            ->isolateRuns()
+            ->sleepBetweenRuns(0.0005)
+            ->enableStatistics()
+            ->precisionDecimals(3)
+        ;
     }
-    
+
     public function filterOutliers(bool $enable = true): self
     {
         $this->config->filterOutliers($enable);
+
         return $this;
     }
 

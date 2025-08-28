@@ -179,34 +179,33 @@ trait FetchOptionTrait
     /**
      * Extract proxy configuration from fetch options.
      *
-     * @param array<int|string, mixed> $options
-     * @return ProxyConfig|null
+     * @param  array<int|string, mixed>  $options
      */
     protected function extractProxyConfig(array $options): ?ProxyConfig
     {
-        if (!isset($options['proxy'])) {
+        if (! isset($options['proxy'])) {
             return null;
         }
 
         $proxy = $options['proxy'];
-        
+
         if ($proxy instanceof ProxyConfig) {
             return $proxy;
         }
-        
+
         if (is_string($proxy)) {
             // Parse proxy URL string like "http://user:pass@host:port"
             return $this->parseProxyUrl($proxy);
         }
-        
+
         if (is_array($proxy)) {
             $host = $proxy['host'] ?? $proxy['server'] ?? '';
             $port = $proxy['port'] ?? 8080;
-            
-            if (empty($host) || !is_numeric($port)) {
+
+            if (empty($host) || ! is_numeric($port)) {
                 return null;
             }
-            
+
             return new ProxyConfig(
                 host: $host,
                 port: (int) $port,
@@ -215,23 +214,20 @@ trait FetchOptionTrait
                 type: $proxy['type'] ?? 'http'
             );
         }
-        
+
         return null;
     }
 
     /**
      * Parse a proxy URL string into a ProxyConfig object.
-     *
-     * @param string $proxyUrl
-     * @return ProxyConfig|null
      */
     private function parseProxyUrl(string $proxyUrl): ?ProxyConfig
     {
         $parsed = parse_url($proxyUrl);
-        if (!$parsed || !isset($parsed['host'])) {
+        if (! $parsed || ! isset($parsed['host'])) {
             return null;
         }
-        
+
         return new ProxyConfig(
             host: $parsed['host'],
             port: $parsed['port'] ?? 8080,
@@ -244,24 +240,24 @@ trait FetchOptionTrait
     /**
      * Add proxy options to cURL options array.
      *
-     * @param array<int, mixed> &$curlOptions
-     * @param array<int|string, mixed> $options
+     * @param  array<int, mixed>  &$curlOptions
+     * @param  array<int|string, mixed>  $options
      */
     private function addProxyOptionsFromArray(array &$curlOptions, array $options): void
     {
         $proxyConfig = $this->extractProxyConfig($options);
-        
+
         if ($proxyConfig === null) {
             return;
         }
 
-        $curlOptions[CURLOPT_PROXY] = $proxyConfig->host . ':' . $proxyConfig->port;
+        $curlOptions[CURLOPT_PROXY] = $proxyConfig->host.':'.$proxyConfig->port;
         $curlOptions[CURLOPT_PROXYTYPE] = $proxyConfig->getCurlProxyType();
 
         if ($proxyConfig->username !== null) {
             $proxyAuth = $proxyConfig->username;
             if ($proxyConfig->password !== null) {
-                $proxyAuth .= ':' . $proxyConfig->password;
+                $proxyAuth .= ':'.$proxyConfig->password;
             }
             $curlOptions[CURLOPT_PROXYUSERPWD] = $proxyAuth;
         }

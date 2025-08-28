@@ -115,7 +115,7 @@ class BenchmarkConfig
     public function ultraPrecision(bool $enable = true): self
     {
         $this->options['ultra_precision'] = $enable;
-        $this->options['high_precision'] = $enable; 
+        $this->options['high_precision'] = $enable;
         $this->options['force_hrtime'] = $enable;
 
         return $this;
@@ -167,18 +167,21 @@ class BenchmarkConfig
     public function filterOutliers(bool $enable = true): self
     {
         $this->options['filter_outliers'] = $enable;
+
         return $this;
     }
 
     public function outlierThreshold(float $threshold): self
     {
         $this->options['outlier_threshold'] = max(1.0, $threshold);
+
         return $this;
     }
 
     public function minRunsAfterFilter(int $runs): self
     {
         $this->options['min_runs_after_filter'] = max(10, $runs);
+
         return $this;
     }
 

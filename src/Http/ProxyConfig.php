@@ -46,7 +46,7 @@ class ProxyConfig
         if ($this->username !== null) {
             $auth = $this->username;
             if ($this->password !== null) {
-                $auth .= ':' . $this->password;
+                $auth .= ':'.$this->password;
             }
             $auth .= '@';
         }

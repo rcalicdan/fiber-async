@@ -22,7 +22,7 @@ class BenchmarkExecutor
 
         if ($this->config->isOutputEnabled()) {
             echo "🚀 Running benchmark: {$name}\n";
-            echo str_repeat('-', 50) . "\n";
+            echo str_repeat('-', 50)."\n";
         }
 
         $runs = [];
@@ -161,9 +161,9 @@ class BenchmarkExecutor
         }
 
         if ($run['exception']) {
-            $output .= ' ❌ ERROR: ' . $run['exception']->getMessage();
+            $output .= ' ❌ ERROR: '.$run['exception']->getMessage();
         }
 
-        echo $output . "\n";
+        echo $output."\n";
     }
 }

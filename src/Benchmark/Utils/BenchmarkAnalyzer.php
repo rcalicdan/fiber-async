@@ -30,7 +30,7 @@ class BenchmarkAnalyzer
             'memory' => $memory,
             'statistics' => $statistics,
             'runs' => $runs,
-            'options' => $this->config->toArray()
+            'options' => $this->config->toArray(),
         ];
     }
 
@@ -43,7 +43,7 @@ class BenchmarkAnalyzer
         }
 
         $mean = array_sum($times) / count($times);
-        $variance = array_sum(array_map(fn($x) => pow($x - $mean, 2), $times)) / count($times);
+        $variance = array_sum(array_map(fn ($x) => pow($x - $mean, 2), $times)) / count($times);
         $stdDev = sqrt($variance);
 
         $threshold = $this->config->getOutlierThreshold();
@@ -64,7 +64,7 @@ class BenchmarkAnalyzer
             return $this->filterOutliersWithThreshold($runs, $threshold * 1.5);
         }
 
-        if (!empty($filteredRuns)) {
+        if (! empty($filteredRuns)) {
             $filteredRuns[0]['outliers_removed'] = $outliersRemoved;
             $filteredRuns[0]['original_run_count'] = count($runs);
         }
@@ -76,7 +76,7 @@ class BenchmarkAnalyzer
     {
         $times = array_column($runs, 'duration_ms');
         $mean = array_sum($times) / count($times);
-        $variance = array_sum(array_map(fn($x) => pow($x - $mean, 2), $times)) / count($times);
+        $variance = array_sum(array_map(fn ($x) => pow($x - $mean, 2), $times)) / count($times);
         $stdDev = sqrt($variance);
 
         $filteredRuns = [];
@@ -92,7 +92,7 @@ class BenchmarkAnalyzer
             }
         }
 
-        if (!empty($filteredRuns)) {
+        if (! empty($filteredRuns)) {
             $filteredRuns[0]['outliers_removed'] = $outliersRemoved;
             $filteredRuns[0]['original_run_count'] = count($runs);
         }
@@ -100,10 +100,9 @@ class BenchmarkAnalyzer
         return $filteredRuns;
     }
 
-
     private function analyzeTiming(array $runs, array $times): array
     {
-        $calculator = new BenchmarkCalculator();
+        $calculator = new BenchmarkCalculator;
 
         return [
             'name' => '',
@@ -165,7 +164,7 @@ class BenchmarkAnalyzer
                 'avg_net' => 0,
                 'avg_temp' => 0,
                 'max_temp' => 0,
-                'efficiency' => 'N/A'
+                'efficiency' => 'N/A',
             ];
         }
 
@@ -192,17 +191,21 @@ class BenchmarkAnalyzer
             'avg_net' => $avgNet,
             'avg_temp' => $avgTemp,
             'max_temp' => $maxTemp,
-            'efficiency' => $efficiencyRating
+            'efficiency' => $efficiencyRating,
         ];
     }
 
     private function calculateMemoryStability(array $runs): string
     {
-        if (count($runs) < 2) return 'N/A';
+        if (count($runs) < 2) {
+            return 'N/A';
+        }
 
         $nets = array_slice(array_column($runs, 'memory_net'), 1); // Skip first run
 
-        if (empty($nets)) return 'N/A';
+        if (empty($nets)) {
+            return 'N/A';
+        }
 
         $variance = 0;
         $mean = array_sum($nets) / count($nets);
@@ -215,18 +218,34 @@ class BenchmarkAnalyzer
         $stdDev = sqrt($variance);
         $cv = $mean != 0 ? $stdDev / abs($mean) : 0;
 
-        if ($cv < 0.01) return 'Excellent (very stable)';
-        if ($cv < 0.05) return 'Good (stable)';
-        if ($cv < 0.1) return 'Fair (mostly stable)';
+        if ($cv < 0.01) {
+            return 'Excellent (very stable)';
+        }
+        if ($cv < 0.05) {
+            return 'Good (stable)';
+        }
+        if ($cv < 0.1) {
+            return 'Fair (mostly stable)';
+        }
+
         return 'Poor (unstable)';
     }
 
     private function getEfficiencyRating(float $efficiency): string
     {
-        if ($efficiency > 0.9) return 'Excellent (>90% cleanup)';
-        if ($efficiency > 0.8) return 'Good (>80% cleanup)';
-        if ($efficiency > 0.6) return 'Fair (>60% cleanup)';
-        if ($efficiency > 0.4) return 'Poor (>40% cleanup)';
+        if ($efficiency > 0.9) {
+            return 'Excellent (>90% cleanup)';
+        }
+        if ($efficiency > 0.8) {
+            return 'Good (>80% cleanup)';
+        }
+        if ($efficiency > 0.6) {
+            return 'Fair (>60% cleanup)';
+        }
+        if ($efficiency > 0.4) {
+            return 'Poor (>40% cleanup)';
+        }
+
         return 'Very Poor (<40% cleanup)';
     }
 
@@ -250,20 +269,22 @@ class BenchmarkAnalyzer
         $slope = $this->calculateSlope($runNumbers, $memoryProgression);
 
         // A positive slope indicates consistent memory growth
-        $leakThreshold = 1024; 
+        $leakThreshold = 1024;
         $hasLeak = $slope > $leakThreshold;
 
         return [
             'has_leak' => $hasLeak,
             'severity' => $this->getLeakSeverity($slope),
-            'rate_per_run' => $slope
+            'rate_per_run' => $slope,
         ];
     }
 
     private function calculateSlope(array $x, array $y): float
     {
         $n = count($x);
-        if ($n < 2) return 0;
+        if ($n < 2) {
+            return 0;
+        }
 
         $sumX = array_sum($x);
         $sumY = array_sum($y);
@@ -276,31 +297,45 @@ class BenchmarkAnalyzer
         }
 
         $denominator = ($n * $sumXX - $sumX * $sumX);
-        if ($denominator == 0) return 0;
+        if ($denominator == 0) {
+            return 0;
+        }
 
         return ($n * $sumXY - $sumX * $sumY) / $denominator;
     }
 
     private function getLeakSeverity(float $ratePerRun): string
     {
-        if ($ratePerRun < 1024) return "NO LEAK";
-        if ($ratePerRun > 1024 * 1024) return "SEVERE (>" . $this->formatBytes(1024 * 1024) . " per run)";
-        if ($ratePerRun > 1024 * 100) return "MODERATE (>" . $this->formatBytes(1024 * 100) . " per run)";
-        if ($ratePerRun > 1024 * 10) return "MINOR (>" . $this->formatBytes(1024 * 10) . " per run)";
-        return "NEGLIGIBLE (<" . $this->formatBytes(1024 * 10) . " per run)";
+        if ($ratePerRun < 1024) {
+            return 'NO LEAK';
+        }
+        if ($ratePerRun > 1024 * 1024) {
+            return 'SEVERE (>'.$this->formatBytes(1024 * 1024).' per run)';
+        }
+        if ($ratePerRun > 1024 * 100) {
+            return 'MODERATE (>'.$this->formatBytes(1024 * 100).' per run)';
+        }
+        if ($ratePerRun > 1024 * 10) {
+            return 'MINOR (>'.$this->formatBytes(1024 * 10).' per run)';
+        }
+
+        return 'NEGLIGIBLE (<'.$this->formatBytes(1024 * 10).' per run)';
     }
 
     private function formatBytes(int|float $bytes): string
     {
-        if ($bytes == 0) return '0 B';
+        if ($bytes == 0) {
+            return '0 B';
+        }
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $factor = floor((strlen((string)abs($bytes)) - 1) / 3);
-        return sprintf("%.2f %s", $bytes / (1024 ** $factor), $units[$factor]);
+        $factor = floor((strlen((string) abs($bytes)) - 1) / 3);
+
+        return sprintf('%.2f %s', $bytes / (1024 ** $factor), $units[$factor]);
     }
 
     private function analyzeStatistics(array $runs): array
     {
-        $calculator = new BenchmarkCalculator();
+        $calculator = new BenchmarkCalculator;
         $times = array_column($runs, 'duration_ms');
         $memoryNets = array_column($runs, 'memory_net');
 
@@ -310,7 +345,7 @@ class BenchmarkAnalyzer
         $timeStats['consistency_rating'] = $this->getConsistencyRating($timeStats['coefficient_of_variation'] ?? 0);
 
         $result = [
-            'time' => $timeStats
+            'time' => $timeStats,
         ];
 
         if ($this->config->isMemoryTrackingEnabled()) {
@@ -324,10 +359,19 @@ class BenchmarkAnalyzer
     {
         $cv = $coefficientOfVariation * 100;
 
-        if ($cv < 1) return "Excellent";
-        if ($cv < 5) return "Good";
-        if ($cv < 10) return "Fair";
-        if ($cv < 20) return "Poor";
-        return "Very Poor";
+        if ($cv < 1) {
+            return 'Excellent';
+        }
+        if ($cv < 5) {
+            return 'Good';
+        }
+        if ($cv < 10) {
+            return 'Fair';
+        }
+        if ($cv < 20) {
+            return 'Poor';
+        }
+
+        return 'Very Poor';
     }
 }
