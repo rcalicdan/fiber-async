@@ -6,6 +6,9 @@ use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\Interfaces\CookieJarInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\RequestInterface;
 use Rcalicdan\FiberAsync\Http\Interfaces\UriInterface;
+use Rcalicdan\FiberAsync\Http\SSE\SSEEvent;
+use Rcalicdan\FiberAsync\Http\SSE\SSEReconnectConfig;
+use Rcalicdan\FiberAsync\Http\SSE\SSEResponse;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
@@ -42,6 +45,7 @@ class Request extends Message implements RequestInterface
     /** @var callable[] Callbacks to intercept the response after it is received. */
     private array $responseInterceptors = [];
     private ?ProxyConfig $proxyConfig = null;
+    private ?SSEReconnectConfig $sseReconnectConfig = null;
 
     /**
      * Initializes a new Request builder instance.
@@ -120,7 +124,7 @@ class Request extends Message implements RequestInterface
             $target = '/';
         }
         if ($this->uri->getQuery() !== '') {
-            $target .= '?'.$this->uri->getQuery();
+            $target .= '?' . $this->uri->getQuery();
         }
 
         return $target;
@@ -452,6 +456,103 @@ class Request extends Message implements RequestInterface
     }
 
     /**
+     * Create an SSE connection with automatic reconnection.
+     * Inherits all configured request options (headers, auth, timeouts, etc.)
+     *
+     * @param string $url The SSE endpoint URL
+     * @param callable(SSEEvent): void|null $onEvent Optional callback for each SSE event
+     * @param callable(string): void|null $onError Optional callback for connection errors
+     * @param SSEReconnectConfig|null $reconnectConfig Optional reconnection configuration
+     * @return CancellablePromiseInterface<SSEResponse>
+     */
+    public function sse(
+        string $url,
+        ?callable $onEvent = null,
+        ?callable $onError = null,
+        ?SSEReconnectConfig $reconnectConfig = null
+    ): CancellablePromiseInterface {
+        $curlOptions = $this->buildCurlOptions('GET', $url);
+
+        $effectiveReconnectConfig = $reconnectConfig ?? $this->sseReconnectConfig;
+
+        return $this->handler->sse($url, $curlOptions, $onEvent, $onError, $effectiveReconnectConfig);
+    }
+
+    /**
+     * Configure SSE reconnection behavior.
+     *
+     * @param bool $enabled Whether reconnection is enabled
+     * @param int $maxAttempts Maximum reconnection attempts
+     * @param float $initialDelay Initial delay before first reconnection
+     * @param float $maxDelay Maximum delay between attempts
+     * @param float $backoffMultiplier Exponential backoff multiplier
+     * @param bool $jitter Add random jitter to delays
+     * @param array $retryableErrors List of retryable error messages
+     * @param callable|null $onReconnect Callback called before each reconnection attempt
+     * @param callable|null $shouldReconnect Custom logic to determine if reconnection should occur
+     * @return self
+     */
+    public function sseReconnect(
+        bool $enabled = true,
+        int $maxAttempts = 10,
+        float $initialDelay = 1.0,
+        float $maxDelay = 30.0,
+        float $backoffMultiplier = 2.0,
+        bool $jitter = true,
+        array $retryableErrors = [
+            'Connection refused',
+            'Connection reset',
+            'Connection timed out',
+            'Could not resolve host',
+            'Resolving timed out',
+            'SSL connection timeout',
+            'Operation timed out',
+            'Network is unreachable',
+        ],
+        ?callable $onReconnect = null,
+        ?callable $shouldReconnect = null
+    ): self {
+        $this->sseReconnectConfig = new SSEReconnectConfig(
+            enabled: $enabled,
+            maxAttempts: $maxAttempts,
+            initialDelay: $initialDelay,
+            maxDelay: $maxDelay,
+            backoffMultiplier: $backoffMultiplier,
+            jitter: $jitter,
+            retryableErrors: $retryableErrors,
+            onReconnect: $onReconnect,
+            shouldReconnect: $shouldReconnect
+        );
+
+        return $this;
+    }
+
+    /**
+     * Configure SSE reconnection using a custom configuration object.
+     *
+     * @param SSEReconnectConfig $config The reconnection configuration
+     * @return self
+     */
+    public function sseReconnectWith(SSEReconnectConfig $config): self
+    {
+        $this->sseReconnectConfig = $config;
+
+        return $this;
+    }
+
+    /**
+     * Disable SSE reconnection.
+     *
+     * @return self
+     */
+    public function noSseReconnect(): self
+    {
+        $this->sseReconnectConfig = null;
+
+        return $this;
+    }
+
+    /**
      * Streams the response body of a GET request.
      *
      * @param  string  $url  The URL to stream from.
@@ -515,7 +616,7 @@ class Request extends Message implements RequestInterface
     public function get(string $url, array $query = []): PromiseInterface
     {
         if (count($query) > 0) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
         }
 
         return $this->send('GET', $url);
@@ -726,10 +827,10 @@ class Request extends Message implements RequestInterface
     public function cookie(string $name, string $value): self
     {
         $existingCookies = $this->getHeaderLine('Cookie');
-        $newCookie = $name.'='.urlencode($value);
+        $newCookie = $name . '=' . urlencode($value);
 
         if ($existingCookies !== '') {
-            return $this->header('Cookie', $existingCookies.'; '.$newCookie);
+            return $this->header('Cookie', $existingCookies . '; ' . $newCookie);
         } else {
             return $this->header('Cookie', $newCookie);
         }
@@ -1051,7 +1152,7 @@ class Request extends Message implements RequestInterface
             if ($cookieHeader !== '') {
                 $existingCookies = $this->getHeaderLine('Cookie');
                 if ($existingCookies !== '') {
-                    $this->header('Cookie', $existingCookies.'; '.$cookieHeader);
+                    $this->header('Cookie', $existingCookies . '; ' . $cookieHeader);
                 } else {
                     $this->header('Cookie', $cookieHeader);
                 }
@@ -1092,13 +1193,13 @@ class Request extends Message implements RequestInterface
             return;
         }
 
-        $options[CURLOPT_PROXY] = $this->proxyConfig->host.':'.$this->proxyConfig->port;
+        $options[CURLOPT_PROXY] = $this->proxyConfig->host . ':' . $this->proxyConfig->port;
         $options[CURLOPT_PROXYTYPE] = $this->proxyConfig->getCurlProxyType();
 
         if ($this->proxyConfig->username !== null) {
             $proxyAuth = $this->proxyConfig->username;
             if ($this->proxyConfig->password !== null) {
-                $proxyAuth .= ':'.$this->proxyConfig->password;
+                $proxyAuth .= ':' . $this->proxyConfig->password;
             }
             $options[CURLOPT_PROXYUSERPWD] = $proxyAuth;
         }
@@ -1120,7 +1221,7 @@ class Request extends Message implements RequestInterface
         if (count($this->headers) > 0) {
             $headerStrings = [];
             foreach ($this->headers as $name => $value) {
-                $headerStrings[] = "{$name}: ".implode(', ', $value);
+                $headerStrings[] = "{$name}: " . implode(', ', $value);
             }
             $options[CURLOPT_HTTPHEADER] = $headerStrings;
         }
@@ -1167,7 +1268,7 @@ class Request extends Message implements RequestInterface
         }
 
         if (($port = $this->uri->getPort()) !== null) {
-            $host .= ':'.$port;
+            $host .= ':' . $port;
         }
 
         if (isset($this->headerNames['host'])) {

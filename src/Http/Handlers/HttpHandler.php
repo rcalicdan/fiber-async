@@ -84,7 +84,7 @@ class HttpHandler
         ?callable $onError = null,
         ?SSEReconnectConfig $reconnectConfig = null
     ): CancellablePromiseInterface {
-        $curlOptions = $this->normalizeFetchOptions($url, $options);
+        $curlOptions = $this->normalizeFetchOptions($url, $options, true);
 
         return $this->sseHandler->connect($url, $curlOptions, $onEvent, $onError, $reconnectConfig);
     }
@@ -220,7 +220,7 @@ class HttpHandler
      */
     public static function generateCacheKey(string $url): string
     {
-        return 'http_'.sha1($url);
+        return 'http_' . sha1($url);
     }
 
     /**
@@ -276,12 +276,12 @@ class HttpHandler
 
                 if (isset($cachedItem['headers']['etag'])) {
                     $etag = is_array($cachedItem['headers']['etag']) ? $cachedItem['headers']['etag'][0] : $cachedItem['headers']['etag'];
-                    $httpHeaders[] = 'If-None-Match: '.$etag;
+                    $httpHeaders[] = 'If-None-Match: ' . $etag;
                 }
 
                 if (isset($cachedItem['headers']['last-modified'])) {
                     $lastModified = is_array($cachedItem['headers']['last-modified']) ? $cachedItem['headers']['last-modified'][0] : $cachedItem['headers']['last-modified'];
-                    $httpHeaders[] = 'If-Modified-Since: '.$lastModified;
+                    $httpHeaders[] = 'If-Modified-Since: ' . $lastModified;
                 }
 
                 $curlOptions[CURLOPT_HTTPHEADER] = $httpHeaders;
@@ -424,6 +424,8 @@ class HttpHandler
         return $this->defaultCookieJar;
     }
 
+   
+
     /**
      * Process response cookies and update the cookie jar.
      */
@@ -448,7 +450,7 @@ class HttpHandler
      */
     protected function normalizeFetchOptions(string $url, array $options): array
     {
-        return $this->fetchHandler->normalizeFetchOptions($url, $options);
+        return $this->fetchHandler->normalizeFetchOptions($url, $options, true);
     }
 
     /**
