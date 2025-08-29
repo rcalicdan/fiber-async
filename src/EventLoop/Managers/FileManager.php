@@ -81,7 +81,7 @@ class FileManager
         $this->pendingOperations = array_values(
             array_filter(
                 $this->pendingOperations,
-                static fn (FileOperation $op): bool => $op->getId() !== $operationId
+                static fn(FileOperation $op): bool => $op->getId() !== $operationId
             )
         );
 
@@ -222,5 +222,21 @@ class FileManager
     public function hasWatchers(): bool
     {
         return count($this->watchers) > 0;
+    }
+
+    /**
+     * Clear all pending file operations and watchers.
+     * Used during forced shutdown to prevent hanging.
+     */
+    public function clearAllOperations(): void
+    {
+        foreach ($this->pendingOperations as $operation) {
+            $operation->cancel();
+        }
+        
+        $this->pendingOperations = [];
+        $this->operationsById = [];
+        $this->watchers = [];
+        $this->watchersById = [];
     }
 }

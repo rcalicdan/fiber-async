@@ -133,7 +133,7 @@ class SocketManager
                     try {
                         $callback();
                     } catch (\Throwable $e) {
-                        \error_log("Error in socket callback for ID {$socketId}: ".$e->getMessage());
+                        \error_log("Error in socket callback for ID {$socketId}: " . $e->getMessage());
                     }
                 }
 
@@ -161,5 +161,15 @@ class SocketManager
     {
         $socketId = (int) $socket;
         unset($this->readWatchers[$socketId], $this->writeWatchers[$socketId]);
+    }
+
+    /**
+     * Clear all socket watchers.
+     * Used during forced shutdown to prevent hanging.
+     */
+    public function clearAllWatchers(): void
+    {
+        $this->readWatchers = [];
+        $this->writeWatchers = [];
     }
 }

@@ -111,4 +111,13 @@ class TimerManager
 
         return $this->scheduleHandler->calculateDelay($this->timers, $currentTime);
     }
+
+    /**
+     * Clear all pending timers.
+     * Used during forced shutdown to prevent hanging.
+     */
+    public function clearAllTimers(): void
+    {
+        $this->timers = [];
+    }
 }

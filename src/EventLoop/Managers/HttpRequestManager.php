@@ -74,7 +74,7 @@ class HttpRequestManager
         $this->pendingRequests = array_values(
             array_filter(
                 $this->pendingRequests,
-                static fn (HttpRequest $r): bool => spl_object_hash($r) !== $requestId
+                static fn(HttpRequest $r): bool => spl_object_hash($r) !== $requestId
             )
         );
 
@@ -111,6 +111,78 @@ class HttpRequestManager
         }
 
         return $workDone;
+    }
+
+    public function getDebugInfo(): array
+    {
+        return [
+            'pending_count' => count($this->pendingRequests),
+            'active_count' => count($this->activeRequests),
+            'by_id_count' => count($this->requestsById),
+            'active_handles' => array_keys($this->activeRequests),
+            'request_ids' => array_keys($this->requestsById)
+        ];
+    }
+
+    /**
+     * Clears all HTTP requests (both pending and active).
+     *
+     * This method cancels all pending requests and removes all active requests
+     * from the cURL multi-handle. All requests will have their callbacks invoked
+     * with a cancellation message.
+     *
+     * @return array{pending: int, active: int} The count of cleared requests by type.
+     */
+    public function clearAllRequests(): array
+    {
+        $pendingCount = count($this->pendingRequests);
+        $activeCount = count($this->activeRequests);
+
+        $this->clearPendingRequests();
+
+        foreach ($this->activeRequests as $request) {
+            $handle = $request->getHandle();
+            curl_multi_remove_handle($this->multiHandle, $handle);
+            curl_close($handle);
+
+            $request->getCallback()('Request cleared', null, 0, [], null);
+
+            $requestId = spl_object_hash($request);
+            unset($this->requestsById[$requestId]);
+        }
+
+        $this->activeRequests = [];
+
+        return ['pending' => $pendingCount, 'active' => $activeCount];
+    }
+
+    /**
+     * Clears all pending HTTP requests without executing them.
+     *
+     * This method removes all queued requests that haven't been added to the
+     * cURL multi-handle yet. Active requests will continue processing normally.
+     * Cleared requests will have their callbacks invoked with a cancellation message.
+     *
+     * @return int The number of requests that were cleared.
+     */
+    public function clearPendingRequests(): int
+    {
+        $clearedCount = count($this->pendingRequests);
+
+        if ($clearedCount === 0) {
+            return 0;
+        }
+
+        foreach ($this->pendingRequests as $request) {
+            $request->getCallback()('Request cleared', null, 0, [], null);
+
+            $requestId = spl_object_hash($request);
+            unset($this->requestsById[$requestId]);
+        }
+
+        $this->pendingRequests = [];
+
+        return $clearedCount;
     }
 
     /**

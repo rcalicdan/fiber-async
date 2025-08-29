@@ -20,6 +20,7 @@ class FiberManager
     private array $fibers = [];
     /** @var array<int, Fiber<mixed, mixed, mixed, mixed>> */
     private array $suspendedFibers = [];
+    private bool $acceptingNewFibers = true;
 
     private readonly FiberStartHandler $startHandler;
     private readonly FiberResumeHandler $resumeHandler;
@@ -39,6 +40,10 @@ class FiberManager
      */
     public function addFiber(Fiber $fiber): void
     {
+        if (!($this->acceptingNewFibers ?? true)) {
+            return; 
+        }
+
         $this->fibers[] = $fiber;
     }
 
@@ -146,5 +151,28 @@ class FiberManager
     public function hasActiveFibers(): bool
     {
         return $this->stateHandler->hasActiveFibers($this->suspendedFibers) || count($this->fibers) > 0;
+    }
+
+    public function clearFibers(): void
+    {
+        $this->fibers = [];
+        $this->suspendedFibers = [];
+    }
+
+    /**
+     * Attempt graceful fiber cleanup.
+     * Used during shutdown - allows fibers to complete naturally.
+     */
+    public function prepareForShutdown(): void
+    {
+        $this->acceptingNewFibers = false;
+    }
+
+    /**
+     * Check if we're accepting new fibers (for shutdown state)
+     */
+    public function isAcceptingNewFibers(): bool
+    {
+        return $this->acceptingNewFibers ?? true;
     }
 }

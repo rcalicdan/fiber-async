@@ -70,6 +70,16 @@ final class TickHandler
     }
 
     /**
+     * Clear all pending tick and deferred callbacks.
+     * Used during forced shutdown to prevent hanging.
+     */
+    public function clearAllCallbacks(): void
+    {
+        $this->tickCallbacks = [];
+        $this->deferredCallbacks = [];
+    }
+
+    /**
      * Split the callback list into a batch and execute it.
      *
      * @param  list<callable>  $callbacks  Passed by reference; batch is spliced off.
@@ -99,7 +109,7 @@ final class TickHandler
                 $callback();
                 $processed = true;
             } catch (\Throwable $e) {
-                error_log("{$type} callback error: ".$e->getMessage());
+                error_log("{$type} callback error: " . $e->getMessage());
             }
         }
 

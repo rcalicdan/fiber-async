@@ -85,4 +85,13 @@ class StreamManager
     {
         return count($this->watchers) > 0;
     }
+
+    /**
+     * Clear all stream watchers.
+     * Used during forced shutdown to prevent hanging.
+     */
+    public function clearAllWatchers(): void
+    {
+        $this->watchers = [];
+    }
 }

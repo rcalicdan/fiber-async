@@ -244,8 +244,7 @@ class EventLoop implements EventLoopInterface
      * Start the main event loop execution.
      *
      * Continues processing work until the loop is stopped or no more
-     * work is available. Uses sleep optimization to reduce CPU usage
-     * when waiting for events.
+     * work is available. Includes forced shutdown to prevent hanging.
      */
     public function run(): void
     {
@@ -253,7 +252,6 @@ class EventLoop implements EventLoopInterface
             $this->iterationCount++;
             $hasImmediateWork = $this->tick();
 
-            // Adaptive optimization check
             if ($this->shouldOptimize()) {
                 $this->optimizeLoop();
             }
@@ -263,11 +261,79 @@ class EventLoop implements EventLoopInterface
                 $this->sleepHandler->sleep($sleepTime);
             }
 
-            // Reset iteration counter to prevent overflow
             if ($this->iterationCount >= self::MAX_ITERATIONS) {
                 $this->iterationCount = 0;
             }
         }
+
+        if (!$this->stateHandler->isRunning() && $this->workHandler->hasWork()) {
+            $this->handleGracefulShutdown();
+        }
+    }
+
+    /**
+     * Handle graceful shutdown with fallback to forced shutdown.
+     */
+    private function handleGracefulShutdown(): void
+    {
+        $maxGracefulIterations = 10;
+        $gracefulCount = 0;
+
+        while (
+            $this->workHandler->hasWork() &&
+            $gracefulCount < $maxGracefulIterations &&
+            !$this->stateHandler->shouldForceShutdown()
+        ) {
+
+            $this->tick();
+            $gracefulCount++;
+
+            usleep(1000); 
+        }
+
+        if ($this->workHandler->hasWork() || $this->stateHandler->shouldForceShutdown()) {
+            $this->forceShutdown();
+        }
+    }
+
+    /**
+     * Force shutdown by clearing all pending work.
+     * This prevents the loop from hanging when stop() is called.
+     */
+    private function forceShutdown(): void
+    {
+        $this->stateHandler->forceStop();
+        $this->clearAllWork();
+    }
+
+    /**
+     * Clear all pending work from all managers and handlers.
+     * This is used during forced shutdown to ensure clean exit.
+     */
+    /**
+     * Clear all pending work from all managers and handlers.
+     * This is used during forced shutdown to ensure clean exit.
+     */
+    private function clearAllWork(): void
+    {
+        $this->tickHandler->clearAllCallbacks();
+        $this->timerManager->clearAllTimers();
+        $this->httpRequestManager->clearAllRequests();
+        $this->fileManager->clearAllOperations();
+        $this->streamManager->clearAllWatchers();
+        $this->socketManager->clearAllWatchers();
+        $this->fiberManager->prepareForShutdown();
+    }
+
+
+    /**
+     * Force immediate stop of the event loop.
+     * 
+     * This bypasses graceful shutdown and immediately clears all work.
+     */
+    public function forceStop(): void
+    {
+        $this->forceShutdown();
     }
 
     /**

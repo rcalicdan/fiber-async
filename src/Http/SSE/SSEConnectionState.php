@@ -1,5 +1,4 @@
 <?php
-// File: src/Http/SSE/SSEConnectionState.php (Corrected)
 
 namespace Rcalicdan\FiberAsync\Http\SSE;
 
@@ -18,7 +17,7 @@ class SSEConnectionState
     private ?CancellablePromiseInterface $currentConnection = null;
     private ?Exception $lastError = null;
     private bool $cancelled = false;
-    private ?string $reconnectTimerId = null; // <-- NEW: To track the zombie timer
+    private ?string $reconnectTimerId = null; 
 
     public function __construct(
         private readonly string $url,
@@ -85,8 +84,6 @@ class SSEConnectionState
             $this->currentConnection->cancel();
         }
 
-        // *** THIS IS THE CRITICAL FIX ***
-        // If there is a pending reconnection timer, we must kill it.
         if ($this->reconnectTimerId !== null) {
             EventLoop::getInstance()->cancelTimer($this->reconnectTimerId);
             $this->reconnectTimerId = null;

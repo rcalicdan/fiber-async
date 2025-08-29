@@ -41,7 +41,7 @@ class SSEReconnectConfig
         );
 
         if ($this->jitter) {
-            $delay *= (0.5 + mt_rand() / mt_getrandmax() * 0.5);
+            $delay *= 0.5 + mt_rand() / mt_getrandmax() * 0.5;
         }
 
         return $delay;
