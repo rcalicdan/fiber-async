@@ -65,7 +65,6 @@ class Request extends Message implements RequestInterface
         if ($body !== '' && $body !== null) {
             $this->body = $body instanceof Stream ? $body : $this->createTempStream();
             if (! ($body instanceof Stream)) {
-                // Handle mixed body type safely
                 $bodyString = $this->convertToString($body);
                 $this->body->write($bodyString);
                 $this->body->rewind();

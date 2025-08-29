@@ -189,7 +189,7 @@ abstract class Message implements MessageInterface
 
         foreach ($headers as $header => $value) {
             if (is_int($header)) {
-                $header = (string) $header; // This is safe because we know it's an int
+                $header = (string) $header; 
             }
             $value = $this->normalizeHeaderValue($value);
             $normalized = strtolower($header);
