@@ -2,8 +2,6 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\Handlers;
 
-use Rcalicdan\FiberAsync\EventLoop\Managers\FiberManager;
-
 /**
  * Manages the running state of the event loop with enhanced shutdown capabilities.
  *
@@ -50,8 +48,8 @@ final class StateHandler
      */
     public function stop(): void
     {
-        if (!$this->running) {
-            return; 
+        if (! $this->running) {
+            return;
         }
 
         $this->running = false;
@@ -60,7 +58,7 @@ final class StateHandler
 
     /**
      * Force immediate shutdown of the event loop.
-     * 
+     *
      * This bypasses graceful shutdown and immediately stops the loop.
      * Should be used when graceful shutdown fails or takes too long.
      */
@@ -109,7 +107,7 @@ final class StateHandler
     /**
      * Set the graceful shutdown timeout.
      *
-     * @param float $timeout Timeout in seconds
+     * @param  float  $timeout  Timeout in seconds
      */
     public function setGracefulShutdownTimeout(float $timeout): void
     {
@@ -147,8 +145,8 @@ final class StateHandler
      */
     public function isInGracefulShutdown(): bool
     {
-        return !$this->running && 
-               !$this->forceShutdown && 
+        return ! $this->running &&
+               ! $this->forceShutdown &&
                $this->stopRequestTime > 0.0;
     }
 }

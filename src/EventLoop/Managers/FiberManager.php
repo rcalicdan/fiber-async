@@ -40,8 +40,8 @@ class FiberManager
      */
     public function addFiber(Fiber $fiber): void
     {
-        if (!($this->acceptingNewFibers ?? true)) {
-            return; 
+        if (! ($this->acceptingNewFibers ?? true)) {
+            return;
         }
 
         $this->fibers[] = $fiber;

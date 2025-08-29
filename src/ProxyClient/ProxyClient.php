@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace Rcalicdan\FiberAsync\ProxyClient;
 
@@ -90,8 +90,8 @@ final class ProxyClient
                     $currentPool = $currentPool->recordSuccess($proxy, $responseTime);
                     self::updateProxyPool($currentPool);
 
-                    echo "  -> [{$requestId}] ✅ SUCCESS with proxy: {$proxy}" .
-                        ($responseTime > 0 ? ' (' . round($responseTime, 2) . 's)' : '') . "\n";
+                    echo "  -> [{$requestId}] ✅ SUCCESS with proxy: {$proxy}".
+                        ($responseTime > 0 ? ' ('.round($responseTime, 2).'s)' : '')."\n";
 
                     return $response;
                 } catch (\Throwable $e) {
@@ -106,7 +106,7 @@ final class ProxyClient
                     if ($attemptCount >= $maxAttempts) {
                         self::updateProxyPool($currentPool);
 
-                        throw new HttpException('All attempts failed. Last error: ' . $e->getMessage(), 0, $e);
+                        throw new HttpException('All attempts failed. Last error: '.$e->getMessage(), 0, $e);
                     }
                     echo "  -> [{$requestId}] 🔄 Trying with another proxy...\n";
                 }
@@ -149,7 +149,8 @@ final class ProxyClient
         return async(function () use ($method, $url, $proxy, $options, $config) {
             $requestBuilder = Http::request()
                 ->timeout($config->getTimeoutSeconds())
-                ->userAgent($config->getUserAgent());
+                ->userAgent($config->getUserAgent())
+            ;
 
             if (isset($options['json'])) {
                 $requestBuilder->json($options['json']);
@@ -166,8 +167,8 @@ final class ProxyClient
             return await($requestBuilder
                 ->interceptRequest(function (Request $request) use ($proxy): Request {
                     return $request->proxyWith(new ProxyConfig(
-                        host: parse_url('http://' . $proxy, PHP_URL_HOST),
-                        port: (int) parse_url('http://' . $proxy, PHP_URL_PORT)
+                        host: parse_url('http://'.$proxy, PHP_URL_HOST),
+                        port: (int) parse_url('http://'.$proxy, PHP_URL_PORT)
                     ));
                 })
                 ->send($method, $url));

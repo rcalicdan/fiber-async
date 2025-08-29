@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace Rcalicdan\FiberAsync\ProxyClient;
 
@@ -9,8 +9,8 @@ final readonly class ProxyPool
 {
     public function __construct(
         private array $proxies,
-        private array $healthMap = [], 
-        private array $quarantined = [], 
+        private array $healthMap = [],
+        private array $quarantined = [],
         private array $removed = []
     ) {}
 
@@ -115,8 +115,8 @@ final readonly class ProxyPool
         // Check if proxy should be permanently removed
         if ($newHealth->shouldRemove()) {
             $newRemoved[] = $proxy;
-            echo "  🗑️ Permanently removed proxy {$proxy} (consecutive failures: {$newHealth->getConsecutiveFailures()}, success rate: " .
-                round($newHealth->getSuccessRate() * 100, 1) . "%)\n";
+            echo "  🗑️ Permanently removed proxy {$proxy} (consecutive failures: {$newHealth->getConsecutiveFailures()}, success rate: ".
+                round($newHealth->getSuccessRate() * 100, 1)."%)\n";
         } elseif ($newHealth->shouldQuarantine()) {
             // Quarantine for 5 minutes
             $newQuarantined[$proxy] = microtime(true) + 300;
@@ -154,7 +154,7 @@ final readonly class ProxyPool
     public function getPoolHealth(): array
     {
         $available = count($this->getAvailableProxies());
-        $quarantined = count(array_filter($this->quarantined, fn($until) => microtime(true) < $until));
+        $quarantined = count(array_filter($this->quarantined, fn ($until) => microtime(true) < $until));
         $removed = count($this->removed);
 
         return [

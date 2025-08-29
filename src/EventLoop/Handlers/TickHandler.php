@@ -109,7 +109,7 @@ final class TickHandler
                 $callback();
                 $processed = true;
             } catch (\Throwable $e) {
-                error_log("{$type} callback error: " . $e->getMessage());
+                error_log("{$type} callback error: ".$e->getMessage());
             }
         }
 

@@ -70,11 +70,11 @@ class HttpHandler
     /**
      * Creates an SSE (Server-Sent Events) connection with optional reconnection.
      *
-     * @param string $url The SSE endpoint URL
-     * @param array<int|string, mixed> $options Request options
-     * @param callable(SSEEvent): void|null $onEvent Optional callback for each SSE event
-     * @param callable(string): void|null $onError Optional callback for connection errors
-     * @param SSEReconnectConfig|null $reconnectConfig Optional reconnection configuration
+     * @param  string  $url  The SSE endpoint URL
+     * @param  array<int|string, mixed>  $options  Request options
+     * @param  callable(SSEEvent): void|null  $onEvent  Optional callback for each SSE event
+     * @param  callable(string): void|null  $onError  Optional callback for connection errors
+     * @param  SSEReconnectConfig|null  $reconnectConfig  Optional reconnection configuration
      * @return CancellablePromiseInterface<SSEResponse>
      */
     public function sse(
@@ -220,7 +220,7 @@ class HttpHandler
      */
     public static function generateCacheKey(string $url): string
     {
-        return 'http_' . sha1($url);
+        return 'http_'.sha1($url);
     }
 
     /**
@@ -276,12 +276,12 @@ class HttpHandler
 
                 if (isset($cachedItem['headers']['etag'])) {
                     $etag = is_array($cachedItem['headers']['etag']) ? $cachedItem['headers']['etag'][0] : $cachedItem['headers']['etag'];
-                    $httpHeaders[] = 'If-None-Match: ' . $etag;
+                    $httpHeaders[] = 'If-None-Match: '.$etag;
                 }
 
                 if (isset($cachedItem['headers']['last-modified'])) {
                     $lastModified = is_array($cachedItem['headers']['last-modified']) ? $cachedItem['headers']['last-modified'][0] : $cachedItem['headers']['last-modified'];
-                    $httpHeaders[] = 'If-Modified-Since: ' . $lastModified;
+                    $httpHeaders[] = 'If-Modified-Since: '.$lastModified;
                 }
 
                 $curlOptions[CURLOPT_HTTPHEADER] = $httpHeaders;

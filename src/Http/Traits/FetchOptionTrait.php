@@ -41,7 +41,7 @@ trait FetchOptionTrait
 
         if ($this->isCurlOptionsFormat($cleanOptions)) {
             /** @var array<int, mixed> */
-            $curlOptions = array_filter($cleanOptions, fn($key) => is_int($key), ARRAY_FILTER_USE_KEY);
+            $curlOptions = array_filter($cleanOptions, fn ($key) => is_int($key), ARRAY_FILTER_USE_KEY);
 
             $curlOptions[CURLOPT_URL] = $url;
 
@@ -160,7 +160,7 @@ trait FetchOptionTrait
                 if (isset($curlOptions[CURLOPT_HTTPHEADER]) && is_array($curlOptions[CURLOPT_HTTPHEADER])) {
                     $headers = $curlOptions[CURLOPT_HTTPHEADER];
                 }
-                $headers[] = 'Authorization: Bearer ' . $auth['bearer'];
+                $headers[] = 'Authorization: Bearer '.$auth['bearer'];
                 $curlOptions[CURLOPT_HTTPHEADER] = $headers;
             }
 
@@ -170,7 +170,7 @@ trait FetchOptionTrait
                     isset($basic['username'], $basic['password']) &&
                     is_string($basic['username']) && is_string($basic['password'])
                 ) {
-                    $curlOptions[CURLOPT_USERPWD] = $basic['username'] . ':' . $basic['password'];
+                    $curlOptions[CURLOPT_USERPWD] = $basic['username'].':'.$basic['password'];
                     $curlOptions[CURLOPT_HTTPAUTH] = CURLAUTH_BASIC;
                 }
             }
@@ -257,13 +257,13 @@ trait FetchOptionTrait
             return;
         }
 
-        $curlOptions[CURLOPT_PROXY] = $proxyConfig->host . ':' . $proxyConfig->port;
+        $curlOptions[CURLOPT_PROXY] = $proxyConfig->host.':'.$proxyConfig->port;
         $curlOptions[CURLOPT_PROXYTYPE] = $proxyConfig->getCurlProxyType();
 
         if ($proxyConfig->username !== null) {
             $proxyAuth = $proxyConfig->username;
             if ($proxyConfig->password !== null) {
-                $proxyAuth .= ':' . $proxyConfig->password;
+                $proxyAuth .= ':'.$proxyConfig->password;
             }
             $curlOptions[CURLOPT_PROXYUSERPWD] = $proxyAuth;
         }

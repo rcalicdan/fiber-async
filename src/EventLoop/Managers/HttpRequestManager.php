@@ -74,7 +74,7 @@ class HttpRequestManager
         $this->pendingRequests = array_values(
             array_filter(
                 $this->pendingRequests,
-                static fn(HttpRequest $r): bool => spl_object_hash($r) !== $requestId
+                static fn (HttpRequest $r): bool => spl_object_hash($r) !== $requestId
             )
         );
 
@@ -120,7 +120,7 @@ class HttpRequestManager
             'active_count' => count($this->activeRequests),
             'by_id_count' => count($this->requestsById),
             'active_handles' => array_keys($this->activeRequests),
-            'request_ids' => array_keys($this->requestsById)
+            'request_ids' => array_keys($this->requestsById),
         ];
     }
 

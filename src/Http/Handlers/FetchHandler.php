@@ -53,6 +53,7 @@ class FetchHandler
 
         if ($this->isSSERequested($options)) {
             $sseConfig = $this->extractSSEConfig($options);
+
             return $this->fetchSSE(
                 $url,
                 $options,
@@ -329,7 +330,7 @@ class FetchHandler
                     }
 
                     if ($etag !== null) {
-                        $httpHeaders[] = 'If-None-Match: ' . $etag;
+                        $httpHeaders[] = 'If-None-Match: '.$etag;
                     }
                 }
 
@@ -344,7 +345,7 @@ class FetchHandler
                     }
 
                     if ($lastModified !== null) {
-                        $httpHeaders[] = 'If-Modified-Since: ' . $lastModified;
+                        $httpHeaders[] = 'If-Modified-Since: '.$lastModified;
                     }
                 }
 
@@ -383,7 +384,7 @@ class FetchHandler
     /**
      * Checks if SSE is requested in options.
      *
-     * @param array<int|string, mixed> $options The options array
+     * @param  array<int|string, mixed>  $options  The options array
      * @return bool True if SSE is requested
      */
     private function isSSERequested(array $options): bool
@@ -394,7 +395,7 @@ class FetchHandler
     /**
      * Extract SSE callbacks from options.
      *
-     * @param array<int|string, mixed> $options The options array
+     * @param  array<int|string, mixed>  $options  The options array
      * @return array{onEvent: callable|null, onError: callable|null}
      */
     private function extractSSECallbacks(array $options): array
@@ -428,6 +429,7 @@ class FetchHandler
         ?SSEReconnectConfig $reconnectConfig = null
     ): CancellablePromiseInterface {
         $curlOptions = $this->normalizeFetchOptions($url, $options);
+
         return $this->sseHandler->connect($url, $curlOptions, $onEvent, $onError, $reconnectConfig);
     }
 
@@ -442,7 +444,7 @@ class FetchHandler
         return [
             'onEvent' => $callbacks['onEvent'],
             'onError' => $callbacks['onError'],
-            'reconnectConfig' => $reconnectConfig
+            'reconnectConfig' => $reconnectConfig,
         ];
     }
 
@@ -451,14 +453,14 @@ class FetchHandler
      */
     private function extractSSEReconnectConfig(array $options): ?SSEReconnectConfig
     {
-        if (!isset($options['reconnect'])) {
+        if (! isset($options['reconnect'])) {
             return null;
         }
 
         $reconnect = $options['reconnect'];
 
         if ($reconnect === true) {
-            return new SSEReconnectConfig();
+            return new SSEReconnectConfig;
         }
 
         if ($reconnect instanceof SSEReconnectConfig) {
@@ -543,7 +545,7 @@ class FetchHandler
      */
     private function generateCacheKey(string $url): string
     {
-        return 'http_' . sha1($url);
+        return 'http_'.sha1($url);
     }
 
     /**

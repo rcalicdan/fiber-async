@@ -12,7 +12,6 @@ use Rcalicdan\FiberAsync\Http\SSE\SSEResponse;
 use Rcalicdan\FiberAsync\Http\Stream;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
-use Rcalicdan\FiberAsync\Http\Handlers\StreamingHandler;
 
 /**
  * Dedicated handler for Server-Sent Events (SSE) connections with reconnection support.
@@ -29,11 +28,11 @@ class SSEHandler
     /**
      * Creates an SSE connection with optional reconnection logic.
      *
-     * @param string $url The SSE endpoint URL
-     * @param array<int, mixed> $options cURL options
-     * @param callable(SSEEvent): void|null $onEvent Optional callback for each SSE event
-     * @param callable(string): void|null $onError Optional callback for connection errors
-     * @param SSEReconnectConfig|null $reconnectConfig Optional reconnection configuration
+     * @param  string  $url  The SSE endpoint URL
+     * @param  array<int, mixed>  $options  cURL options
+     * @param  callable(SSEEvent): void|null  $onEvent  Optional callback for each SSE event
+     * @param  callable(string): void|null  $onError  Optional callback for connection errors
+     * @param  SSEReconnectConfig|null  $reconnectConfig  Optional reconnection configuration
      * @return CancellablePromiseInterface<SSEResponse>
      */
     public function connect(
@@ -63,18 +62,18 @@ class SSEHandler
         /** @var CancellablePromise<SSEResponse> $mainPromise */
         $mainPromise = new CancellablePromise;
         $connectionState = new SSEConnectionState($url, $options, $reconnectConfig);
-        
+
         $wrappedOnEvent = $this->wrapEventCallback($onEvent, $connectionState);
         $wrappedOnError = $this->wrapErrorCallback($onError, $connectionState);
-        
+
         // Start the first connection attempt
         $this->attemptConnection($connectionState, $wrappedOnEvent, $wrappedOnError, $mainPromise);
-        
+
         // The main promise's cancellation now controls the entire state machine.
         $mainPromise->setCancelHandler(function () use ($connectionState) {
             $connectionState->cancel();
         });
-        
+
         return $mainPromise;
     }
 
@@ -89,20 +88,21 @@ class SSEHandler
     ): void {
         // Guard against starting a new attempt if the session has been cancelled.
         if ($connectionState->isCancelled()) {
-            if (!$mainPromise->isSettled()) {
-                 $mainPromise->reject(new Exception('SSE connection cancelled before attempt.'));
+            if (! $mainPromise->isSettled()) {
+                $mainPromise->reject(new Exception('SSE connection cancelled before attempt.'));
             }
+
             return;
         }
 
         $connectionState->incrementAttempt();
-        
+
         $options = $connectionState->getOptions();
         if ($connectionState->getLastEventId() !== null) {
             $headers = $options[CURLOPT_HTTPHEADER] ?? [];
             // Remove previous Last-Event-ID header if it exists to avoid duplicates
-            $headers = array_filter($headers, fn($h) => !str_starts_with(strtolower($h), 'last-event-id:'));
-            $headers[] = 'Last-Event-ID: ' . $connectionState->getLastEventId();
+            $headers = array_filter($headers, fn ($h) => ! str_starts_with(strtolower($h), 'last-event-id:'));
+            $headers[] = 'Last-Event-ID: '.$connectionState->getLastEventId();
             $options[CURLOPT_HTTPHEADER] = $headers;
         }
 
@@ -111,9 +111,11 @@ class SSEHandler
 
         $connectionPromise->then(
             function (SSEResponse $response) use ($mainPromise, $connectionState) {
-                if ($connectionState->isCancelled()) return;
-                
-                if (!$mainPromise->isSettled()) {
+                if ($connectionState->isCancelled()) {
+                    return;
+                }
+
+                if (! $mainPromise->isSettled()) {
                     $mainPromise->resolve($response);
                 }
                 $connectionState->onConnected();
@@ -121,16 +123,18 @@ class SSEHandler
             function (Exception $error) use ($mainPromise, $connectionState, $onEvent, $onError) {
                 // When a connection fails, check the master cancellation flag first.
                 if ($connectionState->isCancelled()) {
-                    if (!$mainPromise->isSettled()) {
+                    if (! $mainPromise->isSettled()) {
                         $mainPromise->reject(new Exception('SSE connection cancelled during failure handling.'));
                     }
+
                     return;
                 }
 
-                if (!$connectionState->shouldReconnect($error)) {
-                    if (!$mainPromise->isSettled()) {
+                if (! $connectionState->shouldReconnect($error)) {
+                    if (! $mainPromise->isSettled()) {
                         $mainPromise->reject($error);
                     }
+
                     return;
                 }
 
@@ -176,16 +180,19 @@ class SSEHandler
                             $onEvent($event);
                         }
                     } catch (Exception $e) {
-                        error_log("SSE event parsing error: " . $e->getMessage());
+                        error_log('SSE event parsing error: '.$e->getMessage());
                     }
                 }
+
                 return strlen($data);
             },
             CURLOPT_HEADERFUNCTION => function ($ch, string $header) use ($promise, &$sseResponse, &$headersProcessed) {
-                if ($promise->isSettled()) return strlen($header);
+                if ($promise->isSettled()) {
+                    return strlen($header);
+                }
 
                 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                if (!$headersProcessed && $httpCode > 0) {
+                if (! $headersProcessed && $httpCode > 0) {
                     if ($httpCode >= 200 && $httpCode < 300) {
                         $sseResponse = new SSEResponse(new Stream(fopen('php://temp', 'r+')), $httpCode, []);
                         $promise->resolve($sseResponse);
@@ -194,6 +201,7 @@ class SSEHandler
                     }
                     $headersProcessed = true;
                 }
+
                 return strlen($header);
             },
         ]);
@@ -206,13 +214,14 @@ class SSEHandler
                     if ($onError !== null && $error !== null) {
                         $onError($error);
                     }
+
                     return;
                 }
                 $promise->reject(new HttpStreamException("SSE connection failed: {$error}"));
             }
         );
-        
-        $promise->setCancelHandler(fn() => EventLoop::getInstance()->cancelHttpRequest($requestId));
+
+        $promise->setCancelHandler(fn () => EventLoop::getInstance()->cancelHttpRequest($requestId));
 
         return $promise;
     }
@@ -222,10 +231,17 @@ class SSEHandler
      */
     private function wrapEventCallback(?callable $onEvent, SSEConnectionState $state): ?callable
     {
-        if ($onEvent === null) return null;
+        if ($onEvent === null) {
+            return null;
+        }
+
         return function (SSEEvent $event) use ($onEvent, $state) {
-            if ($event->id !== null) $state->setLastEventId($event->id);
-            if ($event->retry !== null) $state->setRetryInterval($event->retry);
+            if ($event->id !== null) {
+                $state->setLastEventId($event->id);
+            }
+            if ($event->retry !== null) {
+                $state->setRetryInterval($event->retry);
+            }
             $onEvent($event);
         };
     }
@@ -236,7 +252,9 @@ class SSEHandler
     private function wrapErrorCallback(?callable $onError, SSEConnectionState $state): ?callable
     {
         return function (string $error) use ($onError, $state) {
-            if ($onError !== null) $onError($error);
+            if ($onError !== null) {
+                $onError($error);
+            }
             $state->onConnectionFailed(new Exception($error));
         };
     }

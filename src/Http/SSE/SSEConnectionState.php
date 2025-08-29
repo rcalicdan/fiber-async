@@ -17,7 +17,7 @@ class SSEConnectionState
     private ?CancellablePromiseInterface $currentConnection = null;
     private ?Exception $lastError = null;
     private bool $cancelled = false;
-    private ?string $reconnectTimerId = null; 
+    private ?string $reconnectTimerId = null;
 
     public function __construct(
         private readonly string $url,
@@ -77,7 +77,9 @@ class SSEConnectionState
 
     public function cancel(): void
     {
-        if ($this->cancelled) return;
+        if ($this->cancelled) {
+            return;
+        }
         $this->cancelled = true;
 
         if ($this->currentConnection !== null && $this->currentConnection->isPending()) {
@@ -118,7 +120,7 @@ class SSEConnectionState
             return false;
         }
 
-        if (!$this->config->enabled) {
+        if (! $this->config->enabled) {
             return false;
         }
 

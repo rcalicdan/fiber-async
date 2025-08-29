@@ -81,7 +81,7 @@ class FileManager
         $this->pendingOperations = array_values(
             array_filter(
                 $this->pendingOperations,
-                static fn(FileOperation $op): bool => $op->getId() !== $operationId
+                static fn (FileOperation $op): bool => $op->getId() !== $operationId
             )
         );
 
@@ -233,7 +233,7 @@ class FileManager
         foreach ($this->pendingOperations as $operation) {
             $operation->cancel();
         }
-        
+
         $this->pendingOperations = [];
         $this->operationsById = [];
         $this->watchers = [];

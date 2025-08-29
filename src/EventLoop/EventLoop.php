@@ -266,7 +266,7 @@ class EventLoop implements EventLoopInterface
             }
         }
 
-        if (!$this->stateHandler->isRunning() && $this->workHandler->hasWork()) {
+        if (! $this->stateHandler->isRunning() && $this->workHandler->hasWork()) {
             $this->handleGracefulShutdown();
         }
     }
@@ -282,13 +282,13 @@ class EventLoop implements EventLoopInterface
         while (
             $this->workHandler->hasWork() &&
             $gracefulCount < $maxGracefulIterations &&
-            !$this->stateHandler->shouldForceShutdown()
+            ! $this->stateHandler->shouldForceShutdown()
         ) {
 
             $this->tick();
             $gracefulCount++;
 
-            usleep(1000); 
+            usleep(1000);
         }
 
         if ($this->workHandler->hasWork() || $this->stateHandler->shouldForceShutdown()) {
@@ -325,10 +325,9 @@ class EventLoop implements EventLoopInterface
         $this->fiberManager->prepareForShutdown();
     }
 
-
     /**
      * Force immediate stop of the event loop.
-     * 
+     *
      * This bypasses graceful shutdown and immediately clears all work.
      */
     public function forceStop(): void

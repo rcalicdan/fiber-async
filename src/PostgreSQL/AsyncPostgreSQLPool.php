@@ -262,15 +262,16 @@ class AsyncPostgreSQLPool
     private function createConnection(): Connection
     {
         $connectionString = $this->buildConnectionString($this->dbConfig);
-        $connection = pg_connect($connectionString, PGSQL_CONNECT_FORCE_NEW);
+
+        $connection = @pg_connect($connectionString, PGSQL_CONNECT_FORCE_NEW);
 
         if ($connection === false) {
-            // PHPStan has proven pg_last_error() is guaranteed to return a string here.
-            throw new RuntimeException('PostgreSQL Connection failed: '.pg_last_error());
+            $error = pg_last_error();
+
+            throw new RuntimeException('PostgreSQL Connection failed: '.$error);
         }
 
         if (pg_connection_status($connection) !== PGSQL_CONNECTION_OK) {
-            // PHPStan has proven pg_last_error() is guaranteed to return a string here.
             $error = pg_last_error($connection);
             pg_close($connection);
 
@@ -290,9 +291,11 @@ class AsyncPostgreSQLPool
      */
     private function buildConnectionString(array $config): string
     {
-        if (! isset($config['host']) || ! is_string($config['host']) ||
+        if (
+            ! isset($config['host']) || ! is_string($config['host']) ||
             ! isset($config['username']) || ! is_string($config['username']) ||
-            ! isset($config['database']) || ! is_string($config['database'])) {
+            ! isset($config['database']) || ! is_string($config['database'])
+        ) {
             throw new InvalidArgumentException('Host, username, and database must be non-empty strings.');
         }
 

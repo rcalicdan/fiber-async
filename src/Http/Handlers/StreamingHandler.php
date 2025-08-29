@@ -57,7 +57,7 @@ final readonly class StreamingHandler
 
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
-            $streamingOptions, 
+            $streamingOptions,
             function (?string $error, $response, ?int $httpCode, array $headers = [], ?string $httpVersion = null) use ($promise, $responseStream, &$headerAccumulator): void {
                 if ($promise->isCancelled()) {
                     fclose($responseStream);

@@ -55,24 +55,24 @@ class SSEResponse
 
     /**
      * Parse incoming SSE data and yield events.
-     * 
-     * @param string $chunk Raw SSE data chunk
+     *
+     * @param  string  $chunk  Raw SSE data chunk
      * @return \Generator<SSEEvent>
      */
     public function parseEvents(string $chunk): \Generator
     {
         $this->buffer .= $chunk;
-        
+
         // Split on double newlines (event boundaries)
         $parts = preg_split('/\r?\n\r?\n/', $this->buffer, -1, PREG_SPLIT_NO_EMPTY);
-        
+
         // Keep the last part in buffer if it doesn't end with double newline
-        if (!str_ends_with($this->buffer, "\n\n") && !str_ends_with($this->buffer, "\r\n\r\n")) {
+        if (! str_ends_with($this->buffer, "\n\n") && ! str_ends_with($this->buffer, "\r\n\r\n")) {
             $this->buffer = array_pop($parts) ?? '';
         } else {
             $this->buffer = '';
         }
-        
+
         foreach ($parts as $eventData) {
             $event = $this->parseEvent($eventData);
             if ($event !== null) {
@@ -91,13 +91,13 @@ class SSEResponse
     {
         $lines = preg_split('/\r?\n/', trim($eventData));
         $fields = [];
-        
+
         foreach ($lines as $line) {
             if (str_starts_with($line, ':')) {
                 // Comment line, skip
                 continue;
             }
-            
+
             if (str_contains($line, ':')) {
                 [$field, $value] = explode(':', $line, 2);
                 $field = trim($field);
@@ -106,15 +106,15 @@ class SSEResponse
                 $field = trim($line);
                 $value = '';
             }
-            
+
             if ($field === '') {
                 continue;
             }
-            
+
             // Handle multiple data fields (concatenated with newlines)
             if ($field === 'data') {
                 if (isset($fields['data'])) {
-                    $fields['data'] .= "\n" . $value;
+                    $fields['data'] .= "\n".$value;
                 } else {
                     $fields['data'] = $value;
                 }
@@ -122,18 +122,18 @@ class SSEResponse
                 $fields[$field] = $value;
             }
         }
-        
+
         // Skip empty events
         if (empty($fields)) {
             return null;
         }
-        
+
         return new SSEEvent(
             id: $fields['id'] ?? null,
             event: $fields['event'] ?? null,
             data: $fields['data'] ?? null,
-            retry: isset($fields['retry']) && is_numeric($fields['retry']) 
-                ? (int)$fields['retry'] 
+            retry: isset($fields['retry']) && is_numeric($fields['retry'])
+                ? (int) $fields['retry']
                 : null,
             rawFields: $fields
         );
@@ -141,20 +141,20 @@ class SSEResponse
 
     /**
      * Get the next available events from the stream.
-     * 
+     *
      * @return \Generator<SSEEvent>
      */
     public function getEvents(): \Generator
     {
-        while (!$this->stream->eof()) {
+        while (! $this->stream->eof()) {
             $chunk = $this->stream->read(8192);
             if ($chunk === '') {
                 break;
             }
-            
+
             yield from $this->parseEvents($chunk);
         }
-        
+
         // Process any remaining buffer
         if ($this->buffer !== '') {
             $event = $this->parseEvent($this->buffer);

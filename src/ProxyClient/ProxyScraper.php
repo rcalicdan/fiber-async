@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace Rcalicdan\FiberAsync\ProxyClient;
 
@@ -27,7 +27,7 @@ class ProxyScraper
             echo "Scraping for proxy list from {$this->url}...\n";
             $response = await(Http::userAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')->get($this->url));
             if (! $response->ok()) {
-                throw new RuntimeException('Failed to fetch page, status: ' . $response->status());
+                throw new RuntimeException('Failed to fetch page, status: '.$response->status());
             }
 
             return $this->parseAndFilter($response->body());
@@ -50,7 +50,7 @@ class ProxyScraper
                 return;
             }
             if ($this->isFresh($cells->eq(7)->text())) {
-                $proxies[] = $cells->eq(0)->text() . ':' . $cells->eq(1)->text();
+                $proxies[] = $cells->eq(0)->text().':'.$cells->eq(1)->text();
             }
         });
 
@@ -73,4 +73,3 @@ class ProxyScraper
         return false;
     }
 }
-
