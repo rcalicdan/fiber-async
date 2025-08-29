@@ -471,11 +471,15 @@ class Request extends Message implements RequestInterface
         ?callable $onError = null,
         ?SSEReconnectConfig $reconnectConfig = null
     ): CancellablePromiseInterface {
-        $curlOptions = $this->buildCurlOptions('GET', $url);
+        // Use fetch-style options instead of raw cURL options
+        $options = $this->buildFetchOptions('GET');
+
+        // Remove or modify options that interfere with SSE
+        unset($options['timeout']); // Don't set a total timeout for SSE
 
         $effectiveReconnectConfig = $reconnectConfig ?? $this->sseReconnectConfig;
 
-        return $this->handler->sse($url, $curlOptions, $onEvent, $onError, $effectiveReconnectConfig);
+        return $this->handler->sse($url, $options, $onEvent, $onError, $effectiveReconnectConfig);
     }
 
     /**

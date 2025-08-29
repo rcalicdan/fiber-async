@@ -2,37 +2,49 @@
 
 use Rcalicdan\FiberAsync\Http\Handlers\HttpHandler;
 use Rcalicdan\FiberAsync\Http\SSE\SSEEvent;
-use Rcalicdan\FiberAsync\Http\SSE\SSEReconnectConfig;
 
 require "vendor/autoload.php";
 
 run(function () {
     $count = 0;
-    $url = "https://stream.wikimedia.org/v2/stream/recentchange";
+    $lastEventTime = time();
     
-    echo "Connecting to: $url\n";
+    $promise = http()
+        ->sseReconnect(
+            enabled: true,
+            maxAttempts: 10,
+            initialDelay: 1.0,
+            maxDelay: 30.0,
+            backoffMultiplier: 2.0,
+            jitter: true,
+            onReconnect: function (int $attempt, float $delay) {
+                echo "[RECONNECT] Attempt #$attempt after {$delay}s delay\n";
+            }
+        )
+        ->sse(
+            url: "https://stream.wikimedia.org/v2/stream/recentchange",
+            onEvent: function (SSEEvent $event) use (&$count, &$lastEventTime) {
+                $count++;
+                $lastEventTime = time();
+                $data = json_decode($event->data, true);
+                echo "[EVENT] #$count at " . date('H:i:s') . " - Title: {$data['title']}\n";
+            },
+            onError: function (string $error) {
+                echo "[ERROR] " . date('H:i:s') . " - Connection error: $error\n";
+            }
+        );
 
-    $http = new HttpHandler();
-    
-    $promise = $http->sse(
-        url: $url,
-        options: [                              // Changed from curlOptions to options
-            CURLOPT_USERAGENT => 'Simple-Test/1.0',
-        ],
-        onEvent: function (SSEEvent $event) use (&$count) {
-            $count++;
-            $data = json_decode($event->data, true);
-            echo "Event: $count, Title: {$data['title']}\n";
-        },
-        onError: function (string $error) {
-            echo "Error: $error\n";
-        },
-        reconnectConfig: new SSEReconnectConfig(true, 5)
-    );
+    // Also add a timer to detect when events stop coming
+    $checkTimer = setInterval(function () use (&$lastEventTime, &$count) {
+        $timeSinceLastEvent = time() - $lastEventTime;
+        if ($timeSinceLastEvent > 10) { // If no events for 10+ seconds
+            echo "[STATUS] No events received for {$timeSinceLastEvent}s (last count: $count)\n";
+        }
+    }, 5000); // Check every 5 seconds
 
     try {
         await($promise);
-    } catch (Exception $e) {
-        echo "Exception: " . $e->getMessage() . "\n";
+    } finally {
+        clearInterval($checkTimer);
     }
 });
