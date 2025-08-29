@@ -62,7 +62,7 @@ run(function () {
         echo "--- Step 1: Connecting to the stream... ---\n";
         $ssePromise = $httpHandler->sse($url, $options, $onEvent, $onError, $reconnectConfig);
         
-        await($ssePromise);
+        $result = await($ssePromise);
         echo "✅ Connection established. The stream is now live.\n\n";
 
         echo "\033[36m********************* ACTION REQUIRED *********************\n";

@@ -33,8 +33,6 @@ final readonly class StreamingHandler
         /** @var list<string> $headerAccumulator */
         $headerAccumulator = [];
 
-        // ** THE FIX **: Filter the options array to only include valid CURLOPT_* integer keys
-        // before passing it to the low-level cURL functions.
         $curlOnlyOptions = array_filter($options, 'is_int', ARRAY_FILTER_USE_KEY);
 
         $streamingOptions = array_replace($curlOnlyOptions, [
@@ -59,7 +57,7 @@ final readonly class StreamingHandler
 
         $requestId = EventLoop::getInstance()->addHttpRequest(
             $url,
-            $streamingOptions, // Pass the sanitized options
+            $streamingOptions, 
             function (?string $error, $response, ?int $httpCode, array $headers = [], ?string $httpVersion = null) use ($promise, $responseStream, &$headerAccumulator): void {
                 if ($promise->isCancelled()) {
                     fclose($responseStream);
@@ -128,7 +126,6 @@ final readonly class StreamingHandler
             return $promise;
         }
 
-        // ** THE FIX **: Also filter the options here for the download method.
         $curlOnlyOptions = array_filter($options, 'is_int', ARRAY_FILTER_USE_KEY);
 
         $downloadOptions = array_replace($curlOnlyOptions, [

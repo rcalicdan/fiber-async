@@ -1,5 +1,4 @@
 <?php
-// File: src/Http/Handlers/SSEHandler.php (FINAL, CORRECTED VERSION)
 
 namespace Rcalicdan\FiberAsync\Http\Handlers;
 
@@ -13,6 +12,7 @@ use Rcalicdan\FiberAsync\Http\SSE\SSEResponse;
 use Rcalicdan\FiberAsync\Http\Stream;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
+use Rcalicdan\FiberAsync\Http\Handlers\StreamingHandler;
 
 /**
  * Dedicated handler for Server-Sent Events (SSE) connections with reconnection support.
