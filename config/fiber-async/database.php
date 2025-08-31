@@ -87,7 +87,5 @@ return [
         ],
     ],
 
-    'immutable_query_builder' => $_ENV['DB_IMMUTABLE_QUERY_BUILDER'] ?? true,
-
     'pool_size' => (int) ($_ENV['DB_POOL_SIZE'] ?? 20),
 ];

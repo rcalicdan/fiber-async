@@ -9,7 +9,7 @@ use Exception;
  * A singleton configuration loader that automatically finds the project root.
  *
  * It searches upwards from its directory to locate the project root (identified
- * by a 'vendor' folder), loads the .env and config files,
+ * by a 'vendor' folder), loads the .env and config files from config/fiber-async,
  * and then caches the results to ensure the expensive search happens only once.
  */
 final class ConfigLoader
@@ -56,7 +56,7 @@ final class ConfigLoader
 
     /**
      * Retrieves a configuration array by its key (the filename).
-     * e.g., get('database') loads and returns config/database.php
+     * e.g., get('database') loads and returns config/fiber-async/database.php
      *
      * @param  mixed  $default
      * @return mixed
@@ -75,7 +75,7 @@ final class ConfigLoader
     {
         $dir = __DIR__;
         for ($i = 0; $i < 10; $i++) {
-            if (is_dir($dir.'/vendor')) {
+            if (is_dir($dir . '/vendor')) {
                 return $dir;
             }
 
@@ -95,7 +95,7 @@ final class ConfigLoader
             throw new Exception('Root path not found, cannot load .env file');
         }
 
-        $envFile = $this->rootPath.'/.env';
+        $envFile = $this->rootPath . '/.env';
 
         if (file_exists($envFile)) {
             file_get_contents($envFile);
@@ -112,7 +112,7 @@ final class ConfigLoader
     }
 
     /**
-     * Loads all .php files from the project root's /config directory.
+     * Loads all .php files from the project root's /config/fiber-async directory.
      */
     private function loadConfigFiles(): void
     {
@@ -120,9 +120,9 @@ final class ConfigLoader
             throw new Exception('Root path not found, cannot load config files');
         }
 
-        $configDir = $this->rootPath.'/config';
+        $configDir = $this->rootPath . '/config/fiber-async';
         if (is_dir($configDir)) {
-            $files = glob($configDir.'/*.php');
+            $files = glob($configDir . '/*.php');
             if ($files !== false) {
                 foreach ($files as $file) {
                     $key = basename($file, '.php');

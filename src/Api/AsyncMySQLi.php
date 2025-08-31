@@ -15,8 +15,8 @@ final class AsyncMySQLi
 {
     private static ?AsyncMySQLiPool $pool = null;
     private static bool $isInitialized = false;
-    private const POOL_INTERVAL = 10; // microseconds
-    private const POOL_MAX_INTERVAL = 100; // microseconds
+    private const POOL_INTERVAL = 10; 
+    private const POOL_MAX_INTERVAL = 100; 
 
     public static function init(array $dbConfig, int $poolSize = 10): void
     {
@@ -54,22 +54,22 @@ final class AsyncMySQLi
         })();
     }
 
-    public static function query(string $sql, array $params = [], string $types = ''): PromiseInterface
+    public static function query(string $sql, array $params = [], ?string $types = null): PromiseInterface
     {
         return self::executeAsyncQuery($sql, $params, $types, 'fetchAll');
     }
 
-    public static function fetchOne(string $sql, array $params = [], string $types = ''): PromiseInterface
+    public static function fetchOne(string $sql, array $params = [], ?string $types = null): PromiseInterface
     {
         return self::executeAsyncQuery($sql, $params, $types, 'fetchOne');
     }
 
-    public static function execute(string $sql, array $params = [], string $types = ''): PromiseInterface
+    public static function execute(string $sql, array $params = [], ?string $types = null): PromiseInterface
     {
         return self::executeAsyncQuery($sql, $params, $types, 'execute');
     }
 
-    public static function fetchValue(string $sql, array $params = [], string $types = ''): PromiseInterface
+    public static function fetchValue(string $sql, array $params = [], ?string $types = null): PromiseInterface
     {
         return self::executeAsyncQuery($sql, $params, $types, 'fetchValue');
     }
@@ -158,7 +158,7 @@ final class AsyncMySQLi
                     $mysqli->autocommit(true);
                     self::getPool()->release($mysqli);
                 } catch (Throwable $e) {
-                    error_log("Failed to cancel transaction {$index}: ".$e->getMessage());
+                    error_log("Failed to cancel transaction {$index}: " . $e->getMessage());
                     self::getPool()->release($mysqli);
                 }
             }
@@ -197,7 +197,7 @@ final class AsyncMySQLi
                     echo "Transaction $winnerIndex: Winner committed!\n";
                     self::getPool()->release($mysqli);
                 } catch (Throwable $e) {
-                    error_log("Failed to commit winner transaction {$winnerIndex}: ".$e->getMessage());
+                    error_log("Failed to commit winner transaction {$winnerIndex}: " . $e->getMessage());
                     $mysqli->rollback();
                     $mysqli->autocommit(true);
                     self::getPool()->release($mysqli);
@@ -220,7 +220,7 @@ final class AsyncMySQLi
                         $mysqli->autocommit(true);
                         self::getPool()->release($mysqli);
                     } catch (Throwable $e) {
-                        error_log("Failed to rollback transaction {$index}: ".$e->getMessage());
+                        error_log("Failed to rollback transaction {$index}: " . $e->getMessage());
                         self::getPool()->release($mysqli);
                     }
                 })();
@@ -231,31 +231,84 @@ final class AsyncMySQLi
         })();
     }
 
-    private static function executeAsyncQuery(string $sql, array $params, string $types, string $resultType): PromiseInterface
+    private static function detectParameterTypes(array $params): string
+    {
+        $types = '';
+
+        foreach ($params as $param) {
+            $types .= match (true) {
+                $param === null => 's',
+                is_bool($param) => 'i',
+                is_int($param) => 'i',
+                is_float($param) => 'd',
+                is_resource($param) => 'b',
+                is_string($param) && str_contains($param, "\0") => 'b',
+                is_string($param) => 's',
+                is_array($param) => 's',
+                is_object($param) => 's',
+                default => 's',
+            };
+        }
+
+        return $types;
+    }
+
+    private static function preprocessParameters(array $params): array
+    {
+        $processedParams = [];
+
+        foreach ($params as $param) {
+            $processedParams[] = match (true) {
+                $param === null => null,
+                is_bool($param) => $param ? 1 : 0,
+                is_int($param) || is_float($param) => $param,
+                is_resource($param) => $param, // Keep resource as-is for blob
+                is_string($param) => $param,
+                is_array($param) => json_encode($param),
+                is_object($param) && method_exists($param, '__toString') => (string) $param,
+                is_object($param) => json_encode($param),
+                default => (string) $param,
+            };
+        }
+
+        return $processedParams;
+    }
+
+    private static function executeAsyncQuery(string $sql, array $params, ?string $types, string $resultType): PromiseInterface
     {
         return Async::async(function () use ($sql, $params, $types, $resultType) {
             $mysqli = await(self::getPool()->get());
 
             try {
-                if (! empty($params)) {
+                if (count($params) > 0) {
                     $stmt = $mysqli->prepare($sql);
-                    if (! $stmt) {
-                        throw new \RuntimeException('Prepare failed: '.$mysqli->error);
+                    if (!$stmt) {
+                        throw new \RuntimeException('Prepare failed: ' . $mysqli->error);
                     }
 
-                    if (empty($types)) {
+                    if ($types === null) {
+                        $types = self::detectParameterTypes($params);
+                    }
+
+                    if ($types === '') {
                         $types = str_repeat('s', count($params));
                     }
 
-                    if (! $stmt->bind_param($types, ...$params)) {
-                        throw new \RuntimeException('Bind param failed: '.$stmt->error);
+                    $processedParams = self::preprocessParameters($params);
+
+                    if (!$stmt->bind_param($types, ...$processedParams)) {
+                        throw new \RuntimeException('Bind param failed: ' . $stmt->error);
                     }
 
-                    if (! $stmt->execute()) {
-                        throw new \RuntimeException('Execute failed: '.$stmt->error);
+                    if (!$stmt->execute()) {
+                        throw new \RuntimeException('Execute failed: ' . $stmt->error);
                     }
 
-                    if (stripos(trim($sql), 'SELECT') === 0 || stripos(trim($sql), 'SHOW') === 0 || stripos(trim($sql), 'DESCRIBE') === 0) {
+                    if (
+                        stripos(trim($sql), 'SELECT') === 0 ||
+                        stripos(trim($sql), 'SHOW') === 0 ||
+                        stripos(trim($sql), 'DESCRIBE') === 0
+                    ) {
                         $result = $stmt->get_result();
                     } else {
                         $result = true;
@@ -263,8 +316,8 @@ final class AsyncMySQLi
 
                     return self::processResult($result, $resultType, $stmt, $mysqli);
                 } else {
-                    if (! $mysqli->query($sql, MYSQLI_ASYNC)) {
-                        throw new \RuntimeException('Query failed: '.$mysqli->error);
+                    if (!$mysqli->query($sql, MYSQLI_ASYNC)) {
+                        throw new \RuntimeException('Query failed: ' . $mysqli->error);
                     }
 
                     $result = await(self::waitForAsyncCompletion($mysqli));
@@ -320,7 +373,7 @@ final class AsyncMySQLi
         if ($result === false) {
             $error = $stmt?->error ?? $mysqli?->error ?? 'Unknown error';
 
-            throw new \RuntimeException('Query execution failed: '.$error);
+            throw new \RuntimeException('Query execution failed: ' . $error);
         }
 
         return match ($resultType) {
