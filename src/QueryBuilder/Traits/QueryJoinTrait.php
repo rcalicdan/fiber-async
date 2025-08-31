@@ -2,7 +2,7 @@
 
 namespace Rcalicdan\FiberAsync\QueryBuilder\Traits;
 
-trait QueryJoinsTrait
+trait QueryJoinTrait
 {
     /**
      * @var array<array{type: string, table: string, condition: string}> The join clauses for the query.

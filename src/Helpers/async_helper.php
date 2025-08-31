@@ -1,10 +1,10 @@
 <?php
 
 use Rcalicdan\FiberAsync\Api\Async;
-use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Api\Timer;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Promise\Promise;
 
 if (! function_exists('in_fiber')) {
     /**
@@ -172,7 +172,7 @@ if (! function_exists('timeout')) {
     }
 }
 
-if (! function_exists('resolve')) {
+if (! function_exists('resolved')) {
     /**
      * Create a promise that is already resolved with the given value.
      *
@@ -188,13 +188,13 @@ if (! function_exists('resolve')) {
      * $promise = resolve('Hello World');
      * $result = await($promise); // 'Hello World'
      */
-    function resolve(mixed $value): PromiseInterface
+    function resolved(mixed $value): PromiseInterface
     {
-        return Promise::resolve($value);
+        return Promise::resolved($value);
     }
 }
 
-if (! function_exists('reject')) {
+if (! function_exists('rejected')) {
     /**
      * Create a promise that is already rejected with the given reason.
      *
@@ -207,9 +207,9 @@ if (! function_exists('reject')) {
      * @example
      * $promise = reject(new Exception('Something went wrong'));
      */
-    function reject(mixed $reason): PromiseInterface
+    function rejected(mixed $reason): PromiseInterface
     {
-        return Promise::reject($reason);
+        return Promise::rejected($reason);
     }
 }
 

@@ -8,7 +8,7 @@ use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryBuilderCoreTrait;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryConditionsTrait;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryJoinsTrait;
+use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryJoinTrait;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryGroupingTrait;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryAdvancedConditionsTrait;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryDebugTrait;
@@ -21,11 +21,11 @@ use Rcalicdan\FiberAsync\QueryBuilder\Traits\SqlBuilderTrait;
  * returns a new instance instead of modifying the current one, ensuring a
  * predictable and safe state management.
  */
-class AsyncQueryBuilder
+class PDOQueryBuilder
 {
     use QueryBuilderCoreTrait,
         QueryConditionsTrait,
-        QueryJoinsTrait,
+        QueryJoinTrait,
         QueryGroupingTrait,
         QueryAdvancedConditionsTrait,
         SqlBuilderTrait,

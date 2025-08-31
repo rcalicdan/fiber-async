@@ -1,13 +1,14 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\Api;
+namespace Rcalicdan\FiberAsync\MySQLi;
 
+use Rcalicdan\FiberAsync\Api\AsyncMySQLi;
 use Rcalicdan\FiberAsync\Config\ConfigLoader;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\QueryBuilder\PDOQueryBuilder;
 
 /**
- * DB API - Main entry point for auto-configured async database operations using AsyncPDO under the hood
+ * DB API - Main entry point for auto-configured async database operations using AsyncMySQLi under the hood
  * with asynchonous query builder support.
  *
  * This API automatically loads configuration from .env and config/database.php
@@ -72,7 +73,7 @@ class DB
                 $poolSize = $dbConfigAll['pool_size'];
             }
 
-            AsyncPDO::init($validatedConfig, $poolSize);
+            AsyncMySQLi::init($validatedConfig, $poolSize);
             self::$isInitialized = true;
 
         } catch (\Exception $e) {
@@ -88,7 +89,7 @@ class DB
      */
     public static function reset(): void
     {
-        AsyncPDO::reset();
+        AsyncMySQLi::reset();
         ConfigLoader::reset();
         self::$isInitialized = false;
         self::$hasValidationError = false;
@@ -114,7 +115,7 @@ class DB
     {
         self::initializeIfNeeded();
 
-        return AsyncPDO::query($sql, $bindings);
+        return AsyncMySQLi::query($sql, $bindings);
     }
 
     /**
@@ -127,7 +128,7 @@ class DB
     {
         self::initializeIfNeeded();
 
-        return AsyncPDO::fetchOne($sql, $bindings);
+        return AsyncMySQLi::fetchOne($sql, $bindings);
     }
 
     /**
@@ -140,7 +141,7 @@ class DB
     {
         self::initializeIfNeeded();
 
-        return AsyncPDO::fetchValue($sql, $bindings);
+        return AsyncMySQLi::fetchValue($sql, $bindings);
     }
 
     /**
@@ -153,7 +154,7 @@ class DB
     {
         self::initializeIfNeeded();
 
-        return AsyncPDO::execute($sql, $bindings);
+        return AsyncMySQLi::execute($sql, $bindings);
     }
 
     /**
@@ -165,6 +166,6 @@ class DB
     {
         self::initializeIfNeeded();
 
-        return AsyncPDO::transaction($callback);
+        return AsyncMySQLi::transaction($callback);
     }
 }

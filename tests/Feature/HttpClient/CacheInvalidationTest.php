@@ -113,7 +113,7 @@ describe('HTTP Client Cache Invalidation', function () {
         $handlerMock = Mockery::mock(HttpHandler::class.'[fetch]');
 
         $handlerMock->shouldReceive('fetch')
-            ->andReturn(resolve(new Response('{"data":"mocked"}', 200)))
+            ->andReturn(resolved(new Response('{"data":"mocked"}', 200)))
         ;
 
         Http::setInstance($handlerMock);

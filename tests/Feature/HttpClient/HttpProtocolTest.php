@@ -63,7 +63,7 @@ class HttpProtocolTest extends HttpHandler
         curl_multi_remove_handle($multiHandle, $handle);
         curl_multi_close($multiHandle);
 
-        return resolve((object) [
+        return resolved((object) [
             'response' => new Response($body, $httpCode, $headers),
             'protocol' => $protocol,
         ]);

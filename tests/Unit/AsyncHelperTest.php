@@ -3,6 +3,7 @@
 require_once __DIR__.'/../../src/Helpers/async_helper.php';
 require_once __DIR__.'/../../src/Helpers/loop_helper.php';
 
+use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 
 beforeEach(function () {
@@ -10,7 +11,7 @@ beforeEach(function () {
 });
 
 test('async function wrapper works', function () {
-    $asyncFunc = async(function ($value) {
+    $asyncFunc = Async::async(function ($value) {
         return $value * 2;
     });
 
@@ -59,7 +60,7 @@ test('resolve helper creates resolved promise', function () {
     $resolved = false;
     $value = null;
 
-    resolve('test value')->then(function ($val) use (&$resolved, &$value) {
+    resolved('test value')->then(function ($val) use (&$resolved, &$value) {
         $resolved = true;
         $value = $val;
     });
@@ -82,7 +83,7 @@ test('reject helper creates rejected promise', function () {
     $rejected = false;
     $reason = null;
 
-    reject('test error')->catch(function ($r) use (&$rejected, &$reason) {
+    rejected('test error')->catch(function ($r) use (&$rejected, &$reason) {
         $rejected = true;
         $reason = $r;
     });
@@ -105,9 +106,9 @@ test('all helper waits for all promises', function () {
     $result = null;
 
     $promises = [
-        resolve(1),
-        resolve(2),
-        resolve(3),
+        resolved(1),
+        resolved(2),
+        resolved(3),
     ];
 
     all($promises)->then(function ($values) use (&$result) {
@@ -132,7 +133,7 @@ test('race helper resolves with first promise', function () {
 
     $promises = [
         delay(0.1)->then(fn () => 'slow'),
-        resolve('fast'),
+        resolved('fast'),
     ];
 
     race($promises)->then(function ($value) use (&$result) {
