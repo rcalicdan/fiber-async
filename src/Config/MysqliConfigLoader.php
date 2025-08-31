@@ -1,0 +1,134 @@
+<?php
+
+namespace Rcalicdan\FiberAsync\Config;
+
+use Dotenv\Dotenv;
+use Exception;
+
+/**
+ * A singleton configuration loader that automatically finds the project root.
+ *
+ * It searches upwards from its directory to locate the project root (identified
+ * by a 'vendor' folder), loads the .env and config files from config/mysqli,
+ * and then caches the results to ensure the expensive search happens only once.
+ */
+final class MysqliConfigLoader
+{
+    private static ?self $instance = null;
+    private ?string $rootPath = null;
+
+    /** @var array<string, mixed> */
+    private array $config = [];
+
+    /**
+     * The constructor is private to enforce the singleton pattern.
+     * It performs the entire one-time loading process.
+     */
+    private function __construct()
+    {
+        $this->rootPath = $this->findProjectRoot();
+
+        if ($this->rootPath !== null) {
+            $this->loadDotEnv();
+            $this->loadConfigFiles();
+        }
+    }
+
+    /**
+     * Gets the singleton instance of the loader.
+     */
+    public static function getInstance(): self
+    {
+        if (self::$instance === null) {
+            self::$instance = new self;
+        }
+
+        return self::$instance;
+    }
+
+    /**
+     * Resets the singleton instance, primarily for testing.
+     */
+    public static function reset(): void
+    {
+        self::$instance = null;
+    }
+
+    /**
+     * Retrieves a configuration array by its key (the filename).
+     * e.g., get('database') loads and returns config/mysqli/database.php
+     *
+     * @param  mixed  $default
+     * @return mixed
+     */
+    public function get(string $key, $default = null)
+    {
+        return $this->config[$key] ?? $default;
+    }
+
+    /**
+     * Searches upwards from the current directory to find the project root.
+     * The root is identified by the presence of a `vendor` directory.
+     * This operation is memoized (cached) for performance.
+     */
+    private function findProjectRoot(): ?string
+    {
+        $dir = __DIR__;
+        for ($i = 0; $i < 10; $i++) {
+            if (is_dir($dir . '/vendor')) {
+                return $dir;
+            }
+
+            $parentDir = dirname($dir);
+            if ($parentDir === $dir) {
+                return null;
+            }
+            $dir = $parentDir;
+        }
+
+        return null;
+    }
+
+    private function loadDotEnv(): void
+    {
+        if ($this->rootPath === null) {
+            throw new Exception('Root path not found, cannot load .env file');
+        }
+
+        $envFile = $this->rootPath . '/.env';
+
+        if (file_exists($envFile)) {
+            file_get_contents($envFile);
+
+            try {
+                $dotenv = Dotenv::createImmutable($this->rootPath);
+                $dotenv->load();
+            } catch (\Throwable $e) {
+                throw new Exception("Error loading .env file: {$e->getMessage()}");
+            }
+        } else {
+            throw new Exception("Env file not found at: $envFile");
+        }
+    }
+
+    /**
+     * Loads all .php files from the project root's /config/mysqli directory.
+     */
+    private function loadConfigFiles(): void
+    {
+        if ($this->rootPath === null) {
+            throw new Exception('Root path not found, cannot load config files');
+        }
+
+        $configDir = $this->rootPath . '/config/mysqli';
+        if (is_dir($configDir)) {
+            $files = glob($configDir . '/*.php');
+            if ($files !== false) {
+                foreach ($files as $file) {
+                    $key = basename($file, '.php');
+                    $this->config[$key] = require $file;
+                }
+            }
+        }
+    }
+}
