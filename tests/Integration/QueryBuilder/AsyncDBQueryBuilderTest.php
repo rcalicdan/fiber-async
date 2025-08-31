@@ -1202,6 +1202,8 @@ describe('AsyncQueryBuilder Advanced Subqueries', function () {
                 })
             ;
 
+            $query->dump();
+
             $result = await($query->get());
 
             expect($result)->toHaveCount(1);
