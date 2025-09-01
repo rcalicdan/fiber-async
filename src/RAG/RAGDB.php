@@ -174,43 +174,43 @@ class RAGDB extends DB
         array $options = []
     ): PromiseInterface {
         self::initializeIfNeeded();
-        
+
         $defaultOptions = [
             'hnsw_m' => 16,
             'hnsw_ef_construction' => 64,
             'create_multiple_indexes' => true
         ];
-        
+
         $config = array_merge($defaultOptions, $options);
-        
+
         return Async::async(function () use ($table, $vectorColumn, $config): bool {
             $ragTable = self::ragTable($table);
-            
+
             // Create HNSW index for cosine similarity (most common for embeddings)
             await($ragTable->createVectorIndex(
-                $vectorColumn,
                 'hnsw',
                 'vector_cosine_ops',
-                ['m' => $config['hnsw_m'], 'ef_construction' => $config['hnsw_ef_construction']]
+                ['m' => $config['hnsw_m'], 'ef_construction' => $config['hnsw_ef_construction']],
+                $vectorColumn
             ));
-            
+
             if ($config['create_multiple_indexes']) {
                 // Create additional indexes for different distance metrics
                 await($ragTable->createVectorIndex(
-                    $vectorColumn,
                     'hnsw',
                     'vector_l2_ops',
-                    ['m' => $config['hnsw_m'], 'ef_construction' => $config['hnsw_ef_construction']]
+                    ['m' => $config['hnsw_m'], 'ef_construction' => $config['hnsw_ef_construction']],
+                    $vectorColumn
                 ));
-                
+
                 await($ragTable->createVectorIndex(
-                    $vectorColumn,
                     'hnsw',
                     'vector_ip_ops',
-                    ['m' => $config['hnsw_m'], 'ef_construction' => $config['hnsw_ef_construction']]
+                    ['m' => $config['hnsw_m'], 'ef_construction' => $config['hnsw_ef_construction']],
+                    $vectorColumn
                 ));
             }
-            
+
             return true;
         })();
     }

@@ -32,12 +32,12 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
      *
      * @param  array<string, mixed>  $data  The document data.
      * @param  array<float>  $embedding  The embedding vector.
-     * @param  string  $embeddingColumn  The embedding column name.
+     * @param  string|null  $embeddingColumn  The embedding column name.
      * @return PromiseInterface<int> A promise that resolves to the number of affected rows.
      */
     public function insertWithEmbedding(array $data, array $embedding, ?string $embeddingColumn = null): PromiseInterface
     {
-        $embeddingColumn = $embeddingColumn ?? $this->ragConfig['default_vector_column'];
+        $embeddingColumn ??= $this->ragConfig['default_vector_column'];
 
         if (empty($embedding)) {
             return Promise::resolve(0);
@@ -52,17 +52,17 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
      *
      * @param  array<string, mixed>  $data  The document data.
      * @param  array<float>  $embedding  The embedding vector.
-     * @param  string  $embeddingColumn  The embedding column name.
      * @param  string  $idColumn  The ID column name.
+     * @param  string|null  $embeddingColumn  The embedding column name.
      * @return PromiseInterface<mixed> A promise that resolves to the inserted ID.
      */
     public function insertWithEmbeddingGetId(
         array $data,
         array $embedding,
-        ?string $embeddingColumn = null,
-        string $idColumn = 'id'
+        string $idColumn = 'id',
+        ?string $embeddingColumn = null
     ): PromiseInterface {
-        $embeddingColumn = $embeddingColumn ?? $this->ragConfig['default_vector_column'];
+        $embeddingColumn ??= $this->ragConfig['default_vector_column'];
 
         if (empty($embedding)) {
             return Promise::resolve(null);
@@ -76,12 +76,12 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
      * Batch insert documents with embeddings.
      *
      * @param  array<array{data: array<string, mixed>, embedding: array<float>}>  $documents  Documents with embeddings.
-     * @param  string  $embeddingColumn  The embedding column name.
+     * @param  string|null  $embeddingColumn  The embedding column name.
      * @return PromiseInterface<int> A promise that resolves to the number of affected rows.
      */
     public function insertBatchWithEmbeddings(array $documents, ?string $embeddingColumn = null): PromiseInterface
     {
-        $embeddingColumn = $embeddingColumn ?? $this->ragConfig['default_vector_column'];
+        $embeddingColumn ??= $this->ragConfig['default_vector_column'];
 
         if (empty($documents)) {
             return Promise::resolve(0);
@@ -107,19 +107,22 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
      *
      * @param  array<float>  $queryVector  The query vector.
      * @param  array<string, mixed>  $filters  Additional filters.
-     * @param  string  $vectorColumn  The vector column name.
-     * @param  float  $threshold  Similarity threshold.
-     * @param  int  $limit  Number of results to return.
+     * @param  string|null  $vectorColumn  The vector column name.
+     * @param  string|null  $metadataColumn  The metadata column name.
+     * @param  float|null  $threshold  Similarity threshold.
+     * @param  int|null  $limit  Number of results to return.
      * @return PromiseInterface<array<int, array<string, mixed>>> A promise that resolves to search results.
      */
     public function performSemanticSearch(
         array $queryVector,
         array $filters = [],
         ?string $vectorColumn = null,
+        ?string $metadataColumn = null,
         ?float $threshold = null,
         ?int $limit = null
     ): PromiseInterface {
-        $query = $this->semanticSearch($queryVector, $filters, $vectorColumn, $this->ragConfig['default_metadata_column'], $threshold, $limit);
+        $metadataColumn ??= $this->ragConfig['default_metadata_column'];
+        $query = $this->semanticSearch($queryVector, $filters, $vectorColumn, $metadataColumn, $threshold, $limit);
         return $query->get();
     }
 
@@ -132,21 +135,21 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
      * @param  string  $vectorColumn  The vector column name.
      * @param  float  $textWeight  Weight for text search.
      * @param  float  $vectorWeight  Weight for vector search.
-     * @param  int  $limit  Number of results to return.
+     * @param  int|null  $limit  Number of results to return.
      * @return PromiseInterface<array<int, array<string, mixed>>> A promise that resolves to search results.
      */
     public function performHybridSearch(
         string $textQuery,
         array $queryVector,
-        ?string $textColumn = null,
-        ?string $vectorColumn = null,
+        string $textColumn,
+        string $vectorColumn,
         float $textWeight = 0.3,
         float $vectorWeight = 0.7,
         ?int $limit = null
     ): PromiseInterface {
-        $textColumn = $textColumn ?? $this->ragConfig['default_content_column'];
-        $vectorColumn = $vectorColumn ?? $this->ragConfig['default_vector_column'];
-        $limit = $limit ?? $this->ragConfig['default_search_limit'];
+        $textColumn ??= $this->ragConfig['default_content_column'];
+        $vectorColumn ??= $this->ragConfig['default_vector_column'];
+        $limit ??= $this->ragConfig['default_search_limit'];
 
         $query = $this->hybridSearch($textColumn, $vectorColumn, $textQuery, $queryVector, $textWeight, $vectorWeight, $limit);
         return $query->get();
@@ -158,7 +161,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
      * @param  array<float>  $queryVector  The query vector.
      * @param  array<string, mixed>  $filters  Additional filters.
      * @param  int  $topK  Number of results to return.
-     * @param  float  $threshold  Similarity threshold.
+     * @param  float|null  $threshold  Similarity threshold.
      * @return PromiseInterface<array<int, array<string, mixed>>> A promise that resolves to context with citations.
      */
     public function retrieveContextForRAG(
@@ -167,7 +170,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
         int $topK = 5,
         ?float $threshold = null
     ): PromiseInterface {
-        $threshold = $threshold ?? $this->ragConfig['default_similarity_threshold'];
+        $threshold ??= $this->ragConfig['default_similarity_threshold'];
 
         $query = $this->retrievalWithCitation($queryVector, ['title', 'source', 'url', 'author', 'created_at'], null, $topK)
             ->semanticSearch($queryVector, $filters, null, null, $threshold, $topK);
@@ -185,12 +188,12 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
      * @return PromiseInterface<int> A promise that resolves when index is created.
      */
     public function createVectorIndex(
-        ?string $column = null,
         string $method = 'hnsw',
         string $operator = 'vector_cosine_ops',
-        array $options = ['m' => 16, 'ef_construction' => 64]
+        array $options = ['m' => 16, 'ef_construction' => 64],
+        ?string $column = null,
     ): PromiseInterface {
-        $column = $column ?? $this->ragConfig['default_vector_column'];
+        $column ??= $this->ragConfig['default_vector_column'];
         $sql = $this->buildVectorIndexQuery($column, $method, $operator, $options);
         return AsyncPostgreSQL::execute($sql, []);
     }
@@ -204,11 +207,11 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
      * @return PromiseInterface<array<int, array<string, mixed>>> A promise that resolves to document chunks.
      */
     public function chunkDocuments(
-        ?string $contentColumn = null,
         int $chunkSize = 1000,
-        int $overlapSize = 200
+        int $overlapSize = 200,
+        ?string $contentColumn = null,
     ): PromiseInterface {
-        $contentColumn = $contentColumn ?? $this->ragConfig['default_content_column'];
+        $contentColumn ??= $this->ragConfig['default_content_column'];
         $sql = $this->buildChunkQuery($contentColumn, $chunkSize, $overlapSize);
         return AsyncPostgreSQL::query($sql, []);
     }
@@ -218,17 +221,17 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
      *
      * @param  mixed  $id  The document ID.
      * @param  array<float>  $embedding  The new embedding vector.
-     * @param  string  $embeddingColumn  The embedding column name.
      * @param  string  $idColumn  The ID column name.
+     * @param  string|null  $embeddingColumn  The embedding column name.
      * @return PromiseInterface<int> A promise that resolves to the number of affected rows.
      */
     public function updateEmbedding(
         mixed $id,
         array $embedding,
-        ?string $embeddingColumn = null,
-        string $idColumn = 'id'
+        string $idColumn = 'id',
+        ?string $embeddingColumn = null
     ): PromiseInterface {
-        $embeddingColumn = $embeddingColumn ?? $this->ragConfig['default_vector_column'];
+        $embeddingColumn ??= $this->ragConfig['default_vector_column'];
 
         if (empty($embedding)) {
             return Promise::resolve(0);
@@ -246,7 +249,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
      */
     public function getVectorStatistics(?string $vectorColumn = null): PromiseInterface
     {
-        $vectorColumn = $vectorColumn ?? $this->ragConfig['default_vector_column'];
+        $vectorColumn ??= $this->ragConfig['default_vector_column'];
 
         // @phpstan-ignore-next-line
         return Async::async(function () use ($vectorColumn): array {
@@ -282,7 +285,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
         array $sampleVector,
         ?string $vectorColumn = null
     ): PromiseInterface {
-        $vectorColumn = $vectorColumn ?? $this->ragConfig['default_vector_column'];
+        $vectorColumn ??= $this->ragConfig['default_vector_column'];
 
         // @phpstan-ignore-next-line
         return Async::async(function () use ($sampleVector, $vectorColumn): array {
