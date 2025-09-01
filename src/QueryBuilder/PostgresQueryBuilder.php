@@ -32,6 +32,7 @@ class PostgresQueryBuilder extends PostgresQueryBuilderBase
     public function get(): PromiseInterface
     {
         $sql = $this->buildSelectQuery();
+
         return AsyncPostgreSQL::query($sql, $this->getCompiledBindings());
     }
 
@@ -44,6 +45,7 @@ class PostgresQueryBuilder extends PostgresQueryBuilderBase
     {
         $instanceWithLimit = $this->limit(1);
         $sql = $instanceWithLimit->buildSelectQuery();
+
         return AsyncPostgreSQL::fetchOne($sql, $instanceWithLimit->getCompiledBindings());
     }
 
@@ -75,8 +77,10 @@ class PostgresQueryBuilder extends PostgresQueryBuilderBase
             $result = await($this->find($id, $column));
             if ($result === null || $result === false) {
                 $idString = is_scalar($id) ? (string) $id : 'complex_type';
+
                 throw new \RuntimeException("Record not found with {$column} = {$idString}");
             }
+
             return $result;
         })();
     }
@@ -92,6 +96,7 @@ class PostgresQueryBuilder extends PostgresQueryBuilderBase
         // @phpstan-ignore-next-line
         return Async::async(function () use ($column): mixed {
             $result = await($this->select($column)->first());
+
             return ($result !== false && isset($result[$column])) ? $result[$column] : null;
         })();
     }
@@ -107,6 +112,7 @@ class PostgresQueryBuilder extends PostgresQueryBuilderBase
         $sql = $this->buildCountQuery($column);
         /** @var PromiseInterface<int> */
         $promise = AsyncPostgreSQL::fetchValue($sql, $this->getCompiledBindings());
+
         return $promise;
     }
 
@@ -120,6 +126,7 @@ class PostgresQueryBuilder extends PostgresQueryBuilderBase
         // @phpstan-ignore-next-line
         return Async::async(function (): bool {
             $count = await($this->count());
+
             return $count > 0;
         })();
     }
@@ -136,6 +143,7 @@ class PostgresQueryBuilder extends PostgresQueryBuilderBase
             return Promise::resolve(0);
         }
         $sql = $this->buildInsertQuery($data);
+
         return AsyncPostgreSQL::execute($sql, array_values($data));
     }
 
@@ -151,8 +159,9 @@ class PostgresQueryBuilder extends PostgresQueryBuilderBase
         if ($data === []) {
             return Promise::resolve(null);
         }
-        
+
         $sql = $this->buildInsertReturningQuery($data, $idColumn);
+
         return AsyncPostgreSQL::fetchValue($sql, array_values($data));
     }
 
@@ -192,16 +201,16 @@ class PostgresQueryBuilder extends PostgresQueryBuilderBase
         if ($data === []) {
             return Promise::resolve(0);
         }
-        
+
         $sql = $this->buildUpsertQuery($data, $conflictColumns, $updateData);
         $bindings = array_values($data);
-        
+
         foreach ($updateData as $value) {
             if ($value !== 'EXCLUDED') {
                 $bindings[] = $value;
             }
         }
-        
+
         return AsyncPostgreSQL::execute($sql, $bindings);
     }
 
@@ -242,6 +251,7 @@ class PostgresQueryBuilder extends PostgresQueryBuilderBase
     public function delete(): PromiseInterface
     {
         $sql = $this->buildDeleteQuery();
+
         return AsyncPostgreSQL::execute($sql, $this->getCompiledBindings());
     }
 }

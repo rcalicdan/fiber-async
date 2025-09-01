@@ -55,13 +55,12 @@ trait QueryDebugTrait
     public function dump(): static
     {
         $this->displayQuery(false);
+
         return $this;
     }
 
     /**
      * Dump the query and die (like Laravel's dd()).
-     *
-     * @return never
      */
     public function dd(): never
     {
@@ -73,7 +72,6 @@ trait QueryDebugTrait
      * Display query information in a clean, Laravel-like format.
      *
      * @param  bool  $die  Whether to stop execution after displaying.
-     * @return void
      */
     protected function displayQuery(bool $die): void
     {
@@ -94,20 +92,16 @@ trait QueryDebugTrait
     /**
      * Display query in CLI format.
      *
-     * @param  string  $sql
      * @param  array<mixed>  $bindings
-     * @param  string  $rawSql
-     * @param  bool  $die
-     * @return void
      */
     protected function displayCliFormat(string $sql, array $bindings, string $rawSql, bool $die): void
     {
-        echo "\n" . str_repeat("=", 80) . "\n";
+        echo "\n".str_repeat('=', 80)."\n";
         echo $die ? "Query Builder DD (Execution Stopped)\n" : "Query Builder Dump\n";
-        echo str_repeat("=", 80) . "\n\n";
+        echo str_repeat('=', 80)."\n\n";
 
         echo "\033[1;36mSQL:\033[0m\n";
-        echo $this->highlightSqlCli($sql) . "\n\n";
+        echo $this->highlightSqlCli($sql)."\n\n";
 
         echo "\033[1;33mBindings:\033[0m\n";
         if (empty($bindings)) {
@@ -122,26 +116,22 @@ trait QueryDebugTrait
         }
 
         echo "\033[1;32mRaw SQL:\033[0m\n";
-        echo $this->highlightSqlCli($rawSql) . "\n\n";
+        echo $this->highlightSqlCli($rawSql)."\n\n";
 
         // Show basic stats
         $this->displayBasicStats();
 
-        echo str_repeat("=", 80) . "\n\n";
+        echo str_repeat('=', 80)."\n\n";
     }
 
     /**
      * Display query in web format.
      *
-     * @param  string  $sql
      * @param  array<mixed>  $bindings
-     * @param  string  $rawSql
-     * @param  bool  $die
-     * @return void
      */
     protected function displayWebFormat(string $sql, array $bindings, string $rawSql, bool $die): void
     {
-        $title = $die ? "Query Builder DD (Execution Stopped)" : "Query Builder Dump";
+        $title = $die ? 'Query Builder DD (Execution Stopped)' : 'Query Builder Dump';
 
         echo "<div style='background: #1e1e1e; color: #f8f8f2; font-family: \"Fira Code\", \"Consolas\", monospace; font-size: 14px; padding: 20px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #50fa7b;'>";
         echo "<h3 style='margin: 0 0 20px 0; color: #50fa7b; font-size: 16px;'>🔍 $title</h3>";
@@ -150,8 +140,8 @@ trait QueryDebugTrait
         echo "<strong style='color: #8be9fd;'>SQL:</strong><br>";
         echo "<pre style='background: #282a36; padding: 10px; border-radius: 4px; margin: 5px 0; overflow-x: auto; white-space: pre-wrap;'>";
         echo $this->highlightSqlWeb($sql);
-        echo "</pre>";
-        echo "</div>";
+        echo '</pre>';
+        echo '</div>';
 
         echo "<div style='margin-bottom: 15px;'>";
         echo "<strong style='color: #f1fa8c;'>Bindings:</strong><br>";
@@ -166,27 +156,24 @@ trait QueryDebugTrait
                 echo "<span style='color: #bd93f9;'>($type)</span> ";
                 echo "<span style='color: #f8f8f2;'>$value</span></li>";
             }
-            echo "</ul>";
+            echo '</ul>';
         }
-        echo "</div>";
+        echo '</div>';
 
         echo "<div style='margin-bottom: 15px;'>";
         echo "<strong style='color: #50fa7b;'>Raw SQL:</strong><br>";
         echo "<pre style='background: #282a36; padding: 10px; border-radius: 4px; margin: 5px 0; overflow-x: auto; white-space: pre-wrap;'>";
         echo $this->highlightSqlWeb($rawSql);
-        echo "</pre>";
-        echo "</div>";
+        echo '</pre>';
+        echo '</div>';
 
         $this->displayBasicStatsWeb();
 
-        echo "</div>";
+        echo '</div>';
     }
 
     /**
      * Highlight SQL for CLI output.
-     *
-     * @param  string  $sql
-     * @return string
      */
     protected function highlightSqlCli(string $sql): string
     {
@@ -221,13 +208,13 @@ trait QueryDebugTrait
             'MAX',
             'INSERT',
             'UPDATE',
-            'DELETE'
+            'DELETE',
         ];
 
         $highlighted = $sql;
         foreach ($keywords as $keyword) {
             $highlighted = preg_replace(
-                '/\b' . preg_quote($keyword, '/') . '\b/i',
+                '/\b'.preg_quote($keyword, '/').'\b/i',
                 "\033[1;94m$keyword\033[0m",
                 $highlighted
             );
@@ -238,9 +225,6 @@ trait QueryDebugTrait
 
     /**
      * Highlight SQL for web output.
-     *
-     * @param  string  $sql
-     * @return string
      */
     protected function highlightSqlWeb(string $sql): string
     {
@@ -275,14 +259,14 @@ trait QueryDebugTrait
             'MAX',
             'INSERT',
             'UPDATE',
-            'DELETE'
+            'DELETE',
         ];
 
         $highlighted = htmlspecialchars($sql);
         foreach ($keywords as $keyword) {
             $highlighted = preg_replace(
-                '/\b' . preg_quote($keyword, '/') . '\b/i',
-                '<span style="color: #ff79c6; font-weight: bold;">' . $keyword . '</span>',
+                '/\b'.preg_quote($keyword, '/').'\b/i',
+                '<span style="color: #ff79c6; font-weight: bold;">'.$keyword.'</span>',
                 $highlighted
             );
         }
@@ -292,8 +276,6 @@ trait QueryDebugTrait
 
     /**
      * Display basic query statistics.
-     *
-     * @return void
      */
     protected function displayBasicStats(): void
     {
@@ -320,8 +302,6 @@ trait QueryDebugTrait
 
     /**
      * Display basic query statistics for web.
-     *
-     * @return void
      */
     protected function displayBasicStatsWeb(): void
     {
@@ -329,7 +309,7 @@ trait QueryDebugTrait
         $joinCount = count($this->joins ?? []);
         $conditionCount = $this->countConditions();
 
-        echo "<div>";
+        echo '<div>';
         echo "<strong style='color: #f8f8f2;'>Stats:</strong><br>";
         echo "<span style='color: #6272a4;'>Table:</span> <span style='color: #8be9fd;'>{$this->table}</span> | ";
         echo "<span style='color: #6272a4;'>Bindings:</span> <span style='color: #f1fa8c;'>$bindingCount</span> | ";
@@ -337,7 +317,7 @@ trait QueryDebugTrait
         echo "<span style='color: #6272a4;'>Conditions:</span> <span style='color: #f1fa8c;'>$conditionCount</span>";
 
         if ($this->limit !== null || $this->offset !== null) {
-            echo "<br>";
+            echo '<br>';
             if ($this->limit !== null) {
                 echo "<span style='color: #6272a4;'>Limit:</span> <span style='color: #f1fa8c;'>{$this->limit}</span> ";
             }
@@ -346,14 +326,11 @@ trait QueryDebugTrait
             }
         }
 
-        echo "</div>";
+        echo '</div>';
     }
 
     /**
      * Format a value for display in debug output.
-     *
-     * @param  mixed  $value
-     * @return string
      */
     protected function formatValueForDisplay(mixed $value): string
     {
@@ -368,16 +345,18 @@ trait QueryDebugTrait
         if (is_string($value)) {
             // Truncate very long strings
             if (strlen($value) > 100) {
-                return "'" . substr($value, 0, 97) . "...'";
+                return "'".substr($value, 0, 97)."...'";
             }
-            return "'" . $value . "'";
+
+            return "'".$value."'";
         }
 
         if (is_array($value) || is_object($value)) {
             $json = json_encode($value);
             if (strlen($json) > 100) {
-                return substr($json, 0, 97) . "...";
+                return substr($json, 0, 97).'...';
             }
+
             return $json;
         }
 
@@ -386,8 +365,6 @@ trait QueryDebugTrait
 
     /**
      * Count total conditions in the query.
-     *
-     * @return int
      */
     protected function countConditions(): int
     {

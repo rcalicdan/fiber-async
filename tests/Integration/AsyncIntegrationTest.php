@@ -6,8 +6,8 @@ beforeEach(function () {
 
 test('complete async workflow with await works', function () {
     $result = run(function () {
-        $value1 = await(delay(0.01)->then(fn() => 10));
-        $value2 = await(delay(0.01)->then(fn() => 20));
+        $value1 = await(delay(0.01)->then(fn () => 10));
+        $value2 = await(delay(0.01)->then(fn () => 20));
 
         return $value1 + $value2;
     });
@@ -20,9 +20,9 @@ test('concurrent operations execute in parallel', function () {
 
     $results = run(function () {
         $promises = [
-            delay(0.05)->then(fn() => 'first'),
-            delay(0.05)->then(fn() => 'second'),
-            delay(0.05)->then(fn() => 'third'),
+            delay(0.05)->then(fn () => 'first'),
+            delay(0.05)->then(fn () => 'second'),
+            delay(0.05)->then(fn () => 'third'),
         ];
 
         return await(all($promises));
@@ -45,7 +45,7 @@ test('error handling works correctly', function () {
 test('complex nested async operations work', function () {
     $result = run(function () {
         $asyncFunc = function ($multiplier) {
-            $base = await(delay(0.01)->then(fn() => 5));
+            $base = await(delay(0.01)->then(fn () => 5));
 
             return $base * $multiplier;
         };

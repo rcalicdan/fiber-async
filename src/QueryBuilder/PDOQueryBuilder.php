@@ -6,12 +6,12 @@ use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Api\AsyncPDO;
 use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryAdvancedConditionsTrait;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryBuilderCoreTrait;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryConditionsTrait;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryJoinTrait;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryGroupingTrait;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryAdvancedConditionsTrait;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryDebugTrait;
+use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryGroupingTrait;
+use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryJoinTrait;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\SqlBuilderTrait;
 
 /**
@@ -23,14 +23,13 @@ use Rcalicdan\FiberAsync\QueryBuilder\Traits\SqlBuilderTrait;
  */
 class PDOQueryBuilder
 {
-    use QueryBuilderCoreTrait,
-        QueryConditionsTrait,
-        QueryJoinTrait,
-        QueryGroupingTrait,
-        QueryAdvancedConditionsTrait,
-        SqlBuilderTrait,
-        QueryDebugTrait;
-
+    use QueryAdvancedConditionsTrait;
+    use QueryBuilderCoreTrait;
+    use QueryConditionsTrait;
+    use QueryDebugTrait;
+    use QueryGroupingTrait;
+    use QueryJoinTrait;
+    use SqlBuilderTrait;
 
     /**
      * Create a new AsyncQueryBuilder instance.

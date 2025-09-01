@@ -2,12 +2,12 @@
 
 namespace Rcalicdan\FiberAsync\QueryBuilder;
 
+use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryAdvancedConditionsTrait;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryBuilderCoreTrait;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryConditionsTrait;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryJoinTrait;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryGroupingTrait;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryAdvancedConditionsTrait;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryDebugTrait;
+use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryGroupingTrait;
+use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryJoinTrait;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\SqlBuilderTrait;
 
 /**
@@ -15,13 +15,13 @@ use Rcalicdan\FiberAsync\QueryBuilder\Traits\SqlBuilderTrait;
  */
 abstract class PostgresQueryBuilderBase
 {
-    use QueryBuilderCoreTrait,
-        QueryConditionsTrait,
-        QueryJoinTrait,
-        QueryGroupingTrait,
-        QueryAdvancedConditionsTrait,
-        SqlBuilderTrait,
-        QueryDebugTrait;
+    use QueryAdvancedConditionsTrait;
+    use QueryBuilderCoreTrait;
+    use QueryConditionsTrait;
+    use QueryDebugTrait;
+    use QueryGroupingTrait;
+    use QueryJoinTrait;
+    use SqlBuilderTrait;
 
     /**
      * @var int Parameter counter for PostgreSQL numbered parameters
@@ -35,13 +35,11 @@ abstract class PostgresQueryBuilderBase
      */
     protected function getPlaceholder(): string
     {
-        return '$' . (++$this->parameterCount);
+        return '$'.(++$this->parameterCount);
     }
 
     /**
      * Reset parameter counter for new query
-     *
-     * @return void
      */
     protected function resetParameterCount(): void
     {
@@ -70,6 +68,7 @@ abstract class PostgresQueryBuilderBase
         };
 
         $instance->bindings['where'][] = $likeValue;
+
         return $instance;
     }
 
@@ -87,6 +86,7 @@ abstract class PostgresQueryBuilderBase
         $placeholder = $instance->getPlaceholder();
         $instance->where[] = "{$column}->'{$path}' = {$placeholder}";
         $instance->bindings['where'][] = $value;
+
         return $instance;
     }
 
@@ -106,6 +106,7 @@ abstract class PostgresQueryBuilderBase
         $instance->where[] = "{$column}->>{$placeholder1} = {$placeholder2}";
         $instance->bindings['where'][] = $path;
         $instance->bindings['where'][] = $value;
+
         return $instance;
     }
 
@@ -122,6 +123,7 @@ abstract class PostgresQueryBuilderBase
         $placeholder = $instance->getPlaceholder();
         $instance->where[] = "{$column} @> {$placeholder}::jsonb";
         $instance->bindings['where'][] = json_encode($value);
+
         return $instance;
     }
 
@@ -138,6 +140,7 @@ abstract class PostgresQueryBuilderBase
         $placeholder = $instance->getPlaceholder();
         $instance->where[] = "{$column} ? {$placeholder}";
         $instance->bindings['where'][] = $key;
+
         return $instance;
     }
 
@@ -154,6 +157,7 @@ abstract class PostgresQueryBuilderBase
         $placeholder = $instance->getPlaceholder();
         $instance->where[] = "{$placeholder} = ANY({$column})";
         $instance->bindings['where'][] = $value;
+
         return $instance;
     }
 
@@ -169,7 +173,8 @@ abstract class PostgresQueryBuilderBase
         $instance = clone $this;
         $placeholder = $instance->getPlaceholder();
         $instance->where[] = "{$column} && {$placeholder}::text[]";
-        $instance->bindings['where'][] = '{' . implode(',', array_map(fn($v) => '"' . addslashes($v) . '"', $values)) . '}';
+        $instance->bindings['where'][] = '{'.implode(',', array_map(fn ($v) => '"'.addslashes($v).'"', $values)).'}';
+
         return $instance;
     }
 
@@ -186,10 +191,11 @@ abstract class PostgresQueryBuilderBase
         $instance = clone $this;
         $placeholder1 = $instance->getPlaceholder();
         $placeholder2 = $instance->getPlaceholder();
-        
+
         $instance->where[] = "to_tsvector({$placeholder1}, {$column}) @@ plainto_tsquery({$placeholder2})";
         $instance->bindings['where'][] = $config;
         $instance->bindings['where'][] = $query;
+
         return $instance;
     }
 
@@ -201,9 +207,9 @@ abstract class PostgresQueryBuilderBase
     protected function buildSelectQuery(): string
     {
         $this->resetParameterCount();
-        
-        $sql = 'SELECT ' . implode(', ', $this->select);
-        $sql .= ' FROM ' . $this->table;
+
+        $sql = 'SELECT '.implode(', ', $this->select);
+        $sql .= ' FROM '.$this->table;
 
         foreach ($this->joins as $join) {
             if ($join['type'] === 'CROSS') {
@@ -215,25 +221,25 @@ abstract class PostgresQueryBuilderBase
 
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
-            $sql .= ' WHERE ' . $whereSql;
+            $sql .= ' WHERE '.$whereSql;
         }
 
         if ($this->groupBy !== []) {
-            $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
+            $sql .= ' GROUP BY '.implode(', ', $this->groupBy);
         }
 
         if ($this->having !== []) {
-            $sql .= ' HAVING ' . implode(' AND ', $this->having);
+            $sql .= ' HAVING '.implode(' AND ', $this->having);
         }
 
         if ($this->orderBy !== []) {
-            $sql .= ' ORDER BY ' . implode(', ', $this->orderBy);
+            $sql .= ' ORDER BY '.implode(', ', $this->orderBy);
         }
 
         if ($this->limit !== null) {
-            $sql .= ' LIMIT ' . $this->limit;
+            $sql .= ' LIMIT '.$this->limit;
             if ($this->offset !== null) {
-                $sql .= ' OFFSET ' . $this->offset;
+                $sql .= ' OFFSET '.$this->offset;
             }
         }
 
@@ -249,8 +255,8 @@ abstract class PostgresQueryBuilderBase
     protected function buildCountQuery(string $column = '*'): string
     {
         $this->resetParameterCount();
-        
-        $sql = "SELECT COUNT({$column}) FROM " . $this->table;
+
+        $sql = "SELECT COUNT({$column}) FROM ".$this->table;
 
         foreach ($this->joins as $join) {
             if ($join['type'] === 'CROSS') {
@@ -262,15 +268,15 @@ abstract class PostgresQueryBuilderBase
 
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
-            $sql .= ' WHERE ' . $whereSql;
+            $sql .= ' WHERE '.$whereSql;
         }
 
         if ($this->groupBy !== []) {
-            $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
+            $sql .= ' GROUP BY '.implode(', ', $this->groupBy);
         }
 
         if ($this->having !== []) {
-            $sql .= ' HAVING ' . implode(' AND ', $this->having);
+            $sql .= ' HAVING '.implode(' AND ', $this->having);
         }
 
         return $sql;
@@ -285,15 +291,16 @@ abstract class PostgresQueryBuilderBase
     protected function buildInsertQuery(array $data): string
     {
         $this->resetParameterCount();
-        
+
         $columns = implode(', ', array_keys($data));
         $placeholders = [];
-        
+
         foreach ($data as $value) {
             $placeholders[] = $this->getPlaceholder();
         }
-        
+
         $placeholderString = implode(', ', $placeholders);
+
         return "INSERT INTO {$this->table} ({$columns}) VALUES ({$placeholderString})";
     }
 
@@ -308,24 +315,25 @@ abstract class PostgresQueryBuilderBase
     protected function buildInsertBatchQuery(array $data): string
     {
         $this->resetParameterCount();
-        
-        if (empty($data) || !is_array($data[0])) {
+
+        if (empty($data) || ! is_array($data[0])) {
             throw new \InvalidArgumentException('Invalid data format for batch insert');
         }
 
         $firstRow = $data[0];
         $columns = implode(', ', array_keys($firstRow));
-        
+
         $valueGroups = [];
         foreach ($data as $row) {
             $rowPlaceholders = [];
             foreach ($row as $value) {
                 $rowPlaceholders[] = $this->getPlaceholder();
             }
-            $valueGroups[] = '(' . implode(', ', $rowPlaceholders) . ')';
+            $valueGroups[] = '('.implode(', ', $rowPlaceholders).')';
         }
-        
+
         $allPlaceholders = implode(', ', $valueGroups);
+
         return "INSERT INTO {$this->table} ({$columns}) VALUES {$allPlaceholders}";
     }
 
@@ -338,17 +346,17 @@ abstract class PostgresQueryBuilderBase
     protected function buildUpdateQuery(array $data): string
     {
         $this->resetParameterCount();
-        
+
         $setClauses = [];
         foreach (array_keys($data) as $column) {
-            $setClauses[] = "{$column} = " . $this->getPlaceholder();
+            $setClauses[] = "{$column} = ".$this->getPlaceholder();
         }
-        
-        $sql = "UPDATE {$this->table} SET " . implode(', ', $setClauses);
-        
+
+        $sql = "UPDATE {$this->table} SET ".implode(', ', $setClauses);
+
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
-            $sql .= ' WHERE ' . $whereSql;
+            $sql .= ' WHERE '.$whereSql;
         }
 
         return $sql;
@@ -362,12 +370,12 @@ abstract class PostgresQueryBuilderBase
     protected function buildDeleteQuery(): string
     {
         $this->resetParameterCount();
-        
+
         $sql = "DELETE FROM {$this->table}";
-        
+
         $whereSql = $this->buildWhereClause();
         if ($whereSql !== '') {
-            $sql .= ' WHERE ' . $whereSql;
+            $sql .= ' WHERE '.$whereSql;
         }
 
         return $sql;
@@ -382,7 +390,7 @@ abstract class PostgresQueryBuilderBase
      */
     protected function buildInsertReturningQuery(array $data, string $returning = 'id'): string
     {
-        return $this->buildInsertQuery($data) . " RETURNING {$returning}";
+        return $this->buildInsertQuery($data)." RETURNING {$returning}";
     }
 
     /**
@@ -396,34 +404,34 @@ abstract class PostgresQueryBuilderBase
     protected function buildUpsertQuery(array $data, array $conflictColumns, array $updateData = []): string
     {
         $this->resetParameterCount();
-        
+
         $columns = implode(', ', array_keys($data));
         $placeholders = [];
-        
+
         foreach ($data as $value) {
             $placeholders[] = $this->getPlaceholder();
         }
-        
+
         $placeholderString = implode(', ', $placeholders);
         $conflictCols = implode(', ', $conflictColumns);
-        
+
         $sql = "INSERT INTO {$this->table} ({$columns}) VALUES ({$placeholderString})";
         $sql .= " ON CONFLICT ({$conflictCols})";
-        
+
         if (empty($updateData)) {
-            $sql .= " DO NOTHING";
+            $sql .= ' DO NOTHING';
         } else {
             $updateClauses = [];
             foreach (array_keys($updateData) as $column) {
                 if (isset($updateData[$column]) && $updateData[$column] === 'EXCLUDED') {
                     $updateClauses[] = "{$column} = EXCLUDED.{$column}";
                 } else {
-                    $updateClauses[] = "{$column} = " . $this->getPlaceholder();
+                    $updateClauses[] = "{$column} = ".$this->getPlaceholder();
                 }
             }
-            $sql .= " DO UPDATE SET " . implode(', ', $updateClauses);
+            $sql .= ' DO UPDATE SET '.implode(', ', $updateClauses);
         }
-        
+
         return $sql;
     }
 }

@@ -6,8 +6,6 @@ use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Api\AsyncPostgreSQL;
 use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
-use Rcalicdan\FiberAsync\RAG\RAGQueryBuilderBase;
-use Rcalicdan\FiberAsync\RAG\StandardQueryExecutionTrait;
 
 /**
  * RAG-optimized PostgreSQL query builder with async execution methods.
@@ -15,6 +13,7 @@ use Rcalicdan\FiberAsync\RAG\StandardQueryExecutionTrait;
 class RAGQueryBuilder extends RAGQueryBuilderBase
 {
     use StandardQueryExecutionTrait;
+
     /**
      * Create a new RAGQueryBuilder instance.
      *
@@ -43,7 +42,8 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
             return Promise::resolve(0);
         }
 
-        $data[$embeddingColumn] = '[' . implode(',', $embedding) . ']';
+        $data[$embeddingColumn] = '['.implode(',', $embedding).']';
+
         return $this->insert($data);
     }
 
@@ -68,7 +68,8 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
             return Promise::resolve(null);
         }
 
-        $data[$embeddingColumn] = '[' . implode(',', $embedding) . ']';
+        $data[$embeddingColumn] = '['.implode(',', $embedding).']';
+
         return $this->insertGetId($data, $idColumn);
     }
 
@@ -92,8 +93,8 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
             $data = $doc['data'];
             $embedding = $doc['embedding'];
 
-            if (!empty($embedding)) {
-                $data[$embeddingColumn] = '[' . implode(',', $embedding) . ']';
+            if (! empty($embedding)) {
+                $data[$embeddingColumn] = '['.implode(',', $embedding).']';
             }
 
             $batchData[] = $data;
@@ -123,6 +124,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
     ): PromiseInterface {
         $metadataColumn ??= $this->ragConfig['default_metadata_column'];
         $query = $this->semanticSearch($queryVector, $filters, $vectorColumn, $metadataColumn, $threshold, $limit);
+
         return $query->get();
     }
 
@@ -152,6 +154,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
         $limit ??= $this->ragConfig['default_search_limit'];
 
         $query = $this->hybridSearch($textColumn, $vectorColumn, $textQuery, $queryVector, $textWeight, $vectorWeight, $limit);
+
         return $query->get();
     }
 
@@ -173,7 +176,8 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
         $threshold ??= $this->ragConfig['default_similarity_threshold'];
 
         $query = $this->retrievalWithCitation($queryVector, ['title', 'source', 'url', 'author', 'created_at'], null, $topK)
-            ->semanticSearch($queryVector, $filters, null, null, $threshold, $topK);
+            ->semanticSearch($queryVector, $filters, null, null, $threshold, $topK)
+        ;
 
         return $query->get();
     }
@@ -195,6 +199,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
     ): PromiseInterface {
         $column ??= $this->ragConfig['default_vector_column'];
         $sql = $this->buildVectorIndexQuery($column, $method, $operator, $options);
+
         return AsyncPostgreSQL::execute($sql, []);
     }
 
@@ -213,6 +218,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
     ): PromiseInterface {
         $contentColumn ??= $this->ragConfig['default_content_column'];
         $sql = $this->buildChunkQuery($contentColumn, $chunkSize, $overlapSize);
+
         return AsyncPostgreSQL::query($sql, []);
     }
 
@@ -237,7 +243,8 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
             return Promise::resolve(0);
         }
 
-        $vectorString = '[' . implode(',', $embedding) . ']';
+        $vectorString = '['.implode(',', $embedding).']';
+
         return $this->where($idColumn, $id)->update([$embeddingColumn => $vectorString]);
     }
 
@@ -269,7 +276,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
                 'null_vectors' => $nullCount,
                 'valid_vectors' => $totalCount - $nullCount,
                 'table' => $this->table,
-                'column' => $vectorColumn
+                'column' => $vectorColumn,
             ];
         })();
     }
@@ -289,7 +296,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
 
         // @phpstan-ignore-next-line
         return Async::async(function () use ($sampleVector, $vectorColumn): array {
-            $vectorString = '[' . implode(',', $sampleVector) . ']';
+            $vectorString = '['.implode(',', $sampleVector).']';
 
             // Test cosine similarity performance
             $startTime = microtime(true);
@@ -328,13 +335,13 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
             return [
                 'cosine_similarity' => [
                     'execution_time_ms' => round($cosineTime * 1000, 2),
-                    'plan_metrics' => $cosineMetrics
+                    'plan_metrics' => $cosineMetrics,
                 ],
                 'l2_distance' => [
                     'execution_time_ms' => round($l2Time * 1000, 2),
-                    'plan_metrics' => $l2Metrics
+                    'plan_metrics' => $l2Metrics,
                 ],
-                'recommendations' => $this->generatePerformanceRecommendations($cosineMetrics, $l2Metrics)
+                'recommendations' => $this->generatePerformanceRecommendations($cosineMetrics, $l2Metrics),
             ];
         })();
     }
@@ -352,7 +359,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
             'actual_time' => 0,
             'rows_examined' => 0,
             'index_used' => false,
-            'sequential_scan' => false
+            'sequential_scan' => false,
         ];
 
         foreach ($planResult as $row) {
@@ -406,7 +413,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
             $recommendations[] = 'Query execution time is high - consider tuning HNSW parameters or creating additional indexes';
         }
 
-        if (!$cosineMetrics['index_used'] && !$l2Metrics['index_used']) {
+        if (! $cosineMetrics['index_used'] && ! $l2Metrics['index_used']) {
             $recommendations[] = 'No vector indexes are being used - create HNSW or IVFFlat indexes for better performance';
         }
 

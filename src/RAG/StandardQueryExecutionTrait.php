@@ -20,6 +20,7 @@ trait StandardQueryExecutionTrait
     public function get(): PromiseInterface
     {
         $sql = $this->buildSelectQuery();
+
         return AsyncPostgreSQL::query($sql, $this->getCompiledBindings());
     }
 
@@ -32,6 +33,7 @@ trait StandardQueryExecutionTrait
     {
         $instanceWithLimit = $this->limit(1);
         $sql = $instanceWithLimit->buildSelectQuery();
+
         return AsyncPostgreSQL::fetchOne($sql, $instanceWithLimit->getCompiledBindings());
     }
 
@@ -63,8 +65,10 @@ trait StandardQueryExecutionTrait
             $result = await($this->find($id, $column));
             if ($result === null || $result === false) {
                 $idString = is_scalar($id) ? (string) $id : 'complex_type';
+
                 throw new \RuntimeException("Record not found with {$column} = {$idString}");
             }
+
             return $result;
         })();
     }
@@ -80,6 +84,7 @@ trait StandardQueryExecutionTrait
         // @phpstan-ignore-next-line
         return Async::async(function () use ($column): mixed {
             $result = await($this->select($column)->first());
+
             return ($result !== false && isset($result[$column])) ? $result[$column] : null;
         })();
     }
@@ -95,6 +100,7 @@ trait StandardQueryExecutionTrait
         $sql = $this->buildCountQuery($column);
         /** @var PromiseInterface<int> */
         $promise = AsyncPostgreSQL::fetchValue($sql, $this->getCompiledBindings());
+
         return $promise;
     }
 
@@ -108,6 +114,7 @@ trait StandardQueryExecutionTrait
         // @phpstan-ignore-next-line
         return Async::async(function (): bool {
             $count = await($this->count());
+
             return $count > 0;
         })();
     }
@@ -124,6 +131,7 @@ trait StandardQueryExecutionTrait
             return Promise::resolve(0);
         }
         $sql = $this->buildInsertQuery($data);
+
         return AsyncPostgreSQL::execute($sql, array_values($data));
     }
 
@@ -141,6 +149,7 @@ trait StandardQueryExecutionTrait
         }
 
         $sql = $this->buildInsertReturningQuery($data, $idColumn);
+
         return AsyncPostgreSQL::fetchValue($sql, array_values($data));
     }
 
@@ -204,6 +213,7 @@ trait StandardQueryExecutionTrait
     public function delete(): PromiseInterface
     {
         $sql = $this->buildDeleteQuery();
+
         return AsyncPostgreSQL::execute($sql, $this->getCompiledBindings());
     }
 

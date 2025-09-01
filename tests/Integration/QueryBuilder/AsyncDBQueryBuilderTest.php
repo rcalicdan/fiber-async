@@ -7,10 +7,10 @@ use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\PDO\DatabaseConfigFactory;
 
 beforeEach(function () {
-    $testDir = sys_get_temp_dir() . '/async-db-test-' . uniqid();
+    $testDir = sys_get_temp_dir().'/async-db-test-'.uniqid();
     mkdir($testDir);
-    mkdir($testDir . '/config');
-    mkdir($testDir . '/vendor');
+    mkdir($testDir.'/config');
+    mkdir($testDir.'/vendor');
 
     // Create database config file
     $databaseConfig = [
@@ -22,11 +22,11 @@ beforeEach(function () {
     ];
 
     file_put_contents(
-        $testDir . '/config/database.php',
-        '<?php return ' . var_export($databaseConfig, true) . ';'
+        $testDir.'/config/database.php',
+        '<?php return '.var_export($databaseConfig, true).';'
     );
 
-    file_put_contents($testDir . '/.env', 'DB_CONNECTION=test');
+    file_put_contents($testDir.'/.env', 'DB_CONNECTION=test');
 
     // Mock the ConfigLoader to use our test directory
     $reflection = new ReflectionClass(ConfigLoader::class);
@@ -50,10 +50,10 @@ afterEach(function () {
 
     // Clean up test directory
     if (isset($this->testDir) && is_dir($this->testDir)) {
-        array_map('unlink', glob($this->testDir . '/config/*'));
-        rmdir($this->testDir . '/config');
-        unlink($this->testDir . '/.env');
-        rmdir($this->testDir . '/vendor');
+        array_map('unlink', glob($this->testDir.'/config/*'));
+        rmdir($this->testDir.'/config');
+        unlink($this->testDir.'/.env');
+        rmdir($this->testDir.'/vendor');
         rmdir($this->testDir);
     }
 });
@@ -1114,7 +1114,8 @@ describe('AsyncQueryBuilder Performance and Edge Cases', function () {
                 ->whereBetween('price', [50, 500])
                 ->like('tags', 'popular')
                 ->orderBy('price', 'DESC')
-                ->limit(2);
+                ->limit(2)
+            ;
 
             $result = await($queryBuilder->get());
 
@@ -1128,15 +1129,16 @@ describe('AsyncQueryBuilder Performance and Edge Cases', function () {
         run(function () {
             $query = DB::table('complex_test')
                 ->where('active', 1)
-                ->whereNested(fn($q) =>
-                    $q->whereGroup(fn($q2) =>
-                        $q2->where('category', 'Electronics')->where('price', '>', 400)
+                ->whereNested(
+                    fn ($q) => $q->whereGroup(
+                        fn ($q2) => $q2->where('category', 'Electronics')->where('price', '>', 400)
                     )
-                    ->orWhereNested(fn($q2) =>
-                        $q2->where('category', 'Office')->like('tags', 'popular')
-                    )
+                        ->orWhereNested(
+                            fn ($q2) => $q2->where('category', 'Office')->like('tags', 'popular')
+                        )
                 )
-                ->orderBy('name');
+                ->orderBy('name')
+            ;
 
             $result = await($query->get());
 
@@ -1196,7 +1198,8 @@ describe('AsyncQueryBuilder Advanced Subqueries', function () {
                         ->where('active', 1)
                         ->where('price', '>', 500)
                     ;
-                });
+                })
+            ;
 
             $result = await($query->get());
 
@@ -1209,14 +1212,14 @@ describe('AsyncQueryBuilder Advanced Subqueries', function () {
         run(function () {
             $query = DB::table('categories')
                 ->whereNotExists(
-                    fn($q) =>
-                    $q->select('1')
+                    fn ($q) => $q->select('1')
                         ->table('products')
                         ->whereRaw('products.category_id = categories.id')
                         ->where('active', 1)
                         ->where('price', '>', 500)
                 )
-                ->orderBy('name');
+                ->orderBy('name')
+            ;
 
             $result = await($query->get());
 
@@ -1277,7 +1280,8 @@ describe('AsyncQueryBuilder Method Chaining', function () {
         run(function () {
             $queryBuilder = DB::table('chain_test')
                 ->where('status', 'pending')
-                ->orderBy('priority');
+                ->orderBy('priority')
+            ;
 
             // Execute same query builder multiple times
             $result1 = await($queryBuilder->get());

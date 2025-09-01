@@ -15,8 +15,8 @@ final class AsyncMySQLi
 {
     private static ?AsyncMySQLiPool $pool = null;
     private static bool $isInitialized = false;
-    private const POOL_INTERVAL = 10; 
-    private const POOL_MAX_INTERVAL = 100; 
+    private const POOL_INTERVAL = 10;
+    private const POOL_MAX_INTERVAL = 100;
 
     public static function init(array $dbConfig, int $poolSize = 10): void
     {
@@ -158,7 +158,7 @@ final class AsyncMySQLi
                     $mysqli->autocommit(true);
                     self::getPool()->release($mysqli);
                 } catch (Throwable $e) {
-                    error_log("Failed to cancel transaction {$index}: " . $e->getMessage());
+                    error_log("Failed to cancel transaction {$index}: ".$e->getMessage());
                     self::getPool()->release($mysqli);
                 }
             }
@@ -197,7 +197,7 @@ final class AsyncMySQLi
                     echo "Transaction $winnerIndex: Winner committed!\n";
                     self::getPool()->release($mysqli);
                 } catch (Throwable $e) {
-                    error_log("Failed to commit winner transaction {$winnerIndex}: " . $e->getMessage());
+                    error_log("Failed to commit winner transaction {$winnerIndex}: ".$e->getMessage());
                     $mysqli->rollback();
                     $mysqli->autocommit(true);
                     self::getPool()->release($mysqli);
@@ -220,7 +220,7 @@ final class AsyncMySQLi
                         $mysqli->autocommit(true);
                         self::getPool()->release($mysqli);
                     } catch (Throwable $e) {
-                        error_log("Failed to rollback transaction {$index}: " . $e->getMessage());
+                        error_log("Failed to rollback transaction {$index}: ".$e->getMessage());
                         self::getPool()->release($mysqli);
                     }
                 })();
@@ -282,8 +282,8 @@ final class AsyncMySQLi
             try {
                 if (count($params) > 0) {
                     $stmt = $mysqli->prepare($sql);
-                    if (!$stmt) {
-                        throw new \RuntimeException('Prepare failed: ' . $mysqli->error);
+                    if (! $stmt) {
+                        throw new \RuntimeException('Prepare failed: '.$mysqli->error);
                     }
 
                     if ($types === null) {
@@ -296,12 +296,12 @@ final class AsyncMySQLi
 
                     $processedParams = self::preprocessParameters($params);
 
-                    if (!$stmt->bind_param($types, ...$processedParams)) {
-                        throw new \RuntimeException('Bind param failed: ' . $stmt->error);
+                    if (! $stmt->bind_param($types, ...$processedParams)) {
+                        throw new \RuntimeException('Bind param failed: '.$stmt->error);
                     }
 
-                    if (!$stmt->execute()) {
-                        throw new \RuntimeException('Execute failed: ' . $stmt->error);
+                    if (! $stmt->execute()) {
+                        throw new \RuntimeException('Execute failed: '.$stmt->error);
                     }
 
                     if (
@@ -316,8 +316,8 @@ final class AsyncMySQLi
 
                     return self::processResult($result, $resultType, $stmt, $mysqli);
                 } else {
-                    if (!$mysqli->query($sql, MYSQLI_ASYNC)) {
-                        throw new \RuntimeException('Query failed: ' . $mysqli->error);
+                    if (! $mysqli->query($sql, MYSQLI_ASYNC)) {
+                        throw new \RuntimeException('Query failed: '.$mysqli->error);
                     }
 
                     $result = await(self::waitForAsyncCompletion($mysqli));
@@ -373,7 +373,7 @@ final class AsyncMySQLi
         if ($result === false) {
             $error = $stmt?->error ?? $mysqli?->error ?? 'Unknown error';
 
-            throw new \RuntimeException('Query execution failed: ' . $error);
+            throw new \RuntimeException('Query execution failed: '.$error);
         }
 
         return match ($resultType) {

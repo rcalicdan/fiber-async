@@ -90,10 +90,10 @@ trait QueryBuilderCoreTrait
     public function selectDistinct(string|array $columns = '*'): static
     {
         $instance = $this->select($columns);
-        
+
         // Add DISTINCT to the first column
         if ($instance->select !== [] && $instance->select[0] !== '*') {
-            $instance->select[0] = 'DISTINCT ' . $instance->select[0];
+            $instance->select[0] = 'DISTINCT '.$instance->select[0];
         } elseif ($instance->select[0] === '*') {
             $instance->select[0] = 'DISTINCT *';
         }

@@ -20,7 +20,7 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
         'default_similarity_threshold' => 0.7,
         'default_search_limit' => 10,
         'vector_dimension' => 1536,
-        'text_search_config' => 'english'
+        'text_search_config' => 'english',
     ];
 
     /**
@@ -33,6 +33,7 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
     {
         $instance = clone $this;
         $instance->ragConfig = array_merge($this->ragConfig, $config);
+
         return $instance;
     }
 
@@ -49,19 +50,19 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
     {
         $instance = clone $this;
         $placeholder = $instance->getPlaceholder();
-        $vectorString = '[' . implode(',', $queryVector) . ']';
-        
+        $vectorString = '['.implode(',', $queryVector).']';
+
         // Add similarity score to select
         $instance->select[] = "(1 - ({$column} <=> {$placeholder})) as similarity_score";
-        
+
         // Filter by threshold
         $thresholdPlaceholder = $instance->getPlaceholder();
         $instance->where[] = "(1 - ({$column} <=> {$placeholder})) >= {$thresholdPlaceholder}";
-        
+
         $instance->bindings['where'][] = $vectorString;
         $instance->bindings['where'][] = $vectorString;
         $instance->bindings['where'][] = $threshold;
-        
+
         return $instance->orderBy("{$column} <=> '{$vectorString}'")->limit($limit);
     }
 
@@ -78,19 +79,20 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
     {
         $instance = clone $this;
         $placeholder = $instance->getPlaceholder();
-        $vectorString = '[' . implode(',', $queryVector) . ']';
-        
+        $vectorString = '['.implode(',', $queryVector).']';
+
         $operator = match ($metric) {
             'cosine' => '<=>',
             'l2', 'euclidean' => '<->',
             'inner_product', 'dot' => '<#>',
             default => '<=>'
         };
-        
+
         $instance->select[] = "({$column} {$operator} {$placeholder}) as distance";
         $instance->bindings['where'][] = $vectorString;
-        
+
         $orderDirection = $metric === 'inner_product' ? 'DESC' : 'ASC';
+
         return $instance->orderBy("{$column} {$operator} '{$vectorString}'", $orderDirection)->limit($limit);
     }
 
@@ -118,8 +120,8 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
         $instance = clone $this;
         $textPlaceholder = $instance->getPlaceholder();
         $vectorPlaceholder = $instance->getPlaceholder();
-        $vectorString = '[' . implode(',', $queryVector) . ']';
-        
+        $vectorString = '['.implode(',', $queryVector).']';
+
         // Create hybrid score combining text rank and vector similarity
         $hybridScore = sprintf(
             "ts_rank(to_tsvector('%s', %s), plainto_tsquery(%s)) * %f + (1 - (%s <=> %s)) * %f",
@@ -131,15 +133,15 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
             $vectorPlaceholder,
             $vectorWeight
         );
-        
+
         $instance->select[] = "{$hybridScore} as hybrid_score";
         $instance->bindings['where'][] = $query;
         $instance->bindings['where'][] = $vectorString;
-        
+
         // Add conditions for both text and vector search
         $textSearchPlaceholder = $instance->getPlaceholder();
         $vectorSearchPlaceholder = $instance->getPlaceholder();
-        
+
         $instance->where[] = sprintf(
             "(to_tsvector('%s', %s) @@ plainto_tsquery(%s) OR (1 - (%s <=> %s)) > 0.5)",
             $this->ragConfig['text_search_config'],
@@ -148,10 +150,10 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
             $vectorColumn,
             $vectorSearchPlaceholder
         );
-        
+
         $instance->bindings['where'][] = $query;
         $instance->bindings['where'][] = $vectorString;
-        
+
         return $instance->orderBy('hybrid_score', 'DESC')->limit($limit);
     }
 
@@ -178,9 +180,9 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
         $metadataColumn = $metadataColumn ?? $this->ragConfig['default_metadata_column'];
         $threshold = $threshold ?? $this->ragConfig['default_similarity_threshold'];
         $limit = $limit ?? $this->ragConfig['default_search_limit'];
-        
+
         $instance = $this->vectorSimilarity($vectorColumn, $queryVector, $limit, $threshold);
-        
+
         // Add metadata filters
         foreach ($metadataFilters as $key => $value) {
             if (is_array($value)) {
@@ -189,7 +191,7 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
                 $instance = $instance->whereJsonEquals($metadataColumn, $key, $value);
             }
         }
-        
+
         return $instance;
     }
 
@@ -213,14 +215,14 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
         $vectorColumn = $vectorColumn ?? $this->ragConfig['default_vector_column'];
         $metadataColumn = $metadataColumn ?? $this->ragConfig['default_metadata_column'];
         $limit = $limit ?? $this->ragConfig['default_search_limit'];
-        
+
         $instance = $this->vectorSimilarity($vectorColumn, $queryVector, $limit);
-        
+
         // Filter by content types
         $placeholder = $instance->getPlaceholder();
         $instance->where[] = "{$metadataColumn}->>'content_type' = ANY({$placeholder})";
-        $instance->bindings['where'][] = '{' . implode(',', array_map(fn($t) => '"'.$t.'"', $contentTypes)) . '}';
-        
+        $instance->bindings['where'][] = '{'.implode(',', array_map(fn ($t) => '"'.$t.'"', $contentTypes)).'}';
+
         return $instance;
     }
 
@@ -236,26 +238,32 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
      */
     public function contextualSearch(
         array $queryVector,
-        ?string $conversationId = null,
         int $contextWindow = 5,
+        ?string $conversationId = null,
         ?string $vectorColumn = null,
         ?int $limit = null
     ): static {
-        $vectorColumn = $vectorColumn ?? $this->ragConfig['default_vector_column'];
-        $limit = $limit ?? $this->ragConfig['default_search_limit'];
-        
+        $vectorColumn ??= $this->ragConfig['default_vector_column'];
+        $limit ??= $this->ragConfig['default_search_limit'];
+
         $instance = $this->vectorSimilarity($vectorColumn, $queryVector, $limit);
-        
+
         if ($conversationId) {
             $instance = $instance->whereJsonEquals('metadata', 'conversation_id', $conversationId);
-            
+
+            if ($contextWindow > 0) {
+                $instance = $instance->orderBy('created_at', 'desc')
+                    ->limit($contextWindow)
+                ;
+            }
+
             $timestampBoost = "CASE WHEN metadata->>'conversation_id' = '{$conversationId}' 
-                               THEN similarity_score + 0.1 
-                               ELSE similarity_score END";
+                           THEN similarity_score + 0.1 
+                           ELSE similarity_score END";
             $instance->select[] = "{$timestampBoost} as contextual_score";
             $instance = $instance->orderBy('contextual_score', 'DESC');
         }
-        
+
         return $instance;
     }
 
@@ -276,15 +284,15 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
         ?string $vectorColumn = null,
         ?int $limit = null
     ): static {
-        $vectorColumn = $vectorColumn ?? $this->ragConfig['default_vector_column'];
-        $limit = $limit ?? $this->ragConfig['default_search_limit'];
-        
+        $vectorColumn ??= $this->ragConfig['default_vector_column'];
+        $limit ??= $this->ragConfig['default_search_limit'];
+
         $instance = $this->vectorSimilarity($vectorColumn, $queryVector, $limit);
-        
+
         // Add temporal decay to similarity score
         $temporalScore = "similarity_score * EXP(-{$decayRate} * EXTRACT(EPOCH FROM (NOW() - {$timeColumn})) / 86400)";
         $instance->select[] = "{$temporalScore} as temporal_score";
-        
+
         return $instance->orderBy('temporal_score', 'DESC');
     }
 
@@ -303,23 +311,23 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
         ?string $vectorColumn = null,
         ?int $limit = null
     ): static {
-        $vectorColumn = $vectorColumn ?? $this->ragConfig['default_vector_column'];
-        $limit = $limit ?? $this->ragConfig['default_search_limit'];
-        
+        $vectorColumn ??= $this->ragConfig['default_vector_column'];
+        $limit ??= $this->ragConfig['default_search_limit'];
+
         $instance = $this->vectorSimilarity($vectorColumn, $queryVector, $limit);
-        
+
         foreach ($sourceFields as $field) {
-            if (!in_array($field, $instance->select)) {
+            if (! in_array($field, $instance->select)) {
                 $instance->select[] = $field;
             }
         }
-        
+
         $metadataColumn = $this->ragConfig['default_metadata_column'];
         $instance->select[] = "{$metadataColumn}->>'page_number' as page_number";
         $instance->select[] = "{$metadataColumn}->>'chunk_index' as chunk_index";
         $contentColumn = $this->ragConfig['default_content_column'];
         $instance->select[] = "LENGTH({$contentColumn}) as content_length";
-        
+
         return $instance;
     }
 
@@ -340,15 +348,15 @@ abstract class RAGQueryBuilderBase extends PostgresQueryBuilderBase
     ): string {
         $indexName = "idx_{$this->table}_{$column}_{$method}";
         $sql = "CREATE INDEX IF NOT EXISTS {$indexName} ON {$this->table} USING {$method} ({$column} {$operator})";
-        
-        if (!empty($options)) {
+
+        if (! empty($options)) {
             $optionPairs = [];
             foreach ($options as $key => $value) {
                 $optionPairs[] = "{$key} = {$value}";
             }
-            $sql .= " WITH (" . implode(', ', $optionPairs) . ")";
+            $sql .= ' WITH ('.implode(', ', $optionPairs).')';
         }
-        
+
         return $sql;
     }
 

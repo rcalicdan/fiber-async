@@ -75,7 +75,7 @@ final class MysqliConfigLoader
     {
         $dir = __DIR__;
         for ($i = 0; $i < 10; $i++) {
-            if (is_dir($dir . '/vendor')) {
+            if (is_dir($dir.'/vendor')) {
                 return $dir;
             }
 
@@ -95,7 +95,7 @@ final class MysqliConfigLoader
             throw new Exception('Root path not found, cannot load .env file');
         }
 
-        $envFile = $this->rootPath . '/.env';
+        $envFile = $this->rootPath.'/.env';
 
         if (file_exists($envFile)) {
             file_get_contents($envFile);
@@ -120,9 +120,9 @@ final class MysqliConfigLoader
             throw new Exception('Root path not found, cannot load config files');
         }
 
-        $configDir = $this->rootPath . '/config/mysqli';
+        $configDir = $this->rootPath.'/config/mysqli';
         if (is_dir($configDir)) {
-            $files = glob($configDir . '/*.php');
+            $files = glob($configDir.'/*.php');
             if ($files !== false) {
                 foreach ($files as $file) {
                     $key = basename($file, '.php');

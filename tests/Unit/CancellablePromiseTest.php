@@ -810,6 +810,7 @@ describe('CancellablePromise Real-World Examples', function () {
 
         expect($requestSent)->toBeTrue()
             ->and($connectionClosed)->toBeTrue()
-            ->and($cacheCleared)->toBeTrue();
+            ->and($cacheCleared)->toBeTrue()
+        ;
     });
 });

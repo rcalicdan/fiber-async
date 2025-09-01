@@ -114,7 +114,7 @@ class RAGHelper
      * @param  string  $chunksTable  Chunks table name.
      * @return PromiseInterface<int> A promise that resolves to the document ID.
      */
-     public static function ingestDocument(
+    public static function ingestDocument(
         array $documentData,
         callable $embeddingGenerator,
         int $chunkSize = 1000,
@@ -146,10 +146,10 @@ class RAGHelper
                             'metadata' => json_encode([
                                 'chunk_length' => strlen($chunk['text']),
                                 'source' => $documentData['source'] ?? null,
-                                'content_type' => $documentData['content_type'] ?? 'text'
-                            ])
+                                'content_type' => $documentData['content_type'] ?? 'text',
+                            ]),
                         ],
-                        'embedding' => $embedding
+                        'embedding' => $embedding,
                     ];
                 }
 
@@ -187,14 +187,14 @@ class RAGHelper
                 'enable_diversity' => false,
                 'metadata_filters' => [],
                 'content_types' => ['text'],
-                'conversation_id' => null
+                'conversation_id' => null,
             ];
 
             $config = array_merge($defaults, $options);
 
             $queryBuilder = RAGDB::ragTable($chunksTable);
 
-            if ($config['enable_hybrid'] && !empty($query)) {
+            if ($config['enable_hybrid'] && ! empty($query)) {
                 $results = await($queryBuilder->performHybridSearch(
                     $query,
                     $queryVector,
@@ -233,7 +233,7 @@ class RAGHelper
                     'url' => $documentInfo['url'] ?? null,
                     'author' => $documentInfo['author'] ?? null,
                     'chunk_index' => $result['chunk_index'],
-                    'similarity_score' => $result['similarity_score'] ?? $result['hybrid_score'] ?? 0
+                    'similarity_score' => $result['similarity_score'] ?? $result['hybrid_score'] ?? 0,
                 ];
             }
 
@@ -242,7 +242,7 @@ class RAGHelper
                 'query' => $query,
                 'total_results' => count($results),
                 'search_config' => $config,
-                'timestamp' => date('c')
+                'timestamp' => date('c'),
             ];
         })();
     }
@@ -262,12 +262,12 @@ class RAGHelper
             $stats = await(RAGDB::ragTable($chunksTable)->getVectorStatistics());
             $report['table_stats'] = $stats;
 
-            $sampleVector = array_fill(0, 1536, 0.1); 
+            $sampleVector = array_fill(0, 1536, 0.1);
             $performance = await(RAGDB::ragTable($chunksTable)->analyzeVectorPerformance($sampleVector));
             $report['performance_analysis'] = $performance;
 
             // Check index usage
-            $indexUsage = await(DB::raw("
+            $indexUsage = await(DB::raw('
                SELECT 
                    schemaname,
                    tablename,
@@ -278,7 +278,7 @@ class RAGHelper
                FROM pg_stat_user_indexes 
                WHERE tablename = ?
                ORDER BY idx_scan DESC
-           ", [$chunksTable]));
+           ', [$chunksTable]));
 
             $report['index_usage'] = $indexUsage;
 
@@ -319,8 +319,8 @@ class RAGHelper
         string $chunksTable = 'document_chunks'
     ): PromiseInterface {
         // @phpstan-ignore-next-line
-        return Async::async(function () use ($similarityThreshold, $minTokenCount, $chunksTable): array {
-            return await(DB::transaction(function () use ($similarityThreshold, $minTokenCount, $chunksTable): array {
+        return Async::async(function () use ($minTokenCount, $chunksTable): array {
+            return await(DB::transaction(function () use ($minTokenCount, $chunksTable): array {
                 $stats = ['duplicates_removed' => 0, 'low_quality_removed' => 0];
 
                 // Remove chunks with too few tokens
@@ -394,9 +394,9 @@ class RAGHelper
                 'source_distribution' => $sourceDistribution,
                 'embedding_coverage' => [
                     'percentage' => ($chunkStats[0]['chunks_with_embeddings'] ?? 0) / ($chunkStats[0]['total_chunks'] ?? 1) * 100,
-                    'missing_embeddings' => ($chunkStats[0]['total_chunks'] ?? 0) - ($chunkStats[0]['chunks_with_embeddings'] ?? 0)
+                    'missing_embeddings' => ($chunkStats[0]['total_chunks'] ?? 0) - ($chunkStats[0]['chunks_with_embeddings'] ?? 0),
                 ],
-                'generated_at' => date('c')
+                'generated_at' => date('c'),
             ];
         })();
     }
@@ -435,13 +435,13 @@ class RAGHelper
             }
 
             $chunkText = trim($chunk);
-            if (!empty($chunkText)) {
+            if (! empty($chunkText)) {
                 $chunks[] = [
                     'text' => $chunkText,
                     'chunk_index' => $chunkIndex++,
                     'start_position' => $position,
                     'end_position' => $position + $actualChunkSize - 1,
-                    'token_count' => self::estimateTokenCount($chunkText)
+                    'token_count' => self::estimateTokenCount($chunkText),
                 ];
             }
 
@@ -490,6 +490,7 @@ class RAGHelper
 
                 if ($similarity > (1 - $diversityThreshold)) {
                     $shouldInclude = false;
+
                     break;
                 }
             }

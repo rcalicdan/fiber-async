@@ -4,8 +4,6 @@ namespace Rcalicdan\FiberAsync\RAG;
 
 use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\PostgreSQL\DB;
-use Rcalicdan\FiberAsync\RAG\RAGQueryBuilder;
-use Rcalicdan\FiberAsync\RAG\RAGHelper;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -22,6 +20,7 @@ class RAGDB extends DB
     public static function ragTable(string $table): RAGQueryBuilder
     {
         self::initializeIfNeeded();
+
         return new RAGQueryBuilder($table);
     }
 
@@ -39,6 +38,7 @@ class RAGDB extends DB
         int $vectorDimension = 1536
     ): PromiseInterface {
         self::initializeIfNeeded();
+
         return RAGHelper::initializeRAGSchema($documentsTable, $chunksTable, $vectorDimension);
     }
 
@@ -56,6 +56,7 @@ class RAGDB extends DB
         string $table = 'document_chunks'
     ): PromiseInterface {
         self::initializeIfNeeded();
+
         return self::ragTable($table)->performSemanticSearch(
             $queryVector,
             $options['filters'] ?? [],
@@ -81,6 +82,7 @@ class RAGDB extends DB
         string $table = 'document_chunks'
     ): PromiseInterface {
         self::initializeIfNeeded();
+
         return self::ragTable($table)->performHybridSearch(
             $textQuery,
             $queryVector,
@@ -106,6 +108,7 @@ class RAGDB extends DB
         array $options = []
     ): PromiseInterface {
         self::initializeIfNeeded();
+
         return RAGHelper::comprehensiveRAGQuery($query, $queryVector, $options);
     }
 
@@ -123,6 +126,7 @@ class RAGDB extends DB
         array $options = []
     ): PromiseInterface {
         self::initializeIfNeeded();
+
         return RAGHelper::ingestDocument(
             $documentData,
             $embeddingGenerator,
@@ -142,6 +146,7 @@ class RAGDB extends DB
     public static function optimizeRAG(string $table = 'document_chunks'): PromiseInterface
     {
         self::initializeIfNeeded();
+
         return RAGHelper::optimizeRAGPerformance($table);
     }
 
@@ -157,6 +162,7 @@ class RAGDB extends DB
         string $documentsTable = 'documents'
     ): PromiseInterface {
         self::initializeIfNeeded();
+
         return RAGHelper::generateEmbeddingsReport($chunksTable, $documentsTable);
     }
 
@@ -178,7 +184,7 @@ class RAGDB extends DB
         $defaultOptions = [
             'hnsw_m' => 16,
             'hnsw_ef_construction' => 64,
-            'create_multiple_indexes' => true
+            'create_multiple_indexes' => true,
         ];
 
         $config = array_merge($defaultOptions, $options);

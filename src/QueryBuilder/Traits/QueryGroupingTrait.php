@@ -120,6 +120,7 @@ trait QueryGroupingTrait
     public function paginate(int $page, int $perPage = 15): static
     {
         $offset = ($page - 1) * $perPage;
+
         return $this->limit($perPage, $offset);
     }
 }
