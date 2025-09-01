@@ -24,7 +24,7 @@ class DB
     * This method is called by every public method to ensure the system is ready.
     * Validates only once if successful, but re-validates if there were previous errors.
     */
-   private static function initializeIfNeeded(): void
+   protected static function initializeIfNeeded(): void
    {
        if (self::$isInitialized && !self::$hasValidationError) {
            return;

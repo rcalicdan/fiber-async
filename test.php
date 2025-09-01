@@ -6,7 +6,18 @@ use Rcalicdan\FiberAsync\Promise\Promise;
 
 require 'vendor/autoload.php';
 
-run(function (){
-    $results = await(DB::table('users')->where('id', 2)->first());
-    print_r($results);
-});
+for ($i = 1; $i <= 5; $i++) {
+    $startTime = microtime(true);
+    run(function () {
+        await(all([
+            DB::raw("SELECT PG_SLEEP(1)"),
+            DB::raw("SELECT PG_SLEEP(1)"),
+            DB::raw("SELECT PG_SLEEP(1)"),
+            DB::raw("SELECT PG_SLEEP(1)"),
+            DB::raw("SELECT PG_SLEEP(1)"),
+        ]));
+    });
+    $endTime = microtime(true);
+    $executionTime = $endTime - $startTime;
+    echo "Execution time: " . $executionTime . " seconds\n";
+}
