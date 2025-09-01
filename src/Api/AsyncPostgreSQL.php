@@ -227,7 +227,6 @@ final class AsyncPostgreSQL
 
             try {
                 if (! empty($params)) {
-                    // Use async version for parameterized queries
                     if (! pg_send_query_params($connection, $sql, $params)) {
                         throw new \RuntimeException('Failed to send parameterized query: '.pg_last_error($connection));
                     }
