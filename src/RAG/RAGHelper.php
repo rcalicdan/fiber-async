@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\QueryBuilder\Helpers;
+namespace Rcalicdan\FiberAsync\RAG;
 
 use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\PostgreSQL\DB;
@@ -114,7 +114,7 @@ class RAGHelper
      * @param  string  $chunksTable  Chunks table name.
      * @return PromiseInterface<int> A promise that resolves to the document ID.
      */
-    public static function ingestDocument(
+     public static function ingestDocument(
         array $documentData,
         callable $embeddingGenerator,
         int $chunkSize = 1000,
@@ -127,7 +127,7 @@ class RAGHelper
             return await(DB::transaction(function () use ($documentData, $embeddingGenerator, $chunkSize, $chunkOverlap, $documentsTable, $chunksTable): int {
                 $documentData['content_hash'] = hash('sha256', $documentData['content']);
 
-                $documentId = await(DB::table($documentsTable)->insertGetId($documentData));
+                $documentId = await(RAGDB::ragTable($documentsTable)->insertGetId($documentData));
 
                 $chunks = self::chunkText($documentData['content'], $chunkSize, $chunkOverlap);
 
@@ -153,7 +153,7 @@ class RAGHelper
                     ];
                 }
 
-                await(DB::table($chunksTable)->insertBatchWithEmbeddings($chunkData));
+                await(RAGDB::ragTable($chunksTable)->insertBatchWithEmbeddings($chunkData));
 
                 return $documentId;
             }));
@@ -192,7 +192,7 @@ class RAGHelper
 
             $config = array_merge($defaults, $options);
 
-            $queryBuilder = DB::table($chunksTable);
+            $queryBuilder = RAGDB::ragTable($chunksTable);
 
             if ($config['enable_hybrid'] && !empty($query)) {
                 $results = await($queryBuilder->performHybridSearch(
@@ -221,7 +221,7 @@ class RAGHelper
 
             // Add document information
             foreach ($results as &$result) {
-                $documentInfo = await(DB::table('documents')
+                $documentInfo = await(RAGDB::ragTable('documents')
                     ->find($result['document_id']));
 
                 $result['document'] = $documentInfo;
@@ -259,13 +259,11 @@ class RAGHelper
         return Async::async(function () use ($chunksTable): array {
             $report = [];
 
-            // Get table statistics
-            $stats = await(DB::table($chunksTable)->getVectorStatistics());
+            $stats = await(RAGDB::ragTable($chunksTable)->getVectorStatistics());
             $report['table_stats'] = $stats;
 
-            // Analyze query performance
-            $sampleVector = array_fill(0, 1536, 0.1); // Sample vector for testing
-            $performance = await(DB::table($chunksTable)->analyzeVectorPerformance($sampleVector));
+            $sampleVector = array_fill(0, 1536, 0.1); 
+            $performance = await(RAGDB::ragTable($chunksTable)->analyzeVectorPerformance($sampleVector));
             $report['performance_analysis'] = $performance;
 
             // Check index usage
@@ -326,7 +324,7 @@ class RAGHelper
                 $stats = ['duplicates_removed' => 0, 'low_quality_removed' => 0];
 
                 // Remove chunks with too few tokens
-                $lowQualityCount = await(DB::table($chunksTable)
+                $lowQualityCount = await(RAGDB::ragTable($chunksTable)
                     ->where('token_count', '<', $minTokenCount)
                     ->delete());
 
@@ -357,7 +355,6 @@ class RAGHelper
     ): PromiseInterface {
         // @phpstan-ignore-next-line
         return Async::async(function () use ($chunksTable, $documentsTable): array {
-            // Document statistics
             $docStats = await(DB::raw("
                SELECT 
                    COUNT(*) as total_documents,
@@ -463,7 +460,6 @@ class RAGHelper
      */
     private static function estimateTokenCount(string $text): int
     {
-        // Rough estimation: ~4 characters per token for English text
         return max(1, (int) ceil(strlen($text) / 4));
     }
 
@@ -519,7 +515,6 @@ class RAGHelper
             return 0.0;
         }
 
-        // Simple Jaccard similarity using word sets
         $words1 = array_unique(str_word_count(strtolower($text1), 1));
         $words2 = array_unique(str_word_count(strtolower($text2), 1));
 

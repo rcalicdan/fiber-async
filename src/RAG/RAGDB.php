@@ -1,10 +1,11 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\PostgreSQL\RAG;
+namespace Rcalicdan\FiberAsync\RAG;
 
+use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\PostgreSQL\DB;
-use Rcalicdan\FiberAsync\QueryBuilder\RAG\RAGQueryBuilder;
-use Rcalicdan\FiberAsync\QueryBuilder\Helpers\RAGHelper;
+use Rcalicdan\FiberAsync\RAG\RAGQueryBuilder;
+use Rcalicdan\FiberAsync\RAG\RAGHelper;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -182,7 +183,7 @@ class RAGDB extends DB
         
         $config = array_merge($defaultOptions, $options);
         
-        return \Rcalicdan\FiberAsync\Api\Async::async(function () use ($table, $vectorColumn, $config): bool {
+        return Async::async(function () use ($table, $vectorColumn, $config): bool {
             $ragTable = self::ragTable($table);
             
             // Create HNSW index for cosine similarity (most common for embeddings)

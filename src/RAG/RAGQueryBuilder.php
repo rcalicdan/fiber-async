@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\QueryBuilder\RAG;
+namespace Rcalicdan\FiberAsync\RAG;
 
 use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Api\AsyncPostgreSQL;
@@ -38,7 +38,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
     public function insertWithEmbedding(array $data, array $embedding, ?string $embeddingColumn = null): PromiseInterface
     {
         $embeddingColumn = $embeddingColumn ?? $this->ragConfig['default_vector_column'];
-        
+
         if (empty($embedding)) {
             return Promise::resolve(0);
         }
@@ -63,7 +63,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
         string $idColumn = 'id'
     ): PromiseInterface {
         $embeddingColumn = $embeddingColumn ?? $this->ragConfig['default_vector_column'];
-        
+
         if (empty($embedding)) {
             return Promise::resolve(null);
         }
@@ -82,7 +82,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
     public function insertBatchWithEmbeddings(array $documents, ?string $embeddingColumn = null): PromiseInterface
     {
         $embeddingColumn = $embeddingColumn ?? $this->ragConfig['default_vector_column'];
-        
+
         if (empty($documents)) {
             return Promise::resolve(0);
         }
@@ -91,11 +91,11 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
         foreach ($documents as $doc) {
             $data = $doc['data'];
             $embedding = $doc['embedding'];
-            
+
             if (!empty($embedding)) {
                 $data[$embeddingColumn] = '[' . implode(',', $embedding) . ']';
             }
-            
+
             $batchData[] = $data;
         }
 
@@ -147,7 +147,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
         $textColumn = $textColumn ?? $this->ragConfig['default_content_column'];
         $vectorColumn = $vectorColumn ?? $this->ragConfig['default_vector_column'];
         $limit = $limit ?? $this->ragConfig['default_search_limit'];
-        
+
         $query = $this->hybridSearch($textColumn, $vectorColumn, $textQuery, $queryVector, $textWeight, $vectorWeight, $limit);
         return $query->get();
     }
@@ -168,10 +168,10 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
         ?float $threshold = null
     ): PromiseInterface {
         $threshold = $threshold ?? $this->ragConfig['default_similarity_threshold'];
-        
+
         $query = $this->retrievalWithCitation($queryVector, ['title', 'source', 'url', 'author', 'created_at'], null, $topK)
-                      ->semanticSearch($queryVector, $filters, null, null, $threshold, $topK);
-        
+            ->semanticSearch($queryVector, $filters, null, null, $threshold, $topK);
+
         return $query->get();
     }
 
@@ -229,7 +229,7 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
         string $idColumn = 'id'
     ): PromiseInterface {
         $embeddingColumn = $embeddingColumn ?? $this->ragConfig['default_vector_column'];
-        
+
         if (empty($embedding)) {
             return Promise::resolve(0);
         }
@@ -247,19 +247,19 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
     public function getVectorStatistics(?string $vectorColumn = null): PromiseInterface
     {
         $vectorColumn = $vectorColumn ?? $this->ragConfig['default_vector_column'];
-        
+
         // @phpstan-ignore-next-line
         return Async::async(function () use ($vectorColumn): array {
             // Count total vectors
             $totalCount = await($this->count());
-            
+
             // Get dimension info (assuming all vectors have same dimension)
             $dimensionSql = "SELECT array_length({$vectorColumn}, 1) as dimension FROM {$this->table} LIMIT 1";
             $dimensionResult = await(AsyncPostgreSQL::fetchOne($dimensionSql, []));
-            
+
             // Get null vector count
             $nullCount = await($this->whereNull($vectorColumn)->count());
-            
+
             return [
                 'total_vectors' => $totalCount,
                 'dimension' => $dimensionResult['dimension'] ?? 0,
@@ -269,5 +269,148 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
                 'column' => $vectorColumn
             ];
         })();
+    }
+
+    /**
+     * Analyze vector search performance with sample queries.
+     *
+     * @param  array<float>  $sampleVector  Sample vector for performance testing.
+     * @param  string  $vectorColumn  The vector column name.
+     * @return PromiseInterface<array<string, mixed>> A promise that resolves to performance analysis.
+     */
+    public function analyzeVectorPerformance(
+        array $sampleVector,
+        ?string $vectorColumn = null
+    ): PromiseInterface {
+        $vectorColumn = $vectorColumn ?? $this->ragConfig['default_vector_column'];
+
+        // @phpstan-ignore-next-line
+        return Async::async(function () use ($sampleVector, $vectorColumn): array {
+            $vectorString = '[' . implode(',', $sampleVector) . ']';
+
+            // Test cosine similarity performance
+            $startTime = microtime(true);
+
+            $cosineQuery = "
+            EXPLAIN (ANALYZE, BUFFERS) 
+            SELECT id, ({$vectorColumn} <=> '{$vectorString}') as distance 
+            FROM {$this->table} 
+            WHERE {$vectorColumn} IS NOT NULL 
+            ORDER BY {$vectorColumn} <=> '{$vectorString}' 
+            LIMIT 10
+        ";
+
+            $cosineResult = await(AsyncPostgreSQL::query($cosineQuery, []));
+            $cosineTime = microtime(true) - $startTime;
+
+            // Test L2 distance performance
+            $startTime = microtime(true);
+
+            $l2Query = "
+            EXPLAIN (ANALYZE, BUFFERS) 
+            SELECT id, ({$vectorColumn} <-> '{$vectorString}') as distance 
+            FROM {$this->table} 
+            WHERE {$vectorColumn} IS NOT NULL 
+            ORDER BY {$vectorColumn} <-> '{$vectorString}' 
+            LIMIT 10
+        ";
+
+            $l2Result = await(AsyncPostgreSQL::query($l2Query, []));
+            $l2Time = microtime(true) - $startTime;
+
+            // Parse execution plans for key metrics
+            $cosineMetrics = $this->parseExecutionPlan($cosineResult);
+            $l2Metrics = $this->parseExecutionPlan($l2Result);
+
+            return [
+                'cosine_similarity' => [
+                    'execution_time_ms' => round($cosineTime * 1000, 2),
+                    'plan_metrics' => $cosineMetrics
+                ],
+                'l2_distance' => [
+                    'execution_time_ms' => round($l2Time * 1000, 2),
+                    'plan_metrics' => $l2Metrics
+                ],
+                'recommendations' => $this->generatePerformanceRecommendations($cosineMetrics, $l2Metrics)
+            ];
+        })();
+    }
+
+    /**
+     * Parse PostgreSQL execution plan for key metrics.
+     *
+     * @param  array<array<string, mixed>>  $planResult  Execution plan result.
+     * @return array<string, mixed> Parsed metrics.
+     */
+    private function parseExecutionPlan(array $planResult): array
+    {
+        $metrics = [
+            'total_cost' => 0,
+            'actual_time' => 0,
+            'rows_examined' => 0,
+            'index_used' => false,
+            'sequential_scan' => false
+        ];
+
+        foreach ($planResult as $row) {
+            $plan = $row['QUERY PLAN'] ?? '';
+
+            // Extract cost information
+            if (preg_match('/cost=([\d.]+)\.\.([\d.]+)/', $plan, $matches)) {
+                $metrics['total_cost'] = (float) $matches[2];
+            }
+
+            // Extract actual time
+            if (preg_match('/actual time=([\d.]+)\.\.([\d.]+)/', $plan, $matches)) {
+                $metrics['actual_time'] = (float) $matches[2];
+            }
+
+            // Extract rows
+            if (preg_match('/rows=(\d+)/', $plan, $matches)) {
+                $metrics['rows_examined'] = (int) $matches[1];
+            }
+
+            // Check for index usage
+            if (strpos($plan, 'Index Scan') !== false || strpos($plan, 'Bitmap Index Scan') !== false) {
+                $metrics['index_used'] = true;
+            }
+
+            // Check for sequential scan
+            if (strpos($plan, 'Seq Scan') !== false) {
+                $metrics['sequential_scan'] = true;
+            }
+        }
+
+        return $metrics;
+    }
+
+    /**
+     * Generate performance recommendations based on metrics.
+     *
+     * @param  array<string, mixed>  $cosineMetrics  Cosine similarity metrics.
+     * @param  array<string, mixed>  $l2Metrics  L2 distance metrics.
+     * @return array<string> Performance recommendations.
+     */
+    private function generatePerformanceRecommendations(array $cosineMetrics, array $l2Metrics): array
+    {
+        $recommendations = [];
+
+        if ($cosineMetrics['sequential_scan'] || $l2Metrics['sequential_scan']) {
+            $recommendations[] = 'Sequential scan detected - ensure vector indexes are created and being used';
+        }
+
+        if ($cosineMetrics['actual_time'] > 100 || $l2Metrics['actual_time'] > 100) {
+            $recommendations[] = 'Query execution time is high - consider tuning HNSW parameters or creating additional indexes';
+        }
+
+        if (!$cosineMetrics['index_used'] && !$l2Metrics['index_used']) {
+            $recommendations[] = 'No vector indexes are being used - create HNSW or IVFFlat indexes for better performance';
+        }
+
+        if ($cosineMetrics['total_cost'] > 10000 || $l2Metrics['total_cost'] > 10000) {
+            $recommendations[] = 'High query cost detected - consider increasing work_mem or shared_buffers PostgreSQL settings';
+        }
+
+        return $recommendations;
     }
 }
