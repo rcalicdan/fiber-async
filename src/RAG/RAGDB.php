@@ -84,10 +84,10 @@ class RAGDB extends DB
         return self::ragTable($table)->performHybridSearch(
             $textQuery,
             $queryVector,
-            $options['text_column'] ?? null,
-            $options['vector_column'] ?? null,
             $options['text_weight'] ?? 0.3,
             $options['vector_weight'] ?? 0.7,
+            $options['text_column'] ?? null,
+            $options['vector_column'] ?? null,
             $options['limit'] ?? null
         );
     }

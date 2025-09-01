@@ -141,10 +141,10 @@ class RAGQueryBuilder extends RAGQueryBuilderBase
     public function performHybridSearch(
         string $textQuery,
         array $queryVector,
-        string $textColumn,
-        string $vectorColumn,
         float $textWeight = 0.3,
         float $vectorWeight = 0.7,
+        ?string $textColumn = null,
+        ?string $vectorColumn = null,
         ?int $limit = null
     ): PromiseInterface {
         $textColumn ??= $this->ragConfig['default_content_column'];
