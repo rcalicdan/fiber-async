@@ -231,40 +231,4 @@ class PDOQueryBuilder
 
         return AsyncPDO::execute($sql, $this->getCompiledBindings());
     }
-
-    /**
-     * Execute a raw SQL query.
-     *
-     * @param  string  $sql  The raw SQL query.
-     * @param  array<mixed>  $bindings  The parameter bindings for the query.
-     * @return PromiseInterface<array<int, array<string, mixed>>> A promise that resolves to the query results.
-     */
-    public function raw(string $sql, array $bindings = []): PromiseInterface
-    {
-        return AsyncPDO::query($sql, $bindings);
-    }
-
-    /**
-     * Execute a raw SQL query and return the first result.
-     *
-     * @param  string  $sql  The raw SQL query.
-     * @param  array<mixed>  $bindings  The parameter bindings for the query.
-     * @return PromiseInterface<array<string, mixed>|false> A promise that resolves to the first result or false.
-     */
-    public function rawFirst(string $sql, array $bindings = []): PromiseInterface
-    {
-        return AsyncPDO::fetchOne($sql, $bindings);
-    }
-
-    /**
-     * Execute a raw SQL query and return a single value.
-     *
-     * @param  string  $sql  The raw SQL query.
-     * @param  array<mixed>  $bindings  The parameter bindings for the query.
-     * @return PromiseInterface<mixed> A promise that resolves to a single value.
-     */
-    public function rawValue(string $sql, array $bindings = []): PromiseInterface
-    {
-        return AsyncPDO::fetchValue($sql, $bindings);
-    }
 }

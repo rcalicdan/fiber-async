@@ -45,7 +45,6 @@ class DB
                throw new \RuntimeException('MySQLi connection configuration must be an array.');
            }
 
-           // Validate required connection parameters
            $required = ['host', 'database', 'username'];
            foreach ($required as $key) {
                if (!isset($connectionConfig[$key])) {

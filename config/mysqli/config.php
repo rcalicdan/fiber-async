@@ -2,7 +2,6 @@
 
 return [
     'connection' => [
-        'driver' => 'mysql',
         'host' => $_ENV['DB_HOST_MYSQL'] ?? $_ENV['DB_HOST'] ?? '127.0.0.1',
         'port' => (int) ($_ENV['DB_PORT_MYSQL'] ?? $_ENV['DB_PORT'] ?? 3306),
         'database' => $_ENV['DB_DATABASE_MYSQL'] ?? $_ENV['DB_DATABASE'] ?? 'test',

@@ -3,7 +3,7 @@
 namespace Rcalicdan\FiberAsync\QueryBuilder;
 
 use Rcalicdan\FiberAsync\Api\Async;
-use Rcalicdan\FiberAsync\Api\AsyncMySQLi;
+use Rcalicdan\FiberAsync\Api\AsyncPostgreSQL;
 use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryBuilderCoreTrait;
@@ -15,7 +15,7 @@ use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryDebugTrait;
 use Rcalicdan\FiberAsync\QueryBuilder\Traits\SqlBuilderTrait;
 
 
-class MysqliQueryBuilder
+class PostgresQueryBuilder
 {
     use QueryBuilderCoreTrait,
         QueryConditionsTrait,
@@ -46,7 +46,7 @@ class MysqliQueryBuilder
     {
         $sql = $this->buildSelectQuery();
 
-        return AsyncMySQLi::query($sql, $this->getCompiledBindings());
+        return AsyncPostgreSQL::query($sql, $this->getCompiledBindings());
     }
 
     /**
@@ -60,7 +60,7 @@ class MysqliQueryBuilder
         $instanceWithLimit = $this->limit(1);
         $sql = $instanceWithLimit->buildSelectQuery();
 
-        return AsyncMySQLi::fetchOne($sql, $instanceWithLimit->getCompiledBindings());
+        return AsyncPostgreSQL::fetchOne($sql, $instanceWithLimit->getCompiledBindings());
     }
 
     /**
@@ -125,7 +125,7 @@ class MysqliQueryBuilder
     {
         $sql = $this->buildCountQuery($column);
         /** @var PromiseInterface<int> */
-        $promise = AsyncMySQLi::fetchValue($sql, $this->getCompiledBindings());
+        $promise = AsyncPostgreSQL::fetchValue($sql, $this->getCompiledBindings());
 
         return $promise;
     }
@@ -158,7 +158,7 @@ class MysqliQueryBuilder
         }
         $sql = $this->buildInsertQuery($data);
 
-        return AsyncMySQLi::execute($sql, array_values($data));
+        return AsyncPostgreSQL::execute($sql, array_values($data));
     }
 
     /**
@@ -181,7 +181,7 @@ class MysqliQueryBuilder
             }
         }
 
-        return AsyncMySQLi::execute($sql, $bindings);
+        return AsyncPostgreSQL::execute($sql, $bindings);
     }
 
     /**
@@ -210,7 +210,7 @@ class MysqliQueryBuilder
         $whereBindings = $this->getCompiledBindings();
         $bindings = array_merge(array_values($data), $whereBindings);
 
-        return AsyncMySQLi::execute($sql, $bindings);
+        return AsyncPostgreSQL::execute($sql, $bindings);
     }
 
     /**
@@ -222,6 +222,6 @@ class MysqliQueryBuilder
     {
         $sql = $this->buildDeleteQuery();
 
-        return AsyncMySQLi::execute($sql, $this->getCompiledBindings());
+        return AsyncPostgreSQL::execute($sql, $this->getCompiledBindings());
     }
 }
