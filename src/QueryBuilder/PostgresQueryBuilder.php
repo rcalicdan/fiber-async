@@ -180,6 +180,32 @@ class PostgresQueryBuilder extends PostgresQueryBuilderBase
     }
 
     /**
+     * PostgreSQL UPSERT operation (INSERT ... ON CONFLICT).
+     *
+     * @param  array<string, mixed>  $data  The data to insert.
+     * @param  array<string>  $conflictColumns  Columns that define the conflict.
+     * @param  array<string, mixed>  $updateData  Data to update on conflict (use 'EXCLUDED' for excluded values).
+     * @return PromiseInterface<int> A promise that resolves to the number of affected rows.
+     */
+    public function upsert(array $data, array $conflictColumns, array $updateData = []): PromiseInterface
+    {
+        if ($data === []) {
+            return Promise::resolve(0);
+        }
+        
+        $sql = $this->buildUpsertQuery($data, $conflictColumns, $updateData);
+        $bindings = array_values($data);
+        
+        foreach ($updateData as $value) {
+            if ($value !== 'EXCLUDED') {
+                $bindings[] = $value;
+            }
+        }
+        
+        return AsyncPostgreSQL::execute($sql, $bindings);
+    }
+
+    /**
      * Create a new record (alias for insert).
      *
      * @param  array<string, mixed>  $data  The data to insert as column => value pairs.
