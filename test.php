@@ -7,6 +7,6 @@ use Rcalicdan\FiberAsync\Promise\Promise;
 require 'vendor/autoload.php';
 
 run(function (){
-    $results = await(DB::table('users')->first());
+    $results = await(DB::table('users')->where('id', 2)->first());
     print_r($results);
 });

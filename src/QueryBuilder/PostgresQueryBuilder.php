@@ -6,27 +6,14 @@ use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Api\AsyncPostgreSQL;
 use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryBuilderCoreTrait;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryConditionsTrait;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryJoinTrait;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryGroupingTrait;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryAdvancedConditionsTrait;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\QueryDebugTrait;
-use Rcalicdan\FiberAsync\QueryBuilder\Traits\SqlBuilderTrait;
 
-
-class PostgresQueryBuilder
+/**
+ * PostgreSQL query builder with async execution methods.
+ */
+class PostgresQueryBuilder extends PostgresQueryBuilderBase
 {
-    use QueryBuilderCoreTrait,
-        QueryConditionsTrait,
-        QueryJoinTrait,
-        QueryGroupingTrait,
-        QueryAdvancedConditionsTrait,
-        SqlBuilderTrait,
-        QueryDebugTrait;
-
     /**
-     * Create a new AsyncQueryBuilder instance.
+     * Create a new PostgresQueryBuilder instance.
      *
      * @param  string  $table  The table name to query.
      */
@@ -45,7 +32,6 @@ class PostgresQueryBuilder
     public function get(): PromiseInterface
     {
         $sql = $this->buildSelectQuery();
-
         return AsyncPostgreSQL::query($sql, $this->getCompiledBindings());
     }
 
@@ -56,10 +42,8 @@ class PostgresQueryBuilder
      */
     public function first(): PromiseInterface
     {
-        // A new instance with a limit is created for this specific query execution
         $instanceWithLimit = $this->limit(1);
         $sql = $instanceWithLimit->buildSelectQuery();
-
         return AsyncPostgreSQL::fetchOne($sql, $instanceWithLimit->getCompiledBindings());
     }
 
@@ -91,10 +75,8 @@ class PostgresQueryBuilder
             $result = await($this->find($id, $column));
             if ($result === null || $result === false) {
                 $idString = is_scalar($id) ? (string) $id : 'complex_type';
-
                 throw new \RuntimeException("Record not found with {$column} = {$idString}");
             }
-
             return $result;
         })();
     }
@@ -110,7 +92,6 @@ class PostgresQueryBuilder
         // @phpstan-ignore-next-line
         return Async::async(function () use ($column): mixed {
             $result = await($this->select($column)->first());
-
             return ($result !== false && isset($result[$column])) ? $result[$column] : null;
         })();
     }
@@ -126,7 +107,6 @@ class PostgresQueryBuilder
         $sql = $this->buildCountQuery($column);
         /** @var PromiseInterface<int> */
         $promise = AsyncPostgreSQL::fetchValue($sql, $this->getCompiledBindings());
-
         return $promise;
     }
 
@@ -140,7 +120,6 @@ class PostgresQueryBuilder
         // @phpstan-ignore-next-line
         return Async::async(function (): bool {
             $count = await($this->count());
-
             return $count > 0;
         })();
     }
@@ -157,8 +136,24 @@ class PostgresQueryBuilder
             return Promise::resolve(0);
         }
         $sql = $this->buildInsertQuery($data);
-
         return AsyncPostgreSQL::execute($sql, array_values($data));
+    }
+
+    /**
+     * Insert a single record and return the inserted ID.
+     *
+     * @param  array<string, mixed>  $data  The data to insert as column => value pairs.
+     * @param  string  $idColumn  The name of the ID column to return.
+     * @return PromiseInterface<mixed> A promise that resolves to the inserted ID value.
+     */
+    public function insertGetId(array $data, string $idColumn = 'id'): PromiseInterface
+    {
+        if ($data === []) {
+            return Promise::resolve(null);
+        }
+        
+        $sql = $this->buildInsertReturningQuery($data, $idColumn);
+        return AsyncPostgreSQL::fetchValue($sql, array_values($data));
     }
 
     /**
@@ -221,7 +216,6 @@ class PostgresQueryBuilder
     public function delete(): PromiseInterface
     {
         $sql = $this->buildDeleteQuery();
-
         return AsyncPostgreSQL::execute($sql, $this->getCompiledBindings());
     }
 }
