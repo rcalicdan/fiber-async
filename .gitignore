@@ -6,3 +6,16 @@ cache/
 .env
 /php-uv
 
+# PHP UV extension files
+*.so
+*.dll
+php_uv.*
+uv.so
+uv.dll
+
+# Build artifacts
+/ext/
+/build/
+config.log
+config.status
+Makefile
