@@ -19,3 +19,5 @@ uv.dll
 config.log
 config.status
 Makefile
+/examples/
+/test/
