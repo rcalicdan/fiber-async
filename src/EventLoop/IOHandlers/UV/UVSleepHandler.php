@@ -19,14 +19,11 @@ final class UvSleepHandler extends SleepHandler
 
     public function shouldSleep(bool $hasImmediateWork): bool
     {
-        // When using UV, let the UV loop handle sleeping/polling
-        // Don't sleep manually when UV loop is alive
         return false;
     }
 
     public function calculateOptimalSleep(): int
     {
-        // UV handles its own timing, no manual sleep needed
         return 0;
     }
 

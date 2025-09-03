@@ -20,23 +20,17 @@ final class UvTimerManager extends TimerManager
     {
         $timerId = uniqid('uv_timer_', true);
         $this->timerCallbacks[$timerId] = $callback;
-        
+
         $uvTimer = \uv_timer_init($this->uvLoop);
         $this->uvTimers[$timerId] = $uvTimer;
-        
-        // Use microsecond precision and round up to ensure minimum delay
-        $delayMs = (int) ceil($delay * 1000);
-        
-        // Store creation time for debugging
-        $creationTime = microtime(true);
-        
-        echo "UV Timer created: ID=$timerId, delay={$delay}s ({$delayMs}ms) at " . number_format($creationTime, 6) . "\n";
-        
-        \uv_timer_start($uvTimer, $delayMs, 0, function($timer) use ($callback, $timerId, $delay, $creationTime) {
-            $fireTime = microtime(true);
-            $actualDelay = ($fireTime - $creationTime) * 1000;
-            echo "UV Timer fired: ID=$timerId, expected={$delay}s, actual=" . number_format($actualDelay, 2) . "ms\n";
-            
+
+        $delayMs = (int) round($delay * 1000);
+
+        if ($delay > 0 && $delayMs === 0) {
+            $delayMs = 1;
+        }
+
+        \uv_timer_start($uvTimer, $delayMs, 0, function ($timer) use ($callback, $timerId) {
             try {
                 $callback();
             } catch (\Throwable $e) {
@@ -49,7 +43,7 @@ final class UvTimerManager extends TimerManager
                 }
             }
         });
-        
+
         return $timerId;
     }
 
@@ -63,7 +57,7 @@ final class UvTimerManager extends TimerManager
             unset($this->timerCallbacks[$timerId]);
             return true;
         }
-        
+
         return parent::cancelTimer($timerId);
     }
 
@@ -90,7 +84,7 @@ final class UvTimerManager extends TimerManager
         }
         $this->uvTimers = [];
         $this->timerCallbacks = [];
-        
+
         parent::clearAllTimers();
     }
 
@@ -99,7 +93,7 @@ final class UvTimerManager extends TimerManager
         if (!empty($this->uvTimers)) {
             return null;
         }
-        
+
         return parent::getNextTimerDelay();
     }
 }

@@ -264,10 +264,14 @@ class EventLoop implements EventLoopInterface
                 $this->optimizeLoop();
             }
 
+            // Only sleep if NOT using UV
             if (!$isUsingUv && $this->sleepHandler->shouldSleep($hasImmediateWork)) {
                 $sleepTime = $this->sleepHandler->calculateOptimalSleep();
                 $this->sleepHandler->sleep($sleepTime);
             }
+
+            // When using UV, let the UV loop control timing
+            // Don't add any manual sleep - UV will handle it
 
             if ($this->iterationCount >= self::MAX_ITERATIONS) {
                 $this->iterationCount = 0;
