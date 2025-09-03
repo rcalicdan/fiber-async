@@ -4,4 +4,5 @@ vendor/
 .vscode/
 cache/
 .env
+/php-uv
 
