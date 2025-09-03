@@ -69,7 +69,7 @@ class DatabaseConfigFactory
      * @param  string  $database  Path to the SQLite database file or ':memory:' for an in-memory database.
      * @return array<string, mixed> The complete SQLite configuration array.
      */
-    public static function sqlite(string $database = ':memory:'): array
+    public static function sqlite(string $database = 'file::memory:?cache=shared'): array
     {
         return [
             'driver' => 'sqlite',
