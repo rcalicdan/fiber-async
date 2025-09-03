@@ -4,13 +4,11 @@ namespace Rcalicdan\FiberAsync\EventLoop\Managers\Uv;
 
 use Rcalicdan\FiberAsync\EventLoop\Managers\TimerManager;
 
-/**
- * UV-based timer manager using libuv for high-performance timing
- */
 final class UvTimerManager extends TimerManager
 {
     private $uvLoop;
     private array $uvTimers = [];
+    private array $timerCallbacks = [];
 
     public function __construct($uvLoop = null)
     {
@@ -20,22 +18,35 @@ final class UvTimerManager extends TimerManager
 
     public function addTimer(float $delay, callable $callback): string
     {
-        $timerId = parent::addTimer($delay, $callback);
+        $timerId = uniqid('uv_timer_', true);
+        $this->timerCallbacks[$timerId] = $callback;
         
         $uvTimer = \uv_timer_init($this->uvLoop);
         $this->uvTimers[$timerId] = $uvTimer;
         
-        $delayMs = (int)($delay * 1000);
+        // Use microsecond precision and round up to ensure minimum delay
+        $delayMs = (int) ceil($delay * 1000);
         
-        \uv_timer_start($uvTimer, $delayMs, 0, function($timer) use ($callback, $timerId) {
+        // Store creation time for debugging
+        $creationTime = microtime(true);
+        
+        echo "UV Timer created: ID=$timerId, delay={$delay}s ({$delayMs}ms) at " . number_format($creationTime, 6) . "\n";
+        
+        \uv_timer_start($uvTimer, $delayMs, 0, function($timer) use ($callback, $timerId, $delay, $creationTime) {
+            $fireTime = microtime(true);
+            $actualDelay = ($fireTime - $creationTime) * 1000;
+            echo "UV Timer fired: ID=$timerId, expected={$delay}s, actual=" . number_format($actualDelay, 2) . "ms\n";
+            
             try {
                 $callback();
             } catch (\Throwable $e) {
                 error_log("UV Timer callback error: " . $e->getMessage());
             } finally {
-                \uv_close($timer);
-                unset($this->uvTimers[$timerId]);
-                parent::cancelTimer($timerId);
+                if (isset($this->uvTimers[$timerId])) {
+                    \uv_close($timer);
+                    unset($this->uvTimers[$timerId]);
+                    unset($this->timerCallbacks[$timerId]);
+                }
             }
         });
         
@@ -44,27 +55,26 @@ final class UvTimerManager extends TimerManager
 
     public function cancelTimer(string $timerId): bool
     {
-        $parentResult = parent::cancelTimer($timerId);
-        
         if (isset($this->uvTimers[$timerId])) {
             $uvTimer = $this->uvTimers[$timerId];
             \uv_timer_stop($uvTimer);
             \uv_close($uvTimer);
             unset($this->uvTimers[$timerId]);
+            unset($this->timerCallbacks[$timerId]);
             return true;
         }
         
-        return $parentResult;
+        return parent::cancelTimer($timerId);
     }
 
-    /**
-     * Process timers - MUST return bool to match parent signature
-     */
+    public function hasTimer(string $timerId): bool
+    {
+        return isset($this->uvTimers[$timerId]) || parent::hasTimer($timerId);
+    }
+
     public function processTimers(): bool
     {
-        $parentWorkDone = parent::processTimers();
-        
-        return !empty($this->uvTimers) || $parentWorkDone;
+        return !empty($this->uvTimers) || parent::processTimers();
     }
 
     public function hasTimers(): bool
@@ -74,11 +84,12 @@ final class UvTimerManager extends TimerManager
 
     public function clearAllTimers(): void
     {
-        foreach ($this->uvTimers as $uvTimer) {
+        foreach ($this->uvTimers as $timerId => $uvTimer) {
             \uv_timer_stop($uvTimer);
             \uv_close($uvTimer);
         }
         $this->uvTimers = [];
+        $this->timerCallbacks = [];
         
         parent::clearAllTimers();
     }
@@ -86,7 +97,7 @@ final class UvTimerManager extends TimerManager
     public function getNextTimerDelay(): ?float
     {
         if (!empty($this->uvTimers)) {
-            return null; 
+            return null;
         }
         
         return parent::getNextTimerDelay();

@@ -152,6 +152,11 @@ class EventLoop implements EventLoopInterface
         return $this->timerManager->addTimer($delay, $callback);
     }
 
+    public function hasTimers(): bool
+    {
+        return $this->timerManager->hasTimers();
+    }
+
     /**
      * Cancel a previously scheduled timer.
      *

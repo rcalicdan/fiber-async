@@ -14,10 +14,10 @@ final class UvWorkHandler extends WorkHandler
 {
     private $uvLoop;
     
-    // UV run mode constants (hardcoded since they're not defined)
-    private const UV_RUN_DEFAULT = 0;  // Run until no more active handles
-    private const UV_RUN_ONCE = 1;     // Run until at least one event is processed
-    private const UV_RUN_NOWAIT = 2;   // Process available events without blocking
+    // UV run mode constants
+    private const UV_RUN_DEFAULT = 0;
+    private const UV_RUN_ONCE = 1;
+    private const UV_RUN_NOWAIT = 2;
 
     public function __construct(
         $uvLoop,
@@ -46,28 +46,17 @@ final class UvWorkHandler extends WorkHandler
     {
         $workDone = false;
 
+        // 1. Process next-tick callbacks first
         if ($this->tickHandler->processNextTickCallbacks()) {
             $workDone = true;
         }
 
-        // Use uv_run with mode 2 (UV_RUN_NOWAIT) for non-blocking execution
+        // 2. Let UV handle its events (including timers)
         if ($this->runUvLoop()) {
             $workDone = true;
         }
 
-        if ($this->timerManager->processTimers()) {
-            $workDone = true;
-        }
-
-        if ($this->socketManager->processSockets()) {
-            $workDone = true;
-        }
-
-        if ($this->streamManager->hasWatchers()) {
-            $this->streamManager->processStreams();
-            $workDone = true;
-        }
-
+        // 3. Process non-UV components
         if ($this->fiberManager->processFibers()) {
             $workDone = true;
         }
@@ -80,6 +69,7 @@ final class UvWorkHandler extends WorkHandler
             $workDone = true;
         }
 
+        // 4. Process deferred callbacks
         if ($this->tickHandler->processDeferredCallbacks()) {
             $workDone = true;
         }
@@ -90,6 +80,7 @@ final class UvWorkHandler extends WorkHandler
     private function runUvLoop(): bool
     {
         try {
+            // Use UV_RUN_NOWAIT to process available events without blocking
             $result = \uv_run($this->uvLoop, self::UV_RUN_NOWAIT);
             return $result > 0;
         } catch (\Error | \Exception $e) {

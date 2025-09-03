@@ -19,22 +19,20 @@ final class UvSleepHandler extends SleepHandler
 
     public function shouldSleep(bool $hasImmediateWork): bool
     {
-        return !$hasImmediateWork && 
-               !$this->fiberManager->hasActiveFibers() &&
-               !\uv_loop_alive($this->uvLoop);
+        // When using UV, let the UV loop handle sleeping/polling
+        // Don't sleep manually when UV loop is alive
+        return false;
     }
 
     public function calculateOptimalSleep(): int
     {
+        // UV handles its own timing, no manual sleep needed
         return 0;
     }
 
     public function sleep(int $microseconds): void
     {
-        if (\uv_loop_alive($this->uvLoop)) {
-            \uv_run_once($this->uvLoop);
-        } else {
-            parent::sleep($microseconds);
-        }
+        // UV loop handles timing, don't manually sleep
+        // This prevents interference with UV's timing mechanisms
     }
 }
