@@ -9,27 +9,27 @@ use Rcalicdan\FiberAsync\EventLoop\Managers\TimerManager;
  * Decides when the event loop should sleep to conserve CPU,
  * based on pending timers and active fibers.
  */
-final class SleepHandler
+class SleepHandler
 {
     /**
      * @var TimerManager Manages scheduled timers and their delays.
      */
-    private TimerManager $timerManager;
+    protected TimerManager $timerManager;
 
     /**
      * @var FiberManager Manages currently active fibers.
      */
-    private FiberManager $fiberManager;
+    protected FiberManager $fiberManager;
 
     /**
      * Minimum sleep duration in microseconds to actually perform usleep.
      */
-    private const MIN_SLEEP_THRESHOLD = 50;
+    protected const MIN_SLEEP_THRESHOLD = 50;
 
     /**
      * Maximum sleep duration in microseconds to avoid long pauses.
      */
-    private const MAX_SLEEP_DURATION = 500;
+    protected const MAX_SLEEP_DURATION = 500;
 
     /**
      * @param  TimerManager  $timerManager  The timer manager to query next timer delays.

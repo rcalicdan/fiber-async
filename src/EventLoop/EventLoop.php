@@ -3,6 +3,8 @@
 namespace Rcalicdan\FiberAsync\EventLoop;
 
 use Fiber;
+use Rcalicdan\FiberAsync\EventLoop\Detectors\UvDetector;
+use Rcalicdan\FiberAsync\EventLoop\Factories\EventLoopComponentFactory;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\ActivityHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\SleepHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\StateHandler;
@@ -81,27 +83,21 @@ class EventLoop implements EventLoopInterface
     private int $iterationCount = 0;
     private float $lastOptimizationCheck = 0;
     private const OPTIMIZATION_INTERVAL = 1.0;
-    private const MAX_ITERATIONS = 1000000; // Reset counter at 1M iterations
+    private const MAX_ITERATIONS = 1000000;
 
-    /**
-     * Initialize the event loop with all required managers and handlers.
-     *
-     * Private constructor to enforce singleton pattern. Sets up all managers
-     * and handlers with proper dependency injection.
-     */
     private function __construct()
     {
-        $this->timerManager = new TimerManager;
+        $this->timerManager = EventLoopComponentFactory::createTimerManager();
         $this->httpRequestManager = new HttpRequestManager;
-        $this->streamManager = new StreamManager;
+        $this->streamManager = EventLoopComponentFactory::createStreamManager();
         $this->fiberManager = new FiberManager;
         $this->tickHandler = new TickHandler;
         $this->activityHandler = new ActivityHandler;
         $this->stateHandler = new StateHandler;
         $this->fileManager = new FileManager;
-        $this->socketManager = new SocketManager;
+        $this->socketManager = EventLoopComponentFactory::createSocketManager();
 
-        $this->workHandler = new WorkHandler(
+        $this->workHandler = EventLoopComponentFactory::createWorkHandler(
             timerManager: $this->timerManager,
             httpRequestManager: $this->httpRequestManager,
             streamManager: $this->streamManager,
@@ -111,10 +107,15 @@ class EventLoop implements EventLoopInterface
             socketManager: $this->socketManager,
         );
 
-        $this->sleepHandler = new SleepHandler(
+        $this->sleepHandler = EventLoopComponentFactory::createSleepHandler(
             $this->timerManager,
             $this->fiberManager
         );
+    }
+
+    public function isUsingUv(): bool
+    {
+        return UvDetector::isUvAvailable();
     }
 
     public function getSocketManager(): SocketManager
@@ -248,6 +249,8 @@ class EventLoop implements EventLoopInterface
      */
     public function run(): void
     {
+        $isUsingUv = UvDetector::isUvAvailable();
+
         while ($this->stateHandler->isRunning() && $this->workHandler->hasWork()) {
             $this->iterationCount++;
             $hasImmediateWork = $this->tick();
@@ -256,7 +259,7 @@ class EventLoop implements EventLoopInterface
                 $this->optimizeLoop();
             }
 
-            if ($this->sleepHandler->shouldSleep($hasImmediateWork)) {
+            if (!$isUsingUv && $this->sleepHandler->shouldSleep($hasImmediateWork)) {
                 $sleepTime = $this->sleepHandler->calculateOptimalSleep();
                 $this->sleepHandler->sleep($sleepTime);
             }

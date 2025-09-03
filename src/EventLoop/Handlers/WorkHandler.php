@@ -15,42 +15,42 @@ use Rcalicdan\FiberAsync\EventLoop\Managers\TimerManager;
  * - Timers and fibers
  * - HTTP requests, sockets, streams, and file operations
  */
-final readonly class WorkHandler
+class WorkHandler
 {
     /**
      * @var TimerManager Manages scheduled timers.
      */
-    private TimerManager $timerManager;
+    protected TimerManager $timerManager;
 
     /**
      * @var HttpRequestManager Manages outgoing HTTP requests.
      */
-    private HttpRequestManager $httpRequestManager;
+    protected HttpRequestManager $httpRequestManager;
 
     /**
      * @var StreamManager Manages stream watchers and processing.
      */
-    private StreamManager $streamManager;
+    protected StreamManager $streamManager;
 
     /**
      * @var FiberManager Manages fiber scheduling and execution.
      */
-    private FiberManager $fiberManager;
+    protected FiberManager $fiberManager;
 
     /**
      * @var TickHandler Manages next-tick and deferred callbacks.
      */
-    private TickHandler $tickHandler;
+    protected TickHandler $tickHandler;
 
     /**
      * @var FileManager Manages file system operations.
      */
-    private FileManager $fileManager;
+    protected FileManager $fileManager;
 
     /**
      * @var SocketManager Manages socket watchers and processing.
      */
-    private SocketManager $socketManager;
+    protected SocketManager $socketManager;
 
     /**
      * @param  TimerManager  $timerManager  Timer scheduling/processing.
@@ -145,7 +145,7 @@ final readonly class WorkHandler
      *
      * @return bool True if any I/O work was performed.
      */
-    private function processIOOperations(): bool
+    protected function processIOOperations(): bool
     {
         $workDone = false;
 
