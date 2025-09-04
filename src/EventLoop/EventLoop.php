@@ -113,11 +113,21 @@ class EventLoop implements EventLoopInterface
         );
     }
 
+    /**
+     * Check if event loop is using UV extension.
+     *
+     * @return bool True if UV is available, false otherwise
+     */
     public function isUsingUv(): bool
     {
         return UvDetector::isUvAvailable();
     }
 
+    /**
+     * Get the socket manager.
+     *
+     * @return SocketManager The socket manager instance
+     */
     public function getSocketManager(): SocketManager
     {
         return $this->socketManager;
@@ -264,14 +274,10 @@ class EventLoop implements EventLoopInterface
                 $this->optimizeLoop();
             }
 
-            // Only sleep if NOT using UV
             if (!$isUsingUv && $this->sleepHandler->shouldSleep($hasImmediateWork)) {
                 $sleepTime = $this->sleepHandler->calculateOptimalSleep();
                 $this->sleepHandler->sleep($sleepTime);
             }
-
-            // When using UV, let the UV loop control timing
-            // Don't add any manual sleep - UV will handle it
 
             if ($this->iterationCount >= self::MAX_ITERATIONS) {
                 $this->iterationCount = 0;

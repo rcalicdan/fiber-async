@@ -8,12 +8,13 @@ $loop = EventLoop::getInstance();
 
 echo "Using UV: " . ($loop->isUsingUv() ? "YES" : "NO") . "\n";
 
-// Test timer precision
-$start = microtime(true);
-for ($i = 0; $i < 100; $i++) {
-    $loop->addTimer(0.01 * $i, function () use ($i) {
-        echo "Timer $i fired\n";
+for ($i = 1; $i <= 10; $i++) {
+    $startTime = microtime(true);
+    run(function () {
+        $timers = array_fill(0, 30000, delay(1));
+        await(all($timers));
     });
+    $endTime = microtime(true);
+    $executionTime = $endTime - $startTime;
+    echo "Execution time: " . $executionTime . " seconds\n";
 }
-
-$loop->run();
