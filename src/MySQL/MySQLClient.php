@@ -10,6 +10,7 @@ use Rcalicdan\FiberAsync\MySQL\Handlers\TransactionHandler;
 use Rcalicdan\FiberAsync\MySQL\Protocol\PacketBuilder;
 use Rcalicdan\FiberAsync\MySQL\Traits\LoggingTrait;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use Rcalicdan\FiberAsync\Socket\AsyncSocketOperations;
 use Rcalicdan\MySQLBinaryProtocol\Constants\CapabilityFlags;
 use Rcalicdan\MySQLBinaryProtocol\Factory\DefaultPacketReaderFactory;
 use Rcalicdan\MySQLBinaryProtocol\Frame\Handshake\HandshakeV10;
@@ -26,7 +27,7 @@ class MySQLClient
     private UncompressedPacketReader $packetReader;
     private int $sequenceId = 0;
     private ?Mutex $mutex = null;
-
+    private AsyncSocketOperations $socketOps;
     private ConnectionHandler $connectionHandler;
     private QueryHandler $queryHandler;
     private TransactionHandler $transactionHandler;
@@ -35,6 +36,7 @@ class MySQLClient
     {
         $this->connectionParams = $connectionParams;
         $this->packetReader = (new DefaultPacketReaderFactory)->createWithDefaultSettings();
+        $this->socketOps = new AsyncSocketOperations();
 
         if (isset($connectionParams['debug']) && $connectionParams['debug']) {
             $this->enableDebug();
@@ -79,6 +81,11 @@ class MySQLClient
     public function getSocket(): ?Socket
     {
         return $this->socket;
+    }
+
+    public function getSocketOperations(): AsyncSocketOperations
+    {
+        return $this->socketOps;
     }
 
     public function beginTransaction(TransactionIsolationLevel|string|null $isolationLevel = null): PromiseInterface

@@ -3,6 +3,7 @@
 namespace Rcalicdan\FiberAsync\MySQL\Handlers;
 
 use Rcalicdan\FiberAsync\Api\Async;
+use Rcalicdan\FiberAsync\Api\Timer;
 use Rcalicdan\FiberAsync\MySQL\MySQLClient;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
@@ -34,10 +35,15 @@ class PacketHandler
 
     public function sendPacket(string $payload, int $sequenceId): PromiseInterface
     {
-        $header = $this->buildPacketHeader($payload, $sequenceId);
-        $this->client->debug('Sending packet - Length: '.strlen($payload).", Sequence ID: {$sequenceId}\n");
+        return Async::async(function () use ($payload, $sequenceId) {
+            $header = $this->buildPacketHeader($payload, $sequenceId);
+            $this->client->debug('Sending packet - Length: '.strlen($payload).", Sequence ID: {$sequenceId}\n");
 
-        return $this->client->getSocket()->write($header.$payload);
+            $socket = $this->client->getSocket();
+            $socketOps = $this->client->getSocketOperations();
+
+            return Async::await($socketOps->write($socket, $header.$payload));
+        })();
     }
 
     private function tryProcessExistingBuffer($packetReader): ?string
@@ -63,15 +69,16 @@ class PacketHandler
 
     private function readFromNetworkUntilComplete($socket, $packetReader): string
     {
+        $socketOps = $this->client->getSocketOperations();
+
         while (true) {
             $this->client->debug("Incomplete buffer, reading from socket...\n");
-            $data = await($socket->read(8192));
+            $data = Async::await($socketOps->read($socket, 8192));
 
             $this->validateSocketData($data);
 
             if ($data === '') {
-                await(delay(0));
-
+                Async::await(Timer::delay(0));
                 continue;
             }
 

@@ -3,7 +3,6 @@
 namespace Rcalicdan\FiberAsync\MySQL\Handlers;
 
 use Rcalicdan\FiberAsync\Api\Async;
-use Rcalicdan\FiberAsync\Api\AsyncSocket;
 use Rcalicdan\FiberAsync\MySQL\MySQLClient;
 use Rcalicdan\FiberAsync\MySQL\Protocol\PacketBuilder;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
@@ -79,7 +78,7 @@ class ConnectionHandler
         $connectionString = "tcp://{$params['host']}:{$params['port']}";
         $timeout = $params['timeout'] ?? 10.0;
 
-        $socket = await(AsyncSocket::connect($connectionString, $timeout));
+        $socket = await($this->client->getSocketOperations()->connect($connectionString, $timeout));
         $this->client->setSocket($socket);
     }
 
@@ -117,7 +116,7 @@ class ConnectionHandler
 
         $handshakeParser = new HandshakeParser(
             new HandshakeV10Builder,
-            fn (HandshakeV10 $h) => $this->client->setHandshake($h)
+            fn(HandshakeV10 $h) => $this->client->setHandshake($h)
         );
 
         $handshakeParser($reader);
@@ -134,7 +133,7 @@ class ConnectionHandler
 
     private function logHandshakeInfo(HandshakeV10 $handshake): void
     {
-        $this->client->debug('Handshake received. Server version: '.$handshake->serverVersion."\n");
+        $this->client->debug('Handshake received. Server version: ' . $handshake->serverVersion . "\n");
     }
 
     private function setupPacketBuilder(): void
@@ -167,7 +166,7 @@ class ConnectionHandler
 
     private function closeSocket($socket): void
     {
-        $socket->close();
-        $this->client->setSocket(null);
+        $closedSocket = $this->client->getSocketOperations()->close($socket);
+        $this->client->setSocket($closedSocket);
     }
 }

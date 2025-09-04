@@ -1,20 +1,31 @@
 <?php
 
+use Rcalicdan\FiberAsync\Api\AsyncMySQL;
+use Rcalicdan\FiberAsync\EventLoop\EventLoop;
+use Rcalicdan\FiberAsync\MySQL\MySQLClient;
+
 require_once 'vendor/autoload.php';
 
-use Rcalicdan\FiberAsync\EventLoop\EventLoop;
+AsyncMySQL::init([
+    "host" => "localhost",
+    "port" => 3306,
+    "username" => "hey",
+    "password" => "1234",
+    "database" => "yo",
+]);
 
-$loop = EventLoop::getInstance();
+async(function() {
+   $client = new MySQLClient([
+    "host" => "localhost",
+    "port" => 3306,
+    "username" => "hey",
+    "password" => "1234",
+    "database" => "yo",
+    "debug" => true,
+   ]);
+//    await($client->connect());
+   $results = await($client->query("SELECT * FROM users"));
+   print_r($results);
+});
 
-echo "Using UV: " . ($loop->isUsingUv() ? "YES" : "NO") . "\n";
-
-for ($i = 1; $i <= 10; $i++) {
-    $startTime = microtime(true);
-    run(function () {
-        $timers = array_fill(0, 30000, delay(1));
-        await(all($timers));
-    });
-    $endTime = microtime(true);
-    $executionTime = $endTime - $startTime;
-    echo "Execution time: " . $executionTime . " seconds\n";
-}
+EventLoop::getInstance()->run();
