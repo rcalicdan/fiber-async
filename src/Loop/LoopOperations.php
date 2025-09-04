@@ -66,9 +66,9 @@ class LoopOperations implements LoopOperationsInterface
      * @param  callable|PromiseInterface<mixed>  $asyncOperation  The operation to execute
      * @return mixed The result of the async operation
      */
-    public function run(callable|PromiseInterface $asyncOperation): mixed
+    public function run(callable|PromiseInterface $asyncOperation, bool $resetEventLoop = true): mixed
     {
-        return $this->executionHandler->run($asyncOperation);
+        return $this->executionHandler->run($asyncOperation, $resetEventLoop);
     }
 
     /**

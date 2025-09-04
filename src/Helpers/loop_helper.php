@@ -14,9 +14,27 @@ if (! function_exists('run')) {
      * @param  callable(): mixed|PromiseInterface<mixed>  $asyncOperation  The operation to execute.
      * @return mixed The result of the async operation.
      */
-    function run(callable|PromiseInterface $asyncOperation): mixed
+    function run(callable|PromiseInterface $asyncOperation, bool $resetEventLoop = true): mixed
     {
-        return Task::run($asyncOperation);
+        return Task::run($asyncOperation, $resetEventLoop);
+    }
+}
+
+if (! function_exists('run_stateful')) {
+    /**
+     * Run an async operation with automatic event loop management without resetting event loop 
+     * for persistent and stateful connections.
+     *
+     * This function handles the complete lifecycle: starts the event loop,
+     * executes the operation, waits for completion, and stops the loop.
+     * This is the primary method for running async operations with minimal setup.
+     *
+     * @param  callable(): mixed|PromiseInterface<mixed>  $asyncOperation  The operation to execute.
+     * @return mixed The result of the async operation.
+     */
+    function run_stateful(callable|PromiseInterface $asyncOperation, bool $resetEventLoop = false): mixed
+    {
+        return Task::runStateful($asyncOperation, $resetEventLoop);
     }
 }
 

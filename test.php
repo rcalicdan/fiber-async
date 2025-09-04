@@ -1,31 +1,37 @@
 <?php
 
 use Rcalicdan\FiberAsync\Api\AsyncMySQL;
-use Rcalicdan\FiberAsync\EventLoop\EventLoop;
-use Rcalicdan\FiberAsync\MySQL\MySQLClient;
+use Rcalicdan\FiberAsync\Api\Task;
 
 require_once 'vendor/autoload.php';
 
+echo "=== Initializing AsyncMySQL ===\n";
 AsyncMySQL::init([
     "host" => "localhost",
-    "port" => 3306,
-    "username" => "hey",
-    "password" => "1234",
+    "port" => 3309,
+    "username" => "root",
+    "password" => "Reymart1234",
     "database" => "yo",
-]);
+    "debug" => false,
+]); 
 
-async(function() {
-   $client = new MySQLClient([
-    "host" => "localhost",
-    "port" => 3306,
-    "username" => "hey",
-    "password" => "1234",
-    "database" => "yo",
-    "debug" => true,
-   ]);
-//    await($client->connect());
-   $results = await($client->query("SELECT * FROM users"));
-   print_r($results);
-});
+for ($i = 1; $i <= 3; $i++) {
+    echo "\n=== ITERATION $i START ===\n";
+    $startTime = microtime(true);
+    
+    Task::runStateful(function () use ($i) {
+        await(all([
+            AsyncMySQL::query("SELECT SLEEP(1)"),
+            AsyncMySQL::query("SELECT SLEEP(1)"),
+            AsyncMySQL::query("SELECT SLEEP(1)"),
+        ]));
+    });
+    
+    $endTime = microtime(true);
+    $executionTime = $endTime - $startTime;
+    echo "[TEST-$i] Execution time: " . $executionTime . " seconds\n";
+    echo "=== ITERATION $i END ===\n";
+}
 
-EventLoop::getInstance()->run();
+echo "\n=== Cleanup ===\n";
+AsyncMySQL::reset();

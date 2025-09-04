@@ -22,7 +22,7 @@ final class LoopExecutionHandler
     /**
      * @param  callable|PromiseInterface<mixed>  $asyncOperation
      */
-    public function run(callable|PromiseInterface $asyncOperation): mixed
+    public function run(callable|PromiseInterface $asyncOperation, bool $resetEventLoop = true): mixed
     {
         if (self::$isRunning) {
             throw new RuntimeException('Cannot call run() while already running. Use await() instead.');
@@ -60,7 +60,9 @@ final class LoopExecutionHandler
             return $result;
         } finally {
             self::$isRunning = false;
-            EventLoop::reset();
+            if ($resetEventLoop) {
+                EventLoop::reset();
+            }
         }
     }
 

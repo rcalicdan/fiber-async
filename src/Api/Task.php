@@ -69,9 +69,14 @@ final class Task
      * @param  callable(): mixed|PromiseInterface<mixed>  $asyncOperation  The operation to execute.
      * @return mixed The result of the async operation.
      */
-    public static function run(callable|PromiseInterface $asyncOperation): mixed
+    public static function run(callable|PromiseInterface $asyncOperation, bool $resetEventLoop = true): mixed
     {
-        return self::getLoopOperations()->run($asyncOperation);
+        return self::getLoopOperations()->run($asyncOperation, $resetEventLoop);
+    }
+
+    public static function runStateful(callable|PromiseInterface $asyncOperation, bool $resetEventLoop = false): mixed
+    {
+        return self::getLoopOperations()->run($asyncOperation, $resetEventLoop);
     }
 
     /**
