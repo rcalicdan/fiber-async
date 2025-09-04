@@ -2,116 +2,57 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\ValueObjects;
 
-use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
-use Rcalicdan\FiberAsync\Socket\AsyncSocketOperations;
-use Rcalicdan\FiberAsync\Socket\Exceptions\SocketException;
-
 /**
- * Socket wrapper for asynchronous socket operations.
+ * Socket value object representing socket connection data.
  *
- * This class provides a high-level interface for asynchronous socket operations
- * including reading, writing, and connection management. It wraps a socket resource
- * and delegates operations to the AsyncSocketOperations handler.
+ * This is a pure value object that holds socket-related data without dependencies
+ * or business logic. It's immutable and focused on data representation.
  */
-class Socket
+final class Socket
 {
     /**
      * The underlying socket resource.
      *
-     * @var resource
+     * @var resource|null
      */
     private $resource;
 
     /**
-     * Handler for asynchronous socket operations.
+     * Whether the socket has been marked as closed.
      */
-    private AsyncSocketOperations $operations;
+    private bool $isClosed;
 
     /**
-     * Whether the socket has been closed.
-     */
-    private bool $isClosed = false;
-
-    /**
-     * Default byte size for read operations.
-     */
-    private const DEFAULT_BYTE_SIZE = 8192;
-
-    /**
-     * Creates a new Socket instance.
+     * Socket metadata (address, port, etc.)
      *
-     * @param  resource  $resource  The socket resource
-     * @param  AsyncSocketOperations  $operations  Handler for async operations
-     *
-     * @throws \TypeError If resource is not a valid resource type
+     * @var array<string, mixed>
      */
-    public function __construct($resource, AsyncSocketOperations $operations)
+    private array $metadata;
+
+    /**
+     * Creates a new Socket value object.
+     *
+     * @param  resource|null  $resource  The socket resource
+     * @param  bool  $isClosed  Whether the socket is closed
+     * @param  array<string, mixed>  $metadata  Additional socket metadata
+     *
+     * @throws \TypeError If resource is not a valid resource type or null
+     */
+    public function __construct($resource, bool $isClosed = false, array $metadata = [])
     {
-        if (! is_resource($resource)) {
-            throw new \TypeError('Expected resource, got '.gettype($resource));
+        if (!is_resource($resource) && $resource !== null) {
+            throw new \TypeError('Expected resource or null, got ' . gettype($resource));
         }
 
         $this->resource = $resource;
-        $this->operations = $operations;
-        stream_set_blocking($this->resource, false);
-    }
-
-    /**
-     * Asynchronously reads data from the socket.
-     *
-     * @param  int|null  $length  Maximum number of bytes to read (default: 8192)
-     * @param  float|null  $timeout  Timeout in seconds (default: 10.0)
-     * @return PromiseInterface<string> Promise that resolves with the read data
-     *
-     * @throws SocketException If the socket is closed
-     */
-    public function read(?int $length = null, ?float $timeout = 10.0): PromiseInterface
-    {
-        if ($this->isClosed) {
-            return $this->operations->getAsyncOps()->rejected(new SocketException('Socket is closed.'));
-        }
-
-        $readLength = $length ?? self::DEFAULT_BYTE_SIZE;
-
-        return $this->operations->read($this, $readLength, $timeout);
-    }
-
-    /**
-     * Asynchronously writes data to the socket.
-     *
-     * @param  string  $data  The data to write
-     * @param  float|null  $timeout  Timeout in seconds (default: 10.0)
-     * @return PromiseInterface<int> Promise that resolves with the number of bytes written
-     *
-     * @throws SocketException If the socket is closed
-     */
-    public function write(string $data, ?float $timeout = 10.0): PromiseInterface
-    {
-        if ($this->isClosed) {
-            return $this->operations->getAsyncOps()->rejected(new SocketException('Socket is closed.'));
-        }
-
-        return $this->operations->write($this, $data, $timeout);
-    }
-
-    /**
-     * Closes the socket connection.
-     *
-     * This method ensures the socket is properly closed and cleaned up.
-     * It's safe to call multiple times - subsequent calls will be ignored.
-     */
-    public function close(): void
-    {
-        if (! $this->isClosed) {
-            $this->isClosed = true;
-            $this->operations->close($this);
-        }
+        $this->isClosed = $isClosed;
+        $this->metadata = $metadata;
     }
 
     /**
      * Gets the underlying socket resource.
      *
-     * @return resource The socket resource
+     * @return resource|null The socket resource
      */
     public function getResource()
     {
@@ -119,7 +60,7 @@ class Socket
     }
 
     /**
-     * Checks if the socket is closed.
+     * Checks if the socket is marked as closed.
      *
      * @return bool True if the socket is closed, false otherwise
      */
@@ -129,12 +70,128 @@ class Socket
     }
 
     /**
-     * Destructor ensures the socket is properly closed.
+     * Gets socket metadata.
      *
-     * @return void
+     * @return array<string, mixed> The metadata array
      */
-    public function __destruct()
+    public function getMetadata(): array
     {
-        $this->close();
+        return $this->metadata;
+    }
+
+    /**
+     * Gets a specific metadata value.
+     *
+     * @param  string  $key  The metadata key
+     * @param  mixed  $default  Default value if key doesn't exist
+     * @return mixed The metadata value or default
+     */
+    public function getMetadataValue(string $key, mixed $default = null): mixed
+    {
+        return $this->metadata[$key] ?? $default;
+    }
+
+    /**
+     * Creates a new Socket instance with updated closed status.
+     *
+     * @param  bool  $isClosed  The new closed status
+     * @return self A new Socket instance
+     */
+    public function withClosedStatus(bool $isClosed): self
+    {
+        return new self($this->resource, $isClosed, $this->metadata);
+    }
+
+    /**
+     * Creates a new Socket instance with additional metadata.
+     *
+     * @param  array<string, mixed>  $metadata  The metadata to merge
+     * @return self A new Socket instance
+     */
+    public function withMetadata(array $metadata): self
+    {
+        return new self($this->resource, $this->isClosed, array_merge($this->metadata, $metadata));
+    }
+
+    /**
+     * Creates a new Socket instance with a single metadata value.
+     *
+     * @param  string  $key  The metadata key
+     * @param  mixed  $value  The metadata value
+     * @return self A new Socket instance
+     */
+    public function withMetadataValue(string $key, mixed $value): self
+    {
+        $newMetadata = $this->metadata;
+        $newMetadata[$key] = $value;
+
+        return new self($this->resource, $this->isClosed, $newMetadata);
+    }
+
+    /**
+     * Checks if the socket resource is valid.
+     *
+     * @return bool True if resource is valid, false otherwise
+     */
+    public function hasValidResource(): bool
+    {
+        return is_resource($this->resource);
+    }
+
+    /**
+     * Gets the socket type from metadata.
+     *
+     * @return string|null The socket type or null if not set
+     */
+    public function getType(): ?string
+    {
+        return $this->getMetadataValue('type');
+    }
+
+    /**
+     * Gets the socket address from metadata.
+     *
+     * @return string|null The socket address or null if not set
+     */
+    public function getAddress(): ?string
+    {
+        return $this->getMetadataValue('address');
+    }
+
+    /**
+     * Gets the socket port from metadata.
+     *
+     * @return int|null The socket port or null if not set
+     */
+    public function getPort(): ?int
+    {
+        return $this->getMetadataValue('port');
+    }
+
+    /**
+     * String representation of the socket.
+     *
+     * @return string
+     */
+    public function __toString(): string
+    {
+        $address = $this->getAddress() ?? 'unknown';
+        $port = $this->getPort() ?? 'unknown';
+        $status = $this->isClosed ? 'closed' : 'open';
+
+        return "Socket({$address}:{$port}, {$status})";
+    }
+
+    /**
+     * Compare two Socket instances for equality.
+     *
+     * @param  Socket  $other  The other socket to compare
+     * @return bool True if sockets are equal, false otherwise
+     */
+    public function equals(Socket $other): bool
+    {
+        return $this->resource === $other->resource
+            && $this->isClosed === $other->isClosed
+            && $this->metadata === $other->metadata;
     }
 }
