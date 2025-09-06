@@ -20,7 +20,7 @@ class CancellablePromise extends Promise implements CancellablePromiseInterface
     private bool $cancelled = false;
 
     /**
-     * @var callable(): void|null
+     * {@inheritdoc}
      */
     private $cancelHandler = null;
 
@@ -40,11 +40,11 @@ class CancellablePromise extends Promise implements CancellablePromiseInterface
         if (! $this->cancelled) {
             $this->cancelled = true;
 
-            if ($this->cancelHandler !== null) {
+            if ($this->cancelHandler) {
                 try {
-                    EventLoop::getInstance()->nextTick($this->cancelHandler);
+                    ($this->cancelHandler)();
                 } catch (\Throwable $e) {
-                    error_log('Error scheduling cancel handler: '.$e->getMessage());
+                    error_log('Cancel handler error: ' . $e->getMessage());
                 }
             }
 
@@ -56,9 +56,6 @@ class CancellablePromise extends Promise implements CancellablePromiseInterface
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setCancelHandler(callable $handler): void
     {
         $this->cancelHandler = $handler;

@@ -6,6 +6,7 @@ use Fiber;
 use Rcalicdan\FiberAsync\EventLoop\Detectors\UvDetector;
 use Rcalicdan\FiberAsync\EventLoop\Factories\EventLoopComponentFactory;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\ActivityHandler;
+use Rcalicdan\FiberAsync\EventLoop\Handlers\ProcessDeferHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\SleepHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\StateHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\TickHandler;
@@ -70,6 +71,11 @@ class EventLoop implements EventLoopInterface
     private ActivityHandler $activityHandler;
 
     /**
+     * @var ProcessDeferHandler Handles deferred callbacks for process shutdown
+     */
+    private ProcessDeferHandler $processDeferHandler;
+
+    /**
      * @var StateHandler Manages the running state of the event loop
      */
     private StateHandler $stateHandler;
@@ -87,6 +93,7 @@ class EventLoop implements EventLoopInterface
 
     private function __construct()
     {
+        $this->processDeferHandler = new ProcessDeferHandler();
         $this->timerManager = EventLoopComponentFactory::createTimerManager();
         $this->httpRequestManager = new HttpRequestManager;
         $this->streamManager = EventLoopComponentFactory::createStreamManager();
@@ -111,6 +118,36 @@ class EventLoop implements EventLoopInterface
             $this->timerManager,
             $this->fiberManager
         );
+    }
+
+    /**
+     * Schedule a callback to run when the process terminates.
+     *
+     * Similar to Go's defer statement or Laravel's defer helper.
+     * Callbacks are executed in LIFO order (last registered, first executed).
+     *
+     * @param callable $callback Function to execute on process termination
+     * @param object|null $context Optional context object for scoped deferred callbacks
+     */
+    public function processDefer(callable $callback, ?object $context = null): void
+    {
+        $this->processDeferHandler->addProcessDeferred($callback, $context);
+    }
+
+    /**
+     * Get the number of pending process-deferred callbacks.
+     */
+    public function getPendingDeferredCount(): int
+    {
+        return $this->processDeferHandler->getPendingCount();
+    }
+
+    /**
+     * Manually execute all deferred callbacks (mainly for testing).
+     */
+    public function executeDeferredCallbacks(): void
+    {
+        $this->processDeferHandler->executeDeferred();
     }
 
     /**
