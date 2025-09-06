@@ -3,7 +3,6 @@
 namespace Rcalicdan\FiberAsync\Api;
 
 use Rcalicdan\FiberAsync\Async\AsyncOperations;
-use Rcalicdan\FiberAsync\Loop\LoopOperations;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 
 /**
@@ -22,13 +21,8 @@ final class Async
     /**
      * @var AsyncOperations|null Cached instance of core async operations handler
      */
+
     private static ?AsyncOperations $asyncOps = null;
-
-    /**
-     * @var LoopOperations|null Cached instance of loop operations handler
-     */
-    private static ?LoopOperations $loopOps = null;
-
     /**
      * Get the singleton instance of AsyncOperations with lazy initialization.
      *
@@ -44,20 +38,6 @@ final class Async
     }
 
     /**
-     * Get the singleton instance of LoopOperations with lazy initialization.
-     *
-     * @return LoopOperations The loop operations handler with automatic lifecycle management
-     */
-    protected static function getLoopOperations(): LoopOperations
-    {
-        if (self::$loopOps === null) {
-            self::$loopOps = new LoopOperations(self::getAsyncOperations());
-        }
-
-        return self::$loopOps;
-    }
-
-    /**
      * Reset all cached instances to their initial state.
      *
      * This method clears all singleton instances, forcing fresh initialization
@@ -67,7 +47,6 @@ final class Async
     public static function reset(): void
     {
         self::$asyncOps = null;
-        self::$loopOps = null;
     }
 
     /**

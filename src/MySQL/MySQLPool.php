@@ -3,9 +3,8 @@
 namespace Rcalicdan\FiberAsync\MySQL;
 
 use Rcalicdan\FiberAsync\Api\Async;
-use Rcalicdan\FiberAsync\Api\Promise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
-use Rcalicdan\FiberAsync\Promise\Promise as AsyncPromise;
+use Rcalicdan\FiberAsync\Promise\Promise;
 use SplQueue;
 
 /**
@@ -33,7 +32,7 @@ class MySQLPool
     public function get(): PromiseInterface
     {
         if (! $this->pool->isEmpty()) {
-            return Promise::resolve($this->pool->dequeue());
+            return Promise::resolved($this->pool->dequeue());
         }
 
         // If we haven't reached max connections, create a new one
@@ -55,7 +54,7 @@ class MySQLPool
         }
 
         // Pool is full, wait for a connection to be released
-        $promise = new AsyncPromise;
+        $promise = new Promise;
         $this->waiters->enqueue($promise);
 
         return $promise;

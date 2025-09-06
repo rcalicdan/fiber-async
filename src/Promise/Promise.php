@@ -3,6 +3,7 @@
 namespace Rcalicdan\FiberAsync\Promise;
 
 use Rcalicdan\FiberAsync\Async\AsyncOperations;
+use Rcalicdan\FiberAsync\Promise\Handlers\AwaitHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\CallbackHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\ChainHandler;
 use Rcalicdan\FiberAsync\Promise\Handlers\ExecutorHandler;
@@ -51,6 +52,11 @@ class Promise implements PromiseCollectionInterface, PromiseInterface
     private ResolutionHandler $resolutionHandler;
 
     /**
+     * @var AwaitHandler
+     */
+    private AwaitHandler $awaitHandler;
+
+    /**
      * @var CancellablePromiseInterface<mixed>|null
      */
     protected ?CancellablePromiseInterface $rootCancellable = null;
@@ -75,6 +81,7 @@ class Promise implements PromiseCollectionInterface, PromiseInterface
         $this->callbackHandler = new CallbackHandler;
         $this->executorHandler = new ExecutorHandler;
         $this->chainHandler = new ChainHandler;
+        $this->awaitHandler = new AwaitHandler;
         $this->resolutionHandler = new ResolutionHandler(
             $this->stateHandler,
             $this->callbackHandler
@@ -82,9 +89,17 @@ class Promise implements PromiseCollectionInterface, PromiseInterface
 
         $this->executorHandler->executeExecutor(
             $executor,
-            fn ($value) => $this->resolve($value),
-            fn ($reason) => $this->reject($reason)
+            fn($value) => $this->resolve($value),
+            fn($reason) => $this->reject($reason)
         );
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function await(bool $resetEventLoop = true): mixed
+    {
+        return $this->awaitHandler->await($this, $resetEventLoop);
     }
 
     /**
@@ -187,9 +202,9 @@ class Promise implements PromiseCollectionInterface, PromiseInterface
                 };
 
                 if ($this->stateHandler->isResolved()) {
-                    $this->chainHandler->scheduleHandler(fn () => $handleResolve($this->stateHandler->getValue()));
+                    $this->chainHandler->scheduleHandler(fn() => $handleResolve($this->stateHandler->getValue()));
                 } elseif ($this->stateHandler->isRejected()) {
-                    $this->chainHandler->scheduleHandler(fn () => $handleReject($this->stateHandler->getReason()));
+                    $this->chainHandler->scheduleHandler(fn() => $handleReject($this->stateHandler->getReason()));
                 } else {
                     $this->callbackHandler->addThenCallback($handleResolve);
                     $this->callbackHandler->addCatchCallback($handleReject);
