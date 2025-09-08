@@ -1,106 +1,39 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\EventLoop\Handlers;
+namespace Rcalicdan\FiberAsync\Defer\Handlers;
 
-use WeakMap;
-
-class ProcessDeferHandler
+class SignalRegistryHandler
 {
     /**
-     * @var array<callable> Global deferred callbacks
+     * @var callable Callback to execute on signal
      */
-    private static array $globalDeferred = [];
-
-    /**
-     * @var WeakMap<object, array<callable>> Context-specific deferred callbacks
-     */
-    private static WeakMap $contextDeferred;
-
-    /**
-     * @var bool Whether handlers are registered
-     */
-    private static bool $handlersRegistered = false;
+    private $callback;
 
     /**
      * @var bool Whether tick functions are registered
      */
     private static bool $tickRegistered = false;
 
-    public function __construct()
-    {
-        if (!isset(self::$contextDeferred)) {
-            self::$contextDeferred = new WeakMap();
-        }
+    /**
+     * @var array Signal handling capabilities
+     */
+    private array $capabilities = [];
 
-        $this->registerShutdownHandlers();
+    /**
+     * @var array Available methods
+     */
+    private array $methods = [];
+
+    public function __construct(callable $callback)
+    {
+        $this->callback = $callback;
+        $this->detectCapabilities();
     }
 
     /**
-     * Add a deferred callback to run at process end
+     * Register all available signal handlers
      */
-    public function addProcessDeferred(callable $callback, ?object $context = null): void
-    {
-        if ($context !== null) {
-            if (!isset(self::$contextDeferred[$context])) {
-                self::$contextDeferred[$context] = [];
-            }
-            self::$contextDeferred[$context][] = $callback;
-        } else {
-            self::$globalDeferred[] = $callback;
-        }
-    }
-
-    /**
-     * Execute all deferred callbacks
-     */
-    public function executeDeferred(): void
-    {
-        foreach (self::$contextDeferred as $context => $callbacks) {
-            $this->executeCallbackStack($callbacks);
-        }
-
-        $this->executeCallbackStack(self::$globalDeferred);
-
-        self::$globalDeferred = [];
-        self::$contextDeferred = new WeakMap();
-    }
-
-    /**
-     * Execute a stack of callbacks in LIFO order (like Go defer)
-     */
-    private function executeCallbackStack(array $callbacks): void
-    {
-        for ($i = count($callbacks) - 1; $i >= 0; $i--) {
-            try {
-                $callbacks[$i]();
-            } catch (\Throwable $e) {
-                error_log("Deferred callback error: " . $e->getMessage());
-            }
-        }
-    }
-
-    /**
-     * Register PHP shutdown handlers for both CLI and web contexts
-     */
-    private function registerShutdownHandlers(): void
-    {
-        if (self::$handlersRegistered) {
-            return;
-        }
-
-        register_shutdown_function([$this, 'executeDeferred']);
-
-        if (PHP_SAPI === 'cli') {
-            $this->registerSignalHandlers();
-        }
-
-        self::$handlersRegistered = true;
-    }
-
-    /**
-     * Register signal handlers for graceful CLI shutdown
-     */
-    private function registerSignalHandlers(): void
+    public function register(): void
     {
         if (PHP_OS_FAMILY === 'Windows' && function_exists('sapi_windows_set_ctrl_handler')) {
             $this->registerWindowsHandler();
@@ -128,7 +61,7 @@ class ProcessDeferHandler
         sapi_windows_set_ctrl_handler(function (int $event) {
             // CTRL_C_EVENT = 0, CTRL_BREAK_EVENT = 1, CTRL_CLOSE_EVENT = 2
             if (in_array($event, [0, 1, 2], true)) {
-                $this->executeDeferred();
+                call_user_func($this->callback);
                 exit(0);
             }
             return true;
@@ -141,7 +74,7 @@ class ProcessDeferHandler
     private function registerPcntlHandler(): void
     {
         $handler = function (int $signal) {
-            $this->executeDeferred();
+            call_user_func($this->callback);
             exit(0);
         };
 
@@ -202,7 +135,7 @@ class ProcessDeferHandler
                 $currentParent = posix_getppid();
 
                 if ($currentParent === 1 && $initialParentPid !== 1) {
-                    $this->executeDeferred();
+                    call_user_func($this->callback);
                     exit(0);
                 }
             }
@@ -249,13 +182,13 @@ class ProcessDeferHandler
             $lastCheck = $now;
 
             if (!is_resource(STDIN)) {
-                $this->executeDeferred();
+                call_user_func($this->callback);
                 exit(0);
             }
 
             $currentMeta = stream_get_meta_data(STDIN);
             if ($currentMeta['eof'] || $currentMeta['timed_out']) {
-                $this->executeDeferred();
+                call_user_func($this->callback);
                 exit(0);
             }
         });
@@ -268,7 +201,7 @@ class ProcessDeferHandler
     {
         // Custom exception handler for uncaught exceptions
         set_exception_handler(function (\Throwable $exception) {
-            $this->executeDeferred();
+            call_user_func($this->callback);
             restore_exception_handler();
             throw $exception;
         });
@@ -276,7 +209,7 @@ class ProcessDeferHandler
         // Enhanced error handler
         set_error_handler(function ($severity, $message, $file, $line) {
             if ($severity === E_ERROR || $severity === E_CORE_ERROR || $severity === E_COMPILE_ERROR) {
-                $this->executeDeferred();
+                call_user_func($this->callback);
             }
 
             // Get and restore original error handler
@@ -302,7 +235,7 @@ class ProcessDeferHandler
                 $checkCount++;
 
                 if ($checkCount % 500 === 0 && connection_aborted()) {
-                    $this->executeDeferred();
+                    call_user_func($this->callback);
                     exit(0);
                 }
             });
@@ -353,97 +286,69 @@ class ProcessDeferHandler
     }
 
     /**
-     * Get count of pending deferred callbacks
+     * Detect available signal handling capabilities
      */
-    public function getPendingCount(): int
+    private function detectCapabilities(): void
     {
-        $count = count(self::$globalDeferred);
-
-        foreach (self::$contextDeferred as $callbacks) {
-            $count += count($callbacks);
-        }
-
-        return $count;
-    }
-
-    /**
-     * Clear all pending deferred callbacks
-     */
-    public function clearAll(): void
-    {
-        self::$globalDeferred = [];
-        self::$contextDeferred = new WeakMap();
-    }
-
-    /**
-     * Get signal handling capabilities info
-     */
-    public function getSignalHandlingInfo(): array
-    {
-        $info = [
+        $this->capabilities = [
             'platform' => PHP_OS_FAMILY,
             'sapi' => PHP_SAPI,
-            'methods' => [],
-            'capabilities' => []
+            'windows_signals' => false,
+            'pcntl_signals' => false,
+            'posix_monitoring' => false,
+            'stdin_monitoring' => false,
+            'connection_monitoring' => false,
+            'shutdown_function' => true
         ];
 
+        $this->methods = [];
+
         if (PHP_OS_FAMILY === 'Windows' && function_exists('sapi_windows_set_ctrl_handler')) {
-            $info['methods'][] = 'Windows native (sapi_windows_set_ctrl_handler)';
-            $info['capabilities']['windows_signals'] = true;
+            $this->methods[] = 'Windows native (sapi_windows_set_ctrl_handler)';
+            $this->capabilities['windows_signals'] = true;
         }
 
         if (function_exists('pcntl_signal')) {
-            $info['methods'][] = 'Unix pcntl signals';
-            $info['capabilities']['pcntl_signals'] = true;
+            $this->methods[] = 'Unix pcntl signals';
+            $this->capabilities['pcntl_signals'] = true;
         }
 
         if (function_exists('posix_getppid')) {
-            $info['methods'][] = 'Unix process monitoring (posix)';
-            $info['capabilities']['posix_monitoring'] = true;
+            $this->methods[] = 'Unix process monitoring (posix)';
+            $this->capabilities['posix_monitoring'] = true;
         }
 
         if ($this->canMonitorStdin()) {
-            $info['methods'][] = 'STDIN monitoring';
-            $info['capabilities']['stdin_monitoring'] = true;
+            $this->methods[] = 'STDIN monitoring';
+            $this->capabilities['stdin_monitoring'] = true;
         }
 
         if (PHP_SAPI !== 'cli' && function_exists('connection_aborted')) {
-            $info['methods'][] = 'Web connection monitoring';
-            $info['capabilities']['connection_monitoring'] = true;
+            $this->methods[] = 'Web connection monitoring';
+            $this->capabilities['connection_monitoring'] = true;
         }
 
-        $info['methods'][] = 'Generic fallback (shutdown function)';
-        $info['capabilities']['shutdown_function'] = true;
-
-        return $info;
+        $this->methods[] = 'Generic fallback (shutdown function)';
     }
 
     /**
-     * Test signal handling (for debugging)
+     * Get signal handling capabilities
      */
-    public function testSignalHandling(): void
+    public function getCapabilities(): array
     {
-        echo "Testing signal handling capabilities...\n";
+        return [
+            'platform' => $this->capabilities['platform'],
+            'sapi' => $this->capabilities['sapi'],
+            'methods' => $this->methods,
+            'capabilities' => $this->capabilities
+        ];
+    }
 
-        $info = $this->getSignalHandlingInfo();
-
-        echo "Platform: {$info['platform']} ({$info['sapi']})\n";
-        echo "Available methods:\n";
-
-        foreach ($info['methods'] as $method) {
-            echo "  ✅ {$method}\n";
-        }
-
-        echo "\nCapabilities:\n";
-        foreach ($info['capabilities'] as $capability => $available) {
-            $status = $available ? '✅' : '❌';
-            echo "  {$status} {$capability}\n";
-        }
-
-        $this->addProcessDeferred(function () {
-            echo "\n🎯 Test defer executed successfully!\n";
-        });
-
-        echo "\nDefer test registered. Try Ctrl+C or let script finish normally.\n";
+    /**
+     * Test if a specific capability is available
+     */
+    public function hasCapability(string $capability): bool
+    {
+        return $this->capabilities[$capability] ?? false;
     }
 }

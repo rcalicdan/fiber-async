@@ -6,7 +6,6 @@ use Fiber;
 use Rcalicdan\FiberAsync\EventLoop\Detectors\UvDetector;
 use Rcalicdan\FiberAsync\EventLoop\Factories\EventLoopComponentFactory;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\ActivityHandler;
-use Rcalicdan\FiberAsync\EventLoop\Handlers\ProcessDeferHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\SleepHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\StateHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\TickHandler;
@@ -71,11 +70,6 @@ class EventLoop implements EventLoopInterface
     private ActivityHandler $activityHandler;
 
     /**
-     * @var ProcessDeferHandler Handles deferred callbacks for process shutdown
-     */
-    private ProcessDeferHandler $processDeferHandler;
-
-    /**
      * @var StateHandler Manages the running state of the event loop
      */
     private StateHandler $stateHandler;
@@ -93,7 +87,6 @@ class EventLoop implements EventLoopInterface
 
     private function __construct()
     {
-        $this->processDeferHandler = new ProcessDeferHandler();
         $this->timerManager = EventLoopComponentFactory::createTimerManager();
         $this->httpRequestManager = new HttpRequestManager;
         $this->streamManager = EventLoopComponentFactory::createStreamManager();
@@ -121,36 +114,6 @@ class EventLoop implements EventLoopInterface
     }
 
     /**
-     * Schedule a callback to run when the process terminates.
-     *
-     * Similar to Go's defer statement or Laravel's defer helper.
-     * Callbacks are executed in LIFO order (last registered, first executed).
-     *
-     * @param callable $callback Function to execute on process termination
-     * @param object|null $context Optional context object for scoped deferred callbacks
-     */
-    public function processDefer(callable $callback, ?object $context = null): void
-    {
-        $this->processDeferHandler->addProcessDeferred($callback, $context);
-    }
-
-    /**
-     * Get the number of pending process-deferred callbacks.
-     */
-    public function getPendingDeferredCount(): int
-    {
-        return $this->processDeferHandler->getPendingCount();
-    }
-
-    /**
-     * Manually execute all deferred callbacks (mainly for testing).
-     */
-    public function executeDeferredCallbacks(): void
-    {
-        $this->processDeferHandler->executeDeferred();
-    }
-
-    /**
      * Check if event loop is using UV extension.
      *
      * @return bool True if UV is available, false otherwise
@@ -168,6 +131,16 @@ class EventLoop implements EventLoopInterface
     public function getSocketManager(): SocketManager
     {
         return $this->socketManager;
+    }
+
+    /**
+     * Get the timer manager.
+     *
+     * @return TimerManager The timer manager instance
+     */
+    public function getTimerManager(): TimerManager
+    {
+        return $this->timerManager;
     }
 
     /**
@@ -197,6 +170,19 @@ class EventLoop implements EventLoopInterface
     public function addTimer(float $delay, callable $callback): string
     {
         return $this->timerManager->addTimer($delay, $callback);
+    }
+
+    /**
+     * Schedule a periodic timer that executes repeatedly at specified intervals.
+     *
+     * @param  float  $interval  Interval in seconds between executions
+     * @param  callable  $callback  Function to execute on each interval
+     * @param  int|null  $maxExecutions  Maximum number of executions (null for infinite)
+     * @return string Unique identifier for the periodic timer
+     */
+    public function addPeriodicTimer(float $interval, callable $callback, ?int $maxExecutions = null): string
+    {
+        return $this->timerManager->addPeriodicTimer($interval, $callback, $maxExecutions);
     }
 
     public function hasTimers(): bool

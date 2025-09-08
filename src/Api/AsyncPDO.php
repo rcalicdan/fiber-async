@@ -442,7 +442,7 @@ final class AsyncPDO
      *
      * @internal This method is for internal use only
      */
-    private static function getPool(): AsyncPdoPool
+    public static function getPool(): AsyncPdoPool
     {
         if (! self::$isInitialized || self::$pool === null) {
             throw new \RuntimeException(

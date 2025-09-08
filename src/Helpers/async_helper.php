@@ -2,7 +2,6 @@
 
 use Rcalicdan\FiberAsync\Api\Async;
 use Rcalicdan\FiberAsync\Api\Timer;
-use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Promise;
@@ -257,56 +256,5 @@ if (! function_exists('batch')) {
     function batch(array $tasks, int $batchSize = 10, ?int $concurrency = null): PromiseInterface
     {
         return Promise::batch($tasks, $batchSize, $concurrency);
-    }
-}
-
-if (!function_exists('process_defer')) {
-    /**
-     * Schedule a callback to run when the process terminates.
-     *
-     * Similar to Go's defer statement or Laravel's defer helper.
-     * Callbacks are executed in LIFO order (last registered, first executed).
-     * Works in both CLI and web contexts.
-     *
-     * @param callable $callback Function to execute on process termination
-     * @param object|null $context Optional context object for scoped deferred callbacks
-     * 
-     * @example
-     * process_defer(function() {
-     *     echo "This runs when the process ends\n";
-     * });
-     * 
-     * // With context (useful for cleanup tied to specific objects)
-     * $resource = new SomeResource();
-     * process_defer(function() use ($resource) {
-     *     $resource->cleanup();
-     * }, $resource);
-     */
-    function process_defer(callable $callback, ?object $context = null): void
-    {
-        EventLoop::getInstance()->processDefer($callback, $context);
-    }
-}
-
-if (!function_exists('defer_cleanup')) {
-    /**
-     * Create a scoped defer that automatically cleans up resources.
-     *
-     * @param object $resource The resource to clean up
-     * @param string $method The cleanup method to call (default: 'close')
-     * 
-     * @example
-     * $file = fopen('test.txt', 'r');
-     * defer_cleanup($file, 'fclose'); // Will call fclose($file) on process end
-     */
-    function defer_cleanup(object $resource, string $method = 'close'): void
-    {
-        process_defer(function() use ($resource, $method) {
-            if (method_exists($resource, $method)) {
-                $resource->$method();
-            } elseif (function_exists($method)) {
-                $method($resource);
-            }
-        }, $resource);
     }
 }
