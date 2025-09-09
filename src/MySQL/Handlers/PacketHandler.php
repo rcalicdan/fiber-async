@@ -79,6 +79,7 @@ class PacketHandler
 
             if ($data === '') {
                 Async::await(Timer::delay(0));
+
                 continue;
             }
 

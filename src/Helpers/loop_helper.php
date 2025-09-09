@@ -22,7 +22,7 @@ if (! function_exists('run')) {
 
 if (! function_exists('run_stateful')) {
     /**
-     * Run an async operation with automatic event loop management without resetting event loop 
+     * Run an async operation with automatic event loop management without resetting event loop
      * for persistent and stateful connections.
      *
      * This function handles the complete lifecycle: starts the event loop,

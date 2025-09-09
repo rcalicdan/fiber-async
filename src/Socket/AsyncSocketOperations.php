@@ -91,6 +91,7 @@ class AsyncSocketOperations
             $resource = @stream_socket_client($address, $errno, $errstr, 0, STREAM_CLIENT_ASYNC_CONNECT, $context);
             if ($resource === false) {
                 $reject(new ConnectionException("Failed to create socket: {$errstr}", $errno));
+
                 return;
             }
 
@@ -106,7 +107,7 @@ class AsyncSocketOperations
                     $timerId = null;
                 }
                 $this->loop->getSocketManager()->removeWriteWatcher($resource);
-                
+
                 $socket = new Socket($resource, false, $metadata);
                 $resolve($socket);
             };
@@ -224,7 +225,7 @@ class AsyncSocketOperations
      */
     public function close(Socket $socket): Socket
     {
-        if (!$socket->isClosed() && $socket->getResource()) {
+        if (! $socket->isClosed() && $socket->getResource()) {
             $this->loop->getSocketManager()->clearAllWatchersForSocket($socket->getResource());
             @fclose($socket->getResource());
         }
@@ -257,6 +258,7 @@ class AsyncSocketOperations
                     $this->loop->cancelTimer($timerId);
                 }
                 $reject(new SocketException('Failed to write to socket.'));
+
                 return;
             }
 
@@ -267,6 +269,7 @@ class AsyncSocketOperations
                     $this->loop->cancelTimer($timerId);
                 }
                 $resolve($totalBytesWritten);
+
                 return;
             }
 

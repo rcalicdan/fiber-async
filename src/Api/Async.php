@@ -21,8 +21,8 @@ final class Async
     /**
      * @var AsyncOperations|null Cached instance of core async operations handler
      */
-
     private static ?AsyncOperations $asyncOps = null;
+
     /**
      * Get the singleton instance of AsyncOperations with lazy initialization.
      *

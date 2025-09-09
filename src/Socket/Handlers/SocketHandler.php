@@ -82,8 +82,9 @@ class SocketHandler
      */
     public function close(Socket $socket): Socket
     {
-        if (!$socket->isClosed()) {
+        if (! $socket->isClosed()) {
             $this->operations->close($socket);
+
             return $socket->withClosedStatus(true);
         }
 
@@ -121,8 +122,6 @@ class SocketHandler
 
     /**
      * Get the underlying AsyncSocketOperations instance.
-     *
-     * @return AsyncSocketOperations
      */
     public function getOperations(): AsyncSocketOperations
     {

@@ -27,9 +27,9 @@ class ProcessDeferHandler
     /**
      * Create a function-scoped defer handler
      */
-    public static function createFunctionDefer(): FunctionDefer
+    public static function createFunctionDefer(): FunctionScopeHandler
     {
-        return new FunctionDefer();
+        return new FunctionScopeHandler;
     }
 
     /**
@@ -63,7 +63,7 @@ class ProcessDeferHandler
                     $stack[$i]();
                 }
             } catch (\Throwable $e) {
-                error_log("Defer error: " . $e->getMessage());
+                error_log('Defer error: '.$e->getMessage());
             } finally {
                 unset($stack[$i]);
             }
@@ -92,11 +92,11 @@ class ProcessDeferHandler
             return;
         }
 
-        register_shutdown_function(function() {
+        register_shutdown_function(function () {
             try {
                 $this->executeAll();
             } catch (\Throwable $e) {
-                error_log("Defer shutdown error: " . $e->getMessage());
+                error_log('Defer shutdown error: '.$e->getMessage());
             }
         });
 
@@ -116,7 +116,7 @@ class ProcessDeferHandler
     {
         return [
             'global_defers' => count(self::$globalStack),
-            'memory_usage' => memory_get_usage(true)
+            'memory_usage' => memory_get_usage(true),
         ];
     }
 
@@ -133,7 +133,7 @@ class ProcessDeferHandler
             'platform' => PHP_OS_FAMILY,
             'sapi' => PHP_SAPI,
             'methods' => ['Generic fallback (shutdown function)'],
-            'capabilities' => ['shutdown_function' => true]
+            'capabilities' => ['shutdown_function' => true],
         ];
     }
 
@@ -164,64 +164,5 @@ class ProcessDeferHandler
         });
 
         echo "\nDefer test registered. Try Ctrl+C or let script finish normally.\n";
-    }
-}
-
-/**
- * Function-scoped defer handler that executes when the object is destroyed
- */
-class FunctionDefer
-{
-    /**
-     * @var array<callable> Function-scoped defer stack
-     */
-    private array $stack = [];
-
-    /**
-     * Add a defer callback to this function scope
-     */
-    public function defer(callable $callback): void
-    {
-        if (count($this->stack) >= 50) {
-            array_shift($this->stack);
-        }
-        
-        $this->stack[] = $callback;
-    }
-
-    /**
-     * Execute all defers when object is destroyed (function ends)
-     */
-    public function __destruct()
-    {
-        // Execute in LIFO order when function ends
-        for ($i = count($this->stack) - 1; $i >= 0; $i--) {
-            try {
-                if (is_callable($this->stack[$i])) {
-                    $this->stack[$i]();
-                }
-            } catch (\Throwable $e) {
-                error_log("Defer error: " . $e->getMessage());
-            } finally {
-                unset($this->stack[$i]);
-            }
-        }
-    }
-
-    /**
-     * Get the number of pending defers
-     */
-    public function count(): int
-    {
-        return count($this->stack);
-    }
-
-    /**
-     * Manually execute all defers (useful for testing)
-     */
-    public function executeAll(): void
-    {
-        $this->__destruct();
-        $this->stack = []; // Clear after manual execution
     }
 }

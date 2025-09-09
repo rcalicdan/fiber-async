@@ -36,7 +36,7 @@ class MySQLClient
     {
         $this->connectionParams = $connectionParams;
         $this->packetReader = (new DefaultPacketReaderFactory)->createWithDefaultSettings();
-        $this->socketOps = new AsyncSocketOperations();
+        $this->socketOps = new AsyncSocketOperations;
 
         if (isset($connectionParams['debug']) && $connectionParams['debug']) {
             $this->enableDebug();

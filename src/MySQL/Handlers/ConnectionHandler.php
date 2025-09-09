@@ -116,7 +116,7 @@ class ConnectionHandler
 
         $handshakeParser = new HandshakeParser(
             new HandshakeV10Builder,
-            fn(HandshakeV10 $h) => $this->client->setHandshake($h)
+            fn (HandshakeV10 $h) => $this->client->setHandshake($h)
         );
 
         $handshakeParser($reader);
@@ -133,7 +133,7 @@ class ConnectionHandler
 
     private function logHandshakeInfo(HandshakeV10 $handshake): void
     {
-        $this->client->debug('Handshake received. Server version: ' . $handshake->serverVersion . "\n");
+        $this->client->debug('Handshake received. Server version: '.$handshake->serverVersion."\n");
     }
 
     private function setupPacketBuilder(): void

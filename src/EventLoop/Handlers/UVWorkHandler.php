@@ -2,7 +2,6 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\Handlers;
 
-use Rcalicdan\FiberAsync\EventLoop\Handlers\TickHandler;
 use Rcalicdan\FiberAsync\EventLoop\Managers\FiberManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\FileManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\HttpRequestManager;
@@ -27,7 +26,7 @@ final class UvWorkHandler extends WorkHandler
         $socketManager,
     ) {
         $this->uvLoop = $uvLoop;
-        
+
         parent::__construct(
             $timerManager,
             $httpRequestManager,
@@ -74,9 +73,11 @@ final class UvWorkHandler extends WorkHandler
     {
         try {
             $result = \uv_run($this->uvLoop, self::UV_RUN_ONCE);
+
             return $result > 0;
-        } catch (\Error | \Exception $e) {
-            error_log("UV loop error: " . $e->getMessage());
+        } catch (\Error|\Exception $e) {
+            error_log('UV loop error: '.$e->getMessage());
+
             return false;
         }
     }

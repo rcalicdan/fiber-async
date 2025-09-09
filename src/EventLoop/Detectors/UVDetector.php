@@ -8,20 +8,20 @@ namespace Rcalicdan\FiberAsync\EventLoop\Detectors;
 final class UvDetector
 {
     private static ?bool $uvAvailable = null;
-    
+
     public static function isUvAvailable(): bool
     {
         if (self::$uvAvailable === null) {
             self::$uvAvailable = extension_loaded('uv');
         }
-        
+
         return self::$uvAvailable;
     }
-    
+
     public static function requiresUv(): bool
     {
-        return self::isUvAvailable() && 
-               !empty($_ENV['FIBER_ASYNC_FORCE_UV']) || 
-               !empty($_SERVER['FIBER_ASYNC_FORCE_UV']);
+        return self::isUvAvailable() &&
+               ! empty($_ENV['FIBER_ASYNC_FORCE_UV']) ||
+               ! empty($_SERVER['FIBER_ASYNC_FORCE_UV']);
     }
 }

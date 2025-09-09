@@ -1,50 +1,9 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\Defer;
+namespace Rcalicdan\FiberAsync\Defer\Utilities;
 
 use Rcalicdan\FiberAsync\Defer\Handlers\FunctionScopeHandler;
 use Rcalicdan\FiberAsync\Defer\Handlers\ProcessDeferHandler;
-
-/**
- * Static defer utility with reliable function scope management
- */
-class Defer
-{
-    /**
-     * @var ProcessDeferHandler|null Global defer handler
-     */
-    private static ?ProcessDeferHandler $globalHandler = null;
-
-    /**
-     * Create a new function-scoped defer instance
-     */
-    public static function scope(): DeferInstance
-    {
-        return new DeferInstance;
-    }
-
-    /**
-     * Global-scoped defer - executes at script shutdown
-     *
-     * @param  callable  $callback  The callback to defer
-     */
-    public static function global(callable $callback): void
-    {
-        if (self::$globalHandler === null) {
-            self::$globalHandler = new ProcessDeferHandler;
-        }
-
-        self::$globalHandler->defer($callback);
-    }
-
-    /**
-     * Reset state (useful for testing)
-     */
-    public static function reset(): void
-    {
-        self::$globalHandler = null;
-    }
-}
 
 /**
  * Function-scoped defer instance with method chaining

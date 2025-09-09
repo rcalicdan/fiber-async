@@ -4,8 +4,8 @@ namespace Rcalicdan\FiberAsync\EventLoop\Managers;
 
 use Rcalicdan\FiberAsync\EventLoop\IOHandlers\Timer\TimerExecutionHandler;
 use Rcalicdan\FiberAsync\EventLoop\IOHandlers\Timer\TimerScheduleHandler;
-use Rcalicdan\FiberAsync\EventLoop\ValueObjects\Timer;
 use Rcalicdan\FiberAsync\EventLoop\ValueObjects\PeriodicTimer;
+use Rcalicdan\FiberAsync\EventLoop\ValueObjects\Timer;
 
 /**
  * Manages the lifecycle of all timers for the event loop.
@@ -143,7 +143,7 @@ class TimerManager
 
     /**
      * Get statistics about timers (backward compatible addition).
-     * 
+     *
      * @return array<string, mixed>
      */
     public function getTimerStats(): array
@@ -172,12 +172,12 @@ class TimerManager
     /**
      * Get information about a specific timer (backward compatible addition).
      *
-     * @param string $timerId The timer ID to get info for
+     * @param  string  $timerId  The timer ID to get info for
      * @return array<string, mixed>|null Timer information or null if not found
      */
     public function getTimerInfo(string $timerId): ?array
     {
-        if (!isset($this->timers[$timerId])) {
+        if (! isset($this->timers[$timerId])) {
             return null;
         }
 
@@ -204,20 +204,22 @@ class TimerManager
     /**
      * Process regular (one-time) timers using the existing execution handler.
      *
-     * @param float $currentTime Current timestamp
+     * @param  float  $currentTime  Current timestamp
      * @return bool True if any regular timers were executed
      */
     private function processRegularTimers(float $currentTime): bool
     {
-        $regularTimers = array_filter($this->timers, fn($timer) => !$timer instanceof PeriodicTimer);
+        $regularTimers = array_filter($this->timers, fn ($timer) => ! $timer instanceof PeriodicTimer);
 
         if (empty($regularTimers)) {
             return false;
         }
 
         $executed = $this->executionHandler->executeReadyTimers($regularTimers, $currentTime);
+
         if ($executed) {
-            $this->timers = array_merge($this->timers, $regularTimers);
+            $periodicTimers = array_filter($this->timers, fn ($timer) => $timer instanceof PeriodicTimer);
+            $this->timers = $periodicTimers + $regularTimers;
         }
 
         return $executed;
@@ -226,7 +228,7 @@ class TimerManager
     /**
      * Process periodic timers and remove completed ones.
      *
-     * @param float $currentTime Current timestamp
+     * @param  float  $currentTime  Current timestamp
      * @return bool True if any periodic timers were executed
      */
     private function processPeriodicTimers(float $currentTime): bool
@@ -235,7 +237,7 @@ class TimerManager
         $timersToRemove = [];
 
         foreach ($this->timers as $timerId => $timer) {
-            if (!$timer instanceof PeriodicTimer) {
+            if (! $timer instanceof PeriodicTimer) {
                 continue;
             }
 
@@ -244,7 +246,7 @@ class TimerManager
                 $hasExecutedAny = true;
 
                 // Remove completed periodic timers
-                if (!$timer->shouldContinue()) {
+                if (! $timer->shouldContinue()) {
                     $timersToRemove[] = $timerId;
                 }
             }

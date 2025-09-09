@@ -26,8 +26,8 @@ final class EventLoopComponentFactory
         if (UvDetector::isUvAvailable()) {
             return new UvTimerManager(self::getUvLoop());
         }
-        
-        return new TimerManager();
+
+        return new TimerManager;
     }
 
     public static function createStreamManager(): StreamManager
@@ -35,8 +35,8 @@ final class EventLoopComponentFactory
         if (UvDetector::isUvAvailable()) {
             return new UvStreamManager(self::getUvLoop());
         }
-        
-        return new StreamManager();
+
+        return new StreamManager;
     }
 
     public static function createSocketManager(): SocketManager
@@ -44,8 +44,8 @@ final class EventLoopComponentFactory
         if (UvDetector::isUvAvailable()) {
             return new UvSocketManager(self::getUvLoop());
         }
-        
-        return new SocketManager();
+
+        return new SocketManager;
     }
 
     public static function createWorkHandler(
@@ -101,7 +101,7 @@ final class EventLoopComponentFactory
         if (self::$uvLoop === null && UvDetector::isUvAvailable()) {
             self::$uvLoop = \uv_default_loop();
         }
-        
+
         return self::$uvLoop;
     }
 

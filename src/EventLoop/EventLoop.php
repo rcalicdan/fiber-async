@@ -297,7 +297,7 @@ class EventLoop implements EventLoopInterface
                 $this->optimizeLoop();
             }
 
-            if (!$isUsingUv && $this->sleepHandler->shouldSleep($hasImmediateWork)) {
+            if (! $isUsingUv && $this->sleepHandler->shouldSleep($hasImmediateWork)) {
                 $sleepTime = $this->sleepHandler->calculateOptimalSleep();
                 $this->sleepHandler->sleep($sleepTime);
             }

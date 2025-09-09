@@ -37,16 +37,19 @@ class SignalRegistryHandler
     {
         if (PHP_OS_FAMILY === 'Windows' && function_exists('sapi_windows_set_ctrl_handler')) {
             $this->registerWindowsHandler();
+
             return;
         }
 
         if (function_exists('pcntl_signal')) {
             $this->registerPcntlHandler();
+
             return;
         }
 
         if (PHP_OS_FAMILY !== 'Windows') {
             $this->registerUnixFallbackHandler();
+
             return;
         }
 
@@ -64,6 +67,7 @@ class SignalRegistryHandler
                 call_user_func($this->callback);
                 exit(0);
             }
+
             return true;
         });
     }
@@ -142,6 +146,7 @@ class SignalRegistryHandler
         });
 
         self::$tickRegistered = true;
+
         declare(ticks=1000);
     }
 
@@ -181,7 +186,7 @@ class SignalRegistryHandler
 
             $lastCheck = $now;
 
-            if (!is_resource(STDIN)) {
+            if (! is_resource(STDIN)) {
                 call_user_func($this->callback);
                 exit(0);
             }
@@ -203,6 +208,7 @@ class SignalRegistryHandler
         set_exception_handler(function (\Throwable $exception) {
             call_user_func($this->callback);
             restore_exception_handler();
+
             throw $exception;
         });
 
@@ -225,42 +231,65 @@ class SignalRegistryHandler
     }
 
     /**
-     * Generic fallback handler for all platforms
+     * Registers generic fallback handlers for connection abort and memory limit monitoring.
      */
     private function registerGenericFallbackHandler(): void
     {
-        if (PHP_SAPI !== 'cli' && function_exists('connection_aborted')) {
-            register_tick_function(function () {
-                static $checkCount = 0;
-                $checkCount++;
+        $this->registerConnectionAbortHandler();
+        $this->registerMemoryLimitHandler();
+    }
 
-                if ($checkCount % 500 === 0 && connection_aborted()) {
-                    call_user_func($this->callback);
-                    exit(0);
-                }
-            });
-
-            declare(ticks=1000);
+    /**
+     * Registers a tick function to monitor for aborted HTTP connections.
+     */
+    private function registerConnectionAbortHandler(): void
+    {
+        if (PHP_SAPI === 'cli' || ! function_exists('connection_aborted')) {
+            return;
         }
 
-        if (function_exists('memory_get_usage') && function_exists('ini_get')) {
-            $memoryLimit = ini_get('memory_limit');
-            if ($memoryLimit !== '-1') {
-                register_tick_function(function () use ($memoryLimit) {
-                    static $checkCount = 0;
-                    $checkCount++;
+        register_tick_function(function () {
+            static $checkCount = 0;
+            $checkCount++;
 
-                    if ($checkCount % 1000 === 0) {
-                        $current = memory_get_usage(true);
-                        $limit = $this->parseMemoryLimit($memoryLimit);
-
-                        if ($limit > 0 && $current > ($limit * 0.95)) {
-                            error_log("Approaching memory limit, executing deferred callbacks");
-                        }
-                    }
-                });
+            if ($checkCount % 500 === 0 && connection_aborted()) {
+                call_user_func($this->callback);
+                exit(0);
             }
+        });
+
+        declare(ticks=1000);
+    }
+
+    /**
+     * Registers a tick function to monitor memory usage approaching configured limits.
+     */
+    private function registerMemoryLimitHandler(): void
+    {
+        if (! function_exists('memory_get_usage') || ! function_exists('ini_get')) {
+            return;
         }
+
+        $memoryLimit = ini_get('memory_limit');
+        if ($memoryLimit === '-1') {
+            return;
+        }
+
+        register_tick_function(function () use ($memoryLimit) {
+            static $checkCount = 0;
+            $checkCount++;
+
+            if ($checkCount % 1000 !== 0) {
+                return;
+            }
+
+            $current = memory_get_usage(true);
+            $limit = $this->parseMemoryLimit($memoryLimit);
+
+            if ($limit > 0 && $current > ($limit * 0.95)) {
+                error_log('Approaching memory limit, executing deferred callbacks');
+            }
+        });
     }
 
     /**
@@ -298,7 +327,7 @@ class SignalRegistryHandler
             'posix_monitoring' => false,
             'stdin_monitoring' => false,
             'connection_monitoring' => false,
-            'shutdown_function' => true
+            'shutdown_function' => true,
         ];
 
         $this->methods = [];
@@ -340,7 +369,7 @@ class SignalRegistryHandler
             'platform' => $this->capabilities['platform'],
             'sapi' => $this->capabilities['sapi'],
             'methods' => $this->methods,
-            'capabilities' => $this->capabilities
+            'capabilities' => $this->capabilities,
         ];
     }
 

@@ -119,8 +119,9 @@ interface PromiseInterface
     /**
      * Block execution until the promise resolves and return the value.
      *
-     * @param bool $resetEventLoop Whether to reset the event loop after completion (default: true)
+     * @param  bool  $resetEventLoop  Whether to reset the event loop after completion (default: true)
      * @return TValue The resolved value
+     *
      * @throws \Throwable The rejection reason if promise was rejected
      */
     public function await(bool $resetEventLoop = true): mixed;
