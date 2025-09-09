@@ -37,19 +37,16 @@ class SignalRegistryHandler
     {
         if (PHP_OS_FAMILY === 'Windows' && function_exists('sapi_windows_set_ctrl_handler')) {
             $this->registerWindowsHandler();
-
             return;
         }
 
         if (function_exists('pcntl_signal')) {
             $this->registerPcntlHandler();
-
             return;
         }
 
         if (PHP_OS_FAMILY !== 'Windows') {
             $this->registerUnixFallbackHandler();
-
             return;
         }
 
@@ -110,6 +107,8 @@ class SignalRegistryHandler
 
     /**
      * Check if we can monitor process state
+     *
+     * @return bool True if process monitoring is available
      */
     private function canMonitorProcess(): bool
     {
@@ -152,6 +151,8 @@ class SignalRegistryHandler
 
     /**
      * Check if we can monitor STDIN
+     *
+     * @return bool True if STDIN monitoring is available
      */
     private function canMonitorStdin(): bool
     {
@@ -186,7 +187,7 @@ class SignalRegistryHandler
 
             $lastCheck = $now;
 
-            if (! is_resource(STDIN)) {
+            if (!is_resource(STDIN)) {
                 call_user_func($this->callback);
                 exit(0);
             }
@@ -208,7 +209,6 @@ class SignalRegistryHandler
         set_exception_handler(function (\Throwable $exception) {
             call_user_func($this->callback);
             restore_exception_handler();
-
             throw $exception;
         });
 
@@ -241,10 +241,14 @@ class SignalRegistryHandler
 
     /**
      * Registers a tick function to monitor for aborted HTTP connections.
+     *
+     * Only active in web contexts (non-CLI) where connection_aborted() is available.
+     * Checks every 500 ticks if the client connection has been aborted and executes
+     * the registered callback if so.
      */
     private function registerConnectionAbortHandler(): void
     {
-        if (PHP_SAPI === 'cli' || ! function_exists('connection_aborted')) {
+        if (PHP_SAPI === 'cli' || !function_exists('connection_aborted')) {
             return;
         }
 
@@ -263,10 +267,14 @@ class SignalRegistryHandler
 
     /**
      * Registers a tick function to monitor memory usage approaching configured limits.
+     *
+     * Checks every 1000 ticks if memory usage exceeds 95% of the configured limit.
+     * Logs a warning when the threshold is approached but does not execute callbacks.
+     * Skips registration if memory_limit is set to unlimited (-1).
      */
     private function registerMemoryLimitHandler(): void
     {
-        if (! function_exists('memory_get_usage') || ! function_exists('ini_get')) {
+        if (!function_exists('memory_get_usage') || !function_exists('ini_get')) {
             return;
         }
 
@@ -294,6 +302,9 @@ class SignalRegistryHandler
 
     /**
      * Parse memory limit string to bytes
+     *
+     * @param string $limit Memory limit string (e.g., '128M', '1G')
+     * @return int Memory limit in bytes
      */
     private function parseMemoryLimit(string $limit): int
     {
@@ -362,6 +373,8 @@ class SignalRegistryHandler
 
     /**
      * Get signal handling capabilities
+     *
+     * @return array Capabilities information
      */
     public function getCapabilities(): array
     {
@@ -375,6 +388,9 @@ class SignalRegistryHandler
 
     /**
      * Test if a specific capability is available
+     *
+     * @param string $capability Capability name to test
+     * @return bool True if capability is available
      */
     public function hasCapability(string $capability): bool
     {

@@ -2,8 +2,8 @@
 
 namespace Rcalicdan\FiberAsync\Defer;
 
-use Rcalicdan\FiberAsync\Defer\Handlers\FunctionScopeHandler;
 use Rcalicdan\FiberAsync\Defer\Handlers\ProcessDeferHandler;
+use Rcalicdan\FiberAsync\Defer\Utilities\DeferInstance;
 
 /**
  * Static defer utility with reliable function scope management
@@ -17,6 +17,8 @@ class Defer
 
     /**
      * Create a new function-scoped defer instance
+     *
+     * @return DeferInstance Function-scoped defer instance
      */
     public static function scope(): DeferInstance
     {
@@ -26,7 +28,7 @@ class Defer
     /**
      * Global-scoped defer - executes at script shutdown
      *
-     * @param  callable  $callback  The callback to defer
+     * @param callable $callback The callback to defer
      */
     public static function global(callable $callback): void
     {
@@ -38,66 +40,46 @@ class Defer
     }
 
     /**
+     * Terminate-scoped defer - executes after response is sent (like Laravel's defer)
+     * 
+     * This is similar to Laravel's terminable middleware and defer() helper.
+     * Callbacks are executed after the HTTP response has been sent to the client
+     * or after the main CLI script execution completes.
+     *
+     * @param callable $callback The callback to execute after response
+     */
+    public static function terminate(callable $callback): void
+    {
+        if (self::$globalHandler === null) {
+            self::$globalHandler = new ProcessDeferHandler;
+        }
+
+        self::$globalHandler->terminate($callback);
+    }
+
+    /**
      * Reset state (useful for testing)
      */
     public static function reset(): void
     {
         self::$globalHandler = null;
     }
-}
-
-/**
- * Function-scoped defer instance with method chaining
- */
-class DeferInstance
-{
-    /**
-     * @var FunctionScopeHandler Function-scoped defer handler
-     */
-    private FunctionScopeHandler $functionHandler;
 
     /**
-     * Initialize with a new function-scoped defer handler
-     */
-    public function __construct()
-    {
-        $this->functionHandler = ProcessDeferHandler::createFunctionDefer();
-    }
-
-    /**
-     * Add a function-scoped defer
+     * Get defer statistics
      *
-     * @param  callable  $callback  The callback to defer
-     * @return self For method chaining
+     * @return array Statistics about defer usage and environment
      */
-    public function task(callable $callback): self
+    public static function getStats(): array
     {
-        $this->functionHandler->defer($callback);
+        if (self::$globalHandler === null) {
+            return [
+                'global_defers' => 0,
+                'terminate_callbacks' => 0,
+                'memory_usage' => memory_get_usage(true),
+            ];
+        }
 
-        return $this;
-    }
-
-    /**
-     * Get the number of pending function-scoped defers
-     */
-    public function count(): int
-    {
-        return $this->functionHandler->count();
-    }
-
-    /**
-     * Get the underlying function defer handler (for advanced usage)
-     */
-    public function getHandler(): FunctionScopeHandler
-    {
-        return $this->functionHandler;
-    }
-
-    /**
-     * Manually execute all function-scoped defers (useful for testing)
-     */
-    public function executeAll(): void
-    {
-        $this->functionHandler->executeAll();
+        return self::$globalHandler->getStats();
     }
 }
