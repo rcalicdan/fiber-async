@@ -4,6 +4,7 @@ namespace Rcalicdan\FiberAsync\Http\Handlers;
 
 use Psr\SimpleCache\CacheInterface;
 use Rcalicdan\FiberAsync\Api\Async;
+use Rcalicdan\FiberAsync\Config\HttpConfigLoader;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Http\CacheConfig;
 use Rcalicdan\FiberAsync\Http\Exceptions\HttpException;
@@ -15,6 +16,7 @@ use Rcalicdan\FiberAsync\Http\Traits\FetchOptionTrait;
 use Rcalicdan\FiberAsync\Promise\CancellablePromise;
 use Rcalicdan\FiberAsync\Promise\Interfaces\CancellablePromiseInterface;
 use Rcalicdan\FiberAsync\Promise\Interfaces\PromiseInterface;
+use RuntimeException;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Psr16Cache;
 
@@ -330,7 +332,7 @@ class FetchHandler
                     }
 
                     if ($etag !== null) {
-                        $httpHeaders[] = 'If-None-Match: '.$etag;
+                        $httpHeaders[] = 'If-None-Match: ' . $etag;
                     }
                 }
 
@@ -345,7 +347,7 @@ class FetchHandler
                     }
 
                     if ($lastModified !== null) {
-                        $httpHeaders[] = 'If-Modified-Since: '.$lastModified;
+                        $httpHeaders[] = 'If-Modified-Since: ' . $lastModified;
                     }
                 }
 
@@ -545,7 +547,7 @@ class FetchHandler
      */
     private function generateCacheKey(string $url): string
     {
-        return 'http_'.sha1($url);
+        return 'http_' . sha1($url);
     }
 
     /**
@@ -556,7 +558,26 @@ class FetchHandler
     private static function getDefaultCache(): CacheInterface
     {
         if (self::$defaultCache === null) {
-            $psr6Cache = new FilesystemAdapter('http', 0, 'cache');
+            $httpConfigLoader = HttpConfigLoader::getInstance();
+
+            $httpConfig = $httpConfigLoader->get('client', []);
+
+            $cacheDirectory = $httpConfig['cache']['path'] ?? null;
+
+            if ($cacheDirectory === null) {
+                $rootPath = $httpConfigLoader->getRootPath();
+                $cacheDirectory = $rootPath
+                    ? $rootPath . '/storage/framework/cache/data'
+                    : sys_get_temp_dir() . '/fiber_async_http_cache';
+            }
+
+            if (!is_dir($cacheDirectory)) {
+                if (!mkdir($cacheDirectory, 0775, true) && !is_dir($cacheDirectory)) {
+                    throw new RuntimeException(sprintf('Cache directory "%s" could not be created', $cacheDirectory));
+                }
+            }
+
+            $psr6Cache = new FilesystemAdapter('http_client', 0, $cacheDirectory);
             self::$defaultCache = new Psr16Cache($psr6Cache);
         }
 

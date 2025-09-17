@@ -4,6 +4,7 @@ namespace Rcalicdan\FiberAsync\Http\Handlers;
 
 use Psr\SimpleCache\CacheInterface;
 use Rcalicdan\FiberAsync\Api\Async;
+use Rcalicdan\FiberAsync\Config\HttpConfigLoader;
 use Rcalicdan\FiberAsync\EventLoop\EventLoop;
 use Rcalicdan\FiberAsync\Http\CacheConfig;
 use Rcalicdan\FiberAsync\Http\Exceptions\HttpException;
@@ -80,7 +81,7 @@ class HttpHandler
     public function sse(
         string $url,
         array $options = [],
-        ?callable $onEvent = null,
+        ?callable $onEvent = null,  
         ?callable $onError = null,
         ?SSEReconnectConfig $reconnectConfig = null
     ): CancellablePromiseInterface {
@@ -220,7 +221,7 @@ class HttpHandler
      */
     public static function generateCacheKey(string $url): string
     {
-        return 'http_'.sha1($url);
+        return 'http_' . sha1($url);
     }
 
     /**
@@ -229,10 +230,29 @@ class HttpHandler
      *
      * @return CacheInterface The default cache instance.
      */
-    protected static function getDefaultCache(): CacheInterface
+    private static function getDefaultCache(): CacheInterface
     {
         if (self::$defaultCache === null) {
-            $psr6Cache = new FilesystemAdapter('http', 0, 'cache');
+            $httpConfigLoader = HttpConfigLoader::getInstance();
+
+            $httpConfig = $httpConfigLoader->get('client', []);
+
+            $cacheDirectory = $httpConfig['cache']['path'] ?? null;
+
+            if ($cacheDirectory === null) {
+                $rootPath = $httpConfigLoader->getRootPath();
+                $cacheDirectory = $rootPath
+                    ? $rootPath . '/storage/framework/cache/data'
+                    : sys_get_temp_dir() . '/fiber_async_http_cache';
+            }
+
+            if (!is_dir($cacheDirectory)) {
+                if (!mkdir($cacheDirectory, 0775, true) && !is_dir($cacheDirectory)) {
+                    throw new RuntimeException(sprintf('Cache directory "%s" could not be created', $cacheDirectory));
+                }
+            }
+
+            $psr6Cache = new FilesystemAdapter('http_client', 0, $cacheDirectory);
             self::$defaultCache = new Psr16Cache($psr6Cache);
         }
 
@@ -276,12 +296,12 @@ class HttpHandler
 
                 if (isset($cachedItem['headers']['etag'])) {
                     $etag = is_array($cachedItem['headers']['etag']) ? $cachedItem['headers']['etag'][0] : $cachedItem['headers']['etag'];
-                    $httpHeaders[] = 'If-None-Match: '.$etag;
+                    $httpHeaders[] = 'If-None-Match: ' . $etag;
                 }
 
                 if (isset($cachedItem['headers']['last-modified'])) {
                     $lastModified = is_array($cachedItem['headers']['last-modified']) ? $cachedItem['headers']['last-modified'][0] : $cachedItem['headers']['last-modified'];
-                    $httpHeaders[] = 'If-Modified-Since: '.$lastModified;
+                    $httpHeaders[] = 'If-Modified-Since: ' . $lastModified;
                 }
 
                 $curlOptions[CURLOPT_HTTPHEADER] = $httpHeaders;
