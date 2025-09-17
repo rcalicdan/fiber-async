@@ -1,13 +1,13 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\EventLoop\Managers\Uv;
+namespace Rcalicdan\FiberAsync\EventLoop\Managers\UV;
 
 use Rcalicdan\FiberAsync\EventLoop\Managers\SocketManager;
 
 /**
  * UV-based socket manager using libuv for efficient socket I/O
  */
-final class UvSocketManager extends SocketManager
+final class UVSocketManager extends SocketManager
 {
     private $uvLoop;
     private array $uvTcpHandles = [];

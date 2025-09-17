@@ -9,7 +9,7 @@ use Rcalicdan\FiberAsync\EventLoop\Managers\HttpRequestManager;
 /**
  * UV-aware work handler that integrates with libuv event loop
  */
-final class UvWorkHandler extends WorkHandler
+final class UVWorkHandler extends WorkHandler
 {
     private $uvLoop;
 

@@ -3,7 +3,7 @@
 namespace Rcalicdan\FiberAsync\EventLoop;
 
 use Fiber;
-use Rcalicdan\FiberAsync\EventLoop\Detectors\UvDetector;
+use Rcalicdan\FiberAsync\EventLoop\Detectors\UVDetector;
 use Rcalicdan\FiberAsync\EventLoop\Factories\EventLoopComponentFactory;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\ActivityHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\SleepHandler;
@@ -120,7 +120,7 @@ class EventLoop implements EventLoopInterface
      */
     public function isUsingUv(): bool
     {
-        return UvDetector::isUvAvailable();
+        return UVDetector::isUvAvailable();
     }
 
     /**
@@ -287,7 +287,7 @@ class EventLoop implements EventLoopInterface
      */
     public function run(): void
     {
-        $isUsingUv = UvDetector::isUvAvailable();
+        $isUsingUv = UVDetector::isUvAvailable();
 
         while ($this->stateHandler->isRunning() && $this->workHandler->hasWork()) {
             $this->iterationCount++;

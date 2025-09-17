@@ -5,7 +5,7 @@ namespace Rcalicdan\FiberAsync\EventLoop\Detectors;
 /**
  * Detects availability of ext-uv and provides fallback mechanisms
  */
-final class UvDetector
+final class UVDetector
 {
     private static ?bool $uvAvailable = null;
 

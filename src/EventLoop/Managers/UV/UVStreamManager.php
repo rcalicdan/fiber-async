@@ -1,6 +1,6 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\EventLoop\Managers\Uv;
+namespace Rcalicdan\FiberAsync\EventLoop\Managers\UV;
 
 use Rcalicdan\FiberAsync\EventLoop\Managers\StreamManager;
 use Rcalicdan\FiberAsync\EventLoop\ValueObjects\StreamWatcher;
@@ -8,7 +8,7 @@ use Rcalicdan\FiberAsync\EventLoop\ValueObjects\StreamWatcher;
 /**
  * UV-based stream manager using libuv for efficient I/O polling
  */
-final class UvStreamManager extends StreamManager
+final class UVStreamManager extends StreamManager
 {
     private $uvLoop;
     private array $uvPolls = [];

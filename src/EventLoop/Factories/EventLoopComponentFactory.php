@@ -2,17 +2,17 @@
 
 namespace Rcalicdan\FiberAsync\EventLoop\Factories;
 
-use Rcalicdan\FiberAsync\EventLoop\Detectors\UvDetector;
+use Rcalicdan\FiberAsync\EventLoop\Detectors\UVDetector;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\SleepHandler;
-use Rcalicdan\FiberAsync\EventLoop\Handlers\UvWorkHandler;
+use Rcalicdan\FiberAsync\EventLoop\Handlers\UVWorkHandler;
 use Rcalicdan\FiberAsync\EventLoop\Handlers\WorkHandler;
-use Rcalicdan\FiberAsync\EventLoop\IOHandlers\Uv\UvSleepHandler;
+use Rcalicdan\FiberAsync\EventLoop\IOHandlers\Uv\UVSleepHandler;
 use Rcalicdan\FiberAsync\EventLoop\Managers\SocketManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\StreamManager;
 use Rcalicdan\FiberAsync\EventLoop\Managers\TimerManager;
-use Rcalicdan\FiberAsync\EventLoop\Managers\Uv\UvSocketManager;
-use Rcalicdan\FiberAsync\EventLoop\Managers\Uv\UvStreamManager;
-use Rcalicdan\FiberAsync\EventLoop\Managers\Uv\UvTimerManager;
+use Rcalicdan\FiberAsync\EventLoop\Managers\UV\UVSocketManager;
+use Rcalicdan\FiberAsync\EventLoop\Managers\UV\UVStreamManager;
+use Rcalicdan\FiberAsync\EventLoop\Managers\UV\UVTimerManager;
 
 /**
  * Factory for creating UV-aware or fallback components
@@ -23,8 +23,8 @@ final class EventLoopComponentFactory
 
     public static function createTimerManager(): TimerManager
     {
-        if (UvDetector::isUvAvailable()) {
-            return new UvTimerManager(self::getUvLoop());
+        if (UVDetector::isUvAvailable()) {
+            return new UVTimerManager(self::getUvLoop());
         }
 
         return new TimerManager;
@@ -33,7 +33,7 @@ final class EventLoopComponentFactory
     public static function createStreamManager(): StreamManager
     {
         if (UvDetector::isUvAvailable()) {
-            return new UvStreamManager(self::getUvLoop());
+            return new UVStreamManager(self::getUvLoop());
         }
 
         return new StreamManager;
@@ -41,8 +41,8 @@ final class EventLoopComponentFactory
 
     public static function createSocketManager(): SocketManager
     {
-        if (UvDetector::isUvAvailable()) {
-            return new UvSocketManager(self::getUvLoop());
+        if (UVDetector::isUvAvailable()) {
+            return new UVSocketManager(self::getUvLoop());
         }
 
         return new SocketManager;
@@ -57,8 +57,8 @@ final class EventLoopComponentFactory
         $fileManager,
         $socketManager
     ): WorkHandler {
-        if (UvDetector::isUvAvailable()) {
-            return new UvWorkHandler(
+        if (UVDetector::isUvAvailable()) {
+            return new UVWorkHandler(
                 self::getUvLoop(),
                 $timerManager,
                 $httpRequestManager,
@@ -85,8 +85,8 @@ final class EventLoopComponentFactory
         $timerManager,
         $fiberManager
     ): SleepHandler {
-        if (UvDetector::isUvAvailable()) {
-            return new UvSleepHandler(
+        if (UVDetector::isUvAvailable()) {
+            return new UVSleepHandler(
                 $timerManager,
                 $fiberManager,
                 self::getUvLoop()
@@ -98,7 +98,7 @@ final class EventLoopComponentFactory
 
     private static function getUvLoop()
     {
-        if (self::$uvLoop === null && UvDetector::isUvAvailable()) {
+        if (self::$uvLoop === null && UVDetector::isUvAvailable()) {
             self::$uvLoop = \uv_default_loop();
         }
 

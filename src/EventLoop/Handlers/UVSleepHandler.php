@@ -7,7 +7,7 @@ use Rcalicdan\FiberAsync\EventLoop\Handlers\SleepHandler;
 /**
  * UV-aware sleep handler that leverages libuv's efficient polling
  */
-final class UvSleepHandler extends SleepHandler
+final class UVSleepHandler extends SleepHandler
 {
     private $uvLoop;
 

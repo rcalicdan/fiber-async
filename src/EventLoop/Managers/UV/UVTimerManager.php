@@ -1,10 +1,10 @@
 <?php
 
-namespace Rcalicdan\FiberAsync\EventLoop\Managers\Uv;
+namespace Rcalicdan\FiberAsync\EventLoop\Managers\UV;
 
 use Rcalicdan\FiberAsync\EventLoop\Managers\TimerManager;
 
-final class UvTimerManager extends TimerManager
+final class UVTimerManager extends TimerManager
 {
     private $uvLoop;
     private array $uvTimers = [];
