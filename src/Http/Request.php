@@ -46,6 +46,9 @@ class Request extends Message implements RequestInterface
     private array $responseInterceptors = [];
     private ?ProxyConfig $proxyConfig = null;
     private ?SSEReconnectConfig $sseReconnectConfig = null;
+    private ?string $sseDataFormat = null;
+    /** @var callable(SSEEvent): array|string|null */
+    private $sseMapper = null;
 
     /**
      * Initializes a new Request builder instance.
@@ -124,7 +127,7 @@ class Request extends Message implements RequestInterface
             $target = '/';
         }
         if ($this->uri->getQuery() !== '') {
-            $target .= '?'.$this->uri->getQuery();
+            $target .= '?' . $this->uri->getQuery();
         }
 
         return $target;
@@ -456,13 +459,28 @@ class Request extends Message implements RequestInterface
     }
 
     /**
-     * Create an SSE connection with automatic reconnection.
-     * Inherits all configured request options (headers, auth, timeouts, etc.)
+     * Configure what type of data SSE events should return.
      *
-     * @param  string  $url  The SSE endpoint URL
-     * @param  callable(SSEEvent): void|null  $onEvent  Optional callback for each SSE event
-     * @param  callable(string): void|null  $onError  Optional callback for connection errors
-     * @param  SSEReconnectConfig|null  $reconnectConfig  Optional reconnection configuration
+     * @param string $dataFormat The data format to return:
+     *                          - 'json': Parse event data as JSON (fallback to raw string)
+     *                          - 'array': Convert entire event to array using toArray()  
+     *                          - 'raw': Return raw event data string
+     *                          - 'event': Return full SSEEvent object (default)
+     * @return self For fluent method chaining
+     */
+    public function sseDataFormat(string $format = 'array'): self
+    {
+        $this->sseDataFormat = $format;
+        return $this;
+    }
+
+    /**
+     * Create an SSE connection with configured data format.
+     *
+     * @param string $url The SSE endpoint URL
+     * @param callable $onEvent Callback for each event (receives data in configured format)
+     * @param callable(string): void|null $onError Optional callback for connection errors
+     * @param SSEReconnectConfig|null $reconnectConfig Optional reconnection configuration
      * @return CancellablePromiseInterface<SSEResponse>
      */
     public function sse(
@@ -471,15 +489,82 @@ class Request extends Message implements RequestInterface
         ?callable $onError = null,
         ?SSEReconnectConfig $reconnectConfig = null
     ): CancellablePromiseInterface {
-        // Use fetch-style options instead of raw cURL options
         $options = $this->buildFetchOptions('GET');
-
-        // Remove or modify options that interfere with SSE
-        unset($options['timeout']); // Don't set a total timeout for SSE
+        unset($options['timeout']);
 
         $effectiveReconnectConfig = $reconnectConfig ?? $this->sseReconnectConfig;
+        $wrappedCallback = $this->wrapSSECallback($onEvent);
 
-        return $this->handler->sse($url, $options, $onEvent, $onError, $effectiveReconnectConfig);
+        return $this->handler->sse($url, $options, $wrappedCallback, $onError, $effectiveReconnectConfig);
+    }
+
+    /**
+     * Add a custom mapper function to transform SSE event data.
+     *
+     * @param callable $mapper Function to transform the event data: function($data): mixed
+     * @return self For fluent method chaining
+     */
+    public function sseMap(callable $mapper): self
+    {
+        $this->sseMapper = $mapper;
+        return $this;
+    }
+
+    /**
+     * Wrap the SSE event callback to return data in the configured format.
+     */
+    private function wrapSSECallback(?callable $originalCallback): ?callable
+    {
+        if ($originalCallback === null || $this->sseDataFormat === null) {
+            return $originalCallback;
+        }
+
+        return function (SSEEvent $event) use ($originalCallback) {
+            $processedData = match ($this->sseDataFormat) {
+                'json' => $this->parseEventDataAsJson($event),
+                'array' => $this->eventToArrayWithParsedData($event),
+                'raw' => $event->data,
+                'event' => $event,
+                default => $event
+            };
+
+            if ($this->sseMapper !== null) {
+                $processedData = call_user_func($this->sseMapper, $processedData);
+            }
+
+            $originalCallback($processedData);
+        };
+    }
+
+    /**
+     * Convert event to array with automatically parsed JSON data.
+     * If not valid JSON, keep original string
+     */
+    private function eventToArrayWithParsedData(SSEEvent $event): array
+    {
+        $array = $event->toArray();
+
+        if ($array['data'] !== null) {
+            $parsed = json_decode($array['data'], true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $array['data'] = $parsed;
+            }
+        }
+
+        return $array;
+    }
+
+    /**
+     * Parse event data as JSON, fallback to raw data.
+     */
+    private function parseEventDataAsJson(SSEEvent $event): mixed
+    {
+        if ($event->data === null) {
+            return null;
+        }
+
+        $parsed = json_decode($event->data, true);
+        return json_last_error() === JSON_ERROR_NONE ? $parsed : $event->data;
     }
 
     /**
@@ -616,7 +701,7 @@ class Request extends Message implements RequestInterface
     public function get(string $url, array $query = []): PromiseInterface
     {
         if (count($query) > 0) {
-            $url .= (strpos($url, '?') !== false ? '&' : '?').http_build_query($query);
+            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($query);
         }
 
         return $this->send('GET', $url);
@@ -827,10 +912,10 @@ class Request extends Message implements RequestInterface
     public function cookie(string $name, string $value): self
     {
         $existingCookies = $this->getHeaderLine('Cookie');
-        $newCookie = $name.'='.urlencode($value);
+        $newCookie = $name . '=' . urlencode($value);
 
         if ($existingCookies !== '') {
-            return $this->header('Cookie', $existingCookies.'; '.$newCookie);
+            return $this->header('Cookie', $existingCookies . '; ' . $newCookie);
         } else {
             return $this->header('Cookie', $newCookie);
         }
@@ -1152,7 +1237,7 @@ class Request extends Message implements RequestInterface
             if ($cookieHeader !== '') {
                 $existingCookies = $this->getHeaderLine('Cookie');
                 if ($existingCookies !== '') {
-                    $this->header('Cookie', $existingCookies.'; '.$cookieHeader);
+                    $this->header('Cookie', $existingCookies . '; ' . $cookieHeader);
                 } else {
                     $this->header('Cookie', $cookieHeader);
                 }
@@ -1193,13 +1278,13 @@ class Request extends Message implements RequestInterface
             return;
         }
 
-        $options[CURLOPT_PROXY] = $this->proxyConfig->host.':'.$this->proxyConfig->port;
+        $options[CURLOPT_PROXY] = $this->proxyConfig->host . ':' . $this->proxyConfig->port;
         $options[CURLOPT_PROXYTYPE] = $this->proxyConfig->getCurlProxyType();
 
         if ($this->proxyConfig->username !== null) {
             $proxyAuth = $this->proxyConfig->username;
             if ($this->proxyConfig->password !== null) {
-                $proxyAuth .= ':'.$this->proxyConfig->password;
+                $proxyAuth .= ':' . $this->proxyConfig->password;
             }
             $options[CURLOPT_PROXYUSERPWD] = $proxyAuth;
         }
@@ -1221,7 +1306,7 @@ class Request extends Message implements RequestInterface
         if (count($this->headers) > 0) {
             $headerStrings = [];
             foreach ($this->headers as $name => $value) {
-                $headerStrings[] = "{$name}: ".implode(', ', $value);
+                $headerStrings[] = "{$name}: " . implode(', ', $value);
             }
             $options[CURLOPT_HTTPHEADER] = $headerStrings;
         }
@@ -1268,7 +1353,7 @@ class Request extends Message implements RequestInterface
         }
 
         if (($port = $this->uri->getPort()) !== null) {
-            $host .= ':'.$port;
+            $host .= ':' . $port;
         }
 
         if (isset($this->headerNames['host'])) {
